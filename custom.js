@@ -1687,27 +1687,41 @@ document.addEventListener('DOMContentLoaded', function () {
     var VALUE_KEYS = ['v', 'v_max', 'te', 'hu', 'ba', 'sp', 'u', 'lux', 'mm', 'baro'];
     var cache      = {}; // idx → values[]
 
-    function svgSparkline(values) {
-        var W = 84, H = 26, PAD = 2;
+    function svgSparkline(values, idx) {
+        var W = 100, H = 100;
+        // Leave breathing room top/bottom so the line isn't clipped
+        var TOP = 15, BOT = 5;
         var min = Infinity, max = -Infinity;
         for (var i = 0; i < values.length; i++) {
             if (values[i] < min) min = values[i];
             if (values[i] > max) max = values[i];
         }
         var range = max - min || 1;
-        var step  = (W - PAD * 2) / (values.length - 1);
+        var step  = W / (values.length - 1);
         var pts   = values.map(function (v, i) {
-            var x = (PAD + i * step).toFixed(1);
-            var y = (H - PAD - ((v - min) / range) * (H - PAD * 2)).toFixed(1);
+            var x = (i * step).toFixed(2);
+            var y = (TOP + (1 - (v - min) / range) * (H - TOP - BOT)).toFixed(2);
             return x + ',' + y;
-        }).join(' ');
-        // Resolve the accent color at render time so it works inside innerHTML SVGs
-        var stroke = getComputedStyle(document.documentElement)
-                         .getPropertyValue('--dz-accent-color').trim() || '#4e9af1';
-        return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">' +
-            '<polyline points="' + pts + '" fill="none" stroke="' + stroke + '"' +
-            ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
-            '</svg>';
+        });
+        var linePts  = pts.join(' ');
+        // Close the area path along the bottom edge
+        var areaPath = 'M' + pts[0] +
+                       ' L' + pts.join(' L') +
+                       ' L' + (W) + ',' + H + ' L0,' + H + ' Z';
+        // Resolve accent color at render time (CSS vars don't resolve in innerHTML SVGs)
+        var color = getComputedStyle(document.documentElement)
+                        .getPropertyValue('--dz-accent-color').trim() || '#4e9af1';
+        var gid = 'dzsg' + (idx || '0');
+        return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"' +
+               ' xmlns="http://www.w3.org/2000/svg">' +
+               '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1">' +
+               '<stop offset="0%" stop-color="' + color + '" stop-opacity="0.9"/>' +
+               '<stop offset="100%" stop-color="' + color + '" stop-opacity="0.1"/>' +
+               '</linearGradient></defs>' +
+               '<path d="' + areaPath + '" fill="url(#' + gid + ')"/>' +
+               '<polyline points="' + linePts + '" fill="none" stroke="' + color + '"' +
+               ' stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+               '</svg>';
     }
 
     // Base path: strips the hash and trailing filename, keeps the directory
@@ -1735,7 +1749,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                  .filter(function (v) { return !isNaN(v); });
                 if (vals.length < 4) { tryNextSensor(idx, wrap, si + 1); return; }
                 cache[idx] = vals;
-                wrap.innerHTML = svgSparkline(vals);
+                wrap.innerHTML = svgSparkline(vals, idx);
                 wrap.style.display = '';
             })
             .catch(function () { tryNextSensor(idx, wrap, si + 1); });
@@ -1772,14 +1786,15 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!bigtext || !/\d/.test(bigtext.textContent || '')) continue;
             var idx = getCardIdx(card);
             if (!idx) continue;
+            // Ensure card is a positioning context for the absolute overlay
+            card.style.position = 'relative';
             var wrap = document.createElement('div');
             wrap.className = 'dz-sparkline-wrap';
             wrap.style.display = 'none';
-            var footer = card.querySelector('.dz-card-footer');
-            if (footer) { footer.insertBefore(wrap, footer.firstChild); }
-            else        { card.appendChild(wrap); }
+            // Insert as first child so it sits behind all card content
+            card.insertBefore(wrap, card.firstChild);
             if (cache[idx]) {
-                wrap.innerHTML = svgSparkline(cache[idx]);
+                wrap.innerHTML = svgSparkline(cache[idx], idx);
                 wrap.style.display = '';
             } else {
                 tryNextSensor(idx, wrap, 0);
