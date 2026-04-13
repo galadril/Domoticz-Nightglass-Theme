@@ -1719,42 +1719,26 @@ document.addEventListener('DOMContentLoaded', function () {
     })();
 
     function tryNextSensor(idx, wrap, si) {
-        if (si >= SENSORS.length) {
-            console.debug('[dz-sparkline] idx=' + idx + ': no data found across all sensor types');
-            return;
-        }
-        var url = BASE + 'json.htm?type=graph&sensor=' + SENSORS[si] + '&idx=' + idx + '&range=day';
-        console.debug('[dz-sparkline] fetching', url);
+        if (si >= SENSORS.length) return;
+        var url = BASE + 'json.htm?type=command&param=graph&sensor=' + SENSORS[si] + '&idx=' + idx + '&range=day';
         fetch(url, { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 var result = data && data.result;
-                if (!result || !result.length) {
-                    console.debug('[dz-sparkline] idx=' + idx + ' sensor=' + SENSORS[si] + ': empty result');
-                    tryNextSensor(idx, wrap, si + 1);
-                    return;
-                }
+                if (!result || !result.length) { tryNextSensor(idx, wrap, si + 1); return; }
                 var field = null;
                 VALUE_KEYS.forEach(function (k) {
                     if (field === null && result[0][k] !== undefined) field = k;
                 });
-                if (!field) {
-                    console.debug('[dz-sparkline] idx=' + idx + ' sensor=' + SENSORS[si] + ': no known value field in', Object.keys(result[0]));
-                    tryNextSensor(idx, wrap, si + 1);
-                    return;
-                }
+                if (!field) { tryNextSensor(idx, wrap, si + 1); return; }
                 var vals = result.map(function (r) { return parseFloat(r[field]); })
                                  .filter(function (v) { return !isNaN(v); });
                 if (vals.length < 4) { tryNextSensor(idx, wrap, si + 1); return; }
-                console.debug('[dz-sparkline] idx=' + idx + ' sensor=' + SENSORS[si] + ' field=' + field + ' points=' + vals.length);
                 cache[idx] = vals;
                 wrap.innerHTML = svgSparkline(vals);
                 wrap.style.display = '';
             })
-            .catch(function (err) {
-                console.debug('[dz-sparkline] idx=' + idx + ' sensor=' + SENSORS[si] + ' fetch error:', err);
-                tryNextSensor(idx, wrap, si + 1);
-            });
+            .catch(function () { tryNextSensor(idx, wrap, si + 1); });
     }
 
     function getCardIdx(card) {
@@ -1779,7 +1763,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function addSparklines() {
         var cards = document.querySelectorAll('div.item.itemBlock, .itemBlock > div.item');
-        console.debug('[dz-sparkline] addSparklines: found', cards.length, 'candidate cards');
         for (var c = 0; c < cards.length; c++) {
             var card = cards[c];
             if (card.querySelector('.dz-sparkline-wrap')) continue;
@@ -1788,8 +1771,7 @@ document.addEventListener('DOMContentLoaded', function () {
             var bigtext = card.querySelector('td#bigtext');
             if (!bigtext || !/\d/.test(bigtext.textContent || '')) continue;
             var idx = getCardIdx(card);
-            if (!idx) { console.debug('[dz-sparkline] card', c, 'SKIP: could not resolve idx'); continue; }
-            console.debug('[dz-sparkline] card', c, 'idx=' + idx);
+            if (!idx) continue;
             var wrap = document.createElement('div');
             wrap.className = 'dz-sparkline-wrap';
             wrap.style.display = 'none';
