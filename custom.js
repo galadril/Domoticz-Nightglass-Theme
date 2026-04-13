@@ -10,18 +10,30 @@
 /* -- Highcharts palette (callable on mode change) ------------------ */
 (function() {
     'use strict';
-    // Preselect 'Tomorrow Night' theme in Ace editor theme combobox on events page
-    function setAceThemeToTomorrowNight() {
+    var ACE_THEME_KEY = 'dz-ace-theme';
+    var DEFAULT_ACE_THEME = 'string:ace/theme/tomorrow_night';
+    var aceListenerAttached = false;
+
+    // Apply the saved (or default) Ace editor theme on the events page.
+    // Respects any theme the user has explicitly chosen via the dropdown.
+    function setAceTheme() {
         // Only run on the events page (URL contains /events or #/events)
         if (!/\bevents\b/i.test(window.location.href)) return;
+        var applyTheme = localStorage.getItem(ACE_THEME_KEY) || DEFAULT_ACE_THEME;
         // Wait for Angular to render the select
         var trySet = function() {
             var sel = document.querySelector('select[ng-model="$ctrl.aceSettings.theme"]');
             if (sel) {
-                // Set value and trigger change if not already set
-                if (sel.value !== 'string:ace/theme/tomorrow_night') {
-                    sel.value = 'string:ace/theme/tomorrow_night';
+                if (sel.value !== applyTheme) {
+                    sel.value = applyTheme;
                     sel.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                // Save future user-initiated changes so they persist across navigation
+                if (!aceListenerAttached) {
+                    aceListenerAttached = true;
+                    sel.addEventListener('change', function() {
+                        localStorage.setItem(ACE_THEME_KEY, this.value);
+                    });
                 }
             } else {
                 setTimeout(trySet, 200);
@@ -30,12 +42,15 @@
         trySet();
     }
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', setAceThemeToTomorrowNight);
+        document.addEventListener('DOMContentLoaded', setAceTheme);
     } else {
-        setAceThemeToTomorrowNight();
+        setAceTheme();
     }
     // Also hook into Angular route changes (SPA navigation)
-    window.addEventListener('hashchange', setAceThemeToTomorrowNight);
+    window.addEventListener('hashchange', function() {
+        aceListenerAttached = false; /* select is re-rendered on route change */
+        setAceTheme();
+    });
 })();
 
 function applyHighchartsTheme(isDark) {
@@ -196,6 +211,8 @@ if (document.readyState === 'loading') {
         var icon = a.querySelector('i');
         if (icon) icon.className = light ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
         a.title = light ? 'Switch to dark mode' : 'Switch to light mode';
+        a.setAttribute('aria-pressed', light ? 'true' : 'false');
+        a.setAttribute('aria-label', light ? 'Switch to dark mode' : 'Switch to light mode');
     }
 
     function toggle() {
@@ -220,6 +237,9 @@ if (document.readyState === 'loading') {
         a.id = 'dz-theme-style-btn';
         a.href = 'javascript:void(0)';
         a.title = light ? 'Switch to dark mode' : 'Switch to light mode';
+        a.setAttribute('role', 'button');
+        a.setAttribute('aria-pressed', light ? 'true' : 'false');
+        a.setAttribute('aria-label', light ? 'Switch to dark mode' : 'Switch to light mode');
         var icon = document.createElement('i');
         icon.className = light ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
         a.appendChild(icon);
@@ -291,6 +311,8 @@ if (document.readyState === 'loading') {
         'images/camera-web.png':   'fa-solid fa-video',
         'images/security.png':     'fa-solid fa-shield-halved',
         'images/notification.png': 'fa-solid fa-bell',
+        'images/floorplans.png':   'fa-solid fa-map',
+        'images/report.png':       'fa-solid fa-chart-bar',
 
         /* Action icons (data tables, edit forms) */
         'images/delete.png':       'fa-solid fa-trash-can',
@@ -445,6 +467,32 @@ if (document.readyState === 'loading') {
         'sun':             { icon: 'fa-solid fa-sun',                 on: '#f0a832', off: '#555770' },
         'victron':         { icon: 'fa-solid fa-car-battery',         on: '#4caf7d', off: '#555770' },
 
+        /* Locks */
+        'doorlock':        { icon: 'fa-solid fa-lock',                on: '#4caf7d', off: '#e05555' },
+        'doorlockcontact': { icon: 'fa-solid fa-lock',                on: '#4caf7d', off: '#e05555' },
+
+        /* Energy meters */
+        'smartmeter':      { icon: 'fa-solid fa-bolt',                on: '#f0a832', off: null },
+        'p1smartmeter':    { icon: 'fa-solid fa-bolt',                on: '#f0a832', off: null },
+        'electricityusage':{ icon: 'fa-solid fa-bolt',                on: '#f0a832', off: null },
+
+        /* Air quality */
+        'airquality':      { icon: 'fa-solid fa-smog',                on: '#f0a832', off: null },
+        'pm25':            { icon: 'fa-solid fa-smog',                on: '#f0a832', off: null },
+        'co2':             { icon: 'fa-solid fa-cloud',               on: '#f0a832', off: null },
+        'co':              { icon: 'fa-solid fa-cloud',               on: '#e05555', off: null },
+
+        /* Water leak / flood */
+        'leaksensor':      { icon: 'fa-solid fa-droplet',             on: '#e05555', off: '#4caf7d' },
+        'flood':           { icon: 'fa-solid fa-droplet',             on: '#e05555', off: '#4caf7d' },
+
+        /* Curtains (distinct from roller blinds) */
+        'curtain':         { icon: 'fa-solid fa-table-columns',       on: '#4e9af1', off: '#555770' },
+
+        /* Presence / PIR */
+        'presence':        { icon: 'fa-solid fa-circle-dot',          on: '#e05555', off: '#555770' },
+        'pir':             { icon: 'fa-solid fa-person-running',       on: '#e05555', off: '#555770' },
+
         /* Misc */
         'text':            { icon: 'fa-solid fa-font',                on: '#b0b3c6', off: null },
         'alert':           { icon: 'fa-solid fa-circle-exclamation',  on: '#e05555', off: null },
@@ -461,6 +509,21 @@ if (document.readyState === 'loading') {
         'images/nofavorite.png': 'fa-regular fa-star dz-fa-fav dz-fav-off',
         'images/favorite.png':   'fa-solid fa-star dz-fa-fav dz-fav-on'
     };
+    var FAV_KEYS = Object.keys(FAV_MAP);
+    var ICON_KEYS = Object.keys(ICON_MAP);
+
+    /* -- Temperature range icons (module-level so keys are cached) -- */
+    var TEMP_COLORS = {
+        'ice.png':         { cls: 'fa-solid fa-snowflake',                  color: '#29b6f6' },
+        'temp-0-5.png':    { cls: 'fa-solid fa-temperature-empty',          color: '#29b6f6' },
+        'temp-5-10.png':   { cls: 'fa-solid fa-temperature-quarter',        color: '#4caf7d' },
+        'temp-10-15.png':  { cls: 'fa-solid fa-temperature-low',            color: '#4caf7d' },
+        'temp-15-20.png':  { cls: 'fa-solid fa-temperature-half',           color: '#f0a832' },
+        'temp-20-25.png':  { cls: 'fa-solid fa-temperature-three-quarters', color: '#ff7043' },
+        'temp-25-30.png':  { cls: 'fa-solid fa-temperature-high',           color: '#e05555' },
+        'temp-gt-30.png':  { cls: 'fa-solid fa-temperature-full',           color: '#e05555' }
+    };
+    var TEMP_KEYS = Object.keys(TEMP_COLORS);
 
     /* -- Device icon parser ---------------------------------------- */
     /* Extracts base name + state from filenames like:                 */
@@ -569,18 +632,16 @@ if (document.readyState === 'loading') {
     /* Try to resolve a src to an FA spec. Returns null if no match. */
     function resolveIcon(src) {
         /* Favorites */
-        var favKeys = Object.keys(FAV_MAP);
-        for (var f = 0; f < favKeys.length; f++) {
-            if (src.indexOf(favKeys[f]) !== -1) {
-                return { type: 'fav', cls: FAV_MAP[favKeys[f]], color: null };
+        for (var f = 0; f < FAV_KEYS.length; f++) {
+            if (src.indexOf(FAV_KEYS[f]) !== -1) {
+                return { type: 'fav', cls: FAV_MAP[FAV_KEYS[f]], color: null };
             }
         }
         /* ICON_MAP check first — explicit navbar/action/status icons take priority
            over the device parser, preventing e.g. rain.png → device match      */
-        var mapKeys = Object.keys(ICON_MAP);
-        for (var m = 0; m < mapKeys.length; m++) {
-            if (src.indexOf(mapKeys[m]) !== -1) {
-                return { type: 'icon', cls: ICON_MAP[mapKeys[m]], color: null };
+        for (var m = 0; m < ICON_KEYS.length; m++) {
+            if (src.indexOf(ICON_KEYS[m]) !== -1) {
+                return { type: 'icon', cls: ICON_MAP[ICON_KEYS[m]], color: null };
             }
         }
         /* Device icons (48px cards + non-48 table type indicators) */
@@ -617,20 +678,9 @@ if (document.readyState === 'loading') {
             return { type: 'device', cls: 'fa-solid fa-wind dz-fa-device', color: '#b0b3c6' };
         }
         /* Temperature range icons (need device size + colour) */
-        var tempColors = {
-            'ice.png':         { cls: 'fa-solid fa-snowflake',                    color: '#29b6f6' },
-            'temp-0-5.png':    { cls: 'fa-solid fa-temperature-empty',            color: '#29b6f6' },
-            'temp-5-10.png':   { cls: 'fa-solid fa-temperature-quarter',          color: '#4caf7d' },
-            'temp-10-15.png':  { cls: 'fa-solid fa-temperature-low',              color: '#4caf7d' },
-            'temp-15-20.png':  { cls: 'fa-solid fa-temperature-half',             color: '#f0a832' },
-            'temp-20-25.png':  { cls: 'fa-solid fa-temperature-three-quarters',   color: '#ff7043' },
-            'temp-25-30.png':  { cls: 'fa-solid fa-temperature-high',             color: '#e05555' },
-            'temp-gt-30.png':  { cls: 'fa-solid fa-temperature-full',             color: '#e05555' }
-        };
-        var tempKeys = Object.keys(tempColors);
-        for (var t = 0; t < tempKeys.length; t++) {
-            if (src.indexOf(tempKeys[t]) !== -1) {
-                var tc = tempColors[tempKeys[t]];
+        for (var t = 0; t < TEMP_KEYS.length; t++) {
+            if (src.indexOf(TEMP_KEYS[t]) !== -1) {
+                var tc = TEMP_COLORS[TEMP_KEYS[t]];
                 return { type: 'device', cls: tc.cls + ' dz-fa-device', color: tc.color };
             }
         }
