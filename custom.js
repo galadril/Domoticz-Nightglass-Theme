@@ -1633,8 +1633,11 @@ document.addEventListener('DOMContentLoaded', function () {
             var y = (H - PAD - ((v - min) / range) * (H - PAD * 2)).toFixed(1);
             return x + ',' + y;
         }).join(' ');
+        // Resolve the accent color at render time so it works inside innerHTML SVGs
+        var stroke = getComputedStyle(document.documentElement)
+                         .getPropertyValue('--dz-accent-color').trim() || '#4e9af1';
         return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">' +
-            '<polyline points="' + pts + '" fill="none" stroke="var(--dz-accent-color,#4e9af1)"' +
+            '<polyline points="' + pts + '" fill="none" stroke="' + stroke + '"' +
             ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
             '</svg>';
     }
@@ -1656,6 +1659,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (vals.length < 4) { tryNextSensor(idx, wrap, si + 1); return; }
                 cache[idx] = vals;
                 wrap.innerHTML = svgSparkline(vals);
+                wrap.style.display = '';
             })
             .catch(function () { tryNextSensor(idx, wrap, si + 1); });
     }
@@ -1667,19 +1671,22 @@ document.addEventListener('DOMContentLoaded', function () {
             if (card.querySelector('.dz-sparkline-wrap')) continue;
             var tbl = card.querySelector('table[id^="itemtable"]');
             if (!tbl) continue;
+            // Any card showing a numeric reading is a candidate
             var bigtext = card.querySelector('td#bigtext');
-            // Only for cards that have a numeric value (temp, humidity, energy, etc.)
-            if (!bigtext || !/([\d.]+)\s*[°%kWmA]/.test(bigtext.textContent || '')) continue;
+            if (!bigtext || !/\d/.test(bigtext.textContent || '')) continue;
             var idxM = tbl.id.match(/\d+/);
             if (!idxM) continue;
             var idx  = idxM[0];
             var wrap = document.createElement('div');
             wrap.className = 'dz-sparkline-wrap';
+            // Start hidden; shown only when data arrives
+            wrap.style.display = 'none';
             var footer = card.querySelector('.dz-card-footer');
             if (footer) { footer.insertBefore(wrap, footer.firstChild); }
             else        { card.appendChild(wrap); }
             if (cache[idx]) {
                 wrap.innerHTML = svgSparkline(cache[idx]);
+                wrap.style.display = '';
             } else {
                 tryNextSensor(idx, wrap, 0);
             }
