@@ -4436,12 +4436,12 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
     z-index: 0;
     overflow: hidden;
     border-radius: inherit;
-    opacity: 0.09;
+    opacity: 0.05;
     transition: opacity 0.4s;
 }
 div.item.itemBlock:hover .dz-sparkline-wrap,
 .itemBlock > div.item:hover .dz-sparkline-wrap {
-    opacity: 0.18;
+    opacity: 0.11;
 }
 .dz-sparkline-wrap svg {
     width: 100%;
