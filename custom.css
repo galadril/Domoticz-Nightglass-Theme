@@ -4428,21 +4428,25 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
    31. SPARKLINE MICRO-CHARTS
    ══════════════════════════════════════════════════════════════════ */
 
+/* Full-card background watermark */
 .dz-sparkline-wrap {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 30px;
-    margin-top: 3px;
-    opacity: 0.65;
+    position: absolute;
+    inset: 0;
     pointer-events: none;
-    transition: opacity 0.3s;
+    z-index: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    opacity: 0.09;
+    transition: opacity 0.4s;
 }
-.dz-sparkline-wrap:hover { opacity: 1; }
+div.item.itemBlock:hover .dz-sparkline-wrap,
+.itemBlock > div.item:hover .dz-sparkline-wrap {
+    opacity: 0.18;
+}
 .dz-sparkline-wrap svg {
-    width: 84px;
-    height: 26px;
-    overflow: visible;
+    width: 100%;
+    height: 100%;
+    display: block;
 }
 
 
