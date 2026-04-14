@@ -4614,6 +4614,32 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
     pointer-events: none;
 }
 
+/* Prevent navbar from wrapping at medium widths, allow horizontal scroll for nav */
+@media (max-width: 1200px) and (min-width: 900px) {
+    .navbar-inverse .navbar-inner {
+        flex-wrap: nowrap;
+        height: 54px;
+        min-height: 54px;
+    }
+    .navbar .nav {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        max-width: 100vw;
+        white-space: nowrap;
+        scrollbar-width: thin;
+    }
+    #dz-theme-style-nav {
+        flex-shrink: 0;
+    }
+}
+
+/* Always keep navbar background behind nav, even if nav scrolls */
+.navbar-inverse .navbar-inner {
+    overflow: visible;
+    background-clip: padding-box;
+}
+
 
 /* ══════════════════════════════════════════════════════════════════
    31. SPARKLINE MICRO-CHARTS
