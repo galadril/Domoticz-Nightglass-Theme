@@ -1082,10 +1082,6 @@ SECTION.dashCategory .row,
     row-gap: 14px;
 }
 
-#holder > .container-fluid {
-    padding-top: 54px;
-}
-
 
 /* ══════════════════════════════════════════════════════════════════
    6.  DEVICE / WIDGET CARDS  (the core of the theme)
