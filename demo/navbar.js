@@ -53,23 +53,40 @@
 
     var html =
       '<div class="navbar navbar-inverse navbar-fixed-top" id="navbar">' +
-      '<div class="navbar-inner"><div class="container">' +
-      '<a class="brand hidden-phone" id="version" href="index.html">' +
-        '<img src="../images/ic_launcher.png" class="dz-icon-skipped">' +
-        '<h1>Domoticz</h1>' +
-        '<h2 id="appversion" class="version-tooltip">2026.1 (build 17666)</h2>' +
-      '</a>' +
-      '<ul class="nav" id="appnavbar">' +
-        navItems +
-        '<li class="dropdown">' +
-          '<a href="#" class="dropdown-toggle">' +
-            '<i class="dz-fa-icon fa-solid fa-gear"></i> Setup <b class="caret"></b>' +
-          '</a>' +
-          '<ul class="dropdown-menu">' + setupItems + '</ul>' +
-        '</li>' +
-      '</ul>' +
+      '<div class="navbar-inner">' +
+        '<div class="dz-nav-topline"></div>' +
+        '<div class="container">' +
+        '<a class="brand hidden-phone" id="version" href="index.html">' +
+          '<img src="../images/ic_launcher.png" class="dz-icon-skipped">' +
+          '<h1>Domoticz</h1>' +
+          '<h2 id="appversion" class="version-tooltip">2026.1 (build 17666)</h2>' +
+        '</a>' +
+        '<ul class="nav" id="appnavbar">' +
+          '<div class="dz-nav-indicator" id="dzNavIndicator"></div>' +
+          navItems +
+          '<li class="dropdown">' +
+            '<a href="#" class="dropdown-toggle">' +
+              '<i class="dz-fa-icon fa-solid fa-gear"></i> Setup <b class="caret"></b>' +
+            '</a>' +
+            '<ul class="dropdown-menu">' + setupItems + '</ul>' +
+          '</li>' +
+        '</ul>' +
       '</div></div></div>';
 
     document.write(html);
+
+    // Position the sliding indicator under the active nav item
+    requestAnimationFrame(function () {
+      var ind = document.getElementById('dzNavIndicator');
+      var active = document.querySelector('#appnavbar .current_page_item > a');
+      var nav = document.getElementById('appnavbar');
+      if (ind && active && nav) {
+        var navRect = nav.getBoundingClientRect();
+        var aRect = active.getBoundingClientRect();
+        ind.style.width = aRect.width + 'px';
+        ind.style.left = (aRect.left - navRect.left) + 'px';
+        ind.style.opacity = '1';
+      }
+    });
   };
 })();

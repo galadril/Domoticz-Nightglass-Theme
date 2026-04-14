@@ -1,92 +1,311 @@
-/**
- * navbar.js — injects the Domoticz-style navbar into every demo page.
- * Call buildNavbar('pageId') from each page's <script>.
- *
- * pageId values: 'dashboard' | 'lights' | 'scenes' | 'temperature' | 'weather' | 'utility'
+/*
+ * demo.css — shared Bootstrap 2 / Domoticz style.css shim for the Nightglass demo
+ * Provides the structural CSS that Domoticz normally loads from bootstrap.css +
+ * style.css, so the Nightglass custom.css applies correctly without the full stack.
  */
-(function () {
-  var PAGES = [
-    { id: 'dashboard',   href: 'index.html',       icon: 'fa-gauge',           label: 'Dashboard'   },
-    { id: 'lights',      href: 'lights.html',       icon: 'fa-lightbulb',       label: 'Lights'      },
-    { id: 'scenes',      href: 'scenes.html',       icon: 'fa-layer-group',     label: 'Scenes'      },
-    { id: 'temperature', href: 'temperature.html',  icon: 'fa-temperature-half', label: 'Temperature' },
-    { id: 'weather',     href: 'weather.html',      icon: 'fa-cloud-rain',      label: 'Weather'     },
-    { id: 'utility',     href: 'utility.html',      icon: 'fa-bolt',            label: 'Utility'     },
-  ];
 
-  var SETUP_ITEMS = [
-    { icon: 'fa-microchip',          label: 'Hardware'          },
-    { icon: 'fa-sliders',            label: 'Devices'           },
-    { icon: 'fa-charging-station',   label: 'Energy'            },
-    { icon: 'fa-users',              label: 'Users'             },
-    { icon: 'fa-download',           label: 'Check for updates' },
-    null,
-    { icon: 'fa-code',               label: 'Events'            },
-    { icon: 'fa-list',               label: 'User Variables'    },
-    { icon: 'fa-bell',               label: 'Notifications'     },
-    { icon: 'fa-shield-halved',      label: 'Security'          },
-    null,
-    { icon: 'fa-terminal',           label: 'Log'               },
-    { icon: 'fa-circle-info',        label: 'About'             },
-    null,
-    { icon: 'fa-rotate-right',       label: 'Restart'           },
-    { icon: 'fa-power-off',          label: 'Shutdown'          },
-    null,
-    { icon: 'fa-right-from-bracket', label: 'Logout'            },
-  ];
+*, *::before, *::after {
+    box-sizing: border-box;
+}
 
-  window.buildNavbar = function (activePage) {
-    // Build nav items
-    var navItems = PAGES.map(function (p) {
-      var active = p.id === activePage ? ' class="current_page_item"' : '';
-      return '<li' + active + '>' +
-        '<a href="' + p.href + '">' +
-        '<i class="dz-fa-icon fa-solid ' + p.icon + '"></i> ' + p.label +
-        '</a></li>';
-    }).join('\n      ');
+body table[id^="itemtable"] tr td.input {
+    display: block !important;
+    clear: both;
+    float: none !important;
+    position: relative;
+    width: auto !important;
+    padding: 8px 4px 4px 4px !important;
+    margin-top: 6px !important;
+    border-top: 1px solid rgba(var(--dz-overlay-rgb), 0.04);
+}
 
-    // Build setup dropdown items
-    var setupItems = SETUP_ITEMS.map(function (item) {
-      if (!item) return '<li class="divider"></li>';
-      return '<li><a href="#"><i class="dz-fa-icon fa-solid ' + item.icon + '"></i> ' + item.label + '</a></li>';
-    }).join('\n          ');
+/* ── Bootstrap 2 .container (centered fixed-width, as used in the navbar) ── */
+.container {
+    width: 100%;
+    max-width: 947px;
+    margin: 0 auto;
+    padding: 0 16px;
+}
 
-    var html =
-      '<div class="navbar navbar-inverse navbar-fixed-top" id="navbar">' +
-      '<div class="navbar-inner">' +
-        '<div class="dz-nav-topline"></div>' +
-        '<div class="container">' +
-        '<a class="brand hidden-phone" id="version" href="index.html">' +
-          '<img src="../images/ic_launcher.png" class="dz-icon-skipped">' +
-          '<h1>Domoticz</h1>' +
-          '<h2 id="appversion" class="version-tooltip">2026.1 (build 17666)</h2>' +
-        '</a>' +
-        '<ul class="nav" id="appnavbar">' +
-          '<div class="dz-nav-indicator" id="dzNavIndicator"></div>' +
-          navItems +
-          '<li class="dropdown">' +
-            '<a href="#" class="dropdown-toggle">' +
-              '<i class="dz-fa-icon fa-solid fa-gear"></i> Setup <b class="caret"></b>' +
-            '</a>' +
-            '<ul class="dropdown-menu">' + setupItems + '</ul>' +
-          '</li>' +
-        '</ul>' +
-      '</div></div></div>';
+body table#itemtable tr td:first-child + td + td, body table#itemtablenotype tr td:first-child + td + td, body table#itemtablenostatus tr td:first-child + td + td, body table#itemtablesmall tr td:first-child + td + td, body table#itemtabledoubleicon tr td:first-child + td + td, body table#itemtabletrippleicon tr td:first-child + td + td, body table#itemtablesmalldoubleicon tr td:first-child + td + td, body table#itemtablesmalltrippleicon tr td:first-child + td + td {
+    top: 34px !important;
+    left: -1px !important;
+}
 
-    document.write(html);
+body table#itemtabledoubleicon tr td:first-child + td + td + td, body table#itemtabletrippleicon tr td:first-child + td + td + td, body table#itemtablesmalldoubleicon tr td:first-child + td + td + td, body table#itemtablesmalltrippleicon tr td:first-child + td + td + td {
+    top: 34px !important;
+    left: 43px !important;
+}
 
-    // Position the sliding indicator under the active nav item
-    requestAnimationFrame(function () {
-      var ind = document.getElementById('dzNavIndicator');
-      var active = document.querySelector('#appnavbar .current_page_item > a');
-      var nav = document.getElementById('appnavbar');
-      if (ind && active && nav) {
-        var navRect = nav.getBoundingClientRect();
-        var aRect = active.getBoundingClientRect();
-        ind.style.width = aRect.width + 'px';
-        ind.style.left = (aRect.left - navRect.left) + 'px';
-        ind.style.opacity = '1';
-      }
-    });
-  };
-})();
+body table#itemtabletrippleicon tr td:first-child + td + td + td + td, body table#itemtablesmalltrippleicon tr td:first-child + td + td + td + td {
+     top: 34px !important;
+     left: 85px !important;
+}
+
+.container::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+.container-fluid {
+    padding: 0 20px;
+}
+
+/* ── Navbar ─────────────────────────────────────────────────────────────────
+   Matches the real Domoticz structure exactly:
+     .navbar > .navbar-inner > .container > .brand  +  ul.nav#appnavbar
+   .brand floats left, ul.nav floats right (per Domoticz style.css).
+──────────────────────────────────────────────────────────────────────────── */
+.navbar {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1030;
+    overflow: visible;
+}
+
+.navbar-inner::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+/* Brand — grid layout: icon | stacked text (logo name + version).
+   custom.css uses a Bootstrap 2 float+negative-margin trick that requires
+   Bootstrap's full baseline; we reproduce the same visual with CSS grid
+   so the demo renders correctly without the full Bootstrap stack. */
+.navbar .brand {
+    float: left;
+    display: grid;
+    grid-template-columns: 38px 1fr;
+    grid-template-rows: auto auto;
+    align-content: center;
+    column-gap: 8px;
+    text-decoration: none;
+    height: 54px;
+    padding: 0 12px 0 0;
+}
+
+    .navbar .brand img {
+        grid-column: 1;
+        grid-row: 1 / 3;
+        align-self: center;
+        width: 38px;
+        height: 38px;
+    }
+    /* Stack h1/h2, overriding custom.css float + negative-margin technique */
+    .navbar .brand h1 {
+        grid-column: 2;
+        grid-row: 1;
+        float: none;
+        margin: 0;
+        padding: 0;
+        font-size: 1.3rem;
+        font-weight: 600;
+        line-height: 1.25;
+    }
+
+    .navbar .brand h2 {
+        grid-column: 2;
+        grid-row: 2;
+        float: none;
+        margin: 0;
+        padding: 0;
+        font-size: 0.68rem;
+        line-height: 1.25;
+    }
+
+/* Nav list — float right (Domoticz style.css: .navbar .nav { float: right }) */
+.navbar .nav {
+    float: right;
+    display: flex;
+    list-style: none;
+    margin: 0 !important;
+    padding: 0;
+    position: relative;
+}
+
+    .navbar .nav > li {
+        position: relative;
+    }
+
+        .navbar .nav > li > a {
+            display: block;
+        }
+
+/* ── Navbar dropdown ─────────────────────────────────────────────────────── */
+.dropdown-toggle {
+    cursor: pointer;
+    user-select: none;
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: auto;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    min-width: 200px;
+    z-index: 1031;
+}
+
+.dropdown:hover .dropdown-menu {
+    display: block;
+}
+
+.dropdown-menu > li > a {
+    display: block;
+}
+
+.divider {
+    height: 1px;
+    overflow: hidden;
+}
+
+.caret {
+    display: inline-block;
+    width: 0;
+    height: 0;
+    border-top: 4px solid currentColor;
+    border-right: 4px solid transparent;
+    border-left: 4px solid transparent;
+    vertical-align: middle;
+    margin-left: 4px;
+    opacity: 0.6;
+}
+
+/* ── Main holder ─────────────────────────────────────────────────────────── */
+#holder {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+    #holder > .container-fluid {
+        padding-top: 54px;
+    }
+
+/* ── Device card grid ────────────────────────────────────────────────────── */
+.devicesList .row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -7px;
+    align-items: stretch;
+    row-gap: 14px;
+}
+
+.span4 {
+    width: calc(33.333% - 14px);
+    margin: 0 7px;
+    flex-shrink: 0;
+}
+
+@media (max-width: 960px) {
+    .span4 {
+        width: calc(50% - 14px);
+    }
+}
+
+@media (max-width: 600px) {
+    .span4 {
+        width: calc(100% - 14px);
+    }
+}
+
+/* ── Device card table layout (from Domoticz style.css) ─────────────────────
+   style.css converts all itemtable* tables and their children to display:block
+   so <td> cells stack vertically inside the card instead of laying out as a row.
+──────────────────────────────────────────────────────────────────────────── */
+body table[id^="itemtable"],
+body table[id^="itemtable"] tbody {
+    display: block;
+    width: 100%;
+}
+
+    body table[id^="itemtable"] tbody tr,
+    body table[id^="itemtable"] tr {
+        display: block;
+        width: 100%;
+    }
+
+        body table[id^="itemtable"] tr > * {
+            display: block;
+            padding: 0;
+            margin: 0;
+        }
+
+/* ── Top bar ─────────────────────────────────────────────────────────────── */
+#topBar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+#tbFiltSearch, #tbFiltRooms, #tbTimeSun {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+    #tbFiltSearch input {
+        width: 220px;
+    }
+
+.tbIcon {
+    color: #7c7f93;
+}
+
+.tbTime {
+    color: #7c7f93;
+    font-size: 0.85rem;
+    padding: 4px 8px;
+}
+
+.tbSun {
+    color: #7c7f93;
+    font-size: 0.8rem;
+}
+
+#tbSunGroup {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#tbTimeSun .fa-sun {
+    color: #f0a832;
+}
+
+/* ── Section / page headers ──────────────────────────────────────────────── */
+.page-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #e2e4ed;
+    font-size: 1.1rem;
+    font-weight: 600;
+    padding: 8px 0 14px;
+    border-bottom: 1px solid #2e3040;
+    margin-bottom: 16px;
+}
+
+    .page-header i {
+        color: #4e9af1;
+        font-size: 1rem;
+    }
+
+/* ── Domoticz utility classes ────────────────────────────────────────────── */
+.lcursor {
+    cursor: pointer;
+}
+
+/* ── Page bottom padding ─────────────────────────────────────────────────── */
+.page-bottom {
+    height: 48px;
+}
