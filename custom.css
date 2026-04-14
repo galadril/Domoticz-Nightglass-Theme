@@ -531,11 +531,18 @@ i.dz-fa-trend {
         color: var(--dz-danger);
     }
 
-    i.dz-fa-trend.fa-minus {
+    i.dz-fa-trend.fa-right-long {
         color: var(--dz-text-muted);
+        opacity: 0.5;
     }
 
-    i.dz-fa-trend.fa-question {
+    /* Unknown trend — no useful info, hide completely */
+    i.dz-fa-trend.dz-trend-unk {
+        display: none;
+    }
+
+    /* Report trend equal icons (equal.png / gequal.png) still use fa-minus */
+    i.dz-fa-trend.fa-minus {
         color: var(--dz-text-muted);
     }
 

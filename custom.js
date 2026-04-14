@@ -329,8 +329,8 @@ if (document.readyState === 'loading') {
         /* Trend arrows (inline in bigtext / status) */
         'images/arrow_up.png':     'fa-solid fa-arrow-trend-up',
         'images/arrow_down.png':   'fa-solid fa-arrow-trend-down',
-        'images/arrow_stable.png': 'fa-solid fa-minus',
-        'images/arrow_unk.png':    'fa-solid fa-question',
+        'images/arrow_stable.png': 'fa-solid fa-right-long',
+        'images/arrow_unk.png':    'fa-solid fa-question dz-trend-unk',
 
         /* Blinds stop (no 48 in filename) */
         'images/blindsstop.png':   'fa-solid fa-stop',
@@ -774,6 +774,14 @@ if (document.readyState === 'loading') {
         }
 
         copyAttrs(img, icon);
+
+        /* Trend indicator tooltips — explain the arrow meaning on hover */
+        if (icon.classList.contains('dz-fa-trend') && !icon.getAttribute('title')) {
+            if (icon.classList.contains('fa-arrow-trend-up'))   icon.title = 'Rising';
+            else if (icon.classList.contains('fa-arrow-trend-down')) icon.title = 'Falling';
+            else if (icon.classList.contains('fa-right-long'))  icon.title = 'Stable';
+        }
+
         img.setAttribute('data-dz-src', src);
         img.classList.add('dz-icon-replaced');
         iconMap.set(img, icon);
@@ -1555,7 +1563,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /* ── Staleness Indicator (Feature 9) ─────────────────────────── */
-    var STALE_MS = 60 * 60 * 1000; // 1 hour
+    var STALE_MS = 24 * 60 * 60 * 1000; // 1 day
 
     function parseFooterDate(text) {
         var now = new Date();
