@@ -1972,3 +1972,64 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 })();
+
+
+/* ==================================================================
+ *  Navbar sliding indicator + hover tracking
+ *  Positions a glowing pill under the active nav item and smoothly
+ *  slides it to hovered items, returning to active on mouse-leave.
+ * ================================================================== */
+
+(function () {
+    'use strict';
+
+    function initIndicator() {
+        var nav = document.getElementById('appnavbar');
+        if (!nav) return;
+
+        var ind = nav.querySelector('.dz-nav-indicator');
+        if (!ind) {
+            ind = document.createElement('div');
+            ind.className = 'dz-nav-indicator';
+            ind.id = 'dzNavIndicator';
+            nav.insertBefore(ind, nav.firstChild);
+        }
+
+        function positionTo(el, animate) {
+            if (!el) return;
+            var navRect = nav.getBoundingClientRect();
+            var elRect = el.getBoundingClientRect();
+            if (animate) ind.classList.add('dz-nav-indicator--animated');
+            else ind.classList.remove('dz-nav-indicator--animated');
+            ind.style.width = elRect.width + 'px';
+            ind.style.left = (elRect.left - navRect.left) + 'px';
+            ind.style.opacity = '1';
+        }
+
+        var activeLink = nav.querySelector('.current_page_item > a');
+        positionTo(activeLink, false);
+
+        var navItems = nav.querySelectorAll(':scope > li:not(.dropdown) > a');
+        for (var i = 0; i < navItems.length; i++) {
+            (function (link) {
+                link.addEventListener('mouseenter', function () {
+                    positionTo(link, true);
+                });
+            })(navItems[i]);
+        }
+
+        nav.addEventListener('mouseleave', function () {
+            positionTo(activeLink, true);
+        });
+
+        window.addEventListener('resize', function () {
+            positionTo(activeLink, false);
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initIndicator);
+    } else {
+        initIndicator();
+    }
+})();
