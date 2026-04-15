@@ -1,6 +1,6 @@
 ---
 name: "Feature Request"
-description: "Suggest an idea or improvement for the Nightglass theme."
+about: "Suggest an idea or improvement for the Nightglass theme."
 title: "[Feature] "
 labels: [enhancement]
 assignees: []
