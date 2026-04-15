@@ -884,7 +884,8 @@ i.dz-fa-nav {
     box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45) !important;
     padding: 6px !important;
     margin-top: 0 !important;
-    z-index: 10001;
+    z-index: 99999;
+    position: fixed !important;
     /* Slide-down entrance */
     animation: dzDropdownIn 0.2s ease-out;
     transform-origin: top right;
