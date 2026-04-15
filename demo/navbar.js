@@ -41,7 +41,8 @@
       var active = p.id === activePage ? ' class="current_page_item"' : '';
       return '<li' + active + '>' +
         '<a href="' + p.href + '">' +
-        '<i class="dz-fa-icon fa-solid ' + p.icon + '"></i> ' + p.label +
+        '<i class="dz-fa-icon fa-solid ' + p.icon + '"></i> ' +
+        '<span class="hidden-phone hidden-tablet">' + p.label + '</span>' +
         '</a></li>';
     }).join('\n      ');
 
@@ -66,7 +67,7 @@
           navItems +
           '<li class="dropdown">' +
             '<a href="#" class="dropdown-toggle">' +
-              '<i class="dz-fa-icon fa-solid fa-gear"></i> Setup <b class="caret"></b>' +
+              '<i class="dz-fa-icon fa-solid fa-gear"></i> <span class="hidden-phone hidden-tablet">Setup</span> <b class="caret hidden-phone hidden-tablet"></b>' +
             '</a>' +
             '<ul class="dropdown-menu">' + setupItems + '</ul>' +
           '</li>' +
