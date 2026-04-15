@@ -4980,7 +4980,6 @@ div.item.itemBlock:hover .dz-sparkline-wrap,
 /* Copyright footer (on the update page) */
 #copyright {
     text-align: center;
-    padding: 20px 0 16px;
     color: var(--dz-text-faint);
     font-size: 0.78rem;
 }
