@@ -31,8 +31,9 @@ git pull
 
 ### 3. Restart Domoticz
 Restart Domoticz (only needed when your installing the theme for the first time)
-```
-bashsudo systemctl restart domoticz
+
+```bash
+sudo systemctl restart domoticz
 ```
 
 ### 4. Activate in Domoticz
