@@ -1,6 +1,6 @@
 ---
 name: "Bug Report"
-description: "Report a problem with the Nightglass theme."
+about: "Report a problem with the Nightglass theme."
 title: "[Bug] "
 labels: [bug]
 assignees: []
