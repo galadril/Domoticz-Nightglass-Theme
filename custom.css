@@ -5262,6 +5262,128 @@ div.item.itemBlock:hover .dz-sparkline-wrap,
    ACCESSIBILITY — prefers-reduced-motion
    ══════════════════════════════════════════════════════════════════ */
 
+/* ══════════════════════════════════════════════════════════════════
+   LIGHT MODE — About page & Login page overrides
+   The About/Login HTML contains inline <style> blocks with hardcoded
+   dark-mode colours (white text, cyan accents, dark canvas filter).
+   We override them here for body.dz-light.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Canvas background — lighten instead of darken */
+body.dz-light #canvas-login,
+body.dz-light #canvas2 {
+    filter: saturate(0.1) brightness(1.6) contrast(0.7) !important;
+    opacity: 0.35;
+}
+
+/* Glass card in light mode — solid light surface */
+body.dz-light .glass-card {
+    background: rgba(var(--dz-surface-rgb), 0.85) !important;
+    border-color: var(--dz-border) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+/* About title */
+body.dz-light .about-title {
+    color: var(--dz-text) !important;
+    text-shadow: none !important;
+}
+
+/* Version badge */
+body.dz-light .version-badge {
+    background: linear-gradient(135deg, rgba(42, 125, 225, 0.15), rgba(42, 125, 225, 0.08)) !important;
+    color: var(--dz-text) !important;
+    border-color: rgba(42, 125, 225, 0.3) !important;
+    box-shadow: 0 0 10px rgba(42, 125, 225, 0.1) !important;
+    animation: none !important;
+}
+
+/* Info items */
+body.dz-light .info-item {
+    color: var(--dz-text) !important;
+    border-bottom-color: var(--dz-border) !important;
+}
+
+body.dz-light .info-label {
+    color: var(--dz-accent) !important;
+}
+
+body.dz-light .info-value {
+    color: var(--dz-text) !important;
+}
+
+body.dz-light .uptime-value {
+    color: var(--dz-success) !important;
+}
+
+/* Section titles */
+body.dz-light .glass-card .section-title {
+    color: var(--dz-text) !important;
+    border-bottom-color: var(--dz-border) !important;
+}
+
+/* Donation text */
+body.dz-light .donation-text {
+    color: var(--dz-text-soft) !important;
+}
+
+/* Glass text */
+body.dz-light .glass-text {
+    color: var(--dz-text-soft) !important;
+}
+
+/* Glass container — ensure background is not forced dark */
+body.dz-light .glass-container {
+    color: var(--dz-text);
+}
+
+/* btn-modern in light mode */
+body.dz-light .btn-modern {
+    background: rgba(42, 125, 225, 0.08) !important;
+    border-color: rgba(42, 125, 225, 0.25) !important;
+    color: var(--dz-text) !important;
+}
+
+    body.dz-light .btn-modern:hover {
+        background: rgba(42, 125, 225, 0.18) !important;
+        border-color: rgba(42, 125, 225, 0.45) !important;
+        color: var(--dz-accent) !important;
+        box-shadow: 0 4px 16px rgba(42, 125, 225, 0.12) !important;
+    }
+
+/* Login page specific */
+body.dz-light .glass-container .glass-card h1,
+body.dz-light .glass-container .glass-card h2,
+body.dz-light .glass-container .glass-card h3,
+body.dz-light .glass-container .glass-card label {
+    color: var(--dz-text) !important;
+    text-shadow: none !important;
+}
+
+body.dz-light .glass-card input[type="text"],
+body.dz-light .glass-card input[type="password"],
+body.dz-light .glass-card .glass-input {
+    background: var(--dz-surface-2) !important;
+    color: var(--dz-text) !important;
+    border-color: var(--dz-border) !important;
+}
+
+/* Progress bars in light mode */
+body.dz-light .glass-progress {
+    background: var(--dz-surface-3) !important;
+    border-color: var(--dz-border) !important;
+}
+
+/* Alert in light mode */
+body.dz-light .glass-alert-danger {
+    background: rgba(214, 59, 59, 0.08) !important;
+    border-color: rgba(214, 59, 59, 0.2) !important;
+    color: var(--dz-danger) !important;
+}
+
+
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
