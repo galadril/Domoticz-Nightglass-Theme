@@ -3575,6 +3575,18 @@ body.dz-light .log-search-count {
     color: #4a4d5e;
 }
 
+body.dz-light .log-scroll-indicator {
+    background: var(--dz-surface) !important;
+    border: 1px solid var(--dz-border) !important;
+    color: var(--dz-accent) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+    body.dz-light .log-scroll-indicator:hover {
+        background: var(--dz-surface-2) !important;
+        border-color: var(--dz-accent) !important;
+    }
+
 
 /* ══════════════════════════════════════════════════════════════════
    14. GLASSMORPHISM CARDS (login, setup wizard, about)
