@@ -3517,6 +3517,64 @@ mark.log-highlight {
         background: rgba(var(--dz-accent-rgb), 0.12);
     }
 
+/* ── Light mode log console overrides ────────────────────────── */
+
+body.dz-light .log-console-container {
+    background: var(--dz-bg);
+}
+
+body.dz-light .log-console {
+    background: var(--dz-surface) !important;
+    color: var(--dz-text) !important;
+}
+
+body.dz-light .log-line {
+    color: #1a1c24 !important;
+}
+
+body.dz-light .log-level-norm {
+    color: #2a2d3e !important;
+}
+
+body.dz-light .log-level-status {
+    color: #1d6bc8 !important;
+}
+
+body.dz-light .log-level-error {
+    color: #b32e2e !important;
+}
+
+body.dz-light .log-show-older {
+    color: var(--dz-accent) !important;
+    background: var(--dz-surface-2);
+}
+
+body.dz-light .log-toolbar {
+    background: var(--dz-surface);
+}
+
+body.dz-light .log-statusbar {
+    background: var(--dz-surface);
+    color: #4a4d5e;
+}
+
+body.dz-light .log-filter-btn {
+    color: #1a1c24 !important;
+}
+
+body.dz-light .log-level-toggles .log-toggle-count {
+    color: #4a4d5e;
+}
+
+body.dz-light mark.log-highlight {
+    background: rgba(42, 125, 225, 0.2);
+    color: #1a1c24;
+}
+
+body.dz-light .log-search-count {
+    color: #4a4d5e;
+}
+
 
 /* ══════════════════════════════════════════════════════════════════
    14. GLASSMORPHISM CARDS (login, setup wizard, about)
