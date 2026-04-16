@@ -4782,104 +4782,51 @@ body.dashboard div.item.Fan.onn .img1 img {
     }
 }
 
-/* ── Card layout adjustments for narrower cards (< 1200px) ────── */
-/* Below 1200px the span4 cards become too narrow for the absolute-  */
-/* positioned icon + left-padded text layout. Switch to a stacked    */
-/* flow layout: icon becomes inline, text gets full width, sliders   */
-/* and buttons sit below without overlap.                            */
+/* ── Card layout adjustments for mid-width screens (770–1199px) ── */
+/* Cards get narrower here so absolute-positioned options and the    */
+/* footer timestamp overlap sliders/buttons. Fix: make the options   */
+/* row and footer flow naturally while keeping the icon + text       */
+/* layout identical to the full-width desktop cards.                 */
 @media (max-width: 1199px) and (min-width: 770px) {
 
-    /* Remove absolute positioning on primary icon */
-    body table#itemtable tr td:first-child + td + td,
-    body table#itemtablenotype tr td:first-child + td + td,
-    body table#itemtablenostatus tr td:first-child + td + td,
-    body table#itemtablesmall tr td:first-child + td + td,
-    body table#itemtabledoubleicon tr td:first-child + td + td,
-    body table#itemtabletrippleicon tr td:first-child + td + td,
-    body table#itemtablesmalldoubleicon tr td:first-child + td + td,
-    body table#itemtablesmalltrippleicon tr td:first-child + td + td {
-        position: relative !important;
-        top: auto !important;
-        left: auto !important;
-        width: 36px !important;
-        height: 36px !important;
-        margin-bottom: 4px !important;
-        flex-shrink: 0;
-    }
-
-    /* Remove absolute positioning on 2nd icon */
-    body table#itemtabledoubleicon tr td:first-child + td + td + td,
-    body table#itemtabletrippleicon tr td:first-child + td + td + td,
-    body table#itemtablesmalldoubleicon tr td:first-child + td + td + td,
-    body table#itemtablesmalltrippleicon tr td:first-child + td + td + td {
-        position: relative !important;
-        top: auto !important;
-        left: auto !important;
-    }
-
-    /* Remove absolute positioning on 3rd icon */
-    body table#itemtabletrippleicon tr td:first-child + td + td + td + td,
-    body table#itemtablesmalltrippleicon tr td:first-child + td + td + td + td {
-        position: relative !important;
-        top: auto !important;
-        left: auto !important;
-    }
-
-    /* Remove left padding on bigtext — icon is no longer absolute */
-    body table#itemtable tr td:first-child + td,
-    body table#itemtablenotype tr td:first-child + td,
-    body table#itemtablenostatus tr td:first-child + td,
-    body table#itemtablesmall tr td:first-child + td,
-    body table#itemtabledoubleicon tr td:first-child + td,
-    body table#itemtabletrippleicon tr td:first-child + td,
-    body table#itemtablesmalldoubleicon tr td:first-child + td,
-    body table#itemtablesmalltrippleicon tr td:first-child + td {
-        padding-left: 0 !important;
-        font-size: 1rem !important;
-        white-space: normal;
-    }
-
-    /* Remove left padding on status */
-    body table[id^="itemtable"] tr td#status {
-        padding-left: 0 !important;
-    }
-
-    /* Options row: relative instead of absolute to prevent overlap */
+    /* Options row: flow in document instead of absolute overlay */
     body table[id^="itemtable"] tr td.options {
         position: relative !important;
         bottom: auto !important;
         right: auto !important;
-        margin-top: 8px !important;
+        margin-top: 6px !important;
     }
 
-    /* Type / slider area: remove margin-bottom that leaves gap for abs options */
+    /* Reduce the type row bottom-margin (no longer reserving space for abs options) */
     body table[id^="itemtable"] tr td#type {
-        margin-bottom: 0 !important;
+        margin-bottom: 4px !important;
     }
 
-    /* Last update: relative positioning */
-    body table[id^="itemtable"] tr td#lastupdate {
-        position: relative !important;
-        bottom: auto !important;
-        right: auto !important;
-    }
-
-    /* Card needs more bottom padding for stacked content */
-    div.item.itemBlock {
-        padding-bottom: 14px !important;
-        min-height: 0 !important;
-        overflow: hidden !important;
-    }
-
-    .itemBlock > div.item {
-        min-height: 0 !important;
-        overflow: hidden !important;
-    }
-
-    /* Card footer needs relative flow */
+    /* Card footer: flow in document */
     .dz-card-footer .dz-time {
         position: relative !important;
         right: auto !important;
+    }
+
+    /* Ensure card doesn't clip stacked content */
+    div.item.itemBlock {
+        overflow: visible !important;
+    }
+
+    .itemBlock > div.item {
+        overflow: visible !important;
+    }
+
+    /* Selector buttons: allow wrapping at narrow widths */
+    body table[id^="itemtable"] tr td#type .btn-group {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 4px !important;
+    }
+
+    /* Selector dropdown: constrain width */
+    .itemBlock .ui-selectmenu-button {
+        max-width: 100% !important;
     }
 }
 
