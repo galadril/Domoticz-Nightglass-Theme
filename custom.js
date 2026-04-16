@@ -1225,18 +1225,25 @@ if (document.readyState === 'loading') {
             var status  = tr.querySelector('td#status');
             if (!bigtext || !status) continue;
 
-            /* Extract text, converting <br> tags to newlines so that
-               multiline messages keep their line breaks (Domoticz encodes
-               newlines as <br> elements in the rendered HTML).
-               HTML entities (&nbsp; etc.) are decoded by letting the browser
-               parse the stripped markup via a temporary element. */
+            /* Extract text from the bigtext cell.
+               Domoticz can double-escape its content (e.g. &amp;nbsp; and
+               &lt;br&gt; instead of &nbsp; / <br>), so we do two decode
+               passes via a <textarea> (RCDATA context decodes entities but
+               does not interpret tags, which is exactly what we need):
+                 Pass 1 – decode the raw innerHTML entities so that &amp;lt;
+                          becomes < and &amp;nbsp; becomes &nbsp; etc.
+                 Then    – convert the now-real <br> tags to \n and strip
+                          remaining HTML tags.
+                 Pass 2 – decode any remaining entities (&nbsp; → \u00A0). */
             var rawHtml = bigtext.innerHTML || '';
-            var stripped = rawHtml
+            var tmp = document.createElement('textarea');
+            tmp.innerHTML = rawHtml;
+            var decoded = tmp.value;                    /* pass 1 */
+            var stripped = decoded
                 .replace(/<br\s*\/?>/gi, '\n')
                 .replace(/<[^>]+>/g, '');
-            var tmp = document.createElement('textarea');
             tmp.innerHTML = stripped;
-            var fullText = tmp.value.trim();
+            var fullText = tmp.value.trim();            /* pass 2 */
             if (!fullText) continue;
 
             tr.setAttribute('data-dz-text-done', '1');
