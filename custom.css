@@ -3924,13 +3924,42 @@ table.mobileitem,
 
 #copyright {
     border-top: 1px solid var(--dz-surface-3);
+    text-align: center;
+    padding: 24px 16px 20px;
+    margin-top: 32px;
 }
 
+    #copyright .copyright-inner {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--dz-text-faint);
+        font-size: 0.8rem;
+        letter-spacing: 0.02em;
+    }
+
+    #copyright .copyright-dot {
+        width: 3px;
+        height: 3px;
+        border-radius: 50%;
+        background: var(--dz-text-faint);
+        opacity: 0.5;
+    }
+
     #copyright p {
-        color: var(--dz-text-muted);
+        color: var(--dz-text-faint);
+        font-size: 0.8rem;
+        margin: 0;
+        letter-spacing: 0.02em;
     }
 
     #copyright a {
+        color: var(--dz-text-muted);
+        text-decoration: none;
+        transition: color 0.2s ease;
+    }
+
+    #copyright a:hover {
         color: var(--dz-accent);
     }
 
@@ -4971,22 +5000,7 @@ div.item.itemBlock:hover .dz-sparkline-wrap,
     background: var(--dz-text-muted, #7c7f93);
 }
 
-/* Copyright footer (on the update page) */
-#copyright {
-    text-align: center;
-    padding: 20px 0 16px;
-    color: var(--dz-text-faint);
-    font-size: 0.78rem;
-}
-
-#copyright a {
-    color: var(--dz-accent);
-    text-decoration: none;
-}
-
-#copyright a:hover {
-    text-decoration: underline;
-}
+/* Copyright footer (on the update page — inherits general #copyright styles) */
 
 @keyframes dzUpdateSpin {
     0%   { transform: rotate(0deg); }
