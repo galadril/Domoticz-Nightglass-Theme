@@ -1736,8 +1736,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // e.g. "http://server:8080/"        → ""
     //      "http://server/domoticz/"    → "domoticz/"
     var BASE = (function () {
-        var p = window.location.pathname.replace(/\/[^/]*$/, '/').replace(/^\//, '');
-        return p; // relative, no leading slash
+        var p = window.location.pathname.replace(/\/[^/]*$/, '/');
+        return p;
     })();
 
     function tryNextSensor(idx, wrap, si) {
