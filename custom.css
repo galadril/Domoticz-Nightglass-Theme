@@ -2032,6 +2032,19 @@ body table[id^="itemtable"] tr td.options {
 }
 
 
+/* ── 6n. Alert device cards (.dz-alert-device) ────────────────────── */
+/*    "General, Alert" devices promote the alert message into the hero  */
+/*    bigtext cell. Messages can be long multi-line strings, so we      */
+/*    reduce the font size and allow wrapping instead of clipping.      */
+
+.dz-alert-device table[id^="itemtable"] tr td#bigtext {
+    font-size: 0.82rem !important;
+    font-weight: 600 !important;
+    white-space: normal !important;
+    line-height: 1.4 !important;
+}
+
+
 /* ══════════════════════════════════════════════════════════════════
    7.  BUTTONS  (flat dark style)
    ══════════════════════════════════════════════════════════════════ */
