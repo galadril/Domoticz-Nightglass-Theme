@@ -3791,6 +3791,132 @@ mark.log-highlight {
     }
 }
 
+/* ── 15b-light. ENERGY DASHBOARD — LIGHT MODE ────────────────── */
+
+body.dz-light #dashcontent.force-select {
+    background: transparent !important;
+}
+
+/* Override inline <style> on #dashcontent and #emain */
+body.dz-light #dashcontent {
+    background: var(--dz-bg) !important;
+}
+
+body.dz-light #emain,
+body.dz-light #dashcontent > #emain {
+    background: radial-gradient(circle at top, rgba(42, 125, 225, 0.06), transparent 42%), linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(245, 246, 250, 0.96)) !important;
+    border: 1px solid rgba(42, 125, 225, 0.12) !important;
+    border-radius: 22px !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+    backdrop-filter: blur(14px) saturate(1.15) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(1.15) !important;
+}
+
+/* Override inline <style> that forces white text/icons */
+body.dz-light #dashcontent > #emain .etext,
+body.dz-light #dashcontent > #emain #ltext,
+body.dz-light #dashcontent .etext,
+body.dz-light #dashcontent #ltext {
+    fill: var(--dz-text) !important;
+    color: var(--dz-text) !important;
+}
+
+body.dz-light #dashcontent > #emain .eicon,
+body.dz-light #dashcontent .eicon {
+    fill: var(--dz-text) !important;
+    opacity: 0.85;
+}
+
+/* Override the inline foreignObject text color */
+body.dz-light #dashcontent #ltext {
+    color: var(--dz-text) !important;
+}
+
+/* Circle styles for light mode — softer fills, darker strokes */
+body.dz-light #dashcontent .ecircle-solar {
+    fill: rgba(240, 168, 50, 0.08) !important;
+    stroke: #c07818 !important;
+}
+
+body.dz-light #dashcontent .ecircle-grid {
+    fill: rgba(42, 125, 225, 0.08) !important;
+    stroke: #2a7de1 !important;
+}
+
+body.dz-light #dashcontent .ecircle-home {
+    fill: rgba(124, 79, 192, 0.08) !important;
+    stroke: #7c4fc0 !important;
+}
+
+body.dz-light #dashcontent .ecircle-batt {
+    fill: rgba(46, 140, 88, 0.08) !important;
+    stroke: #2e8c58 !important;
+}
+
+body.dz-light #dashcontent .ecircle-gas {
+    fill: rgba(201, 74, 26, 0.08) !important;
+    stroke: #c94a1a !important;
+}
+
+body.dz-light #dashcontent .ecircle-water {
+    fill: rgba(42, 125, 225, 0.08) !important;
+    stroke: #2a7de1 !important;
+}
+
+body.dz-light #dashcontent .ecircle-custom {
+    fill: rgba(107, 110, 127, 0.06) !important;
+    stroke: #6b6e7f !important;
+}
+
+/* Flow lines — darker for light backgrounds */
+body.dz-light #dashcontent #SolarToBatt,
+body.dz-light #dashcontent #SolarToHome,
+body.dz-light #dashcontent #SolarToGrid {
+    stroke: rgba(192, 120, 24, 0.5) !important;
+}
+
+body.dz-light #dashcontent #GridToHome,
+body.dz-light #dashcontent #lineRT1,
+body.dz-light #dashcontent #lineRB1 {
+    stroke: rgba(42, 125, 225, 0.4) !important;
+}
+
+body.dz-light #dashcontent #BattNet,
+body.dz-light #dashcontent #BattHome {
+    stroke: rgba(46, 140, 88, 0.5) !important;
+}
+
+/* Flow dot drop-shadow for light mode */
+body.dz-light #dashcontent [id$='-flow'] {
+    filter: none !important;
+}
+
+/* Glow filters — disable on light mode for cleaner look */
+body.dz-light #dashcontent .ecircle {
+    filter: none !important;
+}
+
+/* Sphere flow dots — use darker fills */
+body.dz-light #dashcontent #SolarToGrid-sphere ellipse,
+body.dz-light #dashcontent #SolarToHome-sphere ellipse,
+body.dz-light #dashcontent #SolarToBatt-sphere ellipse,
+body.dz-light #dashcontent ellipse[style*="fill:#efc040"] {
+    fill: #c07818 !important;
+}
+
+body.dz-light #dashcontent ellipse[style*="fill:#00c6da"] {
+    fill: #2a7de1 !important;
+}
+
+body.dz-light #dashcontent ellipse[style*="fill:#90e090"] {
+    fill: #2e8c58 !important;
+}
+
+/* Connector lines (grey #777) → darker for light mode */
+body.dz-light #dashcontent line[style*="stroke:#777"] {
+    stroke: #b0b3c6 !important;
+}
+
 
 /* ══════════════════════════════════════════════════════════════════
    16. CHARTS (Highcharts panels)
