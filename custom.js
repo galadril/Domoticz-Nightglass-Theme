@@ -1227,12 +1227,16 @@ if (document.readyState === 'loading') {
 
             /* Extract text, converting <br> tags to newlines so that
                multiline messages keep their line breaks (Domoticz encodes
-               newlines as <br> elements in the rendered HTML). */
+               newlines as <br> elements in the rendered HTML).
+               HTML entities (&nbsp; etc.) are decoded by letting the browser
+               parse the stripped markup via a temporary element. */
             var rawHtml = bigtext.innerHTML || '';
-            var fullText = rawHtml
+            var stripped = rawHtml
                 .replace(/<br\s*\/?>/gi, '\n')
-                .replace(/<[^>]+>/g, '')
-                .trim();
+                .replace(/<[^>]+>/g, '');
+            var tmp = document.createElement('textarea');
+            tmp.innerHTML = stripped;
+            var fullText = tmp.value.trim();
             if (!fullText) continue;
 
             tr.setAttribute('data-dz-text-done', '1');
