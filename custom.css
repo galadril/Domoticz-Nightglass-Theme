@@ -4789,32 +4789,38 @@ body.dashboard div.item.Fan.onn .img1 img {
 /* layout identical to the full-width desktop cards.                 */
 @media (max-width: 1199px) and (min-width: 770px) {
 
-    /* Options row: flow in document instead of absolute overlay */
+    /* Compact card padding — remove excess bottom space */
+    div.item.itemBlock {
+        padding-bottom: 10px !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+    }
+
+    .itemBlock > div.item {
+        min-height: 0 !important;
+        padding-bottom: 8px !important;
+        overflow: visible !important;
+    }
+
+    /* Type row: remove the 35px margin that reserved space for abs options */
+    body table[id^="itemtable"] tr td#type {
+        margin-bottom: 2px !important;
+    }
+
+    /* Options row: flow in document, push to bottom via margin-top:auto */
     body table[id^="itemtable"] tr td.options {
         position: relative !important;
         bottom: auto !important;
         right: auto !important;
-        margin-top: 6px !important;
-    }
-
-    /* Reduce the type row bottom-margin (no longer reserving space for abs options) */
-    body table[id^="itemtable"] tr td#type {
-        margin-bottom: 4px !important;
+        margin-top: auto !important;
+        padding-top: 6px !important;
+        border-top: 1px solid rgba(var(--dz-overlay-rgb), 0.04) !important;
     }
 
     /* Card footer: flow in document */
     .dz-card-footer .dz-time {
         position: relative !important;
         right: auto !important;
-    }
-
-    /* Ensure card doesn't clip stacked content */
-    div.item.itemBlock {
-        overflow: visible !important;
-    }
-
-    .itemBlock > div.item {
-        overflow: visible !important;
     }
 
     /* Selector buttons: allow wrapping at narrow widths */
