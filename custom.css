@@ -353,6 +353,7 @@ strong {
 
 .navbar-inverse .navbar-inner {
     position: relative;
+    z-index: 1030;
     background: var(--dz-surface) !important;
     background-image: none !important;
     border-bottom: 1px solid var(--dz-surface-3) !important;
