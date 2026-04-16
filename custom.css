@@ -4787,7 +4787,7 @@ body.dashboard div.item.Fan.onn .img1 img {
 /* positioned icon + left-padded text layout. Switch to a stacked    */
 /* flow layout: icon becomes inline, text gets full width, sliders   */
 /* and buttons sit below without overlap.                            */
-@media (max-width: 1199px) {
+@media (max-width: 1199px) and (min-width: 770px) {
 
     /* Remove absolute positioning on primary icon */
     body table#itemtable tr td:first-child + td + td,
