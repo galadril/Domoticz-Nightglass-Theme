@@ -1225,7 +1225,14 @@ if (document.readyState === 'loading') {
             var status  = tr.querySelector('td#status');
             if (!bigtext || !status) continue;
 
-            var fullText = (bigtext.textContent || '').trim();
+            /* Extract text, converting <br> tags to newlines so that
+               multiline messages keep their line breaks (Domoticz encodes
+               newlines as <br> elements in the rendered HTML). */
+            var rawHtml = bigtext.innerHTML || '';
+            var fullText = rawHtml
+                .replace(/<br\s*\/?>/gi, '\n')
+                .replace(/<[^>]+>/g, '')
+                .trim();
             if (!fullText) continue;
 
             tr.setAttribute('data-dz-text-done', '1');
