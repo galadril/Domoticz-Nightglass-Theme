@@ -2004,7 +2004,7 @@ body table[id^="itemtable"] tr td.options {
     max-height: 80px;
     overflow-y: auto;
     overflow-x: hidden;
-    white-space: pre-wrap;
+    white-space: normal;
     word-break: break-word;
     -webkit-user-select: text;
     user-select: text;
