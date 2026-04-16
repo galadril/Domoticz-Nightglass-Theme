@@ -1971,6 +1971,67 @@ body table[id^="itemtable"] tr td.options {
     }
 
 
+/* ── 6m. Text device cards (.dz-text-device) ──────────────────── */
+/*    "General, Text" devices contain long messages that don't fit   */
+/*    the hero-value style. The JS moves the full text into #status  */
+/*    as a .dz-text-msg div. The bigtext shows a short preview.     */
+
+.dz-text-device table[id^="itemtable"] tr td#bigtext {
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    color: var(--dz-text-soft) !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-height: 0 !important;
+    line-height: 1.3;
+    display: none !important;
+}
+
+.dz-text-device table[id^="itemtable"] tr td#status {
+    margin-top: 4px !important;
+}
+
+.dz-text-msg {
+    font-family: 'Courier New', 'Consolas', ui-monospace, monospace;
+    font-size: 0.75rem;
+    line-height: 1.55;
+    color: var(--dz-text-soft);
+    background: var(--dz-bg-alt);
+    border: 1px solid rgba(var(--dz-overlay-rgb), 0.04);
+    border-radius: 8px;
+    padding: 8px 10px;
+    max-height: 80px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    white-space: pre-wrap;
+    word-break: break-word;
+    -webkit-user-select: text;
+    user-select: text;
+    scrollbar-width: thin;
+    scrollbar-color: var(--dz-border) transparent;
+}
+
+    .dz-text-msg::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .dz-text-msg::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .dz-text-msg::-webkit-scrollbar-thumb {
+        background: var(--dz-border);
+        border-radius: 2px;
+    }
+
+/* Hover: expand slightly + accent border */
+.dz-text-device:hover .dz-text-msg {
+    border-color: rgba(var(--dz-accent-rgb), 0.15);
+    max-height: 120px;
+}
+
+
 /* ══════════════════════════════════════════════════════════════════
    7.  BUTTONS  (flat dark style)
    ══════════════════════════════════════════════════════════════════ */

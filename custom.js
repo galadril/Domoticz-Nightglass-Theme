@@ -1197,6 +1197,86 @@ if (document.readyState === 'loading') {
 })();
 
 
+/* -- Text device card enhancement --------------------------------- */
+/*    For "General, Text" devices the bigtext contains long messages  */
+/*    that don't fit the hero-value style. Move the full text into    */
+/*    the status area as a scrollable message block and show a        */
+/*    truncated preview in bigtext.                                   */
+
+(function () {
+    'use strict';
+
+    var maxPreviewLen = 60;
+
+    function processTextDevices() {
+        var cards = document.querySelectorAll(
+            'table[id^="itemtable"] tbody tr'
+        );
+        for (var i = 0; i < cards.length; i++) {
+            var tr = cards[i];
+            if (tr.getAttribute('data-dz-text-done')) continue;
+
+            var typeTd  = tr.querySelector('td#type');
+            if (!typeTd) continue;
+            var typeText = (typeTd.textContent || '').trim();
+            if (!/\bText\b/i.test(typeText)) continue;
+
+            var bigtext = tr.querySelector('td#bigtext');
+            var status  = tr.querySelector('td#status');
+            if (!bigtext || !status) continue;
+
+            var fullText = (bigtext.textContent || '').trim();
+            if (!fullText) continue;
+
+            tr.setAttribute('data-dz-text-done', '1');
+
+            var itemBlock = tr.closest('.itemBlock');
+            if (itemBlock) itemBlock.classList.add('dz-text-device');
+
+            status.textContent = '';
+            var msgDiv = document.createElement('div');
+            msgDiv.className = 'dz-text-msg';
+            msgDiv.textContent = fullText;
+            status.appendChild(msgDiv);
+
+            if (fullText.length > maxPreviewLen) {
+                bigtext.textContent = fullText.substring(0, maxPreviewLen) + '…';
+            }
+        }
+    }
+
+    window._dzExtraProcessors = window._dzExtraProcessors || [];
+    window._dzExtraProcessors.push(processTextDevices);
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', processTextDevices);
+    } else {
+        processTextDevices();
+    }
+
+    var _timer = null;
+    var observer = new MutationObserver(function () {
+        clearTimeout(_timer);
+        _timer = setTimeout(processTextDevices, 250);
+    });
+
+    function startObserver() {
+        var target = document.getElementById('dashcontent') ||
+                     document.getElementById('main-content') ||
+                     document.body;
+        if (target) {
+            observer.observe(target, { childList: true, subtree: true });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startObserver);
+    } else {
+        startObserver();
+    }
+})();
+
+
 /* -- Format last-update timestamps + strip "Type:" prefix --------- */
 /*    Runs after Angular renders each digest cycle.                   */
 
