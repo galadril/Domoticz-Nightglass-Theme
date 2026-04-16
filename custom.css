@@ -2004,7 +2004,7 @@ body table[id^="itemtable"] tr td.options {
     max-height: 80px;
     overflow-y: auto;
     overflow-x: hidden;
-    white-space: pre-wrap;
+    white-space: normal;
     word-break: break-word;
     -webkit-user-select: text;
     user-select: text;
@@ -2029,6 +2029,19 @@ body table[id^="itemtable"] tr td.options {
 .dz-text-device:hover .dz-text-msg {
     border-color: rgba(var(--dz-accent-rgb), 0.15);
     max-height: 120px;
+}
+
+
+/* ── 6n. Alert device cards (.dz-alert-device) ────────────────────── */
+/*    "General, Alert" devices promote the alert message into the hero  */
+/*    bigtext cell. Messages can be long multi-line strings, so we      */
+/*    reduce the font size and allow wrapping instead of clipping.      */
+
+.dz-alert-device table[id^="itemtable"] tr td#bigtext {
+    font-size: 0.82rem !important;
+    font-weight: 600 !important;
+    white-space: normal !important;
+    line-height: 1.4 !important;
 }
 
 
