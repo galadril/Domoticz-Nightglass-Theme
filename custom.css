@@ -5775,15 +5775,13 @@ body.dz-light .glass-alert-danger {
 /* ── Settings grid ───────────────────────────────────────────── */
 
 .ng-settings-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    align-items: start;
-    gap: 20px;
+    columns: 2;
+    column-gap: 20px;
 }
 
 @media (max-width: 920px) {
     .ng-settings-grid {
-        grid-template-columns: 1fr;
+        columns: 1;
     }
 }
 
@@ -5793,15 +5791,8 @@ body.dz-light .glass-alert-danger {
     border-radius: 14px;
     padding: 0;
     overflow: visible;
-}
-
-/* Config sections in left column, color sections in right */
-.ng-settings-section:not(.ng-settings-section--colors) {
-    grid-column: 1;
-}
-
-.ng-settings-section--colors {
-    grid-column: 2;
+    break-inside: avoid;
+    margin-bottom: 20px;
 }
 
 /* ── Section-level toggle (enable/disable) ───────────────────── */
