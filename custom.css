@@ -5703,6 +5703,17 @@ body.dz-light .glass-alert-danger {
 }
 
 
+/* ── Light mode: Backup / Restore page ────────────────────────── */
+/* The stock HTML uses inline style="color:#fff" on text elements,
+   which becomes invisible on light backgrounds. Override them.     */
+
+body.dz-light #tabbackuprestore span[style*="color:#fff"],
+body.dz-light #tabbackuprestore strong[style*="color:#fff"],
+body.dz-light #tabbackuprestore span[style*="color: #fff"],
+body.dz-light #tabbackuprestore strong[style*="color: #fff"] {
+    color: var(--dz-text) !important;
+}
+
 /* ══════════════════════════════════════════════════════════════════
    NIGHTGLASS THEME SETTINGS PANEL
    ══════════════════════════════════════════════════════════════════ */
@@ -6238,6 +6249,42 @@ body.dz-light .glass-alert-danger {
 .ng-settings-footer {
     margin-top: 20px;
     text-align: center;
+}
+
+.ng-footer-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.ng-export-btn,
+.ng-import-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    border: 1px solid var(--dz-border);
+    border-radius: 8px;
+    background: var(--dz-surface-2);
+    color: var(--dz-text-soft);
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.ng-export-btn:hover,
+.ng-import-btn:hover {
+    background: var(--dz-surface-3);
+    border-color: var(--dz-accent);
+    color: var(--dz-text);
+}
+
+.ng-export-btn i,
+.ng-import-btn i {
+    font-size: 0.9em;
+    opacity: 0.7;
 }
 
 .ng-footer-note {

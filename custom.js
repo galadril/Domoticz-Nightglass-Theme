@@ -2947,6 +2947,13 @@ document.addEventListener('DOMContentLoaded', function () {
             '</div>' + /* grid end */
 
             '<div class="ng-settings-footer">' +
+            '<div class="ng-footer-actions">' +
+            '<button class="ng-export-btn" id="ngExportBtn" title="Export settings as JSON file">' +
+            '<i class="fa-solid fa-file-export"></i> Export</button>' +
+            '<button class="ng-import-btn" id="ngImportBtn" title="Import settings from JSON file">' +
+            '<i class="fa-solid fa-file-import"></i> Import</button>' +
+            '<input type="file" id="ngImportFile" accept=".json" style="display:none">' +
+            '</div>' +
             '<span class="ng-footer-note"><i class="fa-solid fa-cloud-arrow-up"></i> ' +
             (_apiAvailable
                 ? 'Settings are stored as Domoticz user variables and sync across all your browsers.'
@@ -3093,6 +3100,60 @@ document.addEventListener('DOMContentLoaded', function () {
                     wrap.innerHTML = buildPanel();
                     bindEvents(wrap);
                 }
+            });
+        }
+
+        // Export button
+        var exportBtn = container.querySelector('#ngExportBtn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', function () {
+                var data = JSON.stringify(_settings, null, 2);
+                var blob = new Blob([data], { type: 'application/json' });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'nightglass-settings.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+        }
+
+        // Import button
+        var importBtn = container.querySelector('#ngImportBtn');
+        var importFile = container.querySelector('#ngImportFile');
+        if (importBtn && importFile) {
+            importBtn.addEventListener('click', function () {
+                importFile.click();
+            });
+            importFile.addEventListener('change', function () {
+                var file = this.files && this.files[0];
+                if (!file) return;
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    try {
+                        var imported = JSON.parse(e.target.result);
+                        var count = 0;
+                        Object.keys(DEFAULTS).forEach(function (key) {
+                            if (imported[key] !== undefined) {
+                                saveSetting(key, imported[key]);
+                                count++;
+                            }
+                        });
+                        // Re-render panel with new values
+                        var wrap = document.getElementById('ng-theme-settings-wrap');
+                        if (wrap) {
+                            wrap.innerHTML = buildPanel();
+                            bindEvents(wrap);
+                        }
+                        alert('Imported ' + count + ' settings successfully.');
+                    } catch (err) {
+                        alert('Failed to import settings: invalid JSON file.');
+                    }
+                };
+                reader.readAsText(file);
+                this.value = ''; // allow re-importing the same file
             });
         }
 
