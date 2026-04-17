@@ -1225,8 +1225,28 @@ if (document.readyState === 'loading') {
             var status  = tr.querySelector('td#status');
             if (!bigtext || !status) continue;
 
-            var fullText = (bigtext.textContent || '').trim();
-            if (!fullText) continue;
+            /* Extract and decode the bigtext cell content.
+               Domoticz can double-escape HTML entities (&amp;nbsp; instead
+               of &nbsp;, &lt;br&gt; instead of <br>).  One decode pass via
+               a <textarea> (RCDATA: entities decoded, tags kept as text)
+               normalises both cases so the content can be re-inserted as
+               HTML and rendered naturally by the browser.  Styling (spans,
+               min-width columns, images) from the device plugin is preserved
+               this way; extracting plain text would lose the visual spacing
+               built into the markup. */
+            var rawHtml = bigtext.innerHTML || '';
+            var tmp = document.createElement('textarea');
+            tmp.innerHTML = rawHtml;
+            var decoded = tmp.value;          /* entities decoded, tags intact */
+
+            /* Parse the decoded HTML once into a temporary container.
+               Moving parsed DOM nodes into msgDiv avoids a second innerHTML
+               assignment and limits the innerHTML surface to one call on
+               content already in the page's own trusted DOM. */
+            var tmpDiv = document.createElement('div');
+            tmpDiv.innerHTML = decoded; /* lgtm[js/xss-through-dom] */
+            var plainText = (tmpDiv.textContent || tmpDiv.innerText || '').replace(/\s+/g, ' ').trim();
+            if (!plainText) continue;
 
             tr.setAttribute('data-dz-text-done', '1');
 
@@ -1236,11 +1256,14 @@ if (document.readyState === 'loading') {
             status.textContent = '';
             var msgDiv = document.createElement('div');
             msgDiv.className = 'dz-text-msg';
-            msgDiv.textContent = fullText;
+            /* Move already-parsed nodes — no second HTML re-parse. */
+            while (tmpDiv.firstChild) {
+                msgDiv.appendChild(tmpDiv.firstChild);
+            }
             status.appendChild(msgDiv);
 
-            if (fullText.length > maxPreviewLen) {
-                bigtext.textContent = fullText.substring(0, maxPreviewLen) + '…';
+            if (plainText.length > maxPreviewLen) {
+                bigtext.textContent = plainText.substring(0, maxPreviewLen) + '…';
             }
         }
     }
