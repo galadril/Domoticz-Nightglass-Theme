@@ -2293,7 +2293,6 @@ document.addEventListener('DOMContentLoaded', function () {
         cardAnimations:     true,
         navAnimations:      true,
         smoothScrolling:    true,
-        compactCards:       false,
         showLastUpdate:     false,
         fontSize:           '100'
     };
@@ -2685,9 +2684,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 navAnimStyle = document.createElement('style');
                 navAnimStyle.id = 'dz-ng-navanim-style';
                 navAnimStyle.textContent =
-                    '.navbar .nav > li { animation: none !important; }' +
-                    '.navbar .nav .dropdown-menu > li { animation: none !important; }' +
-                    '.navbar .nav .dropdown-menu { animation: none !important; }' +
+                    '.navbar .nav > li { animation: none !important; opacity: 1 !important; transform: none !important; }' +
+                    '.navbar .nav .dropdown-menu > li { animation: none !important; opacity: 1 !important; transform: none !important; }' +
+                    '.navbar .nav .dropdown-menu { animation: none !important; opacity: 1 !important; transform: none !important; }' +
                     '.dz-nav-indicator { display: none !important; }';
                 document.head.appendChild(navAnimStyle);
             }
@@ -2698,24 +2697,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Smooth scrolling
         root.style.scrollBehavior = _settings.smoothScrolling ? 'smooth' : 'auto';
 
-        // Compact cards
-        var compactStyle = document.getElementById('dz-ng-compact-style');
-        if (_settings.compactCards) {
-            if (!compactStyle) {
-                compactStyle = document.createElement('style');
-                compactStyle.id = 'dz-ng-compact-style';
-                compactStyle.textContent =
-                    'div.item.itemBlock { padding: 8px 10px 14px !important; min-height: 90px !important; }' +
-                    '.itemBlock > div.item { padding: 8px 10px 8px !important; min-height: 90px !important; }' +
-                    'body table[id^="itemtable"] tr td:first-child { font-size: 0.65rem !important; padding: 1px 8px !important; }' +
-                    'body table[id^="itemtable"] tr td:first-child + td { font-size: 1rem !important; }';
-                document.head.appendChild(compactStyle);
-            }
-        } else if (compactStyle) {
-            compactStyle.remove();
-        }
-
-        // Show last update (card footer with formatted timestamp)
+        // Show last update
         var luStyle = document.getElementById('dz-ng-lu-style');
         if (!_settings.showLastUpdate) {
             if (!luStyle) {
@@ -2773,9 +2755,9 @@ document.addEventListener('DOMContentLoaded', function () {
             return '<div class="ng-setting-row ng-setting-row--dual">' +
                 '<div class="ng-setting-info"><span class="ng-setting-label">' + label + '</span></div>' +
                 '<div class="ng-dual-colors">' +
-                '<div class="ng-dual-col"><span class="ng-dual-label"><i class="fa-solid fa-moon"></i> Dark</span>' +
+                '<div class="ng-dual-col">' +
                 colorPicker(darkKey, '') + '</div>' +
-                '<div class="ng-dual-col"><span class="ng-dual-label"><i class="fa-solid fa-sun"></i> Light</span>' +
+                '<div class="ng-dual-col">' +
                 colorPicker(lightKey, '') + '</div>' +
                 '</div></div>';
         }
@@ -2837,13 +2819,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 { value: 'light', label: '☀️ Light' }
             ], 'Used when the toggle is hidden') +
             slider('fontSize', 'Base Font Size', 80, 130, 5, '%', 'Scale the entire interface') +
-            toggle('compactCards', 'Compact Cards', 'Reduce card padding for denser layouts') +
             toggle('showLastUpdate', 'Show Last Update', 'Show the formatted timestamp footer on device cards') +
             '</div>' +
 
             /* Colors section */
             '<div class="ng-settings-section ng-settings-section--colors">' +
             '<div class="ng-section-header"><i class="fa-solid fa-droplet"></i> Colors</div>' +
+            '<div class="ng-dual-col-headers"><span class="ng-dual-label"><i class="fa-solid fa-moon"></i> Dark</span><span class="ng-dual-label"><i class="fa-solid fa-sun"></i> Light</span></div>' +
             dualColorPicker('accentColor', 'accentColorLight', 'Accent Color') +
             dualColorPicker('dangerColor', 'dangerColorLight', 'Danger Color') +
             dualColorPicker('warningColor', 'warningColorLight', 'Warning Color') +

@@ -5818,6 +5818,16 @@ body.dz-light .glass-alert-danger {
     width: 100%;
 }
 
+.ng-dual-col-headers {
+    display: flex;
+    padding: 8px 20px 4px;
+    gap: 16px;
+}
+
+    .ng-dual-col-headers > .ng-dual-label {
+        flex: 1;
+    }
+
 .ng-dual-col {
     flex: 1;
     min-width: 0;
