@@ -2715,13 +2715,13 @@ document.addEventListener('DOMContentLoaded', function () {
             compactStyle.remove();
         }
 
-        // Show last update
+        // Show last update (card footer with formatted timestamp)
         var luStyle = document.getElementById('dz-ng-lu-style');
-        if (_settings.showLastUpdate) {
+        if (!_settings.showLastUpdate) {
             if (!luStyle) {
                 luStyle = document.createElement('style');
                 luStyle.id = 'dz-ng-lu-style';
-                luStyle.textContent = 'body table[id^="itemtable"] tr td#lastupdate { display: block !important; }';
+                luStyle.textContent = '.dz-card-footer { display: none !important; }';
                 document.head.appendChild(luStyle);
             }
         } else if (luStyle) {
@@ -2838,7 +2838,7 @@ document.addEventListener('DOMContentLoaded', function () {
             ], 'Used when the toggle is hidden') +
             slider('fontSize', 'Base Font Size', 80, 130, 5, '%', 'Scale the entire interface') +
             toggle('compactCards', 'Compact Cards', 'Reduce card padding for denser layouts') +
-            toggle('showLastUpdate', 'Show Last Update', 'Display the raw timestamp on device cards') +
+            toggle('showLastUpdate', 'Show Last Update', 'Show the formatted timestamp footer on device cards') +
             '</div>' +
 
             /* Colors section */
@@ -2885,16 +2885,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         _panelInjected = true;
 
-        // Inject the hide-all CSS rule once
-        if (!document.getElementById('dz-ng-settings-hide')) {
-            var style = document.createElement('style');
-            style.id = 'dz-ng-settings-hide';
-            style.textContent =
-                '#settingscontent.ng-panel-active > *:not(.sub-tabs):not(#ng-theme-settings-wrap) { display: none !important; }' +
-                '#settingscontent.ng-panel-active > #ng-theme-settings-wrap { display: block !important; }';
-            document.head.appendChild(style);
-        }
-
         // Pre-create the wrap (hidden) so it's ready when tab is clicked
         var wrap = document.createElement('div');
         wrap.id = 'ng-theme-settings-wrap';
@@ -2918,14 +2908,34 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    /* Find the direct child of settingsContent that contains subTabs,
+       so we never accidentally hide the tab bar regardless of nesting. */
+    function findDirectAncestor(settingsContent, el) {
+        var node = el;
+        while (node && node.parentElement !== settingsContent) {
+            node = node.parentElement;
+        }
+        return node;
+    }
+
     function showNightglassTab(settingsContent, subTabs) {
         // Deactivate other tabs
         var tabs = subTabs.querySelectorAll('li');
         tabs.forEach(function (t) { t.classList.remove('active'); });
         document.getElementById('ng-settings-tab').classList.add('active');
 
-        // Single class toggle hides all siblings via CSS
-        settingsContent.classList.add('ng-panel-active');
+        // Find which direct child of settingsContent contains the sub-tabs
+        var tabsAncestor = findDirectAncestor(settingsContent, subTabs);
+
+        // Hide all direct children except the tab-bar ancestor and our wrap
+        Array.from(settingsContent.children).forEach(function (child) {
+            if (child === tabsAncestor || child.id === 'ng-theme-settings-wrap') return;
+            child.setAttribute('data-ng-was-display', child.style.display || '');
+            child.style.display = 'none';
+        });
+
+        var wrap = document.getElementById('ng-theme-settings-wrap');
+        if (wrap) wrap.style.display = '';
 
         // Scroll to top of settings area
         settingsContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2941,7 +2951,15 @@ document.addEventListener('DOMContentLoaded', function () {
         subTabs.addEventListener('click', function (e) {
             var li = e.target.closest('li');
             if (!li || li.id === 'ng-settings-tab') return;
-            settingsContent.classList.remove('ng-panel-active');
+            // Restore all previously hidden children
+            Array.from(settingsContent.children).forEach(function (child) {
+                if (child.hasAttribute('data-ng-was-display')) {
+                    child.style.display = child.getAttribute('data-ng-was-display');
+                    child.removeAttribute('data-ng-was-display');
+                }
+            });
+            var wrap = document.getElementById('ng-theme-settings-wrap');
+            if (wrap) wrap.style.display = 'none';
             var ngTab = document.getElementById('ng-settings-tab');
             if (ngTab) ngTab.classList.remove('active');
         });
