@@ -2310,7 +2310,10 @@ document.addEventListener('DOMContentLoaded', function () {
         var url = BASE + 'json.htm?' + Object.keys(params).map(function (k) {
             return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
         }).join('&');
-        return fetch(url, { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        return fetch(url, {
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function (r) { return r.json(); });
     }
 
     function loadAllUvars() {
@@ -2334,7 +2337,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function setUvar(key, value) {
         var name = UVAR_PREFIX + key;
         var strVal = String(value);
-        if (_uvarCache[name]) {
+        if (_uvarCache[name] && _uvarCache[name].idx) {
             _uvarCache[name].value = strVal;
             return apiCall({
                 type: 'command', param: 'updateuservariable',
@@ -2343,7 +2346,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             _uvarCache[name] = { idx: null, value: strVal };
             return apiCall({
-                type: 'command', param: 'saveuservariable',
+                type: 'command', param: 'adduservariable',
                 vname: name, vtype: UVAR_TYPE, vvalue: strVal
             }).then(function () {
                 // Reload to get the new idx
