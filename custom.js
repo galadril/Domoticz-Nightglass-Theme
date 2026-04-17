@@ -2993,9 +2993,6 @@ document.addEventListener('DOMContentLoaded', function () {
         var tabs = subTabs.querySelectorAll('li');
         tabs.forEach(function (t) { t.classList.remove('active'); });
         document.getElementById('ng-settings-tab').classList.add('active');
-        // Mark the tab bar's direct-child ancestor so CSS can keep it visible
-        var _tabEl = subTabs; while (_tabEl && _tabEl.parentElement !== settingsContent) { _tabEl = _tabEl.parentElement; }
-        if (_tabEl) _tabEl.setAttribute('data-ng-keep', '');
         settingsContent.classList.add('ng-showing');
         var wrap = document.getElementById('ng-theme-settings-wrap');
         if (wrap) wrap.style.display = '';
@@ -3003,7 +3000,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!document.getElementById('dz-ng-settings-hide')) {
             var style = document.createElement('style');
             style.id = 'dz-ng-settings-hide';
-            style.textContent = '#settingscontent.ng-showing > *:not([data-ng-keep]):not(#ng-theme-settings-wrap) { display: none !important; }' + '#settingscontent.ng-showing > #ng-theme-settings-wrap { display: block !important; }';
+            style.textContent =
+                '#settingscontent.ng-showing #my-tab-content { display: none !important; }' +
+                '#settingscontent.ng-showing .sub-tabs-apply { display: none !important; }' +
+                '#settingscontent.ng-showing #ng-theme-settings-wrap { display: block !important; }';
             document.head.appendChild(style);
         }
     }
