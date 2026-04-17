@@ -2285,6 +2285,14 @@ document.addEventListener('DOMContentLoaded', function () {
         dangerColorLight:   '#d63b3b',
         warningColorLight:  '#c07818',
         successColorLight:  '#2e8c58',
+        bgColor:            '#23252f',
+        surfaceColor:       '#2a2b35',
+        borderColor:        '#33354a',
+        textColor:          '#e2e4ed',
+        bgColorLight:       '#ffffff',
+        surfaceColorLight:  '#f5f6fa',
+        borderColorLight:   '#d0d3dc',
+        textColorLight:     '#1a1c24',
         cardTilt:           true,
         sparklines:         true,
         stalenessIndicator: true,
@@ -2552,6 +2560,14 @@ document.addEventListener('DOMContentLoaded', function () {
         var dcL = _settings.dangerColorLight  || darkenHex(dc, 15);
         var wcL = _settings.warningColorLight || darkenHex(wc, 25);
         var scL = _settings.successColorLight || darkenHex(sc, 20);
+        var bg  = _settings.bgColor      || '#23252f';
+        var sf  = _settings.surfaceColor  || '#2a2b35';
+        var bd  = _settings.borderColor   || '#33354a';
+        var tx  = _settings.textColor     || '#e2e4ed';
+        var bgL = _settings.bgColorLight     || '#ffffff';
+        var sfL = _settings.surfaceColorLight || '#f5f6fa';
+        var bdL = _settings.borderColorLight  || '#d0d3dc';
+        var txL = _settings.textColorLight    || '#1a1c24';
 
         var colorCSS =
             ':root {\n' +
@@ -2570,6 +2586,14 @@ document.addEventListener('DOMContentLoaded', function () {
             '  --dz-warning-hover: ' + darkenHex(wc, 20) + ';\n' +
             '  --dz-success: ' + sc + ';\n' +
             '  --dz-success-hover: ' + darkenHex(sc, 20) + ';\n' +
+            '  --dz-surface: ' + bg + ';\n' +
+            '  --dz-surface-2: ' + sf + ';\n' +
+            '  --dz-surface-3: ' + lightenHex(sf, 10) + ';\n' +
+            '  --dz-border: ' + bd + ';\n' +
+            '  --dz-border-b: ' + lightenHex(bd, 10) + ';\n' +
+            '  --dz-text: ' + tx + ';\n' +
+            '  --dz-text-soft: ' + darkenHex(tx, 30) + ';\n' +
+            '  --dz-text-muted: ' + darkenHex(tx, 60) + ';\n' +
             '}\n' +
             'body.dz-light {\n' +
             '  --dz-accent: ' + acL + ';\n' +
@@ -2587,6 +2611,14 @@ document.addEventListener('DOMContentLoaded', function () {
             '  --dz-warning-hover: ' + darkenHex(wcL, 20) + ';\n' +
             '  --dz-success: ' + scL + ';\n' +
             '  --dz-success-hover: ' + darkenHex(scL, 20) + ';\n' +
+            '  --dz-surface: ' + bgL + ';\n' +
+            '  --dz-surface-2: ' + sfL + ';\n' +
+            '  --dz-surface-3: ' + darkenHex(sfL, 10) + ';\n' +
+            '  --dz-border: ' + bdL + ';\n' +
+            '  --dz-border-b: ' + darkenHex(bdL, 10) + ';\n' +
+            '  --dz-text: ' + txL + ';\n' +
+            '  --dz-text-soft: ' + lightenHex(txL, 30) + ';\n' +
+            '  --dz-text-muted: ' + lightenHex(txL, 60) + ';\n' +
             '}\n';
 
         var colorStyle = document.getElementById('dz-ng-color-style');
@@ -2832,6 +2864,16 @@ document.addEventListener('DOMContentLoaded', function () {
             dualColorPicker('successColor', 'successColorLight', 'Success Color') +
             '</div>' +
 
+            /* Surface / Background Colors section */
+            '<div class="ng-settings-section ng-settings-section--colors">' +
+            '<div class="ng-section-header"><i class="fa-solid fa-fill-drip"></i> Background &amp; Surface</div>' +
+            '<div class="ng-dual-col-headers"><span class="ng-dual-label"><i class="fa-solid fa-moon"></i> Dark</span><span class="ng-dual-label"><i class="fa-solid fa-sun"></i> Light</span></div>' +
+            dualColorPicker('bgColor', 'bgColorLight', 'Background') +
+            dualColorPicker('surfaceColor', 'surfaceColorLight', 'Card Surface') +
+            dualColorPicker('borderColor', 'borderColorLight', 'Borders') +
+            dualColorPicker('textColor', 'textColorLight', 'Text') +
+            '</div>' +
+
             /* Effects section */
             '<div class="ng-settings-section">' +
             '<div class="ng-section-header"><i class="fa-solid fa-wand-magic-sparkles"></i> Effects &amp; Animations</div>' +
@@ -2888,9 +2930,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         li.appendChild(a);
         subTabs.appendChild(li);
-    }
-
-        return node;
     }
 
     function showNightglassTab(settingsContent, subTabs) {

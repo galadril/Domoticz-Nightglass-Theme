@@ -5802,7 +5802,8 @@ body.dz-light .glass-alert-danger {
 /* ── Dual color picker layout ────────────────────────────────── */
 
 .ng-setting-row--dual {
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: stretch;
 }
 
     .ng-setting-row--dual > .ng-setting-info {
