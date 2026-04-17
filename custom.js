@@ -2890,39 +2890,24 @@ document.addEventListener('DOMContentLoaded', function () {
         subTabs.appendChild(li);
     }
 
-    /* Find the direct child of settingsContent that contains subTabs,
-       so we never accidentally hide the tab bar regardless of nesting. */
-    function findDirectAncestor(settingsContent, el) {
-        var node = el;
-        while (node && node.parentElement !== settingsContent) {
-            node = node.parentElement;
-        }
         return node;
     }
 
     function showNightglassTab(settingsContent, subTabs) {
-        // Deactivate other tabs
         var tabs = subTabs.querySelectorAll('li');
         tabs.forEach(function (t) { t.classList.remove('active'); });
         document.getElementById('ng-settings-tab').classList.add('active');
-
-        // Find which direct child of settingsContent contains the sub-tabs
-        var tabsAncestor = findDirectAncestor(settingsContent, subTabs);
-
-        // Hide all direct children except the tab-bar ancestor and our wrap
-        Array.from(settingsContent.children).forEach(function (child) {
-            if (child === tabsAncestor || child.id === 'ng-theme-settings-wrap') return;
-            child.setAttribute('data-ng-was-display', child.style.display || '');
-            child.style.display = 'none';
-        });
-
+        settingsContent.classList.add('ng-showing');
         var wrap = document.getElementById('ng-theme-settings-wrap');
         if (wrap) wrap.style.display = '';
-
-        // Scroll to top of settings area
         settingsContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (!document.getElementById('dz-ng-settings-hide')) {
+            var style = document.createElement('style');
+            style.id = 'dz-ng-settings-hide';
+            style.textContent = '#settingscontent.ng-showing > *:not(.sub-tabs):not(#ng-theme-settings-wrap) { display: none !important; }' + '#settingscontent.ng-showing > #ng-theme-settings-wrap { display: block !important; }';
+            document.head.appendChild(style);
+        }
     }
-
     /* Restore other panes when clicking a non-Nightglass tab */
     function hookOtherTabs() {
         var settingsContent = document.getElementById('settingscontent');
@@ -2933,13 +2918,8 @@ document.addEventListener('DOMContentLoaded', function () {
         subTabs.addEventListener('click', function (e) {
             var li = e.target.closest('li');
             if (!li || li.id === 'ng-settings-tab') return;
-            // Restore all previously hidden children
-            Array.from(settingsContent.children).forEach(function (child) {
-                if (child.hasAttribute('data-ng-was-display')) {
-                    child.style.display = child.getAttribute('data-ng-was-display');
-                    child.removeAttribute('data-ng-was-display');
-                }
-            });
+            // Remove the CSS-based hiding class
+            settingsContent.classList.remove('ng-showing');
             var wrap = document.getElementById('ng-theme-settings-wrap');
             if (wrap) wrap.style.display = 'none';
             var ngTab = document.getElementById('ng-settings-tab');
