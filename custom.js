@@ -1300,6 +1300,67 @@ if (document.readyState === 'loading') {
 })();
 
 
+/* -- Alert device card enhancement --------------------------------- */
+/*    "General, Alert" devices (type 243 subtype 22) display their    */
+/*    alert text in the hero bigtext cell. Because these messages are  */
+/*    often long and multi-line the default 1.15 rem / bold hero style */
+/*    is too large. Tag the card so CSS can apply a smaller style.    */
+
+(function () {
+    'use strict';
+
+    function processAlertDevices() {
+        var cards = document.querySelectorAll(
+            'table[id^="itemtable"] tbody tr'
+        );
+        for (var i = 0; i < cards.length; i++) {
+            var tr = cards[i];
+            if (tr.getAttribute('data-dz-alert-done')) continue;
+
+            var typeTd = tr.querySelector('td#type');
+            if (!typeTd) continue;
+            var typeText = (typeTd.textContent || '').trim();
+            if (!/\bAlert\b/i.test(typeText)) continue;
+
+            tr.setAttribute('data-dz-alert-done', '1');
+
+            var itemBlock = tr.closest('.itemBlock');
+            if (itemBlock) itemBlock.classList.add('dz-alert-device');
+        }
+    }
+
+    window._dzExtraProcessors = window._dzExtraProcessors || [];
+    window._dzExtraProcessors.push(processAlertDevices);
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', processAlertDevices);
+    } else {
+        processAlertDevices();
+    }
+
+    var _timer = null;
+    var observer = new MutationObserver(function () {
+        clearTimeout(_timer);
+        _timer = setTimeout(processAlertDevices, 250);
+    });
+
+    function startAlertObserver() {
+        var target = document.getElementById('dashcontent') ||
+                     document.getElementById('main-content') ||
+                     document.body;
+        if (target) {
+            observer.observe(target, { childList: true, subtree: true });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startAlertObserver);
+    } else {
+        startAlertObserver();
+    }
+})();
+
+
 /* -- Format last-update timestamps + strip "Type:" prefix --------- */
 /*    Runs after Angular renders each digest cycle.                   */
 
