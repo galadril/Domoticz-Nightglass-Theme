@@ -2464,6 +2464,19 @@ input.ui-widget-content {
     border-radius: 14px !important;
 }
 
+.bootbox .bootbox-close-button.close {
+    color: var(--dz-text-muted) !important;
+    text-shadow: none !important;
+    opacity: 0.6 !important;
+    font-size: 1.3rem;
+    transition: opacity 0.15s, color 0.15s;
+}
+
+    .bootbox .bootbox-close-button.close:hover {
+        color: var(--dz-text) !important;
+        opacity: 1 !important;
+    }
+
 .bootbox-body {
     color: var(--dz-text) !important;
     font-size: 0.9rem;
