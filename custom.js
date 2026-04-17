@@ -2879,16 +2879,30 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function injectPanel() {
         if (_panelInjected) return;
-        // Look for the settings content area
         var settingsContent = document.getElementById('settingscontent');
         if (!settingsContent) return;
-
-        // Check if the Nightglass tab already exists
         if (document.getElementById('ng-theme-settings')) return;
 
         _panelInjected = true;
 
-        // Find or create the sub-tabs bar
+        // Inject the hide-all CSS rule once
+        if (!document.getElementById('dz-ng-settings-hide')) {
+            var style = document.createElement('style');
+            style.id = 'dz-ng-settings-hide';
+            style.textContent =
+                '#settingscontent.ng-panel-active > *:not(.sub-tabs):not(#ng-theme-settings-wrap) { display: none !important; }' +
+                '#settingscontent.ng-panel-active > #ng-theme-settings-wrap { display: block !important; }';
+            document.head.appendChild(style);
+        }
+
+        // Pre-create the wrap (hidden) so it's ready when tab is clicked
+        var wrap = document.createElement('div');
+        wrap.id = 'ng-theme-settings-wrap';
+        wrap.style.display = 'none';
+        wrap.innerHTML = buildPanel();
+        settingsContent.appendChild(wrap);
+        bindEvents(wrap);
+
         var subTabs = settingsContent.querySelector('.sub-tabs');
         if (subTabs) {
             var li = document.createElement('li');
@@ -2899,8 +2913,8 @@ document.addEventListener('DOMContentLoaded', function () {
             a.addEventListener('click', function () {
                 showNightglassTab(settingsContent, subTabs);
             });
-            subTabs.appendChild(li);
             li.appendChild(a);
+            subTabs.appendChild(li);
         }
     }
 
@@ -2910,27 +2924,11 @@ document.addEventListener('DOMContentLoaded', function () {
         tabs.forEach(function (t) { t.classList.remove('active'); });
         document.getElementById('ng-settings-tab').classList.add('active');
 
-        // Hide other tab content panes
-        var panes = settingsContent.querySelectorAll(':scope > div:not(.sub-tabs):not(#ng-theme-settings-wrap)');
-        panes.forEach(function (p) {
-            if (!p.classList.contains('sub-tabs')) p.style.display = 'none';
-        });
-        // Also hide any direct table children (Domoticz uses tables for settings)
-        var tables = settingsContent.querySelectorAll(':scope > table');
-        tables.forEach(function (t) { t.style.display = 'none'; });
-        // Hide direct buttons/inputs
-        var btns = settingsContent.querySelectorAll(':scope > .btn, :scope > button, :scope > input, :scope > br');
-        btns.forEach(function (b) { b.style.display = 'none'; });
+        // Single class toggle hides all siblings via CSS
+        settingsContent.classList.add('ng-panel-active');
 
-        var wrap = document.getElementById('ng-theme-settings-wrap');
-        if (!wrap) {
-            wrap = document.createElement('div');
-            wrap.id = 'ng-theme-settings-wrap';
-            wrap.innerHTML = buildPanel();
-            settingsContent.appendChild(wrap);
-            bindEvents(wrap);
-        }
-        wrap.style.display = '';
+        // Scroll to top of settings area
+        settingsContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     /* Restore other panes when clicking a non-Nightglass tab */
@@ -2943,15 +2941,7 @@ document.addEventListener('DOMContentLoaded', function () {
         subTabs.addEventListener('click', function (e) {
             var li = e.target.closest('li');
             if (!li || li.id === 'ng-settings-tab') return;
-            // Restore hidden panes
-            var panes = settingsContent.querySelectorAll(':scope > div:not(.sub-tabs):not(#ng-theme-settings-wrap)');
-            panes.forEach(function (p) { p.style.display = ''; });
-            var tables = settingsContent.querySelectorAll(':scope > table');
-            tables.forEach(function (t) { t.style.display = ''; });
-            var btns = settingsContent.querySelectorAll(':scope > .btn, :scope > button, :scope > input, :scope > br');
-            btns.forEach(function (b) { b.style.display = ''; });
-            var wrap = document.getElementById('ng-theme-settings-wrap');
-            if (wrap) wrap.style.display = 'none';
+            settingsContent.classList.remove('ng-panel-active');
             var ngTab = document.getElementById('ng-settings-tab');
             if (ngTab) ngTab.classList.remove('active');
         });
