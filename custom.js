@@ -2854,6 +2854,19 @@ document.addEventListener('DOMContentLoaded', function () {
             toggle('showLastUpdate', 'Show Last Update', 'Show the formatted timestamp footer on device cards') +
             '</div>' +
 
+            /* Effects section */
+            '<div class="ng-settings-section">' +
+            '<div class="ng-section-header"><i class="fa-solid fa-wand-magic-sparkles"></i> Effects &amp; Animations</div>' +
+            toggle('cardTilt', '3D Card Tilt', 'Subtle perspective tilt on hover') +
+            toggle('sparklines', 'Sparkline Charts', 'Mini 24h trend charts as card watermarks') +
+            toggle('stalenessIndicator', 'Staleness Dot', 'Pulsing red dot on devices that haven\'t updated in 24h') +
+            toggle('stateFlash', 'State-Change Flash', 'Blue/red ring flash when a device changes state') +
+            toggle('tempAccent', 'Temperature Accent', 'Color-coded top border based on temperature value') +
+            toggle('cardAnimations', 'Card Animations', 'Entrance animations and hover transitions on cards') +
+            toggle('navAnimations', 'Navbar Animations', 'Staggered entrances, sliding indicator, dropdown effects') +
+            toggle('smoothScrolling', 'Smooth Scrolling', 'Enable smooth scroll behavior page-wide') +
+            '</div>' +
+
             /* Colors section */
             '<div class="ng-settings-section ng-settings-section--colors">' +
             '<div class="ng-section-header"><i class="fa-solid fa-droplet"></i> Colors</div>' +
@@ -2872,19 +2885,6 @@ document.addEventListener('DOMContentLoaded', function () {
             dualColorPicker('surfaceColor', 'surfaceColorLight', 'Card Surface') +
             dualColorPicker('borderColor', 'borderColorLight', 'Borders') +
             dualColorPicker('textColor', 'textColorLight', 'Text') +
-            '</div>' +
-
-            /* Effects section */
-            '<div class="ng-settings-section">' +
-            '<div class="ng-section-header"><i class="fa-solid fa-wand-magic-sparkles"></i> Effects &amp; Animations</div>' +
-            toggle('cardTilt', '3D Card Tilt', 'Subtle perspective tilt on hover') +
-            toggle('sparklines', 'Sparkline Charts', 'Mini 24h trend charts as card watermarks') +
-            toggle('stalenessIndicator', 'Staleness Dot', 'Pulsing red dot on devices that haven\'t updated in 24h') +
-            toggle('stateFlash', 'State-Change Flash', 'Blue/red ring flash when a device changes state') +
-            toggle('tempAccent', 'Temperature Accent', 'Color-coded top border based on temperature value') +
-            toggle('cardAnimations', 'Card Animations', 'Entrance animations and hover transitions on cards') +
-            toggle('navAnimations', 'Navbar Animations', 'Staggered entrances, sliding indicator, dropdown effects') +
-            toggle('smoothScrolling', 'Smooth Scrolling', 'Enable smooth scroll behavior page-wide') +
             '</div>' +
 
             '</div>' + /* grid end */

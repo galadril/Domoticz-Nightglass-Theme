@@ -5776,7 +5776,8 @@ body.dz-light .glass-alert-danger {
 
 .ng-settings-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
     gap: 20px;
 }
 
@@ -5794,9 +5795,13 @@ body.dz-light .glass-alert-danger {
     overflow: visible;
 }
 
-/* Colors section spans full width of grid */
+/* Config sections in left column, color sections in right */
+.ng-settings-section:not(.ng-settings-section--colors) {
+    grid-column: 1;
+}
+
 .ng-settings-section--colors {
-    grid-column: 1 / -1;
+    grid-column: 2;
 }
 
 /* ── Dual color picker layout ────────────────────────────────── */
