@@ -2684,9 +2684,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 navAnimStyle = document.createElement('style');
                 navAnimStyle.id = 'dz-ng-navanim-style';
                 navAnimStyle.textContent =
-                    '.navbar .nav > li { animation: none !important; opacity: 1 !important; }' +
-                    '.navbar .nav .dropdown-menu > li { animation: none !important; opacity: 1 !important; transform: none !important; }' +
-                    '.navbar .nav .dropdown-menu { animation: none !important; opacity: 1 !important; }' +
+                    '.navbar .nav > li { animation-duration: 0s !important; animation-delay: 0s !important; }' +
+                    '.navbar .nav .dropdown-menu > li { animation-duration: 0s !important; animation-delay: 0s !important; }' +
+                    '.navbar .nav .dropdown-menu { animation-duration: 0s !important; animation-delay: 0s !important; }' +
                     '.dz-nav-indicator { display: none !important; }';
                 document.head.appendChild(navAnimStyle);
             }
