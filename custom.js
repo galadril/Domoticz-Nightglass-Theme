@@ -2920,10 +2920,14 @@ document.addEventListener('DOMContentLoaded', function () {
             '<i class="fa-solid fa-rotate-left"></i> Reset</button></div>' +
 
             '<div class="ng-presets-section" id="ngPresetsSection">' +
-            '<div class="ng-section-header"><i class="fa-solid fa-swatchbook"></i> Theme Presets</div>' +
+            '<button class="ng-presets-toggle" id="ngPresetsToggle" type="button">' +
+            '<div class="ng-presets-toggle-left"><i class="fa-solid fa-swatchbook"></i> Theme Presets</div>' +
+            '<i class="fa-solid fa-chevron-down ng-presets-chevron"></i>' +
+            '</button>' +
+            '<div class="ng-presets-body" id="ngPresetsBody" style="display:none;">' +
             '<div class="ng-presets-grid" id="ngPresetsGrid">' +
             '<div class="ng-preset-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading presets…</div>' +
-            '</div></div>' +
+            '</div></div></div>' +
 
             '<div class="ng-settings-grid">' +
 
@@ -3009,7 +3013,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var PRESET_FILES = [
         'nightglass', 'emerald-forest', 'solar-flare', 'arctic-ice',
-        'violet-nebula', 'rose-gold', 'monochrome', 'crimson-ember'
+        'violet-nebula', 'rose-gold', 'monochrome', 'crimson-ember',
+        'matrix', 'cyberpunk', 'dracula', 'solarized',
+        'synthwave', 'nord', 'hacker', 'ocean-depth'
     ];
 
     var _presetsCache = null;
@@ -3203,6 +3209,17 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function bindEvents(container) {
+        // Presets panel collapse/expand
+        var presetsToggle = container.querySelector('#ngPresetsToggle');
+        var presetsBody = container.querySelector('#ngPresetsBody');
+        if (presetsToggle && presetsBody) {
+            presetsToggle.addEventListener('click', function () {
+                var open = presetsBody.style.display !== 'none';
+                presetsBody.style.display = open ? 'none' : '';
+                presetsToggle.classList.toggle('ng-presets-toggle--open', !open);
+            });
+        }
+
         // Toggles
         container.querySelectorAll('input[type="checkbox"][data-ng-key]').forEach(function (cb) {
             cb.addEventListener('change', function () {

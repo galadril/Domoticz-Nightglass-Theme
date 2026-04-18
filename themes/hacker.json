@@ -1,0 +1,26 @@
+{
+  "name": "Hacker",
+  "description": "Amber-on-black terminal aesthetic — old-school CRT monitor",
+  "icon": "fa-solid fa-skull-crossbones",
+  "preview": { "bg": "#0a0800", "surface": "#121008", "accent": "#ffb300", "text": "#e8d8a0" },
+  "colors": {
+    "accentColor": "#ffb300",
+    "dangerColor": "#ff6d00",
+    "warningColor": "#ffd600",
+    "successColor": "#aeea00",
+    "accentColorLight": "#c68400",
+    "dangerColorLight": "#c43e00",
+    "warningColorLight": "#c6a700",
+    "successColorLight": "#6d8c00",
+    "bgColor": "#121008",
+    "surfaceColor": "#1a1810",
+    "borderColor": "#2e2a18",
+    "textColor": "#e8d8a0",
+    "bgColorLight": "#fffde7",
+    "surfaceColorLight": "#fff8e1",
+    "borderColorLight": "#ffe082",
+    "textColorLight": "#1a1500",
+    "pageBgColor": "#0a0800",
+    "pageBgColorLight": "#fff8e1"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "Ocean Depth",
+  "description": "Deep teal and aquamarine — submerged in tranquil waters",
+  "icon": "fa-solid fa-water",
+  "preview": { "bg": "#0a1820", "surface": "#0f2030", "accent": "#4dd0e1", "text": "#d0ecf0" },
+  "colors": {
+    "accentColor": "#4dd0e1",
+    "dangerColor": "#ef5350",
+    "warningColor": "#ffb74d",
+    "successColor": "#66bb6a",
+    "accentColorLight": "#00838f",
+    "dangerColorLight": "#c62828",
+    "warningColorLight": "#e65100",
+    "successColorLight": "#2e7d32",
+    "bgColor": "#0f2030",
+    "surfaceColor": "#142838",
+    "borderColor": "#1e3a4f",
+    "textColor": "#d0ecf0",
+    "bgColorLight": "#e0f7fa",
+    "surfaceColorLight": "#d4f0f5",
+    "borderColorLight": "#80deea",
+    "textColorLight": "#0a2028",
+    "pageBgColor": "#0a1820",
+    "pageBgColorLight": "#e0f7fa"
+  }
+}

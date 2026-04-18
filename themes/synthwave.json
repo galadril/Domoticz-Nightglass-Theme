@@ -1,0 +1,26 @@
+{
+  "name": "Synthwave",
+  "description": "Retro 80s purple-pink sunset gradients — outrun the grid",
+  "icon": "fa-solid fa-music",
+  "preview": { "bg": "#13091f", "surface": "#1a1030", "accent": "#f772d0", "text": "#e8d0f0" },
+  "colors": {
+    "accentColor": "#f772d0",
+    "dangerColor": "#ff4081",
+    "warningColor": "#ffd740",
+    "successColor": "#69f0ae",
+    "accentColorLight": "#c2185b",
+    "dangerColorLight": "#d50000",
+    "warningColorLight": "#c6a700",
+    "successColorLight": "#2e7d32",
+    "bgColor": "#1a1030",
+    "surfaceColor": "#221540",
+    "borderColor": "#3a2060",
+    "textColor": "#e8d0f0",
+    "bgColorLight": "#fef0fa",
+    "surfaceColorLight": "#fce4ec",
+    "borderColorLight": "#e1bee7",
+    "textColorLight": "#1a0a20",
+    "pageBgColor": "#13091f",
+    "pageBgColorLight": "#fce4f4"
+  }
+}
