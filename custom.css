@@ -4837,6 +4837,37 @@ body.dashboard div.item.Fan.onn .img1 img {
     }
 }
 
+/* ── Force .nav-collapse visible at all widths ────────────────── */
+/* Bootstrap 2 collapses the nav at narrow widths (height:0 +       */
+/* overflow:hidden).  The Nightglass theme always shows icon-only   */
+/* navigation, so force the collapse wrapper open and hide the      */
+/* hamburger button.  This also lets dropdown menus render normally */
+/* on smartphones in portrait mode (fixes #38).                     */
+.nav-collapse,
+.nav-collapse.collapse {
+    height: auto !important;
+    overflow: visible !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.btn-navbar {
+    display: none !important;
+}
+
+/* ── Dropdown positioning for narrow viewports ────────────────── */
+/* On portrait phones / small tablets, pin the dropdown below the   */
+/* navbar and constrain its height so it scrolls if needed.         */
+@media (max-width: 767px) {
+    .navbar .nav .dropdown-menu {
+        right: 4px !important;
+        left: auto !important;
+        top: 54px !important;
+        max-height: calc(100vh - 60px);
+        overflow-y: auto;
+    }
+}
+
 /* ── Phone (< 600px): hide brand, ultra-compact ──────────────── */
 @media (max-width: 599px) {
     .navbar-inverse .navbar-inner {
