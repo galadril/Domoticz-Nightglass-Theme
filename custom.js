@@ -2921,22 +2921,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
             '<div class="ng-settings-grid">' +
 
-            /* Row 1: Navbar Icons (left) + Colors (right) */
+            /* Left column: Icons, Appearance, Effects */
             '<div class="ng-settings-section">' +
             '<div class="ng-section-header"><i class="fa-solid fa-bars"></i> Navbar Icons' + sectionToggle('enableIcons') + '</div>' +
             toggle('navbarIcons', 'Navbar Menu Icons', 'Replace PNG menu icons with Font Awesome in the navigation bar') +
             '</div>' +
 
-            '<div class="ng-settings-section ng-settings-section--colors">' +
-            '<div class="ng-section-header"><i class="fa-solid fa-droplet"></i> Colors' + sectionToggle('enableColors') + '</div>' +
-            '<div class="ng-dual-col-headers"><span class="ng-dual-label"><i class="fa-solid fa-moon"></i> Dark</span><span class="ng-dual-label"><i class="fa-solid fa-sun"></i> Light</span></div>' +
-            dualColorPicker('accentColor', 'accentColorLight', 'Accent Color') +
-            dualColorPicker('dangerColor', 'dangerColorLight', 'Danger Color') +
-            dualColorPicker('warningColor', 'warningColorLight', 'Warning Color') +
-            dualColorPicker('successColor', 'successColorLight', 'Success Color') +
-            '</div>' +
-
-            /* Row 2: Device Icons (left) + Background & Surface (right) */
             '<div class="ng-settings-section">' +
             '<div class="ng-section-header"><i class="fa-solid fa-cube"></i> Device &amp; Card Icons' + sectionToggle('enableIcons') + '</div>' +
             toggle('deviceIcons', 'Device Icons', 'Replace 48px PNG device icons with Font Awesome on cards') +
@@ -2946,17 +2936,6 @@ document.addEventListener('DOMContentLoaded', function () {
             toggle('actionIcons', 'Action Icons', 'Replace PNG action icons (delete, rename, add) in data tables') +
             '</div>' +
 
-            '<div class="ng-settings-section ng-settings-section--colors">' +
-            '<div class="ng-section-header"><i class="fa-solid fa-fill-drip"></i> Background &amp; Surface' + sectionToggle('enableColors') + '</div>' +
-            '<div class="ng-dual-col-headers"><span class="ng-dual-label"><i class="fa-solid fa-moon"></i> Dark</span><span class="ng-dual-label"><i class="fa-solid fa-sun"></i> Light</span></div>' +
-            dualColorPicker('pageBgColor', 'pageBgColorLight', 'Page Background') +
-            dualColorPicker('bgColor', 'bgColorLight', 'Navbar &amp; Cards') +
-            dualColorPicker('surfaceColor', 'surfaceColorLight', 'Card Surface') +
-            dualColorPicker('borderColor', 'borderColorLight', 'Borders') +
-            dualColorPicker('textColor', 'textColorLight', 'Text') +
-            '</div>' +
-
-            /* Row 3+: Appearance (left) */
             '<div class="ng-settings-section">' +
             '<div class="ng-section-header"><i class="fa-solid fa-swatchbook"></i> Appearance' + sectionToggle('enableAppearance') + '</div>' +
             toggle('showThemeToggle', 'Show Dark/Light Toggle', 'Display the sun/moon toggle button in the navbar') +
@@ -2969,7 +2948,6 @@ document.addEventListener('DOMContentLoaded', function () {
             toggle('uppercaseNames', 'Uppercase Device Names', 'Force device names to UPPERCASE on cards') +
             '</div>' +
 
-            /* Row 4: Effects (left) */
             '<div class="ng-settings-section">' +
             '<div class="ng-section-header"><i class="fa-solid fa-wand-magic-sparkles"></i> Effects &amp; Animations' + sectionToggle('enableEffects') + '</div>' +
             toggle('cardTilt', '3D Card Tilt', 'Subtle perspective tilt on hover') +
@@ -2980,6 +2958,26 @@ document.addEventListener('DOMContentLoaded', function () {
             toggle('cardAnimations', 'Card Animations', 'Entrance animations and hover transitions on cards') +
             toggle('navAnimations', 'Navbar Animations', 'Staggered entrances, sliding indicator, dropdown effects') +
             toggle('smoothScrolling', 'Smooth Scrolling', 'Enable smooth scroll behavior page-wide') +
+            '</div>' +
+
+            /* Right column: Color panels (together) */
+            '<div class="ng-settings-section ng-settings-section--colors">' +
+            '<div class="ng-section-header"><i class="fa-solid fa-droplet"></i> Colors' + sectionToggle('enableColors') + '</div>' +
+            '<div class="ng-dual-col-headers"><span class="ng-dual-label"><i class="fa-solid fa-moon"></i> Dark</span><span class="ng-dual-label"><i class="fa-solid fa-sun"></i> Light</span></div>' +
+            dualColorPicker('accentColor', 'accentColorLight', 'Accent Color') +
+            dualColorPicker('dangerColor', 'dangerColorLight', 'Danger Color') +
+            dualColorPicker('warningColor', 'warningColorLight', 'Warning Color') +
+            dualColorPicker('successColor', 'successColorLight', 'Success Color') +
+            '</div>' +
+
+            '<div class="ng-settings-section ng-settings-section--colors">' +
+            '<div class="ng-section-header"><i class="fa-solid fa-fill-drip"></i> Background &amp; Surface' + sectionToggle('enableColors') + '</div>' +
+            '<div class="ng-dual-col-headers"><span class="ng-dual-label"><i class="fa-solid fa-moon"></i> Dark</span><span class="ng-dual-label"><i class="fa-solid fa-sun"></i> Light</span></div>' +
+            dualColorPicker('pageBgColor', 'pageBgColorLight', 'Page Background') +
+            dualColorPicker('bgColor', 'bgColorLight', 'Navbar &amp; Cards') +
+            dualColorPicker('surfaceColor', 'surfaceColorLight', 'Card Surface') +
+            dualColorPicker('borderColor', 'borderColorLight', 'Borders') +
+            dualColorPicker('textColor', 'textColorLight', 'Text') +
             '</div>' +
 
             '</div>' + /* grid end */
