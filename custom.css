@@ -2061,6 +2061,21 @@ body table[id^="itemtable"] tr td.options {
             color: #fff !important;
         }
 
+/* General selector-switch active button — covers all widget types (scene, device, etc.) */
+.btn-group .btn-selected,
+.btn-group .btn.btn-selected {
+    background: var(--dz-accent) !important;
+    background-image: none !important;
+    border-color: var(--dz-accent) !important;
+    color: #fff !important;
+}
+
+    .btn-group .btn-selected:hover,
+    .btn-group .btn.btn-selected:hover {
+        background: var(--dz-accent-hover) !important;
+        border-color: var(--dz-accent-hover) !important;
+    }
+
 .btnsmall,
 .btnsmall-sel {
     background: var(--dz-surface-2) !important;
