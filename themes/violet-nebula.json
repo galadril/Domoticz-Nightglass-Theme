@@ -1,0 +1,26 @@
+{
+  "name": "Violet Nebula",
+  "description": "Rich purples and magentas on deep space — a cosmic palette",
+  "icon": "fa-solid fa-star",
+  "preview": { "bg": "#1a1525", "surface": "#221e30", "accent": "#c8a0ff", "text": "#e4ddf0" },
+  "colors": {
+    "accentColor": "#c8a0ff",
+    "dangerColor": "#f06292",
+    "warningColor": "#ffb74d",
+    "successColor": "#66bb6a",
+    "accentColorLight": "#7c4dff",
+    "dangerColorLight": "#c2185b",
+    "warningColorLight": "#e65100",
+    "successColorLight": "#2e7d32",
+    "bgColor": "#221e30",
+    "surfaceColor": "#2a2540",
+    "borderColor": "#3d3558",
+    "textColor": "#e4ddf0",
+    "bgColorLight": "#f8f5ff",
+    "surfaceColorLight": "#f0ecfa",
+    "borderColorLight": "#c8b8e8",
+    "textColorLight": "#1a1030",
+    "pageBgColor": "#1a1525",
+    "pageBgColorLight": "#f2eefa"
+  }
+}

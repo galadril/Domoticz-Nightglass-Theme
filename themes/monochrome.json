@@ -1,0 +1,26 @@
+{
+  "name": "Monochrome",
+  "description": "Pure grayscale — minimal, distraction-free, and timeless",
+  "icon": "fa-solid fa-circle-half-stroke",
+  "preview": { "bg": "#181818", "surface": "#222222", "accent": "#b0b0b0", "text": "#e8e8e8" },
+  "colors": {
+    "accentColor": "#b0b0b0",
+    "dangerColor": "#d06060",
+    "warningColor": "#c0a060",
+    "successColor": "#70a070",
+    "accentColorLight": "#606060",
+    "dangerColorLight": "#a04040",
+    "warningColorLight": "#907030",
+    "successColorLight": "#408040",
+    "bgColor": "#222222",
+    "surfaceColor": "#2a2a2a",
+    "borderColor": "#3a3a3a",
+    "textColor": "#e8e8e8",
+    "bgColorLight": "#f8f8f8",
+    "surfaceColorLight": "#f0f0f0",
+    "borderColorLight": "#cccccc",
+    "textColorLight": "#1a1a1a",
+    "pageBgColor": "#181818",
+    "pageBgColorLight": "#f2f2f2"
+  }
+}

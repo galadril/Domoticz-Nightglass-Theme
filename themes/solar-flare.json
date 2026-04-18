@@ -1,0 +1,26 @@
+{
+  "name": "Solar Flare",
+  "description": "Warm amber and burnt orange on deep brown — sunset dashboard vibes",
+  "icon": "fa-solid fa-sun",
+  "preview": { "bg": "#1f1a15", "surface": "#2a2218", "accent": "#f0a832", "text": "#f0e6d6" },
+  "colors": {
+    "accentColor": "#f0a832",
+    "dangerColor": "#e05555",
+    "warningColor": "#ff7043",
+    "successColor": "#66bb6a",
+    "accentColorLight": "#c07818",
+    "dangerColorLight": "#d63b3b",
+    "warningColorLight": "#e05535",
+    "successColorLight": "#388e3c",
+    "bgColor": "#2a2218",
+    "surfaceColor": "#332a1e",
+    "borderColor": "#4a3c28",
+    "textColor": "#f0e6d6",
+    "bgColorLight": "#fffaf3",
+    "surfaceColorLight": "#faf3e8",
+    "borderColorLight": "#d9c8a8",
+    "textColorLight": "#2a1f10",
+    "pageBgColor": "#1f1a15",
+    "pageBgColorLight": "#f5efe5"
+  }
+}
