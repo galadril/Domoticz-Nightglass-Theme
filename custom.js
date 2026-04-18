@@ -2923,12 +2923,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
             /* Left column: Icons, Appearance, Effects */
             '<div class="ng-settings-section">' +
-            '<div class="ng-section-header"><i class="fa-solid fa-bars"></i> Navbar Icons' + sectionToggle('enableIcons') + '</div>' +
+            '<div class="ng-section-header"><i class="fa-solid fa-bars"></i> Navbar Icons</div>' +
             toggle('navbarIcons', 'Navbar Menu Icons', 'Replace PNG menu icons with Font Awesome in the navigation bar') +
             '</div>' +
 
             '<div class="ng-settings-section">' +
-            '<div class="ng-section-header"><i class="fa-solid fa-cube"></i> Device &amp; Card Icons' + sectionToggle('enableIcons') + '</div>' +
+            '<div class="ng-section-header"><i class="fa-solid fa-cube"></i> Device &amp; Card Icons</div>' +
             toggle('deviceIcons', 'Device Icons', 'Replace 48px PNG device icons with Font Awesome on cards') +
             toggle('animateDeviceIcons', 'Animate Device Icons', 'Spin fans, flicker flames, pulse presence sensors when active') +
             toggle('favStarIcons', 'Favorite Star Icons', 'Replace PNG stars with Font Awesome star icons') +
@@ -2937,7 +2937,7 @@ document.addEventListener('DOMContentLoaded', function () {
             '</div>' +
 
             '<div class="ng-settings-section">' +
-            '<div class="ng-section-header"><i class="fa-solid fa-swatchbook"></i> Appearance' + sectionToggle('enableAppearance') + '</div>' +
+            '<div class="ng-section-header"><i class="fa-solid fa-swatchbook"></i> Appearance</div>' +
             toggle('showThemeToggle', 'Show Dark/Light Toggle', 'Display the sun/moon toggle button in the navbar') +
             select('defaultMode', 'Default Mode', [
                 { value: 'dark', label: '🌙 Dark' },
@@ -2949,7 +2949,7 @@ document.addEventListener('DOMContentLoaded', function () {
             '</div>' +
 
             '<div class="ng-settings-section">' +
-            '<div class="ng-section-header"><i class="fa-solid fa-wand-magic-sparkles"></i> Effects &amp; Animations' + sectionToggle('enableEffects') + '</div>' +
+            '<div class="ng-section-header"><i class="fa-solid fa-wand-magic-sparkles"></i> Effects &amp; Animations</div>' +
             toggle('cardTilt', '3D Card Tilt', 'Subtle perspective tilt on hover') +
             toggle('sparklines', 'Sparkline Charts', 'Mini 24h trend charts as card watermarks') +
             toggle('stalenessIndicator', 'Staleness Dot', 'Pulsing red dot on devices that haven\'t updated in 24h') +
@@ -2962,7 +2962,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             /* Right column: Color panels (together) */
             '<div class="ng-settings-section ng-settings-section--colors">' +
-            '<div class="ng-section-header"><i class="fa-solid fa-droplet"></i> Colors' + sectionToggle('enableColors') + '</div>' +
+            '<div class="ng-section-header"><i class="fa-solid fa-droplet"></i> Colors</div>' +
             '<div class="ng-dual-col-headers"><span class="ng-dual-label"><i class="fa-solid fa-moon"></i> Dark</span><span class="ng-dual-label"><i class="fa-solid fa-sun"></i> Light</span></div>' +
             dualColorPicker('accentColor', 'accentColorLight', 'Accent Color') +
             dualColorPicker('dangerColor', 'dangerColorLight', 'Danger Color') +
@@ -2971,7 +2971,7 @@ document.addEventListener('DOMContentLoaded', function () {
             '</div>' +
 
             '<div class="ng-settings-section ng-settings-section--colors">' +
-            '<div class="ng-section-header"><i class="fa-solid fa-fill-drip"></i> Background &amp; Surface' + sectionToggle('enableColors') + '</div>' +
+            '<div class="ng-section-header"><i class="fa-solid fa-fill-drip"></i> Background &amp; Surface</div>' +
             '<div class="ng-dual-col-headers"><span class="ng-dual-label"><i class="fa-solid fa-moon"></i> Dark</span><span class="ng-dual-label"><i class="fa-solid fa-sun"></i> Light</span></div>' +
             dualColorPicker('pageBgColor', 'pageBgColorLight', 'Page Background') +
             dualColorPicker('bgColor', 'bgColorLight', 'Navbar &amp; Cards') +
