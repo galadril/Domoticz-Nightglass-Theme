@@ -3168,6 +3168,9 @@ input.ui-widget-content {
 /* ══════════════════════════════════════════════════════════════════
    11. DATA TABLES
    ══════════════════════════════════════════════════════════════════ */
+table.display td {
+    width: 85px !important;
+}
 
 tr.odd td.sorting_1 {
     background-color: rgba(var(--dz-overlay-rgb), 0.04) !important;
@@ -3308,8 +3311,11 @@ table.dataTable tbody td {
     line-height: 1.45;
 }
 
+    table.dataTable tbody td:first-child {
+        border-left: 2px solid var(--dz-border) !important;
+    }
     table.dataTable tbody td:last-child {
-        border-right: none !important;
+        border-right: 2px solid var(--dz-border) !important;
     }
 
 /* Selected row */
