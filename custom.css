@@ -3515,7 +3515,17 @@ table.dataTable tbody tr.even.selected td {
 
 #settingscontent .sub-tabs {
     border-bottom: 1px solid var(--dz-surface-3);
+    position: relative;
+    margin-bottom: 48px; /* space for the Bewaar button positioned below */
 }
+
+    /* Pull "Bewaar Instellingen" out of the flex row and place it below the tab strip */
+    #settingscontent .sub-tabs > li.ng-apply-li {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        z-index: 5;
+    }
 
     #settingscontent .sub-tabs li.active a {
         background: rgba(var(--dz-accent-rgb), 0.08) !important;
