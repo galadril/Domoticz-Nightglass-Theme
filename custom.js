@@ -3282,8 +3282,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         li.appendChild(a);
 
-        // Keep the Nightglass tab directly after "Backup/Herstel" when that tab
-        // exists, and otherwise fall back to placing it before the apply button.
+        // Keep the Nightglass tab directly after the localized Backup/Restore tab
+        // when that tab exists, and otherwise fall back to placing it before the
+        // apply button.
         var applyBtn = subTabs.querySelector('a.sub-tabs-apply');
         var applyLi  = applyBtn ? applyBtn.closest('li') : null;
         var backupLi = Array.prototype.find.call(subTabs.querySelectorAll('li'), function (tab) {
