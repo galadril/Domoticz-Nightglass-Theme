@@ -3282,16 +3282,31 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         li.appendChild(a);
 
-        // Insert Nightglass tab before the "Bewaar Instellingen" apply button so it
-        // sits next to "Backup/Herstel". Also mark the apply li for CSS positioning.
+        // Append Nightglass tab to the end of the sub-tabs bar.
+        // Move the "Bewaar Instellingen" button out of sub-tabs and into
+        // the active settings pane's panel header (right-aligned in the h1).
         var applyBtn = subTabs.querySelector('a.sub-tabs-apply');
         var applyLi  = applyBtn ? applyBtn.closest('li') : null;
+        subTabs.appendChild(li);
         if (applyLi) {
-            applyLi.classList.add('ng-apply-li');
-            subTabs.insertBefore(li, applyLi);
-        } else {
-            subTabs.appendChild(li);
+            applyLi.parentNode.removeChild(applyLi);
+            settingsContent._ngApplyBtn = applyBtn;
+            ngPlaceApplyInActivePane(settingsContent);
         }
+    }
+
+    /* Move the apply button into the active tab pane's panel header h1 */
+    function ngPlaceApplyInActivePane(settingsContent) {
+        var applyBtn = settingsContent._ngApplyBtn;
+        if (!applyBtn) return;
+        var tabContent = settingsContent.querySelector('#my-tab-content');
+        if (!tabContent) return;
+        var activePane = tabContent.querySelector('.tab-pane.active') ||
+                         tabContent.querySelector('.tab-pane:not(.ng-hide)');
+        if (!activePane) return;
+        var h1 = activePane.querySelector('.page-header-small h1');
+        if (!h1 || h1.contains(applyBtn)) return;
+        h1.appendChild(applyBtn);
     }
 
     function showNightglassTab(settingsContent, subTabs) {
@@ -3328,6 +3343,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (wrap) wrap.style.display = 'none';
             var ngTab = document.getElementById('ng-settings-tab');
             if (ngTab) ngTab.classList.remove('active');
+            // Re-place apply button in the newly active pane's header
+            setTimeout(function () { ngPlaceApplyInActivePane(settingsContent); }, 100);
         });
     }
 

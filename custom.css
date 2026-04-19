@@ -3517,10 +3517,26 @@ table.dataTable tbody tr.even.selected td {
     border-bottom: 1px solid var(--dz-surface-3);
 }
 
-    /* Keep "Bewaar Instellingen" in the flex flow, right-aligned on whatever row it ends up on */
-    #settingscontent .sub-tabs > li.ng-apply-li {
+    /* "Bewaar Instellingen" is moved by JS into the active pane's panel header */
+    #settingscontent .page-header-small h1 > a.sub-tabs-apply {
         margin-left: auto;
+        padding: 5px 14px;
+        font-size: 0.875rem;
+        white-space: nowrap;
+        text-decoration: none;
+        line-height: 1.5;
+        background: var(--dz-danger) !important;
+        border: 1px solid var(--dz-danger) !important;
+        border-radius: 6px !important;
+        color: #fff !important;
+        font-weight: 600;
+        transition: background 0.18s ease, border-color 0.18s ease;
     }
+
+        #settingscontent .page-header-small h1 > a.sub-tabs-apply:hover {
+            background: var(--dz-danger-hover) !important;
+            border-color: var(--dz-danger-hover) !important;
+        }
 
     #settingscontent .sub-tabs li.active a {
         background: rgba(var(--dz-accent-rgb), 0.08) !important;
