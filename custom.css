@@ -3515,7 +3515,15 @@ table.dataTable tbody tr.even.selected td {
 
 #settingscontent .sub-tabs {
     border-bottom: 1px solid var(--dz-surface-3);
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;   /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
 }
+
+    #settingscontent .sub-tabs::-webkit-scrollbar {
+        display: none; /* Chrome/Safari */
+    }
 
     /* "Bewaar Instellingen" is moved by JS into the active pane's panel header */
     #settingscontent .page-header-small h1 > a.sub-tabs-apply {
