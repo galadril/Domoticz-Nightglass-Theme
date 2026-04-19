@@ -606,7 +606,7 @@ i.dz-fa-fav {
 /* All theme images are hidden immediately on render.        */
 /* JS then either replaces (display:none below) or marks    */
 /* .dz-icon-skipped to restore visibility.                  */
-img[src^="images/"] {
+img[src^="images/"]:not(.dd-option-image) {
     opacity: 0 !important;
     pointer-events: none !important;
 }
@@ -3183,7 +3183,7 @@ input.ui-widget-content {
 /* ══════════════════════════════════════════════════════════════════
    11. DATA TABLES
    ══════════════════════════════════════════════════════════════════ */
-table.display td {
+table.display.dataTable td {
     width: 85px !important;
 }
 
@@ -5528,6 +5528,11 @@ div.item.itemBlock:hover .dz-sparkline-wrap,
     animation: dzUpdateSpin 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
+/* Hide Domoticz native round-progress element */
+#divprogress round-progress {
+    display: none !important;
+}
+
 /* Progress ring */
 .update-progress-ring {
     position: relative;
@@ -6642,6 +6647,79 @@ body.dz-light #tabbackuprestore strong[style*="color: #fff"] {
     overflow: hidden;
 }
 
+/* ── Preset apply progress toast ─────────────────────────────── */
+
+.ng-preset-toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    z-index: 10001;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.ng-preset-toast--visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+}
+
+.ng-preset-toast-inner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-radius: 14px;
+    padding: 14px 22px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    min-width: 280px;
+}
+
+.ng-preset-toast-icon {
+    font-size: 1.3rem;
+    color: var(--dz-accent);
+    flex-shrink: 0;
+}
+
+.ng-preset-toast-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ng-preset-toast-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--dz-text);
+}
+
+.ng-preset-toast-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--dz-surface-3);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.ng-preset-toast-fill {
+    width: 0;
+    height: 100%;
+    background: linear-gradient(90deg, var(--dz-accent), var(--dz-accent-light, #6db3f8));
+    border-radius: 6px;
+    transition: width 0.25s ease;
+}
+
+.ng-preset-toast-pct {
+    font-size: 0.72rem;
+    color: var(--dz-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
 
 /* ══════════════════════════════════════════════════════════════════
    DASHBOARD 2.0 WIDGETS (dd-* components)
@@ -6649,7 +6727,7 @@ body.dz-light #tabbackuprestore strong[style*="color: #fff"] {
 
 /* Widget container */
 .dd-widget {
-    background: var(--dz-surface-2) !important;
+    /*background: var(--dz-surface-2) !important;*/
     border: 1px solid var(--dz-border) !important;
     border-radius: 14px !important;
     color: var(--dz-text) !important;
@@ -6667,318 +6745,856 @@ body.dz-light #tabbackuprestore strong[style*="color: #fff"] {
     }
 
 .dd-widget-body {
-    background: var(--dz-surface-2) !important;
+    /*background: var(--dz-surface-2) !important;*/
     color: var(--dz-text) !important;
 }
 
 /* Weather forecast widget */
-.dd-forecast {
-    color: var(--dz-text) !important;
-}
-
-.dd-forecast-header {
-    color: var(--dz-text) !important;
-    font-weight: 600;
-}
-
-.dd-forecast-grid {
-    border-top: 1px solid var(--dz-border);
-}
-
-.dd-forecast-day {
-    border-right: 1px solid var(--dz-border);
-    color: var(--dz-text) !important;
-}
-
-    .dd-forecast-day:last-child {
-        border-right: none;
-    }
-
-.dd-forecast-dayname {
-    color: var(--dz-text-soft) !important;
-    font-weight: 600;
-}
-
-.dd-forecast-temps {
-    color: var(--dz-text) !important;
-    font-weight: 600;
-}
-
-.dd-forecast-label {
-    color: var(--dz-text-muted) !important;
-}
-
-.dd-forecast-precip,
-.dd-forecast-wind {
-    color: var(--dz-text-muted) !important;
-    font-size: 0.82rem;
-}
-
-/* Sun/Moon widget */
-.dd-sun-moon {
-    color: var(--dz-text) !important;
-}
-
-.dd-sun-moon-times {
-    color: var(--dz-text-soft) !important;
-}
-
-.dd-sun-moon-label {
-    color: var(--dz-text-muted) !important;
-}
-
-/* Favorites tabs */
-.dd-favorites-tabs {
-    background: var(--dz-surface-2) !important;
-    border-bottom: 1px solid var(--dz-border) !important;
-}
-
-    .dd-favorites-tabs button,
-    .dd-favorites-tabs a {
-        color: var(--dz-text-muted) !important;
-        background: transparent !important;
-    }
-
-    .dd-favorites-tabs button:hover,
-    .dd-favorites-tabs a:hover {
+    .dd-forecast {
         color: var(--dz-text) !important;
     }
 
-    .dd-favorites-tabs .active,
-    .dd-favorites-tabs button.active,
-    .dd-favorites-tabs a.active {
-        color: var(--dz-accent) !important;
-        border-bottom-color: var(--dz-accent) !important;
+    .dd-forecast-header {
+        color: var(--dz-text) !important;
+        font-weight: 600;
     }
 
-/* Energy dashboard widget */
-.dd-energy-stats,
-.dd-energy-stat {
-    color: var(--dz-text) !important;
-}
+    .dd-forecast-grid {
+        border-top: 1px solid var(--dz-border);
+    }
 
-.dd-energy-stat-label {
-    color: var(--dz-text-muted) !important;
-}
+    .dd-forecast-day {
+        border-right: 1px solid var(--dz-border);
+        color: var(--dz-text) !important;
+    }
 
-.dd-energy-stat-value {
-    color: var(--dz-text) !important;
-}
+        .dd-forecast-day:last-child {
+            border-right: none;
+        }
 
-/* Generic widget stat blocks */
-.dd-stat-value {
-    color: var(--dz-text) !important;
-}
+    .dd-forecast-dayname {
+        color: var(--dz-text-soft) !important;
+        font-weight: 600;
+    }
 
-.dd-stat-label {
-    color: var(--dz-text-muted) !important;
-}
+    .dd-forecast-temps {
+        color: var(--dz-text) !important;
+        font-weight: 600;
+    }
 
-/* Widget edit mode outline */
-.dd-widget.dd-edit-mode {
-    border-color: rgba(var(--dz-accent-rgb), 0.4) !important;
-}
+    .dd-forecast-label {
+        color: var(--dz-text-muted) !important;
+    }
 
-/* Widget loading/error states */
-.dd-widget-loading,
-.dd-widget-error {
-    color: var(--dz-text-muted) !important;
-}
+    .dd-forecast-precip,
+    .dd-forecast-wind {
+        color: var(--dz-text-muted) !important;
+        font-size: 0.82rem;
+    }
+    /* Sun/Moon widget */
+    .dd-sun-moon {
+        color: var(--dz-text) !important;
+    }
+
+    .dd-sun-moon-times {
+        color: var(--dz-text-soft) !important;
+    }
+
+    .dd-sun-moon-label {
+        color: var(--dz-text-muted) !important;
+    }
+    /* Favorites tabs */
+    .dd-favorites-tabs {
+        background: var(--dz-surface-2) !important;
+        border-bottom: 1px solid var(--dz-border) !important;
+    }
+
+        .dd-favorites-tabs button,
+        .dd-favorites-tabs a {
+            color: var(--dz-text-muted) !important;
+            background: transparent !important;
+        }
+
+            .dd-favorites-tabs button:hover,
+            .dd-favorites-tabs a:hover {
+                color: var(--dz-text) !important;
+            }
+
+            .dd-favorites-tabs .active,
+            .dd-favorites-tabs button.active,
+            .dd-favorites-tabs a.active {
+                color: var(--dz-accent) !important;
+                border-bottom-color: var(--dz-accent) !important;
+            }
+    /* Energy dashboard widget */
+    .dd-energy-stats,
+    .dd-energy-stat {
+        color: var(--dz-text) !important;
+    }
+
+    .dd-energy-stat-label {
+        color: var(--dz-text-muted) !important;
+    }
+
+    .dd-energy-stat-value {
+        color: var(--dz-text) !important;
+    }
+    /* Generic widget stat blocks */
+    .dd-stat-value {
+        color: var(--dz-text) !important;
+    }
+
+    .dd-stat-label {
+        color: var(--dz-text-muted) !important;
+    }
+    /* Widget edit mode outline */
+    .dd-widget.dd-edit-mode {
+        border-color: rgba(var(--dz-accent-rgb), 0.4) !important;
+    }
+    /* Widget loading/error states */
+    .dd-widget-loading,
+    .dd-widget-error {
+        color: var(--dz-text-muted) !important;
+    }
+    /* ══════════════════════════════════════════════════════════════════
+   SETTINGS PAGE FORMS & TABLES
+   ══════════════════════════════════════════════════════════════════ */
+    /* Settings content panels */
+    #settingscontent h2,
+    #settingscontent h3 {
+        color: var(--dz-text) !important;
+    }
+
+    #settingscontent label {
+        color: var(--dz-text-soft) !important;
+    }
+
+    #settingscontent table td {
+        color: var(--dz-text-soft) !important;
+        padding: 6px 8px;
+    }
+
+    #settingscontent span[data-i18n] {
+        color: var(--dz-text-soft) !important;
+    }
+    /* Combobox / select elements in settings */
+    #settingscontent select,
+    #settingscontent .combobox,
+    select.combobox {
+        background: var(--dz-surface-2) !important;
+        color: var(--dz-text) !important;
+        border: 1px solid var(--dz-border) !important;
+        border-radius: 6px !important;
+        padding: 4px 8px;
+    }
+
+        #settingscontent select:focus,
+        select.combobox:focus {
+            border-color: var(--dz-accent) !important;
+            outline: none;
+        }
+
+        #settingscontent select option,
+        select.combobox option {
+            background: var(--dz-surface-2) !important;
+            color: var(--dz-text) !important;
+        }
+    /* Settings page inputs */
+    #settingscontent input[type="text"],
+    #settingscontent input[type="password"],
+    #settingscontent input[type="number"],
+    #settingscontent input[type="email"],
+    #settingscontent textarea {
+        background: var(--dz-surface-2) !important;
+        color: var(--dz-text) !important;
+        border: 1px solid var(--dz-border) !important;
+        border-radius: 6px !important;
+    }
+
+        #settingscontent input[type="text"]:focus,
+        #settingscontent input[type="password"]:focus,
+        #settingscontent input[type="number"]:focus,
+        #settingscontent textarea:focus {
+            border-color: var(--dz-accent) !important;
+        }
+    /* Settings checkboxes label text */
+    #settingscontent input[type="checkbox"] + label,
+    #settingscontent label[for] {
+        color: var(--dz-text-soft) !important;
+    }
+    /* Settings page horizontal rules and borders */
+    #settingscontent hr {
+        border-color: var(--dz-border);
+    }
+    /* Settings span6 columns */
+    #settingscontent .span6 {
+        color: var(--dz-text) !important;
+    }
+    /* ══════════════════════════════════════════════════════════════════
+   ENERGY / UTILITY DASHBOARD BACKGROUNDS
+   ══════════════════════════════════════════════════════════════════ */
+
+    #utilitycontent,
+    #energycontent,
+    #dashcontent,
+    #weathercontent,
+    #tempcontent,
+    #switchcontent,
+    #scenecontent,
+    #cameracontent {
+        background: transparent !important;
+        color: var(--dz-text) !important;
+    }
+        /* Content area headers */
+        #utilitycontent h2,
+        #energycontent h2,
+        #dashcontent h2,
+        #weathercontent h2,
+        #tempcontent h2,
+        #switchcontent h2,
+        #scenecontent h2 {
+            color: var(--dz-text) !important;
+        }
+    /* Panel/section containers inside content */
+    .container-fluid,
+    .container {
+        color: var(--dz-text);
+    }
+    /* ══════════════════════════════════════════════════════════════════
+   HIGHCHARTS ADDITIONAL FIXES
+   ══════════════════════════════════════════════════════════════════ */
+    /* Ensure chart backgrounds are fully transparent */
+    .highcharts-background {
+        fill: transparent !important;
+    }
+
+    .highcharts-plot-background {
+        fill: transparent !important;
+    }
+    /* Axis lines */
+    .highcharts-axis-line {
+        stroke: var(--dz-border-b) !important;
+    }
+    /* Tick marks */
+    .highcharts-tick {
+        stroke: var(--dz-border-b) !important;
+    }
+    /* Credits link */
+    .highcharts-credits {
+        fill: var(--dz-text-faint) !important;
+    }
+    /* Plot border */
+    .highcharts-plot-border {
+        stroke: var(--dz-border) !important;
+    }
+    /* Navigator (range selector in stock charts) */
+    .highcharts-navigator-mask-inside {
+        fill: rgba(var(--dz-accent-rgb), 0.08) !important;
+    }
+
+    .highcharts-navigator-outline {
+        stroke: var(--dz-border) !important;
+    }
+    /* Context menu */
+    .highcharts-menu {
+        background: var(--dz-surface-2) !important;
+        border: 1px solid var(--dz-border) !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+    }
+
+    .highcharts-menu-item {
+        color: var(--dz-text-soft) !important;
+        transition: background 0.15s;
+    }
+
+        .highcharts-menu-item:hover {
+            background: rgba(var(--dz-accent-rgb), 0.12) !important;
+            color: var(--dz-text) !important;
+        }
+    /* Hamburger button */
+    .highcharts-button-box {
+        fill: var(--dz-surface-2) !important;
+        stroke: var(--dz-border-b) !important;
+    }
+
+    .highcharts-button-symbol {
+        stroke: var(--dz-text-soft) !important;
+    }
+
+
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
+    }
 
 
 /* ══════════════════════════════════════════════════════════════════
-   SETTINGS PAGE FORMS & TABLES
+   DOMOTICZ SETTINGS PAGES — Nightglass Panel Redesign
+   Transforms the stock Domoticz settings forms into clean,
+   card-based sections matching the Nightglass theme settings UI.
+   Targets: #settingscontent and all its tab panes.
    ══════════════════════════════════════════════════════════════════ */
 
-/* Settings content panels */
-#settingscontent h2,
-#settingscontent h3 {
-    color: var(--dz-text) !important;
+/* ── Settings container ──────────────────────────────────────── */
+
+#settingscontent {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 12px;
+    overflow-x: hidden;
 }
+
+/* ── Page section headers (h1 inside .page-header-small) ─────── */
+
+#settingscontent .page-header-small {
+    border-bottom: none !important;
+    margin-bottom: 20px;
+    padding-bottom: 0;
+}
+
+    #settingscontent .page-header-small h1 {
+        font-size: 1.25rem !important;
+        font-weight: 700 !important;
+        color: var(--dz-text) !important;
+        letter-spacing: -0.01em;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0;
+        padding: 20px 24px 16px;
+        background: linear-gradient(135deg, rgba(var(--dz-accent-rgb), 0.10), rgba(var(--dz-accent-rgb), 0.03));
+        border: 1px solid rgba(var(--dz-accent-rgb), 0.18);
+        border-radius: 14px;
+    }
+
+        #settingscontent .page-header-small h1::before {
+            font-family: "Font Awesome 7 Free", FontAwesome, sans-serif;
+            font-weight: 900;
+            font-size: 1.1rem;
+            color: var(--dz-accent);
+            opacity: 0.85;
+        }
+
+        /* Inline icons inside page headers (e.g. Security info link) */
+        #settingscontent .page-header-small h1 i,
+        #settingscontent .page-header-small h1 .fa-regular,
+        #settingscontent .page-header-small h1 .fa-solid {
+            font-size: 0.85rem !important;
+            vertical-align: middle;
+        }
+
+        #settingscontent .page-header-small h1 a.norm-link {
+            font-size: 0.85rem;
+            line-height: 1;
+        }
+
+/* Section-specific icons via tab context */
+#tabsystem .page-header-small h1::before { content: "\f013"; }
+#tablog .page-header-small h1::before { content: "\f1c0"; }
+#tabnotifications .page-header-small h1::before { content: "\f0f3"; }
+#tabemail .page-header-small h1::before { content: "\f0e0"; }
+#tabmeters .page-header-small h1::before { content: "\f0e4"; }
+#tabenergydashboard .page-header-small h1::before { content: "\f0e7"; }
+#tabfloorplan .page-header-small h1::before { content: "\f279"; }
+#tabsecurity .page-header-small h1::before { content: "\f023"; }
+#tabother .page-header-small h1::before { content: "\f1de"; }
+#tabbackuprestore .page-header-small h1::before { content: "\f0c7"; }
+
+/* Debug Levels has its own section header */
+#debuglevels .page-header-small h1::before { content: "\f188"; }
+
+/* ── Section cards (h2 headings as card headers) ─────────────── */
+
+#settingscontent section > .row-fluid,
+#settingscontent section > div:not(.page-header-small):not(.row-fluid) {
+    margin-bottom: 16px;
+}
+
+#settingscontent .row-fluid > .span6,
+#settingscontent .row-fluid > .span4,
+#settingscontent .row-fluid > .span12 {
+    background: var(--dz-surface-2) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 14px !important;
+    padding: 0 !important;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+#settingscontent .row-fluid > .span6 > h2,
+#settingscontent .row-fluid > .span4 > h2,
+#settingscontent .row-fluid > .span12 > h2,
+#settingscontent .row-fluid > .span6 > div > h2,
+#settingscontent .row-fluid > .span4 > div > h2,
+#settingscontent .row-fluid > .span12 > div > h2 {
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    color: var(--dz-text-muted) !important;
+    background: rgba(var(--dz-overlay-rgb), 0.02) !important;
+    border-bottom: 1px solid var(--dz-border) !important;
+    border-radius: 14px 14px 0 0;
+    padding: 14px 20px !important;
+    margin: 0 !important;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ── Tables inside settings cards ────────────────────────────── */
+
+#settingscontent table.display {
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    width: 100% !important;
+    table-layout: auto !important;
+}
+
+    #settingscontent table.display td {
+        border: none !important;
+        border-bottom: 1px solid rgba(var(--dz-overlay-rgb), 0.04) !important;
+        padding: 10px 16px !important;
+        color: var(--dz-text-soft) !important;
+        font-size: 0.86rem !important;
+        vertical-align: middle !important;
+        width: auto !important;
+        background: transparent !important;
+    }
+
+    /* Label cells (align="right") — fixed width, right-aligned */
+    #settingscontent table.display td[align="right"] {
+        white-space: nowrap;
+        padding-right: 12px !important;
+        text-align: right;
+    }
+
+    /* Value cells — no forced width; table-layout:auto distributes space naturally */
+
+    /* Constrain all inputs/selects/textareas inside settings tables */
+    #settingscontent table.display input[type="text"],
+    #settingscontent table.display input[type="input"],
+    #settingscontent table.display input[type="password"],
+    #settingscontent table.display input[type="email"],
+    #settingscontent table.display input[type="number"],
+    #settingscontent table.display textarea {
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    #settingscontent table.display select {
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    #settingscontent table.display tr:last-child td {
+        border-bottom: none !important;
+    }
+
+    #settingscontent table.display tr:hover td {
+        background: rgba(var(--dz-overlay-rgb), 0.02) !important;
+    }
+
+    #settingscontent table.display thead th {
+        background: rgba(var(--dz-overlay-rgb), 0.02) !important;
+        border-bottom: 1px solid var(--dz-border) !important;
+        color: var(--dz-text-muted) !important;
+        font-size: 0.75rem !important;
+        font-weight: 700 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 10px 20px !important;
+    }
+
+/* ── Labels & text ───────────────────────────────────────────── */
 
 #settingscontent label {
     color: var(--dz-text-soft) !important;
+    font-weight: 500 !important;
+    font-size: 0.88rem !important;
 }
 
-#settingscontent table td {
-    color: var(--dz-text-soft) !important;
-    padding: 6px 8px;
+#settingscontent td[align="right"] label,
+#settingscontent td[align="right"] span[data-i18n] {
+    color: var(--dz-text-muted) !important;
+    font-size: 0.82rem !important;
+    white-space: nowrap;
 }
 
 #settingscontent span[data-i18n] {
     color: var(--dz-text-soft) !important;
 }
 
-/* Combobox / select elements in settings */
-#settingscontent select,
-#settingscontent .combobox,
-select.combobox {
-    background: var(--dz-surface-2) !important;
-    color: var(--dz-text) !important;
-    border: 1px solid var(--dz-border) !important;
-    border-radius: 6px !important;
-    padding: 4px 8px;
+#settingscontent p {
+    color: var(--dz-text-soft) !important;
+    padding: 8px 20px;
+    font-size: 0.85rem;
+    line-height: 1.5;
 }
 
-    #settingscontent select:focus,
-    select.combobox:focus {
-        border-color: var(--dz-accent) !important;
-        outline: none;
-    }
+/* ── Inputs inside settings ──────────────────────────────────── */
 
-    #settingscontent select option,
-    select.combobox option {
-        background: var(--dz-surface-2) !important;
-        color: var(--dz-text) !important;
-    }
-
-/* Settings page inputs */
 #settingscontent input[type="text"],
+#settingscontent input[type="input"],
 #settingscontent input[type="password"],
 #settingscontent input[type="number"],
 #settingscontent input[type="email"],
 #settingscontent textarea {
-    background: var(--dz-surface-2) !important;
+    background: var(--dz-surface-3) !important;
     color: var(--dz-text) !important;
-    border: 1px solid var(--dz-border) !important;
-    border-radius: 6px !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 8px !important;
+    padding: 6px 12px !important;
+    font-size: 0.86rem !important;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
     #settingscontent input[type="text"]:focus,
+    #settingscontent input[type="input"]:focus,
     #settingscontent input[type="password"]:focus,
     #settingscontent input[type="number"]:focus,
+    #settingscontent input[type="email"]:focus,
     #settingscontent textarea:focus {
         border-color: var(--dz-accent) !important;
+        box-shadow: 0 0 0 3px rgba(var(--dz-accent-rgb), 0.12) !important;
+        outline: none !important;
     }
 
-/* Settings checkboxes label text */
-#settingscontent input[type="checkbox"] + label,
-#settingscontent label[for] {
-    color: var(--dz-text-soft) !important;
-}
-
-/* Settings page horizontal rules and borders */
-#settingscontent hr {
-    border-color: var(--dz-border);
-}
-
-/* Settings span6 columns */
-#settingscontent .span6 {
+#settingscontent select,
+#settingscontent .combobox {
+    background: var(--dz-surface-3) !important;
     color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 8px !important;
+    padding: 6px 12px !important;
+    font-size: 0.86rem !important;
+    transition: border-color 0.2s;
 }
 
+    #settingscontent select:focus,
+    #settingscontent .combobox:focus {
+        border-color: var(--dz-accent) !important;
+        box-shadow: 0 0 0 3px rgba(var(--dz-accent-rgb), 0.12) !important;
+        outline: none !important;
+    }
 
-/* ══════════════════════════════════════════════════════════════════
-   ENERGY / UTILITY DASHBOARD BACKGROUNDS
-   ══════════════════════════════════════════════════════════════════ */
-
-#utilitycontent,
-#energycontent,
-#dashcontent,
-#weathercontent,
-#tempcontent,
-#switchcontent,
-#scenecontent,
-#cameracontent {
-    background: transparent !important;
-    color: var(--dz-text) !important;
-}
-
-/* Content area headers */
-#utilitycontent h2,
-#energycontent h2,
-#dashcontent h2,
-#weathercontent h2,
-#tempcontent h2,
-#switchcontent h2,
-#scenecontent h2 {
-    color: var(--dz-text) !important;
-}
-
-/* Panel/section containers inside content */
-.container-fluid,
-.container {
-    color: var(--dz-text);
-}
-
-
-/* ══════════════════════════════════════════════════════════════════
-   HIGHCHARTS ADDITIONAL FIXES
-   ══════════════════════════════════════════════════════════════════ */
-
-/* Ensure chart backgrounds are fully transparent */
-.highcharts-background {
-    fill: transparent !important;
-}
-
-.highcharts-plot-background {
-    fill: transparent !important;
-}
-
-/* Axis lines */
-.highcharts-axis-line {
-    stroke: var(--dz-border-b) !important;
-}
-
-/* Tick marks */
-.highcharts-tick {
-    stroke: var(--dz-border-b) !important;
-}
-
-/* Credits link */
-.highcharts-credits {
-    fill: var(--dz-text-faint) !important;
-}
-
-/* Plot border */
-.highcharts-plot-border {
-    stroke: var(--dz-border) !important;
-}
-
-/* Navigator (range selector in stock charts) */
-.highcharts-navigator-mask-inside {
-    fill: rgba(var(--dz-accent-rgb), 0.08) !important;
-}
-
-.highcharts-navigator-outline {
-    stroke: var(--dz-border) !important;
-}
-
-/* Context menu */
-.highcharts-menu {
-    background: var(--dz-surface-2) !important;
-    border: 1px solid var(--dz-border) !important;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
-}
-
-.highcharts-menu-item {
-    color: var(--dz-text-soft) !important;
-    transition: background 0.15s;
-}
-
-    .highcharts-menu-item:hover {
-        background: rgba(var(--dz-accent-rgb), 0.12) !important;
+    #settingscontent select option {
+        background: var(--dz-surface-2) !important;
         color: var(--dz-text) !important;
     }
 
-/* Hamburger button */
-.highcharts-button-box {
-    fill: var(--dz-surface-2) !important;
-    stroke: var(--dz-border-b) !important;
+/* ── Checkboxes ──────────────────────────────────────────────── */
+
+#settingscontent input[type="checkbox"] {
+    accent-color: var(--dz-accent);
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+    margin-right: 6px;
+    cursor: pointer;
 }
 
-.highcharts-button-symbol {
-    stroke: var(--dz-text-soft) !important;
+    #settingscontent input[type="checkbox"] + label {
+        cursor: pointer;
+        vertical-align: middle;
+    }
+
+/* ── Buttons inside settings ─────────────────────────────────── */
+
+#settingscontent .btn-info {
+    background: var(--dz-accent) !important;
+    border-color: var(--dz-accent) !important;
+    color: #fff !important;
+    border-radius: 8px !important;
+    padding: 5px 16px !important;
+    font-size: 0.82rem !important;
+    font-weight: 500;
+    transition: background 0.15s;
 }
 
+    #settingscontent .btn-info:hover {
+        background: var(--dz-accent-hover) !important;
+    }
 
-@media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-        scroll-behavior: auto !important;
+#settingscontent .btn-danger {
+    background: var(--dz-danger) !important;
+    border-color: var(--dz-danger) !important;
+    color: #fff !important;
+    border-radius: 8px !important;
+    padding: 5px 16px !important;
+    font-size: 0.82rem !important;
+    font-weight: 500;
+}
+
+    #settingscontent .btn-danger:hover {
+        background: var(--dz-danger-hover) !important;
+    }
+
+#settingscontent .btn-primary {
+    border-radius: 8px !important;
+    padding: 8px 22px !important;
+    font-size: 0.88rem !important;
+    font-weight: 600;
+}
+
+#settingscontent .btn-warning {
+    border-radius: 8px !important;
+    padding: 8px 22px !important;
+    font-size: 0.88rem !important;
+    font-weight: 600;
+}
+
+/* ── Accordion / Card headers (Notifications tab) ────────────── */
+
+#settingscontent .card-header {
+    background: rgba(var(--dz-overlay-rgb), 0.02) !important;
+    border-bottom: 1px solid var(--dz-border) !important;
+    border-radius: 14px 14px 0 0;
+    padding: 0 !important;
+    margin: 0;
+}
+
+    #settingscontent .card-header a {
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px !important;
+        text-decoration: none !important;
+        color: var(--dz-text-muted) !important;
+        transition: color 0.2s;
+    }
+
+        #settingscontent .card-header a:hover {
+            color: var(--dz-text) !important;
+        }
+
+    #settingscontent .card-header h2.mb-0 {
+        font-size: 0.78rem !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.06em !important;
+        color: inherit !important;
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        width: 100%;
+    }
+
+        #settingscontent .card-header h2.mb-0 i {
+            color: var(--dz-text-muted) !important;
+            font-size: 0.75rem;
+            transition: transform 0.25s ease, color 0.2s;
+            float: none !important;
+            margin-left: auto;
+            order: 99;
+        }
+
+#settingscontent .card-body {
+    padding: 12px 16px 16px !important;
+}
+
+    /* Help text and links below tables in card bodies */
+    #settingscontent .card-body > span,
+    #settingscontent .card-body > a,
+    #settingscontent .card-body > .norm-link {
+        display: inline-block;
+        padding: 4px 0;
+        font-size: 0.82rem;
+        color: var(--dz-text-muted);
+    }
+
+/* Accordion card wrappers — give them card appearance */
+#settingscontent .accordion .span6,
+#settingscontent .accordion .span12,
+#tabnotifications .row-fluid > .span6,
+#tabnotifications .row-fluid > .span12 {
+    background: var(--dz-surface-2) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 14px !important;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+/* ── Collapse body transition ────────────────────────────────── */
+
+#settingscontent .collapse {
+    transition: max-height 0.3s ease;
+}
+
+/* ── Sunrise/sunset label ────────────────────────────────────── */
+
+#settingscontent #sunriseset {
+    color: var(--dz-text-muted) !important;
+    font-size: 0.85rem;
+    padding: 8px 16px;
+    display: block;
+    line-height: 1.6;
+}
+
+/* ── Notification tab accordion cards — consistent inner spacing ── */
+
+#tabnotifications .card-body span[data-i18n],
+#tabnotifications .card-body > span {
+    display: inline-block;
+    padding: 4px 0;
+    font-size: 0.82rem;
+    color: var(--dz-text-muted);
+}
+
+/* Warning text in notification cards */
+#settingscontent span[style*="color:red"],
+#settingscontent span[style*="color: red"],
+#tabnotifications span[style*="color:red"],
+#tabnotifications span[style*="color: red"] {
+    color: var(--dz-danger) !important;
+    font-size: 0.82rem;
+}
+
+/* FCM / wide input tables — ensure textareas don't overflow */
+#settingscontent table.display textarea {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    resize: vertical;
+}
+
+/* Inline help text (font-size:11px/12px spans inside table cells) */
+#settingscontent table.display td div[style*="font-size"],
+#settingscontent table.display td span[style*="font-size"] {
+    color: var(--dz-text-faint) !important;
+    font-size: 0.78rem !important;
+    margin-top: 4px;
+}
+
+/* File input inside settings */
+#settingscontent table.display input[type="file"] {
+    color: var(--dz-text-soft);
+    font-size: 0.82rem;
+    max-width: 100%;
+}
+
+/* ── Norm-link inside settings ───────────────────────────────── */
+
+#settingscontent .norm-link,
+#settingscontent .norm-link a,
+#settingscontent a.norm-link {
+    color: var(--dz-accent) !important;
+}
+
+    #settingscontent .norm-link:hover,
+    #settingscontent a.norm-link:hover {
+        color: var(--dz-accent-light) !important;
+    }
+
+/* ── Backup/Restore tab — center section ─────────────────────── */
+
+#tabbackuprestore section {
+    text-align: center;
+}
+
+#tabbackuprestore .row-fluid > .span12 {
+    text-align: center;
+    padding: 20px !important;
+}
+
+#tabbackuprestore span[style*="color:#fff"],
+#tabbackuprestore strong[style*="color:#fff"],
+#tabbackuprestore span[style*="color: #fff"],
+#tabbackuprestore strong[style*="color: #fff"] {
+    color: var(--dz-text) !important;
+}
+
+#tabbackuprestore #dbsize_display,
+#tabbackuprestore #dbfreesize_display {
+    color: var(--dz-accent) !important;
+}
+
+/* ── Security tab info link ──────────────────────────────────── */
+
+#tabsecurity .norm-link {
+    display: inline-block;
+    padding: 8px 20px;
+}
+
+/* ── Notification red warning text ───────────────────────────── */
+
+#settingscontent span[style*="color:red"],
+#settingscontent span[style*="color: red"] {
+    color: var(--dz-danger) !important;
+}
+
+/* ── File input styling ──────────────────────────────────────── */
+
+#settingscontent input[type="file"] {
+    color: var(--dz-text-soft);
+    font-size: 0.84rem;
+}
+
+/* ── Inline help text ────────────────────────────────────────── */
+
+#settingscontent td span[style*="font-size:11px"],
+#settingscontent td span[style*="font-size:12px"],
+#settingscontent td div[style*="font-size:11px"],
+#settingscontent td div[style*="font-size:12px"] {
+    color: var(--dz-text-faint) !important;
+    font-size: 0.78rem !important;
+}
+
+/* ── Energy Dashboard specific — wider selects ───────────────── */
+
+#tabenergydashboard select {
+    max-width: 100%;
+}
+
+/* ── Card entrance animation for settings sections ───────────── */
+
+#settingscontent .row-fluid > [class^="span"] {
+    animation: ngSettingsCardIn 0.35s ease both;
+}
+
+@keyframes ngSettingsCardIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Stagger the cards */
+#settingscontent .row-fluid:nth-child(1) > [class^="span"] { animation-delay: 0.05s; }
+#settingscontent .row-fluid:nth-child(2) > [class^="span"] { animation-delay: 0.10s; }
+#settingscontent .row-fluid:nth-child(3) > [class^="span"] { animation-delay: 0.15s; }
+#settingscontent .row-fluid:nth-child(4) > [class^="span"] { animation-delay: 0.20s; }
+#settingscontent .row-fluid:nth-child(5) > [class^="span"] { animation-delay: 0.25s; }
+#settingscontent .row-fluid:nth-child(6) > [class^="span"] { animation-delay: 0.30s; }
+
+/* ── Textarea in settings ────────────────────────────────────── */
+
+#settingscontent textarea {
+    min-height: 80px;
+    resize: vertical;
+    font-family: 'Courier New', 'Consolas', monospace;
+}
+
+/* ── Responsive: single column on narrow screens ─────────────── */
+
+@media (max-width: 767px) {
+    #settingscontent .row-fluid > .span6,
+    #settingscontent .row-fluid > .span4 {
+        margin-left: 0 !important;
+        width: 100% !important;
     }
 }

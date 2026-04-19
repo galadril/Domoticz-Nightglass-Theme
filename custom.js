@@ -1,3 +1,4 @@
+
 /*
  /*
  *  Domoticz Dark Theme - custom.js
@@ -697,6 +698,12 @@ if (document.readyState === 'loading') {
     function processImg(img) {
         if (img.classList.contains('dz-icon-replaced') ||
             img.classList.contains('dz-icon-skipped'))  return false;
+
+        /* Skip images inside icon-picker dropdowns (Edit Device dialog) */
+        if (img.classList.contains('dd-option-image') || img.closest('.dd-options, .dd-select')) {
+            img.classList.add('dz-icon-skipped');
+            return false;
+        }
 
         var src = img.getAttribute('src') || '';
 
@@ -1819,7 +1826,7 @@ document.addEventListener('DOMContentLoaded', function () {
         /* ── 2. Replace canvas progress with SVG ring ───────────── */
         var divProg = document.getElementById('divprogress');
         if (divProg) {
-            var canvas = divProg.querySelector('canvas');
+            var canvas = divProg.querySelector('canvas') || divProg.querySelector('round-progress');
             if (canvas) {
                 var ringDiv = document.createElement('div');
                 ringDiv.className = 'update-progress-ring';
@@ -2898,7 +2905,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /* ── Build the settings panel HTML ─────────────────────────── */
 
-    function buildPanel() {
+    function buildPanel(opts) {
+        opts = opts || {};
         var s = _settings || DEFAULTS;
 
         function toggle(key, label, desc) {
@@ -2980,11 +2988,11 @@ document.addEventListener('DOMContentLoaded', function () {
             '<i class="fa-solid fa-rotate-left"></i> Reset</button></div>' +
 
             '<div class="ng-presets-section" id="ngPresetsSection">' +
-            '<button class="ng-presets-toggle" id="ngPresetsToggle" type="button">' +
+            '<button class="ng-presets-toggle' + (opts.presetsOpen ? ' ng-presets-toggle--open' : '') + '" id="ngPresetsToggle" type="button">' +
             '<div class="ng-presets-toggle-left"><i class="fa-solid fa-swatchbook"></i> Theme Presets</div>' +
             '<i class="fa-solid fa-chevron-down ng-presets-chevron"></i>' +
             '</button>' +
-            '<div class="ng-presets-body" id="ngPresetsBody" style="display:none;">' +
+            '<div class="ng-presets-body" id="ngPresetsBody"' + (opts.presetsOpen ? '' : ' style="display:none;"') + '>' +
             '<div class="ng-presets-grid" id="ngPresetsGrid">' +
             '<div class="ng-preset-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading presets…</div>' +
             '</div></div></div>' +
@@ -3171,16 +3179,75 @@ document.addEventListener('DOMContentLoaded', function () {
     function applyPreset(preset) {
         if (!preset || !preset.colors) return;
         var colors = preset.colors;
-        Object.keys(colors).forEach(function (key) {
-            saveSetting(key, colors[key]);
+        var keys = Object.keys(colors);
+        var total = keys.length;
+        var completed = 0;
+
+        // Show progress toast
+        var toast = document.createElement('div');
+        toast.className = 'ng-preset-toast';
+        toast.innerHTML =
+            '<div class="ng-preset-toast-inner">' +
+            '<i class="fa-solid fa-palette ng-preset-toast-icon"></i>' +
+            '<div class="ng-preset-toast-content">' +
+            '<span class="ng-preset-toast-label">Applying theme…</span>' +
+            '<div class="ng-preset-toast-bar"><div class="ng-preset-toast-fill"></div></div>' +
+            '<span class="ng-preset-toast-pct">0 / ' + total + '</span>' +
+            '</div></div>';
+        document.body.appendChild(toast);
+        var fill = toast.querySelector('.ng-preset-toast-fill');
+        var pct = toast.querySelector('.ng-preset-toast-pct');
+        var label = toast.querySelector('.ng-preset-toast-label');
+
+        // Force reflow then add visible class for entrance animation
+        toast.offsetHeight;
+        toast.classList.add('ng-preset-toast--visible');
+
+        var promises = keys.map(function (key) {
+            _settings[key] = colors[key];
+            saveToLocalStorage();
+            if (_apiAvailable) {
+                var p = setUvar(key, colors[key]);
+                if (p && typeof p.then === 'function') {
+                    return p.then(function () {
+                        completed++;
+                        var percent = Math.round((completed / total) * 100);
+                        fill.style.width = percent + '%';
+                        pct.textContent = completed + ' / ' + total;
+                    }).catch(function () {
+                        completed++;
+                        var percent = Math.round((completed / total) * 100);
+                        fill.style.width = percent + '%';
+                        pct.textContent = completed + ' / ' + total;
+                    });
+                }
+            }
+            completed++;
+            return Promise.resolve();
         });
-        // Re-render the settings panel to reflect new colors
-        var wrap = document.getElementById('ng-theme-settings-wrap');
-        if (wrap) {
-            wrap.innerHTML = buildPanel();
-            bindEvents(wrap);
-            loadPresets(wrap);
-        }
+
+        Promise.all(promises).then(function () {
+            applySettings();
+            label.textContent = 'Theme applied!';
+            fill.style.width = '100%';
+            pct.textContent = total + ' / ' + total;
+            toast.querySelector('.ng-preset-toast-icon').className = 'fa-solid fa-circle-check ng-preset-toast-icon';
+
+            // Re-render the settings panel to reflect new colors
+            var wrap = document.getElementById('ng-theme-settings-wrap');
+            if (wrap) {
+                var presetsBody = wrap.querySelector('#ngPresetsBody');
+                var presetsWereOpen = presetsBody && presetsBody.style.display !== 'none';
+                wrap.innerHTML = buildPanel({ presetsOpen: presetsWereOpen });
+                bindEvents(wrap);
+                loadPresets(wrap);
+            }
+
+            setTimeout(function () {
+                toast.classList.remove('ng-preset-toast--visible');
+                setTimeout(function () { toast.remove(); }, 350);
+            }, 1500);
+        });
     }
 
     /* ── Inject panel into settings page ───────────────────────── */
