@@ -3517,6 +3517,8 @@ table.dataTable tbody tr.even.selected td {
     border-bottom: 1px solid var(--dz-surface-3);
     position: relative;
     margin-bottom: 48px; /* space for the Bewaar button positioned below */
+    flex-wrap: nowrap;
+    overflow-x: auto;
 }
 
     /* Pull "Bewaar Instellingen" out of the flex row and place it below the tab strip */
