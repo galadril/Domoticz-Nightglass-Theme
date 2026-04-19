@@ -3535,6 +3535,12 @@ table.dataTable tbody tr.even.selected td {
         font-weight: 600;
     }
 
+    #settingscontent .sub-tabs > li#ng-settings-tab > a {
+        padding-left: 12px;
+        padding-right: 12px;
+        white-space: nowrap;
+    }
+
     #settingscontent .sub-tabs li:not(.active) a {
         color: var(--dz-text-muted);
         border-bottom: 2px solid transparent;

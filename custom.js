@@ -3276,18 +3276,33 @@ document.addEventListener('DOMContentLoaded', function () {
         li.id = 'ng-settings-tab';
         var a = document.createElement('a');
         a.href = 'javascript:void(0)';
-        a.innerHTML = '<i class="fa-solid fa-palette" style="margin-right:4px;"></i> Nightglass';
+        a.textContent = 'Nightglass';
         a.addEventListener('click', function () {
             showNightglassTab(settingsContent, subTabs);
         });
         li.appendChild(a);
 
-        // Insert Nightglass tab before the "Bewaar Instellingen" apply button so it
-        // sits next to "Backup/Herstel". Also mark the apply li for CSS positioning.
+        // Keep the Nightglass tab directly after "Backup/Herstel" when that tab
+        // exists, and otherwise fall back to placing it before the apply button.
         var applyBtn = subTabs.querySelector('a.sub-tabs-apply');
         var applyLi  = applyBtn ? applyBtn.closest('li') : null;
+        var backupLi = Array.prototype.find.call(subTabs.querySelectorAll('li'), function (tab) {
+            var link = tab.querySelector('a');
+            var label = link ? link.textContent.replace(/\s+/g, ' ').trim().toLowerCase() : '';
+            return label === 'backup/herstel' || label === 'backup / herstel' || label === 'backup/restore';
+        });
         if (applyLi) {
             applyLi.classList.add('ng-apply-li');
+        }
+        if (backupLi) {
+            if (backupLi.nextElementSibling) {
+                subTabs.insertBefore(li, backupLi.nextElementSibling);
+            } else if (applyLi) {
+                subTabs.insertBefore(li, applyLi);
+            } else {
+                subTabs.appendChild(li);
+            }
+        } else if (applyLi) {
             subTabs.insertBefore(li, applyLi);
         } else {
             subTabs.appendChild(li);
