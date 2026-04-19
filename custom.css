@@ -3183,7 +3183,7 @@ input.ui-widget-content {
 /* ══════════════════════════════════════════════════════════════════
    11. DATA TABLES
    ══════════════════════════════════════════════════════════════════ */
-table.display td {
+table.display.dataTable td {
     width: 85px !important;
 }
 
@@ -7047,6 +7047,7 @@ body.dz-light #tabbackuprestore strong[style*="color: #fff"] {
     max-width: 1100px;
     margin: 0 auto;
     padding: 0 12px;
+    overflow-x: hidden;
 }
 
 /* ── Page section headers (h1 inside .page-header-small) ─────── */
@@ -7138,17 +7139,46 @@ body.dz-light #tabbackuprestore strong[style*="color: #fff"] {
     border-radius: 0 !important;
     background: transparent !important;
     width: 100% !important;
+    table-layout: auto !important;
 }
 
     #settingscontent table.display td {
         border: none !important;
         border-bottom: 1px solid rgba(var(--dz-overlay-rgb), 0.04) !important;
-        padding: 12px 20px !important;
+        padding: 10px 16px !important;
         color: var(--dz-text-soft) !important;
-        font-size: 0.88rem !important;
+        font-size: 0.86rem !important;
         vertical-align: middle !important;
         width: auto !important;
         background: transparent !important;
+    }
+
+    /* Label cells (align="right") — fixed width, right-aligned */
+    #settingscontent table.display td[align="right"] {
+        white-space: nowrap;
+        padding-right: 12px !important;
+        text-align: right;
+    }
+
+    /* Input cells — allow content to fill available space */
+    #settingscontent table.display td:not([align="right"]) {
+        width: 100% !important;
+    }
+
+    /* Constrain all inputs/selects/textareas inside settings tables */
+    #settingscontent table.display input[type="text"],
+    #settingscontent table.display input[type="input"],
+    #settingscontent table.display input[type="password"],
+    #settingscontent table.display input[type="email"],
+    #settingscontent table.display input[type="number"],
+    #settingscontent table.display textarea {
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    #settingscontent table.display select {
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     #settingscontent table.display tr:last-child td {
@@ -7344,7 +7374,7 @@ body.dz-light #tabbackuprestore strong[style*="color: #fff"] {
         margin: 0 !important;
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        justify-content: flex-start;
         width: 100%;
     }
 
@@ -7354,11 +7384,22 @@ body.dz-light #tabbackuprestore strong[style*="color: #fff"] {
             transition: transform 0.25s ease, color 0.2s;
             float: none !important;
             margin-left: auto;
+            order: 99;
         }
 
 #settingscontent .card-body {
-    padding: 4px 6px 16px !important;
+    padding: 12px 16px 16px !important;
 }
+
+    /* Help text and links below tables in card bodies */
+    #settingscontent .card-body > span,
+    #settingscontent .card-body > a,
+    #settingscontent .card-body > .norm-link {
+        display: inline-block;
+        padding: 4px 0;
+        font-size: 0.82rem;
+        color: var(--dz-text-muted);
+    }
 
 /* Accordion card wrappers — give them card appearance */
 #settingscontent .accordion .span6,
@@ -7383,8 +7424,50 @@ body.dz-light #tabbackuprestore strong[style*="color: #fff"] {
 #settingscontent #sunriseset {
     color: var(--dz-text-muted) !important;
     font-size: 0.85rem;
-    padding: 8px 20px;
+    padding: 8px 16px;
     display: block;
+    line-height: 1.6;
+}
+
+/* ── Notification tab accordion cards — consistent inner spacing ── */
+
+#tabnotifications .card-body span[data-i18n],
+#tabnotifications .card-body > span {
+    display: inline-block;
+    padding: 4px 0;
+    font-size: 0.82rem;
+    color: var(--dz-text-muted);
+}
+
+/* Warning text in notification cards */
+#settingscontent span[style*="color:red"],
+#settingscontent span[style*="color: red"],
+#tabnotifications span[style*="color:red"],
+#tabnotifications span[style*="color: red"] {
+    color: var(--dz-danger) !important;
+    font-size: 0.82rem;
+}
+
+/* FCM / wide input tables — ensure textareas don't overflow */
+#settingscontent table.display textarea {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    resize: vertical;
+}
+
+/* Inline help text (font-size:11px/12px spans inside table cells) */
+#settingscontent table.display td div[style*="font-size"],
+#settingscontent table.display td span[style*="font-size"] {
+    color: var(--dz-text-faint) !important;
+    font-size: 0.78rem !important;
+    margin-top: 4px;
+}
+
+/* File input inside settings */
+#settingscontent table.display input[type="file"] {
+    color: var(--dz-text-soft);
+    font-size: 0.82rem;
+    max-width: 100%;
 }
 
 /* ── Norm-link inside settings ───────────────────────────────── */
