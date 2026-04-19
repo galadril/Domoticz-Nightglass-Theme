@@ -3173,19 +3173,75 @@ document.addEventListener('DOMContentLoaded', function () {
     function applyPreset(preset) {
         if (!preset || !preset.colors) return;
         var colors = preset.colors;
-        Object.keys(colors).forEach(function (key) {
-            saveSetting(key, colors[key]);
+        var keys = Object.keys(colors);
+        var total = keys.length;
+        var completed = 0;
+
+        // Show progress toast
+        var toast = document.createElement('div');
+        toast.className = 'ng-preset-toast';
+        toast.innerHTML =
+            '<div class="ng-preset-toast-inner">' +
+            '<i class="fa-solid fa-palette ng-preset-toast-icon"></i>' +
+            '<div class="ng-preset-toast-content">' +
+            '<span class="ng-preset-toast-label">Applying theme…</span>' +
+            '<div class="ng-preset-toast-bar"><div class="ng-preset-toast-fill"></div></div>' +
+            '<span class="ng-preset-toast-pct">0 / ' + total + '</span>' +
+            '</div></div>';
+        document.body.appendChild(toast);
+        var fill = toast.querySelector('.ng-preset-toast-fill');
+        var pct = toast.querySelector('.ng-preset-toast-pct');
+        var label = toast.querySelector('.ng-preset-toast-label');
+
+        // Force reflow then add visible class for entrance animation
+        toast.offsetHeight;
+        toast.classList.add('ng-preset-toast--visible');
+
+        var promises = keys.map(function (key) {
+            _settings[key] = colors[key];
+            saveToLocalStorage();
+            if (_apiAvailable) {
+                var p = setUvar(key, colors[key]);
+                if (p && typeof p.then === 'function') {
+                    return p.then(function () {
+                        completed++;
+                        var percent = Math.round((completed / total) * 100);
+                        fill.style.width = percent + '%';
+                        pct.textContent = completed + ' / ' + total;
+                    }).catch(function () {
+                        completed++;
+                        var percent = Math.round((completed / total) * 100);
+                        fill.style.width = percent + '%';
+                        pct.textContent = completed + ' / ' + total;
+                    });
+                }
+            }
+            completed++;
+            return Promise.resolve();
         });
-        // Re-render the settings panel to reflect new colors
-        var wrap = document.getElementById('ng-theme-settings-wrap');
-        if (wrap) {
-            // Check whether the presets panel was open before re-render
-            var presetsBody = wrap.querySelector('#ngPresetsBody');
-            var presetsWereOpen = presetsBody && presetsBody.style.display !== 'none';
-            wrap.innerHTML = buildPanel({ presetsOpen: presetsWereOpen });
-            bindEvents(wrap);
-            loadPresets(wrap);
-        }
+
+        Promise.all(promises).then(function () {
+            applySettings();
+            label.textContent = 'Theme applied!';
+            fill.style.width = '100%';
+            pct.textContent = total + ' / ' + total;
+            toast.querySelector('.ng-preset-toast-icon').className = 'fa-solid fa-circle-check ng-preset-toast-icon';
+
+            // Re-render the settings panel to reflect new colors
+            var wrap = document.getElementById('ng-theme-settings-wrap');
+            if (wrap) {
+                var presetsBody = wrap.querySelector('#ngPresetsBody');
+                var presetsWereOpen = presetsBody && presetsBody.style.display !== 'none';
+                wrap.innerHTML = buildPanel({ presetsOpen: presetsWereOpen });
+                bindEvents(wrap);
+                loadPresets(wrap);
+            }
+
+            setTimeout(function () {
+                toast.classList.remove('ng-preset-toast--visible');
+                setTimeout(function () { toast.remove(); }, 350);
+            }, 1500);
+        });
     }
 
     /* ── Inject panel into settings page ───────────────────────── */

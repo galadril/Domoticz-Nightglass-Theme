@@ -6647,6 +6647,79 @@ body.dz-light #tabbackuprestore strong[style*="color: #fff"] {
     overflow: hidden;
 }
 
+/* ── Preset apply progress toast ─────────────────────────────── */
+
+.ng-preset-toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    z-index: 10001;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.ng-preset-toast--visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+}
+
+.ng-preset-toast-inner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-radius: 14px;
+    padding: 14px 22px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    min-width: 280px;
+}
+
+.ng-preset-toast-icon {
+    font-size: 1.3rem;
+    color: var(--dz-accent);
+    flex-shrink: 0;
+}
+
+.ng-preset-toast-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ng-preset-toast-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--dz-text);
+}
+
+.ng-preset-toast-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--dz-surface-3);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.ng-preset-toast-fill {
+    width: 0;
+    height: 100%;
+    background: linear-gradient(90deg, var(--dz-accent), var(--dz-accent-light, #6db3f8));
+    border-radius: 6px;
+    transition: width 0.25s ease;
+}
+
+.ng-preset-toast-pct {
+    font-size: 0.72rem;
+    color: var(--dz-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
 
 /* ══════════════════════════════════════════════════════════════════
    DASHBOARD 2.0 WIDGETS (dd-* components)
