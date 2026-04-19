@@ -3287,7 +3287,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // apply button.
         var applyBtn = subTabs.querySelector('a.sub-tabs-apply');
         var applyLi  = applyBtn ? applyBtn.closest('li') : null;
-        var backupLi = Array.prototype.find.call(subTabs.querySelectorAll('li'), function (tab) {
+        var backupLi = Array.from(subTabs.querySelectorAll('li')).find(function (tab) {
             var link = tab.querySelector('a');
             var label = link ? link.textContent.replace(/\s+/g, ' ').trim().toLowerCase() : '';
             return /^backup\s*\/\s*(herstel|restore)$/.test(label);
