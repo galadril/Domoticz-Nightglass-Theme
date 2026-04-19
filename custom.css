@@ -606,7 +606,7 @@ i.dz-fa-fav {
 /* All theme images are hidden immediately on render.        */
 /* JS then either replaces (display:none below) or marks    */
 /* .dz-icon-skipped to restore visibility.                  */
-img[src^="images/"] {
+img[src^="images/"]:not(.dd-option-image) {
     opacity: 0 !important;
     pointer-events: none !important;
 }

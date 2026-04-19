@@ -699,6 +699,12 @@ if (document.readyState === 'loading') {
         if (img.classList.contains('dz-icon-replaced') ||
             img.classList.contains('dz-icon-skipped'))  return false;
 
+        /* Skip images inside icon-picker dropdowns (Edit Device dialog) */
+        if (img.classList.contains('dd-option-image') || img.closest('.dd-options, .dd-select')) {
+            img.classList.add('dz-icon-skipped');
+            return false;
+        }
+
         var src = img.getAttribute('src') || '';
 
         /* Skip unresolved Angular templates */
