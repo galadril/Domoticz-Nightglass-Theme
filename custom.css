@@ -7176,10 +7176,7 @@ body.dz-light #tabbackuprestore strong[style*="color: #fff"] {
         text-align: right;
     }
 
-    /* Input cells — only the last td in each row expands to fill space */
-    #settingscontent table.display td:last-child {
-        width: 100% !important;
-    }
+    /* Value cells — no forced width; table-layout:auto distributes space naturally */
 
     /* Constrain all inputs/selects/textareas inside settings tables */
     #settingscontent table.display input[type="text"],
@@ -7526,7 +7523,6 @@ body.dz-light #tabbackuprestore strong[style*="color: #fff"] {
 
 #tabsecurity .norm-link {
     display: inline-block;
-    margin-top: 12px;
     padding: 8px 20px;
 }
 
