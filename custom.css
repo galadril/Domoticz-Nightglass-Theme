@@ -1573,7 +1573,7 @@ body table[id^="itemtable"] tr td#status {
     clear: both;
     position: relative;
     z-index: 1;
-    padding-left: 48px !important;
+    padding-left: calc(48px * var(--ng-icon-scale, 1)) !important;
     margin-top: 2px !important;
     font-size: 0.78rem !important;
     font-weight: 500;
@@ -1585,12 +1585,12 @@ body table[id^="itemtable"] tr td#status {
 /* Double/triple icon cards: match the bigtext padding */
 body table#itemtabledoubleicon tr td#status,
 body table#itemtablesmalldoubleicon tr td#status {
-    padding-left: 90px !important;
+    padding-left: calc(90px * var(--ng-icon-scale, 1)) !important;
 }
 
 body table#itemtabletrippleicon tr td#status,
 body table#itemtablesmalltrippleicon tr td#status {
-    padding-left: 132px !important;
+    padding-left: calc(132px * var(--ng-icon-scale, 1)) !important;
 }
 
 .ui-dialog-titlebar,
@@ -1690,7 +1690,7 @@ body table[id^="itemtable"] tr td#type {
     display: block !important;
     float: none !important;
     clear: both;
-    padding-left: 0 !important;
+    padding-left: calc(48px * var(--ng-icon-scale, 1)) !important;
     font-size: 0.68rem !important;
     color: var(--dz-text-faint) !important;
     font-style: normal !important;
