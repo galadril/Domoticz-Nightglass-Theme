@@ -611,6 +611,13 @@ img[src^="images/"]:not(.dd-option-image) {
     pointer-events: none !important;
 }
 
+    /* Restore visibility for icon selector/picker images */
+    .iconlist img[src^="images/"],
+    .iconlistitem img[src^="images/"] {
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+
     img[src^="images/"].dz-icon-skipped {
         opacity: 1 !important;
         pointer-events: auto !important;
@@ -634,6 +641,21 @@ i.dz-fa-icon {
     opacity: 0.8;
     transition: opacity 0.15s, color 0.15s;
 }
+
+/* Device list action buttons (Log, Edit, etc.) — ensure icon visibility */
+table.dataTable a.btn-icon > i.dz-fa-icon,
+table.dataTable a[href*="Log"] > i.dz-fa-icon,
+table.dataTable a[href*="Edit"] > i.dz-fa-icon {
+    color: var(--dz-text-soft);
+    opacity: 0.9;
+}
+
+    table.dataTable a.btn-icon:hover > i.dz-fa-icon,
+    table.dataTable a[href*="Log"]:hover > i.dz-fa-icon,
+    table.dataTable a[href*="Edit"]:hover > i.dz-fa-icon {
+        color: var(--dz-accent);
+        opacity: 1;
+    }
 
 /* Trend arrows (tiny inline in bigtext / status) */
 i.dz-fa-trend {
@@ -783,9 +805,18 @@ i.dz-fa-action {
     }
 
         i.dz-fa-action.fa-heart-pulse:hover {
-            color: var(--dz-accent-light);
-            transform: scale(1.1);
+                color: var(--dz-accent-light);
+                transform: scale(1.1);
+            }
+
+        i.dz-fa-action.fa-terminal {
+            color: var(--dz-text-soft);
         }
+
+            i.dz-fa-action.fa-terminal:hover {
+                color: var(--dz-accent);
+                transform: scale(1.1);
+            }
 
 /* Battery level colours */
 i.dz-batt-ok {
@@ -1679,9 +1710,10 @@ body table[id^="itemtable"] tr td.input {
     float: none !important;
     position: relative;
     width: auto !important;
-    padding: 8px 4px 4px 4px !important;
+    padding: 8px 10px 4px 10px !important;
     margin-top: 6px !important;
     border-top: 1px solid rgba(var(--dz-overlay-rgb), 0.04);
+    overflow: visible !important;
 }
 
 /* ALL .dimslider divs inside any card — override inline styles.
@@ -1694,12 +1726,12 @@ body table[id^="itemtable"] tr .dimsmall3 {
     margin-right: 0 !important;
     margin-top: 4px !important;
     margin-bottom: 4px !important;
-    width: calc(100% - 8px) !important;
+    width: calc(100% - 4px) !important;
     min-width: 60px !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
     visibility: visible !important;
-    /* ensure it's shown after init */
+    overflow: visible !important;
 }
 
 #itemtabletrippleicon .dimslider {
@@ -1714,9 +1746,10 @@ body table[id^="itemtable"] tr .ui-slider {
     border: none !important;
     border-radius: 6px !important;
     height: 6px !important;
-    margin-top: 4px !important;
-    margin-bottom: 4px !important;
+    margin-top: 10px !important;
+    margin-bottom: 10px !important;
     position: relative;
+    overflow: visible !important;
 }
 
     /* Slider fill / range */
@@ -1936,7 +1969,7 @@ body table[id^="itemtable"] tr td.options {
         border: 1px solid var(--dz-border-b) !important;
         background: var(--dz-surface) !important;
         background-image: none !important;
-        color: var(--dz-text-muted) !important;
+        color: var(--dz-text-soft) !important;
         font-weight: 500;
         line-height: 1.4;
         text-decoration: none;
@@ -2055,10 +2088,13 @@ body table[id^="itemtable"] tr td.options {
             border-color: var(--dz-accent) !important;
         }
 
-        .btn.btn-default.active {
-            background: rgba(var(--dz-accent-rgb), 0.18) !important;
+        .btn.btn-default.active,
+        .btn.btn-default.active:hover,
+        .btn.btn-default.active:focus {
+            background: var(--dz-accent) !important;
             border-color: var(--dz-accent) !important;
             color: #fff !important;
+            box-shadow: none !important;
         }
 
 /* General selector-switch active button — covers all widget types (scene, device, etc.) */
@@ -3535,6 +3571,12 @@ table.dataTable tbody tr.even.selected td {
         font-weight: 600;
     }
 
+    #settingscontent .sub-tabs > li#ng-settings-tab > a {
+        padding-left: 12px;
+        padding-right: 12px;
+        white-space: nowrap;
+    }
+
     #settingscontent .sub-tabs li:not(.active) a {
         color: var(--dz-text-muted);
         border-bottom: 2px solid transparent;
@@ -3935,7 +3977,26 @@ body.dz-light .log-scroll-indicator {
     background: var(--dz-surface) !important;
     border: 1px solid var(--dz-surface-3);
     border-radius: 10px;
+    overflow: hidden;
 }
+
+/* Normalize widget content to fill grid cell uniformly */
+.grid-stack-item-content > * {
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.grid-stack-item-content .dd-widget {
+    height: 100% !important;
+    display: flex;
+    flex-direction: column;
+}
+
+    .grid-stack-item-content .dd-widget .dd-widget-body {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+    }
 
 .dd-page.edit-mode .dd-grid .grid-stack-item-content {
     outline: 1px dashed rgba(240, 168, 50, 0.5);
@@ -4451,6 +4512,12 @@ table.mobileitem,
             color: var(--dz-accent);
         }
 
+#divprogress {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+}
+
 #divprogress > span:not(.update-warning) {
     background-color: var(--dz-danger);
     border-radius: 8px;
@@ -4846,6 +4913,45 @@ table.mobileitem,
 /* Floorplan */
 #floorplancontent {
     background: transparent;
+}
+
+/* Floorplan status indicator text — improve contrast on dark backgrounds.
+   Domoticz renders device tiles as SVG <g class="DeviceTile"> groups with
+   <text> elements that default to fill:black — invisible on dark themes.
+   The header <rect> uses var(--dz-status-normal) which is also dark.       */
+
+/* SVG text inside device tiles: force light fill color */
+#floorplancontent .DeviceTile text,
+#floorplancontent g[class*="Tile"] text {
+    fill: var(--dz-text) !important;
+}
+
+/* Header rect background — make it semi-transparent so the text pops */
+#floorplancontent .DeviceTile rect.header,
+#floorplancontent g[class*="Tile"] rect.header {
+    fill: var(--dz-surface) !important;
+    opacity: 0.85;
+}
+
+/* Shadow rect behind the header — darken for depth */
+#floorplancontent .DeviceTile > rect:first-child,
+#floorplancontent g[class*="Tile"] > rect:first-child {
+    fill: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* HTML-based overlays (non-SVG floorplan elements) */
+#floorplancontent .floorplan-text,
+#floorplancontent div[style*="color"],
+#floorplancontent span[style*="color"],
+#floorplanedit .floorplan-text {
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8), 0 0 6px rgba(0, 0, 0, 0.5) !important;
+}
+
+#floorplancontent .DeviceStatus,
+#floorplancontent .DeviceName {
+    color: var(--dz-text) !important;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8), 0 0 6px rgba(0, 0, 0, 0.5) !important;
+    font-weight: 600;
 }
 
 
