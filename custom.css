@@ -4876,6 +4876,21 @@ table.mobileitem,
     background: transparent;
 }
 
+/* Floorplan status indicator text — improve contrast */
+#floorplancontent .floorplan-text,
+#floorplancontent div[style*="color"],
+#floorplancontent span[style*="color"],
+#floorplanedit .floorplan-text {
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8), 0 0 6px rgba(0, 0, 0, 0.5) !important;
+}
+
+#floorplancontent .DeviceStatus,
+#floorplancontent .DeviceName {
+    color: var(--dz-text) !important;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8), 0 0 6px rgba(0, 0, 0, 0.5) !important;
+    font-weight: 600;
+}
+
 
 /* ══════════════════════════════════════════════════════════════════
    21. FANCY CHECKBOXES  (dark-friendly toggle switch)
