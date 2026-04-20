@@ -2370,6 +2370,7 @@ document.addEventListener('DOMContentLoaded', function () {
         smoothScrolling:    true,
         showLastUpdate:     false,
         uppercaseNames:     true,
+        iconSize:           '100',
         enableIcons:        true,
         enableAppearance:   true,
         enableEffects:      true,
@@ -2897,6 +2898,10 @@ document.addEventListener('DOMContentLoaded', function () {
         var pct = parseInt(_settings.fontSize, 10) || 100;
         root.style.fontSize = pct === 100 ? '' : (pct + '%');
 
+        // Icon size
+        var iconPct = parseInt(_settings.iconSize, 10) || 100;
+        root.style.setProperty('--ng-icon-scale', iconPct === 100 ? '1' : (iconPct / 100));
+
         // Section-level master toggles
         // When Icons section is disabled, revert all icon replacements
         var iconsDisabledStyle = document.getElementById('dz-ng-icons-disabled');
@@ -3057,6 +3062,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 { value: 'light', label: '☀️ Light' }
             ], 'Used when the toggle is hidden') +
             slider('fontSize', 'Base Font Size', 80, 130, 5, '%', 'Scale the entire interface') +
+            slider('iconSize', 'Device Icon Size', 60, 150, 5, '%', 'Scale device icons on cards') +
             toggle('showLastUpdate', 'Show Last Update', 'Show the formatted timestamp footer on device cards') +
             toggle('uppercaseNames', 'Uppercase Device Names', 'Force device names to UPPERCASE on cards') +
             '</div>' +

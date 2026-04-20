@@ -690,9 +690,9 @@ i.dz-fa-trend {
 
 /* Sensor / weather / device (replaces 48px PNGs) */
 i.dz-fa-device {
-    font-size: 1.5rem;
-    width: 40px;
-    height: 40px;
+    font-size: calc(1.5rem * var(--ng-icon-scale, 1));
+    width: calc(40px * var(--ng-icon-scale, 1));
+    height: calc(40px * var(--ng-icon-scale, 1));
     display: inline-flex;
     align-items: center;
     justify-content: center;
