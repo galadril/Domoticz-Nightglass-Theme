@@ -1421,7 +1421,7 @@ body table#itemtablesmalltrippleicon tr td:first-child + td {
     display: block !important;
     margin: 0 0 2px 0 !important;
     padding-left: calc(48px * var(--ng-icon-scale, 1)) !important;
-    min-height: 24px;
+    min-height: calc(24px + (36px * (var(--ng-icon-scale, 1) - 1)));
     font-size: 1.15rem !important;
     font-weight: 700 !important;
     color: var(--dz-text) !important;
@@ -1574,6 +1574,7 @@ body table[id^="itemtable"] tr td#status {
     position: relative;
     z-index: 1;
     padding-left: calc(48px * var(--ng-icon-scale, 1)) !important;
+    min-height: calc(0px + (12px * (var(--ng-icon-scale, 1) - 1)));
     margin-top: 2px !important;
     font-size: 0.78rem !important;
     font-weight: 500;
@@ -1691,6 +1692,7 @@ body table[id^="itemtable"] tr td#type {
     float: none !important;
     clear: both;
     padding-left: calc(48px * var(--ng-icon-scale, 1)) !important;
+    padding-top: calc(4px + (18px * (var(--ng-icon-scale, 1) - 1)));
     font-size: 0.68rem !important;
     color: var(--dz-text-faint) !important;
     font-style: normal !important;
