@@ -3974,7 +3974,26 @@ body.dz-light .log-scroll-indicator {
     background: var(--dz-surface) !important;
     border: 1px solid var(--dz-surface-3);
     border-radius: 10px;
+    overflow: hidden;
 }
+
+/* Normalize widget content to fill grid cell uniformly */
+.grid-stack-item-content > * {
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.grid-stack-item-content .dd-widget {
+    height: 100% !important;
+    display: flex;
+    flex-direction: column;
+}
+
+    .grid-stack-item-content .dd-widget .dd-widget-body {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+    }
 
 .dd-page.edit-mode .dd-grid .grid-stack-item-content {
     outline: 1px dashed rgba(240, 168, 50, 0.5);
