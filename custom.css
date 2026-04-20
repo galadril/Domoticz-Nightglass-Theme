@@ -1710,9 +1710,10 @@ body table[id^="itemtable"] tr td.input {
     float: none !important;
     position: relative;
     width: auto !important;
-    padding: 8px 4px 4px 4px !important;
+    padding: 8px 10px 4px 10px !important;
     margin-top: 6px !important;
     border-top: 1px solid rgba(var(--dz-overlay-rgb), 0.04);
+    overflow: visible !important;
 }
 
 /* ALL .dimslider divs inside any card — override inline styles.
@@ -1725,12 +1726,12 @@ body table[id^="itemtable"] tr .dimsmall3 {
     margin-right: 0 !important;
     margin-top: 4px !important;
     margin-bottom: 4px !important;
-    width: calc(100% - 8px) !important;
+    width: calc(100% - 4px) !important;
     min-width: 60px !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
     visibility: visible !important;
-    /* ensure it's shown after init */
+    overflow: visible !important;
 }
 
 #itemtabletrippleicon .dimslider {
@@ -1745,9 +1746,10 @@ body table[id^="itemtable"] tr .ui-slider {
     border: none !important;
     border-radius: 6px !important;
     height: 6px !important;
-    margin-top: 4px !important;
-    margin-bottom: 4px !important;
+    margin-top: 10px !important;
+    margin-bottom: 10px !important;
     position: relative;
+    overflow: visible !important;
 }
 
     /* Slider fill / range */
