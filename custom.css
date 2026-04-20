@@ -790,9 +790,18 @@ i.dz-fa-action {
     }
 
         i.dz-fa-action.fa-heart-pulse:hover {
-            color: var(--dz-accent-light);
-            transform: scale(1.1);
+                color: var(--dz-accent-light);
+                transform: scale(1.1);
+            }
+
+        i.dz-fa-action.fa-terminal {
+            color: var(--dz-text-soft);
         }
+
+            i.dz-fa-action.fa-terminal:hover {
+                color: var(--dz-accent);
+                transform: scale(1.1);
+            }
 
 /* Battery level colours */
 i.dz-batt-ok {
@@ -1943,7 +1952,7 @@ body table[id^="itemtable"] tr td.options {
         border: 1px solid var(--dz-border-b) !important;
         background: var(--dz-surface) !important;
         background-image: none !important;
-        color: var(--dz-text-muted) !important;
+        color: var(--dz-text-soft) !important;
         font-weight: 500;
         line-height: 1.4;
         text-decoration: none;
