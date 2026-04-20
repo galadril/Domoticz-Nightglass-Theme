@@ -1868,8 +1868,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 ringDiv.id = 'dzProgressRing';
                 ringDiv.innerHTML =
                     '<svg viewBox="0 0 160 160" width="160" height="160" xmlns="http://www.w3.org/2000/svg">' +
-                    '<circle class="ring-track" cx="80" cy="80" r="70"/>' +
-                    '<circle class="ring-fill" cx="80" cy="80" r="70" stroke-dasharray="439.82" stroke-dashoffset="439.82"/>' +
+                    '<circle class="ring-track" cx="80" cy="80" r="70" fill="none" stroke-width="8"/>' +
+                    '<circle class="ring-fill" cx="80" cy="80" r="70" fill="none" stroke-width="8" stroke-linecap="round" stroke-dasharray="439.82" stroke-dashoffset="439.82"/>' +
                     '</svg>' +
                     '<span class="ring-label">0 %</span>';
                 canvas.parentNode.replaceChild(ringDiv, canvas);
