@@ -4457,6 +4457,12 @@ table.mobileitem,
             color: var(--dz-accent);
         }
 
+#divprogress {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+}
+
 #divprogress > span:not(.update-warning) {
     background-color: var(--dz-danger);
     border-radius: 8px;
