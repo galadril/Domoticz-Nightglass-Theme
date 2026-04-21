@@ -7707,3 +7707,326 @@ body.dz-light #tabbackuprestore strong[style*="color: #fff"] {
         width: 100% !important;
     }
 }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   DEVICE DETAIL PAGES (Log, Timers, Notifications, Edit, etc.)
+   Targets: .js-device-logs, .js-device-timers, .js-device-notifications,
+            and generic device detail containers with .page-header-small
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Page header with back button ────────────────────────────── */
+
+.page-header-with-button {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    border-bottom: none !important;
+    margin-bottom: 24px;
+    padding-bottom: 0;
+}
+
+    .page-header-with-button h1 {
+        font-size: 1.25rem !important;
+        font-weight: 700 !important;
+        color: var(--dz-text) !important;
+        letter-spacing: -0.01em;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0;
+        padding: 20px 24px 16px;
+        background: linear-gradient(135deg, rgba(var(--dz-accent-rgb), 0.10), rgba(var(--dz-accent-rgb), 0.03));
+        border: 1px solid rgba(var(--dz-accent-rgb), 0.18);
+        border-radius: 14px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .page-header-with-button > div {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+/* ── Device detail container ─────────────────────────────────── */
+
+.js-device-logs,
+.js-device-timers,
+.js-device-notifications {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 12px;
+}
+
+/* ── Section headings (h2 for "Today", "Last 7 days", etc.) ──── */
+
+.js-device-logs h2,
+.js-device-timers h2,
+.js-device-notifications h2 {
+    font-size: 0.82rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    color: var(--dz-text-muted) !important;
+    margin: 28px 0 12px;
+    padding: 0 4px 8px;
+    border-bottom: 1px solid var(--dz-surface-3);
+}
+
+/* ── Chart containers in device logs ─────────────────────────── */
+
+.device-log-chart {
+    margin-bottom: 20px;
+    border-radius: 12px !important;
+    overflow: hidden;
+}
+
+.device-log-chart_sm {
+    min-height: 100px;
+}
+
+.device-log-chart_md {
+    min-height: 200px;
+}
+
+/* ── DataTables inside device detail pages ────────────────────── */
+
+.js-device-logs .dataTables_wrapper,
+.js-device-timers .dataTables_wrapper,
+.js-device-notifications .dataTables_wrapper {
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+/* entity-log-table specific (text log, timer list, etc.) */
+.entity-log-table {
+    width: 100% !important;
+}
+
+    .entity-log-table thead tr th {
+        background: rgba(var(--dz-overlay-rgb), 0.03) !important;
+        color: var(--dz-text-muted) !important;
+        font-size: 0.72rem !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.06em !important;
+        padding: 12px 16px !important;
+        border-bottom: 1px solid var(--dz-border) !important;
+    }
+
+    .entity-log-table tbody tr td {
+        padding: 10px 16px !important;
+        color: var(--dz-text) !important;
+        font-size: 0.82rem !important;
+        border-bottom: 1px solid var(--dz-surface-3) !important;
+    }
+
+    .entity-log-table tbody tr:hover td {
+        background: rgba(var(--dz-accent-rgb), 0.05) !important;
+    }
+
+    .entity-log-table tbody tr.odd td {
+        background: transparent !important;
+    }
+
+    .entity-log-table tbody tr.even td {
+        background: rgba(var(--dz-overlay-rgb), 0.015) !important;
+    }
+
+    .entity-log-table tbody tr.odd:hover td,
+    .entity-log-table tbody tr.even:hover td {
+        background: rgba(var(--dz-accent-rgb), 0.05) !important;
+    }
+
+/* ── fg-toolbar inside device logs (DataTables header/footer) ── */
+
+.js-device-logs .fg-toolbar,
+.js-device-timers .fg-toolbar,
+.js-device-notifications .fg-toolbar {
+    background: transparent !important;
+    border: none !important;
+    padding: 12px 16px !important;
+}
+
+/* ── fg-button (pagination buttons) inside device detail ──────── */
+
+.js-device-logs .fg-button,
+.js-device-timers .fg-button,
+.js-device-notifications .fg-button {
+    background: var(--dz-surface-2) !important;
+    background-image: none !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 6px !important;
+    color: var(--dz-text-soft) !important;
+    padding: 4px 10px !important;
+    font-size: 0.78rem !important;
+    transition: all 0.2s ease;
+}
+
+    .js-device-logs .fg-button:hover,
+    .js-device-timers .fg-button:hover,
+    .js-device-notifications .fg-button:hover {
+        background: rgba(var(--dz-accent-rgb), 0.12) !important;
+        border-color: var(--dz-accent) !important;
+        color: #fff !important;
+    }
+
+    .js-device-logs .fg-button.ui-state-disabled,
+    .js-device-timers .fg-button.ui-state-disabled,
+    .js-device-notifications .fg-button.ui-state-disabled {
+        opacity: 0.4 !important;
+        cursor: default;
+    }
+
+/* ── Clear / action button row (#updelclr) ───────────────────── */
+
+#updelclr {
+    margin-top: 8px;
+    margin-bottom: 24px;
+}
+
+    #updelclr .btnstyle3 {
+        font-size: 0.82rem !important;
+        padding: 8px 20px !important;
+    }
+
+/* ── Back button styling ─────────────────────────────────────── */
+
+a.btnstyle3[back-button],
+a[back-button].btnstyle3 {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem !important;
+    padding: 8px 16px !important;
+}
+
+/* ── Device detail generic container (non-class pages) ────────── */
+
+.container:not(.bannercontent) > .page-header-small:not(.page-header-with-button) {
+    border-bottom: none !important;
+    margin-bottom: 20px;
+}
+
+    .container:not(.bannercontent) > .page-header-small:not(.page-header-with-button) h1 {
+        font-size: 1.25rem !important;
+        font-weight: 700 !important;
+        color: var(--dz-text) !important;
+        padding: 20px 24px 16px;
+        background: linear-gradient(135deg, rgba(var(--dz-accent-rgb), 0.10), rgba(var(--dz-accent-rgb), 0.03));
+        border: 1px solid rgba(var(--dz-accent-rgb), 0.18);
+        border-radius: 14px;
+        margin: 0;
+    }
+
+/* ── Timer table styling ─────────────────────────────────────── */
+
+.js-device-timers table.display {
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+/* ── Notification table styling ──────────────────────────────── */
+
+.js-device-notifications table.display {
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+/* ── Edit device dialog / forms ──────────────────────────────── */
+
+/* Generic tables inside device detail pages */
+.js-device-logs table.display:not(.dataTable),
+.js-device-timers table.display:not(.dataTable),
+.js-device-notifications table.display:not(.dataTable) {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+    .js-device-logs table.display:not(.dataTable) td,
+    .js-device-timers table.display:not(.dataTable) td,
+    .js-device-notifications table.display:not(.dataTable) td {
+        padding: 8px 12px !important;
+        color: var(--dz-text) !important;
+    }
+
+    .js-device-logs table.display:not(.dataTable) label,
+    .js-device-timers table.display:not(.dataTable) label,
+    .js-device-notifications table.display:not(.dataTable) label {
+        color: var(--dz-text-soft) !important;
+    }
+
+/* ── DataTables sort icon styling ────────────────────────────── */
+
+.entity-log-table .DataTables_sort_wrapper {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.entity-log-table .DataTables_sort_icon {
+    opacity: 0.5;
+}
+
+.entity-log-table .sorting_desc .DataTables_sort_icon,
+.entity-log-table .sorting_asc .DataTables_sort_icon {
+    opacity: 1;
+    color: var(--dz-accent) !important;
+}
+
+/* ── Processing indicator ────────────────────────────────────── */
+
+.dataTables_processing {
+    background: var(--dz-surface-2) !important;
+    color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 8px !important;
+    padding: 8px 16px !important;
+}
+
+/* ── Staggered entrance for device detail sections ───────────── */
+
+.js-device-logs > *,
+.js-device-timers > *,
+.js-device-notifications > * {
+    animation: dz-fade-in 0.35s ease both;
+}
+
+    .js-device-logs > *:nth-child(1) { animation-delay: 0.05s; }
+    .js-device-logs > *:nth-child(2) { animation-delay: 0.10s; }
+    .js-device-logs > *:nth-child(3) { animation-delay: 0.15s; }
+    .js-device-logs > *:nth-child(4) { animation-delay: 0.20s; }
+    .js-device-logs > *:nth-child(5) { animation-delay: 0.25s; }
+    .js-device-logs > *:nth-child(6) { animation-delay: 0.30s; }
+    .js-device-logs > *:nth-child(7) { animation-delay: 0.35s; }
+    .js-device-logs > *:nth-child(8) { animation-delay: 0.40s; }
+
+@keyframes dz-fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Light mode overrides for device detail pages ────────────── */
+
+body.dz-light .entity-log-table tbody tr.odd td {
+    background: transparent !important;
+}
+
+body.dz-light .entity-log-table tbody tr.even td {
+    background: rgba(0, 0, 0, 0.02) !important;
+}
+
+body.dz-light .entity-log-table tbody tr:hover td {
+    background: rgba(var(--dz-accent-rgb), 0.06) !important;
+}
