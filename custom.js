@@ -283,7 +283,6 @@ if (document.readyState === 'loading') {
         a.setAttribute('role', 'button');
         var icon = document.createElement('i');
         a.appendChild(icon);
-        updateBtn(stored);
         a.addEventListener('click', toggle);
 
         var li = document.createElement('li');
@@ -296,6 +295,9 @@ if (document.readyState === 'loading') {
         /* Append to navbar-inner directly; positioned absolutely via CSS
            so it doesn't affect the container's float layout at all. */
         inner.appendChild(nav);
+        /* updateBtn must run after the element is in the DOM,
+           because it uses getElementById to find the button. */
+        updateBtn(stored);
     }
 
     if (document.readyState === 'loading') {
