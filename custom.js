@@ -1900,65 +1900,9 @@ document.addEventListener('DOMContentLoaded', function () {
             center.insertBefore(iconWrap, h1);
         }
 
-        /* ── 2. Replace canvas progress with SVG ring ───────────── */
+        /* ── 2. Hide the stock canvas progress (styled via CSS) ──── */
         var divProg = document.getElementById('divprogress');
         if (divProg) {
-            var canvas = divProg.querySelector('canvas') || divProg.querySelector('round-progress');
-            if (canvas) {
-                var ringDiv = document.createElement('div');
-                ringDiv.className = 'update-progress-ring';
-                ringDiv.id = 'dzProgressRing';
-                ringDiv.innerHTML =
-                    '<svg viewBox="0 0 160 160" width="160" height="160" xmlns="http://www.w3.org/2000/svg">' +
-                    '<circle class="ring-track" cx="80" cy="80" r="70" fill="none" stroke-width="8"/>' +
-                    '<circle class="ring-fill" cx="80" cy="80" r="70" fill="none" stroke-width="8" stroke-linecap="round" stroke-dasharray="439.82" stroke-dashoffset="439.82"/>' +
-                    '</svg>' +
-                    '<span class="ring-label">0 %</span>';
-                canvas.parentNode.replaceChild(ringDiv, canvas);
-
-                /* Mirror ProgressData changes into the SVG ring */
-                var circumference = 2 * Math.PI * 70;
-                var fillEl = ringDiv.querySelector('.ring-fill');
-                var labelEl = ringDiv.querySelector('.ring-label');
-                var iconWrapEl = center.querySelector('.update-icon-wrap');
-                var spinIcon = iconWrapEl ? iconWrapEl.querySelector('.update-spin-icon') : null;
-
-                function syncProgress() {
-                    var scope = null;
-                    try {
-                        var el = document.querySelector('[data-round-progress-model]') || document.getElementById('dzProgressRing');
-                        if (el && window.angular) {
-                            scope = window.angular.element(el).scope();
-                        }
-                    } catch (e) { /* ignore */ }
-
-                    var pct = 0;
-                    if (scope && scope.ProgressData) {
-                        pct = typeof scope.ProgressData === 'number' ? scope.ProgressData : (scope.ProgressData.current || 0);
-                    }
-                    if (pct < 0) pct = 0;
-                    if (pct > 100) pct = 100;
-
-                    var offset = circumference - (pct / 100) * circumference;
-                    fillEl.setAttribute('stroke-dashoffset', offset);
-                    labelEl.textContent = Math.round(pct) + ' %';
-
-                    if (pct >= 100) {
-                        fillEl.setAttribute('stroke', '#4caf7d');
-                        fillEl.style.filter = 'drop-shadow(0 0 6px rgba(76,175,125,0.4))';
-                        labelEl.textContent = '\u2713';
-                        labelEl.style.color = '#4caf7d';
-                        if (spinIcon) {
-                            spinIcon.className = 'fa-solid fa-circle-check';
-                            spinIcon.style.animation = 'none';
-                            spinIcon.style.color = '#4caf7d';
-                        }
-                        if (iconWrapEl) iconWrapEl.style.borderColor = 'rgba(76,175,125,0.3)';
-                    }
-                }
-
-                setInterval(syncProgress, 500);
-            }
 
             /* ── 3. Style the warning span ──────────────────────── */
             var warnSpan = divProg.querySelector('span[ng-bind-html="bottomText"]');
