@@ -2382,6 +2382,7 @@ document.addEventListener('DOMContentLoaded', function () {
         actionIcons:        true,
         showThemeToggle:    true,
         defaultMode:        'dark',
+        themeMode:          'toggle',
         accentColor:        '#4e9af1',
         dangerColor:        '#e05555',
         warningColor:       '#f0a832',
@@ -2626,27 +2627,30 @@ document.addEventListener('DOMContentLoaded', function () {
             actionIconStyle.remove();
         }
 
-        // Theme toggle visibility
-        var toggleNav = document.getElementById('dz-theme-style-nav');
-        if (toggleNav) {
-            toggleNav.style.display = _settings.showThemeToggle ? '' : 'none';
+        // Theme mode: toggle (manual navbar button), auto, dark, light
+        var themeMode = _settings.themeMode || 'toggle';
+        // Backward compat: if themeMode not set, derive from old keys
+        if (!_settings.themeMode && _settings.showThemeToggle === false) {
+            themeMode = _settings.defaultMode || 'dark';
         }
-        // If toggle hidden, apply the default mode
-        if (!_settings.showThemeToggle) {
-            var modeVal = _settings.defaultMode || 'dark';
+        var toggleNav = document.getElementById('dz-theme-style-nav');
+        if (themeMode === 'toggle') {
+            if (toggleNav) toggleNav.style.display = '';
+        } else {
+            if (toggleNav) toggleNav.style.display = 'none';
             var wantLight;
-            if (modeVal === 'auto') {
+            if (themeMode === 'auto') {
                 wantLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
             } else {
-                wantLight = modeVal === 'light';
+                wantLight = themeMode === 'light';
             }
             var isLight = document.body.classList.contains('dz-light');
             if (isLight !== wantLight) {
                 if (wantLight) document.body.classList.add('dz-light');
                 else document.body.classList.remove('dz-light');
-                localStorage.setItem('dz-theme-style', modeVal);
-                if (typeof applyHighchartsTheme === 'function') applyHighchartsTheme(!wantLight);
             }
+            localStorage.setItem('dz-theme-style', themeMode);
+            if (typeof applyHighchartsTheme === 'function') applyHighchartsTheme(!wantLight);
         }
 
         // Accent colors — apply via a dynamic <style> so both :root and body.dz-light are covered
@@ -3102,12 +3106,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
             '<div class="ng-settings-section">' +
             '<div class="ng-section-header"><i class="fa-solid fa-swatchbook"></i> Appearance</div>' +
-            toggle('showThemeToggle', 'Show Dark/Light Toggle', 'Display the sun/moon toggle button in the navbar') +
-            select('defaultMode', 'Default Mode', [
-                { value: 'dark', label: '🌙 Dark' },
-                { value: 'light', label: '☀️ Light' },
-                { value: 'auto', label: '🖥️ Auto (follow system)' }
-            ], 'Auto follows your OS light/dark preference') +
+            select('themeMode', 'Theme Mode', [
+                { value: 'toggle', label: '🔀 Manual toggle' },
+                { value: 'auto', label: '🖥️ Auto (follow system)' },
+                { value: 'dark', label: '🌙 Always dark' },
+                { value: 'light', label: '☀️ Always light' }
+            ], 'Manual shows a navbar button to switch; Auto follows your OS preference') +
             slider('fontSize', 'Base Font Size', 80, 130, 5, '%', 'Scale the entire interface') +
             slider('iconSize', 'Device Icon Size', 60, 150, 5, '%', 'Scale device icons on cards') +
             toggle('showLastUpdate', 'Show Last Update', 'Show the formatted timestamp footer on device cards') +
@@ -3776,12 +3780,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (animRow) {
             var row = animRow.closest('.ng-setting-row');
             if (row) row.style.opacity = _settings.deviceIcons ? '1' : '0.4';
-        }
-        // defaultMode only relevant if toggle is hidden
-        var modeRow = container.querySelector('[data-ng-key="defaultMode"]');
-        if (modeRow) {
-            var row = modeRow.closest('.ng-setting-row');
-            if (row) row.style.opacity = _settings.showThemeToggle ? '0.4' : '1';
         }
     }
 
