@@ -192,12 +192,26 @@ if (document.readyState === 'loading') {
 
     var STORAGE_KEY = 'dz-theme-style';
     var LIGHT_CLASS = 'dz-light';
+    var _mql = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null;
+
+    function systemPrefersLight() {
+        return _mql ? _mql.matches : false;
+    }
+
+    function resolveTheme(stored) {
+        if (stored === 'auto') return systemPrefersLight() ? 'light' : 'dark';
+        return stored || 'dark';
+    }
 
     /* Apply saved preference as early as possible — but body may be null if
        the script runs in <head>, so guard with a readyState check. */
     function applyStoredTheme() {
-        if (localStorage.getItem(STORAGE_KEY) === 'light') {
+        var stored = localStorage.getItem(STORAGE_KEY) || 'dark';
+        var effective = resolveTheme(stored);
+        if (effective === 'light') {
             document.body.classList.add(LIGHT_CLASS);
+        } else {
+            document.body.classList.remove(LIGHT_CLASS);
         }
     }
     if (document.readyState === 'loading') {
@@ -206,26 +220,55 @@ if (document.readyState === 'loading') {
         applyStoredTheme();
     }
 
-    function updateBtn(light) {
+    function updateBtn(stored) {
         var a = document.getElementById('dz-theme-style-btn');
         if (!a) return;
         var icon = a.querySelector('i');
-        if (icon) icon.className = light ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
-        a.title = light ? 'Switch to dark mode' : 'Switch to light mode';
-        a.setAttribute('aria-pressed', light ? 'true' : 'false');
-        a.setAttribute('aria-label', light ? 'Switch to dark mode' : 'Switch to light mode');
+        if (stored === 'auto') {
+            if (icon) icon.className = 'fa-solid fa-circle-half-stroke';
+            a.title = 'Theme: Auto (follows system) — click to switch to dark';
+            a.setAttribute('aria-pressed', 'false');
+            a.setAttribute('aria-label', 'Theme: Auto (follows system)');
+        } else if (stored === 'light') {
+            if (icon) icon.className = 'fa-solid fa-moon';
+            a.title = 'Switch to auto mode';
+            a.setAttribute('aria-pressed', 'true');
+            a.setAttribute('aria-label', 'Switch to auto mode');
+        } else {
+            if (icon) icon.className = 'fa-solid fa-sun';
+            a.title = 'Switch to light mode';
+            a.setAttribute('aria-pressed', 'false');
+            a.setAttribute('aria-label', 'Switch to light mode');
+        }
     }
 
-    function toggle() {
-        var nowLight = !document.body.classList.contains(LIGHT_CLASS);
-        if (nowLight) {
+    function applyEffective(stored) {
+        var effective = resolveTheme(stored);
+        if (effective === 'light') {
             document.body.classList.add(LIGHT_CLASS);
         } else {
             document.body.classList.remove(LIGHT_CLASS);
         }
-        localStorage.setItem(STORAGE_KEY, nowLight ? 'light' : 'dark');
-        updateBtn(nowLight);
-        applyHighchartsTheme(!nowLight);
+        applyHighchartsTheme(effective !== 'light');
+    }
+
+    function toggle() {
+        var stored = localStorage.getItem(STORAGE_KEY) || 'dark';
+        // Cycle: dark → light → auto → dark
+        var next = stored === 'dark' ? 'light' : stored === 'light' ? 'auto' : 'dark';
+        localStorage.setItem(STORAGE_KEY, next);
+        applyEffective(next);
+        updateBtn(next);
+    }
+
+    /* Listen for OS theme changes when in auto mode */
+    if (_mql && _mql.addEventListener) {
+        _mql.addEventListener('change', function () {
+            var stored = localStorage.getItem(STORAGE_KEY) || 'dark';
+            if (stored === 'auto') {
+                applyEffective('auto');
+            }
+        });
     }
 
     function injectToggle() {
@@ -233,17 +276,14 @@ if (document.readyState === 'loading') {
         var inner = document.querySelector('.navbar-inner');
         if (!inner) return;
 
-        var light = document.body.classList.contains(LIGHT_CLASS);
+        var stored = localStorage.getItem(STORAGE_KEY) || 'dark';
         var a = document.createElement('a');
         a.id = 'dz-theme-style-btn';
         a.href = 'javascript:void(0)';
-        a.title = light ? 'Switch to dark mode' : 'Switch to light mode';
         a.setAttribute('role', 'button');
-        a.setAttribute('aria-pressed', light ? 'true' : 'false');
-        a.setAttribute('aria-label', light ? 'Switch to dark mode' : 'Switch to light mode');
         var icon = document.createElement('i');
-        icon.className = light ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
         a.appendChild(icon);
+        updateBtn(stored);
         a.addEventListener('click', toggle);
 
         var li = document.createElement('li');
@@ -2593,12 +2633,18 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         // If toggle hidden, apply the default mode
         if (!_settings.showThemeToggle) {
+            var modeVal = _settings.defaultMode || 'dark';
+            var wantLight;
+            if (modeVal === 'auto') {
+                wantLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+            } else {
+                wantLight = modeVal === 'light';
+            }
             var isLight = document.body.classList.contains('dz-light');
-            var wantLight = _settings.defaultMode === 'light';
             if (isLight !== wantLight) {
                 if (wantLight) document.body.classList.add('dz-light');
                 else document.body.classList.remove('dz-light');
-                localStorage.setItem('dz-theme-style', wantLight ? 'light' : 'dark');
+                localStorage.setItem('dz-theme-style', modeVal);
                 if (typeof applyHighchartsTheme === 'function') applyHighchartsTheme(!wantLight);
             }
         }
@@ -3059,8 +3105,9 @@ document.addEventListener('DOMContentLoaded', function () {
             toggle('showThemeToggle', 'Show Dark/Light Toggle', 'Display the sun/moon toggle button in the navbar') +
             select('defaultMode', 'Default Mode', [
                 { value: 'dark', label: '🌙 Dark' },
-                { value: 'light', label: '☀️ Light' }
-            ], 'Used when the toggle is hidden') +
+                { value: 'light', label: '☀️ Light' },
+                { value: 'auto', label: '🖥️ Auto (follow system)' }
+            ], 'Auto follows your OS light/dark preference') +
             slider('fontSize', 'Base Font Size', 80, 130, 5, '%', 'Scale the entire interface') +
             slider('iconSize', 'Device Icon Size', 60, 150, 5, '%', 'Scale device icons on cards') +
             toggle('showLastUpdate', 'Show Last Update', 'Show the formatted timestamp footer on device cards') +
