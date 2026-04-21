@@ -547,7 +547,7 @@ if (document.readyState === 'loading') {
 
     /* -- Alert level icons (Alert48_0 .. Alert48_4) --------------- */
     var ALERT_RE = /images\/Alert48_(\d)\.png/i;
-    var ALERT_COLORS = ['#4caf7d', '#f0a832', '#ff7043', '#e05555', '#e05555'];
+    var ALERT_COLORS = ['#8a8a8a','#4caf7d', '#f0a832', '#ff7043', '#e05555'];
 
     /* -- Wind direction rotation map ------------------------------ */
     /* fa-arrow-up points North at 0�. Rotate clockwise for each dir. */
