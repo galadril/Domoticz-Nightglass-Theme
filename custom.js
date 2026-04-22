@@ -4877,18 +4877,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
         function sendRGBW() {
             if (!_idx) return;
-            var color;
+            var colorObj;
             if (_mode === 'color') {
                 var rgb = hsvToRgb(_h, _s, 1);
-                color = JSON.stringify({ m:3, t:0, r:rgb.r, g:rgb.g, b:rgb.b, cw:0, ww:0 });
+                // m=3: ColorModeRGB — valid fields: r, g, b
+                colorObj = { m:3, t:0, r:rgb.r, g:rgb.g, b:rgb.b, cw:0, ww:0 };
             } else {
-                var ww = Math.round(_warmth * 255);
-                var cw = Math.round((1 - _warmth) * 255);
-                color = JSON.stringify({ m:2, t:Math.round(_warmth*255), r:255, g:255, b:255, cw:cw, ww:ww });
+                // m=2: ColorModeTemp — valid field: t (0=cool, 255=warm)
+                var t = Math.round(_warmth * 255);
+                colorObj = { m:2, t:t, r:0, g:0, b:0,
+                             cw: Math.round((1 - _warmth) * 255),
+                             ww: Math.round(_warmth * 255) };
             }
             var url = '/json.htm?type=command&param=setcolbrightnessvalue' +
                       '&idx=' + _idx +
-                      '&color=' + encodeURIComponent(color) +
+                      '&color=' + encodeURIComponent(JSON.stringify(colorObj)) +
                       '&brightness=' + _bright;
             fetch(url).catch(function() {});
         }
@@ -4935,46 +4938,50 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         /* ── Hook ShowRGBWPopup ──────────────────────────────────────── */
+        // Actual Domoticz signature (domoticz.js):
+        //   ShowRGBWPopup(event, idx, Protected, MaxDimLevel, LevelInt, color, SubType, DimmerType)
+        // The first arg is the mouse/touch event — idx is the second arg.
         function hookShowRGBWPopup() {
             if (!window.ShowRGBWPopup) { setTimeout(hookShowRGBWPopup, 300); return; }
             if (window.ShowRGBWPopup._ngHooked) return;
-            window.ShowRGBWPopup = function (idx, imgid, actualColor) {
-                // Normalise idx: Domoticz may pass a number, string, or device object
-                _idx = (typeof idx === 'object' && idx !== null)
-                    ? String(idx.idx || idx.ID || '')
-                    : String(idx || '');
+            window.ShowRGBWPopup = function (event, idx, Protected, MaxDimLevel, LevelInt, color, SubType, DimmerType) {
+                _idx = String(idx || '');
 
-                // Parse current colour state
+                // color is a JSON string from device.Color
                 var col = {};
                 try {
-                    col = typeof actualColor === 'string'
-                        ? JSON.parse(actualColor) : (actualColor || {});
+                    col = typeof color === 'string' ? JSON.parse(color) : (color || {});
                 } catch (e) {}
 
-                // Mode: 1=white, 2=colour-temp, 3=colour, 4=colour+white
+                // ColorMode: 1=white, 2=colour-temperature, 3=RGB, 4=custom(RGB+white)
                 _mode = (col.m === 1 || col.m === 2) ? 'white' : 'color';
 
                 // Seed HSV from RGB channels
                 if (col.r !== undefined || col.g !== undefined || col.b !== undefined) {
-                    var hsv = rgbToHsv(col.r||0, col.g||0, col.b||0);
+                    var hsv = rgbToHsv(col.r || 0, col.g || 0, col.b || 0);
                     _h = hsv.h; _s = hsv.s; _v = hsv.v;
-                    // If saturation is near zero, fall back to neutral hue 0
                     if (_s < 0.05) _s = 0;
                 }
 
+                // Warmth from colour-temperature field (0-255 → 0-1)
                 _warmth = col.t !== undefined ? col.t / 255 : 0.5;
-                _bright = 100;
 
-                var isRGBW = (col.ww !== undefined || col.cw !== undefined ||
-                              col.m === 2 || col.m === 4);
+                // Seed brightness from current device level (LevelInt is 0-100)
+                _bright = (LevelInt !== undefined && LevelInt !== null)
+                    ? Math.max(1, Math.min(100, parseInt(LevelInt, 10) || 100))
+                    : 100;
 
-                // Show popup → MutationObserver triggers ngOpenPopup
+                // SubType tells us if there are white channels
+                var isRGBW = (SubType === 'RGBWW' || SubType === 'RGBWWZ' ||
+                              SubType === 'RGBW'  || SubType === 'WW' ||
+                              col.m === 2 || col.m === 4 ||
+                              col.cw !== undefined || col.ww !== undefined);
+
+                // Show popup — MutationObserver in initPopups picks this up and calls ngOpenPopup
                 p.style.display = 'block';
 
-                // Build our UI (replaces jQWCP completely)
                 buildUI(isRGBW);
 
-                // Switch to white tab if color is in white mode
                 if (_mode === 'white' && isRGBW) {
                     window.ngRgbwSetMode('white');
                 }
