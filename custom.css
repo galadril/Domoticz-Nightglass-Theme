@@ -1804,7 +1804,7 @@ dztemperaturewidget table[id^="itemtablenotype"] tr td.options,
 dzweatherwidget table[id^="itemtablenotype"] tr td.options {
     position: relative !important;
     bottom: auto !important;
-    margin-top: 4px !important;
+    margin-top: auto !important;
 }
 
 

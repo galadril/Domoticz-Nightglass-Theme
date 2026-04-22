@@ -2206,6 +2206,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (idx) refreshSingle(idx);
             }
         });
+        if (!document.body) return;
         _sparkObs.observe(document.body, { subtree: true, childList: true });
     }
 
@@ -2222,7 +2223,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 5 * 60 * 1000);
     }
 
-    startSparklineObserver();
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startSparklineObserver);
+    } else {
+        startSparklineObserver();
+    }
     schedulePeriodicRefresh();
 })();
 
@@ -4615,7 +4620,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function updateStackPosition() {
         if (!_stack) return;
-        var pos = (window.ngTheme && window.ngTheme.get('liveToastPosition')) || 'bottom-right';
+        var pos = (window.dzNightglassSettings && window.dzNightglassSettings.get('liveToastPosition')) || 'bottom-right';
         _stack.className = 'ng-toast-pos--' + pos;
     }
     window.ngUpdateToastPosition = updateStackPosition;
@@ -4630,7 +4635,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function ngShowToast(opts) {
         var stack    = getStack();
         var duration = opts.duration !== undefined ? opts.duration
-                     : ((window.ngTheme && +window.ngTheme.get('liveToastDuration')) || 4) * 1000;
+                     : ((window.dzNightglassSettings && +window.dzNightglassSettings.get('liveToastDuration')) || 4) * 1000;
 
         // Trim to max stack size (remove oldest = first child)
         var existing = stack.querySelectorAll('.ng-toast');
@@ -4695,8 +4700,8 @@ document.addEventListener('DOMContentLoaded', function () {
     /* ── Device update handler (Angular $rootScope hook) ─────────── */
 
     function onDeviceUpdate(device) {
-        if (!window.ngTheme || !window.ngTheme.get('liveToasts')) return;
-        var filter = (window.ngTheme && window.ngTheme.get('liveToastFilter')) || 'meaningful';
+        if (!window.dzNightglassSettings || !window.dzNightglassSettings.get('liveToasts')) return;
+        var filter = (window.dzNightglassSettings && window.dzNightglassSettings.get('liveToastFilter')) || 'meaningful';
         if (filter === 'meaningful' && !isMeaningful(device)) return;
 
         // Per-device debounce
