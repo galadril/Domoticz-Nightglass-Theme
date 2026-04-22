@@ -2126,6 +2126,104 @@ document.addEventListener('DOMContentLoaded', function () {
         addSparklines();
     }
     window.addEventListener('hashchange', function () { setTimeout(addSparklines, 500); });
+
+    // ── Sparkline Auto-Refresh ────────────────────────────────────────
+    // Re-fetches a device's sparkline data when its displayed value changes,
+    // using a rolling 1-hour window to keep datasets lean on always-on tablets.
+
+    var MAX_POINTS       = 60;         // rolling cap: ~1 h at 1-min update intervals
+    var REFRESH_COOLDOWN = 30 * 1000;  // ignore re-triggers for same device within 30 s
+    var lastRefresh      = {};         // idx → timestamp (ms)
+
+    function findCardByIdx(idx) {
+        var tbl = document.getElementById('itemtable' + idx);
+        if (!tbl) return null;
+        var el = tbl.parentElement;
+        while (el && el !== document.body) {
+            if (el.classList.contains('itemBlock')) return el;
+            if (el.classList.contains('item') &&
+                el.parentElement && el.parentElement.classList.contains('itemBlock')) return el;
+            el = el.parentElement;
+        }
+        return null;
+    }
+
+    function refreshSingle(idx) {
+        var now = Date.now();
+        if (lastRefresh[idx] && (now - lastRefresh[idx]) < REFRESH_COOLDOWN) return;
+        lastRefresh[idx] = now;
+
+        var card = findCardByIdx(idx);
+        if (!card) return;
+        var wrap = card.querySelector('.dz-sparkline-wrap');
+        if (!wrap) return;
+
+        (function fetchHour(si) {
+            if (si >= SENSORS.length) return;
+            var url = BASE + 'json.htm?type=command&param=graph&sensor=' + SENSORS[si] +
+                      '&idx=' + idx + '&range=hour';
+            fetch(url, { credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    var result = data && data.result;
+                    if (!result || !result.length) { fetchHour(si + 1); return; }
+                    var field = null;
+                    VALUE_KEYS.forEach(function (k) {
+                        if (field === null && result[0][k] !== undefined) field = k;
+                    });
+                    if (!field) { fetchHour(si + 1); return; }
+                    var vals = result.map(function (r) { return parseFloat(r[field]); })
+                                     .filter(function (v) { return !isNaN(v); });
+                    if (vals.length < 2) { fetchHour(si + 1); return; }
+                    if (vals.length > MAX_POINTS) vals = vals.slice(vals.length - MAX_POINTS);
+                    cache[idx] = vals;
+                    wrap.innerHTML = svgSparkline(vals, idx);
+                    wrap.style.display = '';
+                })
+                .catch(function () { fetchHour(si + 1); });
+        })(0);
+    }
+
+    // Watch for bigtext mutations (Angular rewrites text nodes when a device updates)
+    var _sparkObs = null;
+    function startSparklineObserver() {
+        if (_sparkObs || !window.MutationObserver) return;
+        _sparkObs = new MutationObserver(function (mutations) {
+            for (var i = 0; i < mutations.length; i++) {
+                var target = mutations[i].target;
+                var td = null;
+                if (target.id === 'bigtext' && target.tagName === 'TD') {
+                    td = target;
+                } else if (target.querySelector) {
+                    td = target.querySelector('td#bigtext');
+                }
+                if (!td) continue;
+                var card = td.closest
+                    ? td.closest('div.item.itemBlock, .itemBlock > div.item')
+                    : null;
+                if (!card) continue;
+                var idx = getCardIdx(card);
+                if (idx) refreshSingle(idx);
+            }
+        });
+        _sparkObs.observe(document.body, { subtree: true, childList: true });
+    }
+
+    // Periodic safety net: refresh all visible sparklines every 5 minutes
+    function schedulePeriodicRefresh() {
+        setInterval(function () {
+            var cards = document.querySelectorAll('div.item.itemBlock, .itemBlock > div.item');
+            for (var c = 0; c < cards.length; c++) {
+                var wrap = cards[c].querySelector('.dz-sparkline-wrap');
+                if (!wrap || wrap.style.display === 'none') continue;
+                var idx = getCardIdx(cards[c]);
+                if (idx) refreshSingle(idx);
+            }
+        }, 5 * 60 * 1000);
+    }
+
+    startSparklineObserver();
+    schedulePeriodicRefresh();
 })();
 
 
@@ -2405,6 +2503,7 @@ document.addEventListener('DOMContentLoaded', function () {
         enableEffects:      true,
         enableColors:       true,
         fontSize:           '100',
+        columnLayout:       false,
         liveToasts:         true,
         liveToastFilter:    'meaningful',
         liveToastDuration:  '4',
@@ -2936,6 +3035,27 @@ document.addEventListener('DOMContentLoaded', function () {
             ucStyle.remove();
         }
 
+        // Column layout (single-column device grid)
+        var colStyle = document.getElementById('dz-ng-column-style');
+        if (_settings.columnLayout) {
+            if (!colStyle) {
+                colStyle = document.createElement('style');
+                colStyle.id = 'dz-ng-column-style';
+                colStyle.textContent =
+                    '.devicesList .row > [class*="col-"],' +
+                    'section.dashCategory .row > [class*="col-"],' +
+                    '#tempwidgets .row > [class*="col-"],' +
+                    '#weatherwidgets .row > [class*="col-"] {' +
+                    '  width: 100% !important;' +
+                    '  flex: 0 0 100% !important;' +
+                    '  max-width: 100% !important;' +
+                    '}';
+                document.head.appendChild(colStyle);
+            }
+        } else if (colStyle) {
+            colStyle.remove();
+        }
+
         // Font size
         var pct = parseInt(_settings.fontSize, 10) || 100;
         root.style.fontSize = pct === 100 ? '' : (pct + '%');
@@ -3112,6 +3232,7 @@ document.addEventListener('DOMContentLoaded', function () {
             slider('iconSize', 'Device Icon Size', 60, 150, 5, '%', 'Scale device icons on cards') +
             toggle('showLastUpdate', 'Show Last Update', 'Show the formatted timestamp footer on device cards') +
             toggle('uppercaseNames', 'Uppercase Device Names', 'Force device names to UPPERCASE on cards') +
+            toggle('columnLayout', 'Single-Column Layout', 'Stack all device widgets in a single column instead of a responsive grid') +
             '</div>' +
 
             '<div class="ng-settings-section">' +
