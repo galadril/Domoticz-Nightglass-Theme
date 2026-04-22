@@ -195,102 +195,16 @@
         <div class="ng-showcase-grid">
 
           <div class="ng-showcase-item">
-            <div class="ng-showcase-label">RGBW — colour + white mode</div>
-            <!-- Static preview — in real Domoticz the jQWCP widget fills this -->
-            <div id="ng-rgbw-demo-a" class="pop ui-popup ui-body-b ui-overlay-shadow ui-corner-all" style="width:340px">
-              <button class="ng-popup-close" disabled style="cursor:default" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
-              <div class="ng-popup-title"><i class="fa-solid fa-palette"></i> Color</div>
-              <table style="width:100%;padding:6px 20px 12px;box-sizing:border-box;">
-                <tr>
-                  <td style="text-align:center;padding:0 0 8px;">
-                    <div class="ng-demo-wheel"></div>
-                  </td>
-                  <td style="padding:0 0 8px 14px;vertical-align:middle;">
-                    <div class="jQWCP-slider-wrapper">
-                      <canvas class="jQWCP-slider" width="80" height="12"
-                        style="display:block;width:100%;height:12px;border-radius:6px;background:linear-gradient(90deg,#000,#4e9af1);"></canvas>
-                    </div>
-                    <div class="jQWCP-slider-wrapper">
-                      <canvas class="jQWCP-slider" width="80" height="12"
-                        style="display:block;width:100%;height:12px;border-radius:6px;background:linear-gradient(90deg,#ff7e00,#fff,#9bb2ff);"></canvas>
-                    </div>
-                    <div class="jQWCP-wPreview">
-                      <div class="jQWCP-wPreviewBox" style="height:30px;background:linear-gradient(135deg,#4e9af1,#7ec8e3);"></div>
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td colspan="2" style="padding-top:4px;">
-                    <div class="btn-group">
-                      <a class="btn btn-small" href="javascript:void(0)" onclick="demoLog('RGBW: On')">On</a>
-                      <a class="btn btn-small active" href="javascript:void(0)" onclick="demoLog('RGBW: Full Light')">Full Light</a>
-                      <a class="btn btn-small" href="javascript:void(0)" onclick="demoLog('RGBW: Night Light')">Night Light</a>
-                      <a class="btn btn-small" href="javascript:void(0)" onclick="demoLog('RGBW: Off')">Off</a>
-                    </div>
-                  </td>
-                </tr>
-              </table>
-              <!-- Colour mode icons -->
-              <div style="display:flex;gap:6px;padding:0 20px 18px;">
-                <a class="ng-demo-mode-btn ng-demo-mode-btn--active" href="javascript:void(0)" title="Colour wheel" onclick="demoLog('Mode: Colour')">
-                  <i class="fa-solid fa-palette" style="color:var(--dz-accent)"></i></a>
-                <a class="ng-demo-mode-btn" href="javascript:void(0)" title="White / colour-temp" onclick="demoLog('Mode: White')">
-                  <i class="fa-solid fa-temperature-half" style="color:var(--dz-text-muted)"></i></a>
-                <a class="ng-demo-mode-btn" href="javascript:void(0)" title="Scene" onclick="demoLog('Mode: Scene')">
-                  <i class="fa-solid fa-wand-magic-sparkles" style="color:var(--dz-text-muted)"></i></a>
-                <a class="ng-demo-mode-btn" href="javascript:void(0)" title="Disco" onclick="demoLog('Mode: Disco')">
-                  <i class="fa-solid fa-music" style="color:var(--dz-text-muted)"></i></a>
-              </div>
-            </div>
-            <span class="ng-showcase-hint">jQWCP wheel rendered live in Domoticz</span>
+            <div class="ng-showcase-label">RGBW — colour mode</div>
+            <!-- Rendered by buildRgbwDemo() below — matches real popup exactly -->
+            <div id="ng-rgbw-demo-a" class="pop ui-popup ui-body-b ui-overlay-shadow ui-corner-all" style="width:300px;padding:0 20px 20px"></div>
+            <span class="ng-showcase-hint">canvas HSV wheel — Nightglass replaces jQWCP</span>
           </div>
 
           <div class="ng-showcase-item">
-            <div class="ng-showcase-label">Hue — colour-temperature mode</div>
-            <div id="ng-rgbw-demo-b" class="pop ui-popup ui-body-b ui-overlay-shadow ui-corner-all" style="width:340px">
-              <button class="ng-popup-close" disabled style="cursor:default" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
-              <div class="ng-popup-title"><i class="fa-solid fa-palette"></i> Color</div>
-              <table style="width:100%;padding:6px 20px 12px;box-sizing:border-box;">
-                <tr>
-                  <td style="text-align:center;padding:0 0 8px;">
-                    <!-- Warm-white wheel variant -->
-                    <div class="ng-demo-wheel" style="
-                      background:
-                        radial-gradient(circle, rgba(255,255,255,0.88) 0%, transparent 62%),
-                        conic-gradient(#ff7e00,#ffbe6f,#fff5e0,#fff,#e8f4ff,#9bb2ff,#ff7e00);
-                    "></div>
-                  </td>
-                  <td style="padding:0 0 8px 14px;vertical-align:middle;">
-                    <div class="jQWCP-slider-wrapper">
-                      <canvas class="jQWCP-slider" width="80" height="12"
-                        style="display:block;width:100%;height:12px;border-radius:6px;background:linear-gradient(90deg,#000,#ffd580);"></canvas>
-                    </div>
-                    <div class="jQWCP-slider-wrapper">
-                      <canvas class="jQWCP-slider" width="80" height="12"
-                        style="display:block;width:100%;height:12px;border-radius:6px;background:linear-gradient(90deg,#ff7e00,#fff,#9bb2ff);"></canvas>
-                    </div>
-                    <div class="jQWCP-wPreview">
-                      <div class="jQWCP-wPreviewBox" style="height:30px;background:linear-gradient(135deg,#ffd580,#fff5e0);"></div>
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td colspan="2" style="padding-top:4px;">
-                    <div class="btn-group">
-                      <a class="btn btn-small active" href="javascript:void(0)" onclick="demoLog('Hue: On')">On</a>
-                      <a class="btn btn-small" href="javascript:void(0)" onclick="demoLog('Hue: Off')">Off</a>
-                    </div>
-                  </td>
-                </tr>
-              </table>
-              <div style="display:flex;gap:6px;padding:0 20px 18px;">
-                <a class="ng-demo-mode-btn" href="javascript:void(0)" title="Colour wheel" onclick="demoLog('Mode: Colour')">
-                  <i class="fa-solid fa-palette" style="color:var(--dz-text-muted)"></i></a>
-                <a class="ng-demo-mode-btn ng-demo-mode-btn--active" href="javascript:void(0)" title="White / colour-temp" onclick="demoLog('Mode: White')">
-                  <i class="fa-solid fa-temperature-half" style="color:var(--dz-accent)"></i></a>
-              </div>
-            </div>
-            <span class="ng-showcase-hint">warm-white / colour-temperature variant</span>
+            <div class="ng-showcase-label">RGBW — white temperature mode</div>
+            <div id="ng-rgbw-demo-b" class="pop ui-popup ui-body-b ui-overlay-shadow ui-corner-all" style="width:300px;padding:0 20px 20px"></div>
+            <span class="ng-showcase-hint">warm/cool white channel with gradient bar</span>
           </div>
 
         </div>

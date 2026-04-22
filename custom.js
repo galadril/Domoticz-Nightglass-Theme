@@ -2512,7 +2512,8 @@ document.addEventListener('DOMContentLoaded', function () {
         liveToasts:         true,
         liveToastFilter:    'meaningful',
         liveToastDuration:  '4',
-        liveToastPosition:  'bottom-right'
+        liveToastPosition:  'bottom-right',
+        toastBlacklist:     '[]'
     };
 
     var _settings = null;
@@ -3250,6 +3251,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 { value: 'bottom-center', label: 'Bottom center' },
                 { value: 'top-right',     label: 'Top right' }
             ], 'Where toasts appear on screen') +
+            '<div class="ng-setting-row ng-setting-row--action">' +
+            '  <div class="ng-setting-info">' +
+            '    <span class="ng-setting-label">Suppressed Devices</span>' +
+            '    <span class="ng-setting-desc">Block specific devices from triggering notifications</span>' +
+            '  </div>' +
+            '  <button class="ng-action-chip" id="ng-bl-manage-btn">' +
+            '    <i class="fa-solid fa-filter-circle-xmark"></i> Manage</button>' +
+            '</div>' +
             '</div>' +
 
             /* Right column: Color panels (together) */
@@ -3575,6 +3584,155 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /* ── Notification Blacklist Dialog ─────────────────────────── */
+
+    function openBlacklistDialog() {
+        // Remove any existing dialog
+        var existing = document.getElementById('ng-bl-overlay');
+        if (existing) existing.remove();
+
+        // Load current blacklist
+        var currentBl = [];
+        try {
+            currentBl = JSON.parse(
+                (window.dzNightglassSettings && window.dzNightglassSettings.get('toastBlacklist')) || '[]'
+            );
+        } catch (e) {}
+
+        // Build dialog shell
+        var overlay = document.createElement('div');
+        overlay.id = 'ng-bl-overlay';
+        overlay.className = 'ng-bl-overlay';
+        overlay.innerHTML =
+            '<div class="ng-bl-dialog" role="dialog" aria-label="Notification Blacklist">' +
+            '  <div class="ng-bl-header">' +
+            '    <div class="ng-bl-title">' +
+            '      <i class="fa-solid fa-filter-circle-xmark"></i>' +
+            '      <span>Suppressed Devices</span>' +
+            '    </div>' +
+            '    <button class="ng-bl-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>' +
+            '  </div>' +
+            '  <div class="ng-bl-search-wrap">' +
+            '    <i class="fa-solid fa-magnifying-glass ng-bl-search-icon"></i>' +
+            '    <input class="ng-bl-search" id="ng-bl-search" placeholder="Search devices…" autocomplete="off">' +
+            '  </div>' +
+            '  <div class="ng-bl-list" id="ng-bl-list">' +
+            '    <div class="ng-bl-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading devices…</div>' +
+            '  </div>' +
+            '  <div class="ng-bl-footer">' +
+            '    <span class="ng-bl-count" id="ng-bl-count"></span>' +
+            '    <div class="ng-bl-footer-btns">' +
+            '      <button class="ng-bl-btn ng-bl-btn--cancel">Cancel</button>' +
+            '      <button class="ng-bl-btn ng-bl-btn--save">Save</button>' +
+            '    </div>' +
+            '  </div>' +
+            '</div>';
+        document.body.appendChild(overlay);
+
+        // Animate in
+        requestAnimationFrame(function () { overlay.classList.add('ng-bl-overlay--open'); });
+
+        var dialog    = overlay.querySelector('.ng-bl-dialog');
+        var listEl    = overlay.querySelector('#ng-bl-list');
+        var searchEl  = overlay.querySelector('#ng-bl-search');
+        var countEl   = overlay.querySelector('#ng-bl-count');
+        var pending   = currentBl.slice(); // copy to mutate
+
+        function close() {
+            overlay.classList.remove('ng-bl-overlay--open');
+            setTimeout(function () { overlay.remove(); }, 260);
+        }
+
+        function updateCount() {
+            if (countEl) {
+                var n = pending.length;
+                countEl.textContent = n === 0 ? 'None suppressed' : n + ' suppressed';
+            }
+        }
+
+        function filterList(q) {
+            var rows = listEl.querySelectorAll('.ng-bl-row');
+            q = (q || '').toLowerCase();
+            for (var i = 0; i < rows.length; i++) {
+                var name = (rows[i].dataset.name || '').toLowerCase();
+                rows[i].style.display = (!q || name.indexOf(q) !== -1) ? '' : 'none';
+            }
+        }
+
+        function renderDevices(devices) {
+            if (!devices || !devices.length) {
+                listEl.innerHTML = '<div class="ng-bl-empty">No devices found.</div>';
+                return;
+            }
+            var html = '';
+            for (var i = 0; i < devices.length; i++) {
+                var d = devices[i];
+                var isBlocked = pending.indexOf(String(d.idx)) !== -1;
+                html +=
+                    '<label class="ng-bl-row' + (isBlocked ? ' ng-bl-row--active' : '') + '" ' +
+                    '  data-idx="' + d.idx + '" data-name="' + (d.Name || '').replace(/"/g,'&quot;') + '">' +
+                    '  <span class="ng-bl-row-info">' +
+                    '    <span class="ng-bl-row-name">' + (d.Name || 'Device ' + d.idx) + '</span>' +
+                    '    <span class="ng-bl-row-type">' + (d.HardwareName || '') + (d.Type ? ' · ' + d.Type : '') + '</span>' +
+                    '  </span>' +
+                    '  <input type="checkbox" class="ng-bl-cb" ' + (isBlocked ? 'checked' : '') + ' aria-label="Suppress">' +
+                    '  <span class="ng-bl-toggle-track"><span class="ng-bl-toggle-thumb"></span></span>' +
+                    '</label>';
+            }
+            listEl.innerHTML = html;
+
+            // Wire up checkbox changes
+            listEl.addEventListener('change', function (e) {
+                var cb = e.target;
+                if (!cb.classList.contains('ng-bl-cb')) return;
+                var row = cb.closest('.ng-bl-row');
+                if (!row) return;
+                var idxStr = String(row.dataset.idx);
+                var pos = pending.indexOf(idxStr);
+                if (cb.checked) {
+                    row.classList.add('ng-bl-row--active');
+                    if (pos === -1) pending.push(idxStr);
+                } else {
+                    row.classList.remove('ng-bl-row--active');
+                    if (pos !== -1) pending.splice(pos, 1);
+                }
+                updateCount();
+            });
+
+            updateCount();
+        }
+
+        // Close handlers
+        overlay.querySelector('.ng-bl-close').addEventListener('click', close);
+        overlay.querySelector('.ng-bl-btn--cancel').addEventListener('click', close);
+        overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+
+        // Search
+        if (searchEl) {
+            searchEl.addEventListener('input', function () { filterList(this.value); });
+        }
+
+        // Save
+        overlay.querySelector('.ng-bl-btn--save').addEventListener('click', function () {
+            if (window.dzNightglassSettings) {
+                window.dzNightglassSettings.set('toastBlacklist', JSON.stringify(pending));
+            }
+            close();
+        });
+
+        // Fetch devices from Domoticz
+        fetch('/json.htm?type=devices&used=true&filter=all&order=Name', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) { renderDevices(data.result || []); })
+            .catch(function () {
+                listEl.innerHTML =
+                    '<div class="ng-bl-empty">' +
+                    '  <i class="fa-solid fa-triangle-exclamation"></i>' +
+                    '  Could not load device list.' +
+                    '</div>';
+            });
+    }
+
     function bindEvents(container) {
         // Presets panel collapse/expand
         var presetsToggle = container.querySelector('#ngPresetsToggle');
@@ -3641,6 +3799,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     loadPresets(wrap);
                 }
             });
+        }
+
+        // Notification blacklist manage button
+        var blBtn = container.querySelector('#ng-bl-manage-btn');
+        if (blBtn) {
+            blBtn.addEventListener('click', openBlacklistDialog);
         }
 
         // Export button
@@ -5097,6 +5261,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Per-device debounce
         var idx = String(device.idx || device.ID || '');
+
+        // Blacklist check
+        try {
+            var bl = JSON.parse(window.dzNightglassSettings.get('toastBlacklist') || '[]');
+            if (bl.indexOf(idx) !== -1) return;
+        } catch (e) {}
         var now = Date.now();
         if (idx && _lastShown[idx] && (now - _lastShown[idx]) < DEBOUNCE_MS) return;
 

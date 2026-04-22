@@ -7286,6 +7286,294 @@ body.dz-light #tabbackuprestore strong[style*="color: #fff"] {
         opacity: 0.5;
     }
 
+/* ── Action chip button (used in setting rows) ─────────────── */
+
+.ng-action-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border: 1px solid var(--dz-border);
+    border-radius: 20px;
+    background: var(--dz-surface-2);
+    color: var(--dz-text-muted);
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.ng-action-chip:hover {
+    background: var(--dz-border);
+    color: var(--dz-text);
+    border-color: var(--dz-accent-color);
+}
+
+/* ── Notification Blacklist Dialog ─────────────────────────── */
+
+.ng-bl-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+.ng-bl-overlay--open {
+    opacity: 1;
+}
+
+.ng-bl-dialog {
+    background: var(--dz-surface);
+    border: 1px solid var(--dz-border);
+    border-radius: 20px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+    width: 420px;
+    max-width: calc(100vw - 32px);
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform: scale(0.93);
+    transition: transform 0.25s cubic-bezier(0.34,1.12,0.64,1);
+}
+
+.ng-bl-overlay--open .ng-bl-dialog {
+    transform: scale(1);
+}
+
+.ng-bl-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--dz-border);
+}
+
+.ng-bl-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--dz-text);
+}
+
+.ng-bl-title i {
+    color: var(--dz-accent-color);
+    font-size: 1rem;
+}
+
+.ng-bl-close {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: none;
+    background: var(--dz-surface-2);
+    color: var(--dz-text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    transition: background 0.15s, color 0.15s;
+}
+
+.ng-bl-close:hover {
+    background: var(--dz-border);
+    color: var(--dz-text);
+}
+
+.ng-bl-search-wrap {
+    position: relative;
+    padding: 12px 16px 8px;
+}
+
+.ng-bl-search-icon {
+    position: absolute;
+    left: 28px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--dz-text-faint);
+    font-size: 0.8rem;
+    pointer-events: none;
+}
+
+.ng-bl-search {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 12px 8px 34px;
+    border: 1px solid var(--dz-border);
+    border-radius: 10px;
+    background: var(--dz-surface-2);
+    color: var(--dz-text);
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.ng-bl-search:focus {
+    border-color: var(--dz-accent-color);
+}
+
+.ng-bl-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0;
+}
+
+.ng-bl-loading,
+.ng-bl-empty {
+    text-align: center;
+    padding: 32px 16px;
+    color: var(--dz-text-faint);
+    font-size: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.ng-bl-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    cursor: pointer;
+    gap: 12px;
+    border-bottom: 1px solid rgba(var(--dz-overlay-rgb), 0.03);
+    transition: background 0.12s;
+}
+
+.ng-bl-row:hover {
+    background: rgba(var(--dz-overlay-rgb), 0.03);
+}
+
+.ng-bl-row--active {
+    background: rgba(220, 53, 69, 0.06);
+}
+
+.ng-bl-row--active:hover {
+    background: rgba(220, 53, 69, 0.1);
+}
+
+.ng-bl-row-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.ng-bl-row-name {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--dz-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ng-bl-row-type {
+    display: block;
+    font-size: 0.73rem;
+    color: var(--dz-text-faint);
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Hide the raw checkbox; drive visual state through the custom toggle */
+.ng-bl-cb {
+    display: none;
+}
+
+.ng-bl-toggle-track {
+    width: 38px;
+    height: 20px;
+    border-radius: 10px;
+    background: var(--dz-border);
+    flex-shrink: 0;
+    position: relative;
+    transition: background 0.2s;
+}
+
+.ng-bl-row--active .ng-bl-toggle-track {
+    background: rgba(220, 53, 69, 0.7);
+}
+
+.ng-bl-toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+}
+
+.ng-bl-row--active .ng-bl-toggle-thumb {
+    transform: translateX(18px);
+}
+
+.ng-bl-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px 16px;
+    border-top: 1px solid var(--dz-border);
+    gap: 10px;
+}
+
+.ng-bl-count {
+    font-size: 0.78rem;
+    color: var(--dz-text-faint);
+    flex: 1;
+}
+
+.ng-bl-footer-btns {
+    display: flex;
+    gap: 8px;
+}
+
+.ng-bl-btn {
+    padding: 7px 18px;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--dz-border);
+    transition: background 0.15s, color 0.15s;
+}
+
+.ng-bl-btn--cancel {
+    background: var(--dz-surface-2);
+    color: var(--dz-text-muted);
+}
+
+.ng-bl-btn--cancel:hover {
+    background: var(--dz-border);
+    color: var(--dz-text);
+}
+
+.ng-bl-btn--save {
+    background: var(--dz-accent-color);
+    border-color: var(--dz-accent-color);
+    color: #fff;
+}
+
+.ng-bl-btn--save:hover {
+    filter: brightness(1.1);
+}
+
 /* ── Theme Presets ─────────────────────────────────────────── */
 
 .ng-presets-section {
