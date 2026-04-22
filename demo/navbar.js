@@ -2,7 +2,7 @@
  * navbar.js — injects the Domoticz-style navbar into every demo page.
  * Call buildNavbar('pageId') from each page's <script>.
  *
- * pageId values: 'dashboard' | 'lights' | 'scenes' | 'temperature' | 'weather' | 'utility'
+ * pageId values: 'dashboard' | 'lights' | 'scenes' | 'temperature' | 'weather' | 'utility' | 'popups'
  */
 (function () {
   var PAGES = [
@@ -12,6 +12,8 @@
     { id: 'temperature', href: 'temperature.html',  icon: 'fa-temperature-half', label: 'Temperature' },
     { id: 'weather',     href: 'weather.html',      icon: 'fa-cloud-rain',      label: 'Weather'     },
     { id: 'utility',     href: 'utility.html',      icon: 'fa-bolt',            label: 'Utility'     },
+    { id: 'popups',      href: 'popups.html',       icon: 'fa-window-restore',  label: 'Popups'      },
+    { id: 'notifications', href: 'notifications.html', icon: 'fa-bell',           label: 'Notifications' },
   ];
 
   var SETUP_ITEMS = [

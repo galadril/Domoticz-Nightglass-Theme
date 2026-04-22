@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="../custom.css">
     <link rel="stylesheet" href="demo.css">
     <script src="custom.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body>
     <script src="navbar.js"></script>
@@ -191,15 +192,18 @@
                             </section>
                         </div>
 
-                        <!-- 7. Thermostat -->
+                        <!-- 7. Thermostat — click icon to open setpoint popup -->
                         <div class="item span4 itemBlock statusNormal" id="d7">
                             <section>
-                                <table id="itemtable" border="0" cellpadding="0" cellspacing="0">
+                                <table id="itemtable7" border="0" cellpadding="0" cellspacing="0">
                                     <tr>
                                         <td id="name">Thermostat</td>
                                         <td id="bigtext">20.5 °C</td>
                                         <td id="img">
-                                            <i class="dz-fa-device fa-solid fa-fire-flame-curved lcursor" style="color:#e05555;"></i>
+                                            <i class="dz-fa-device fa-solid fa-fire-flame-curved lcursor"
+                                               style="color:#e05555;"
+                                               onclick="demoShowSetpoint(event, 20.5, 10, 30, 0.5)"
+                                               title="Click to set temperature"></i>
                                         </td>
                                         <td id="status">Set: 20.5 °C &mdash; Heating</td>
                                         <td id="lastupdate"><span style="font-style:italic">Last Seen</span>: Today 12:34:00</td>
@@ -209,6 +213,32 @@
                                             <a class="btnsmall" href="#">Log</a>
                                             <a class="btnsmall" href="#">Edit</a>
                                             <a class="btnsmall-sel" href="#">Notifications</a>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </section>
+                        </div>
+
+                        <!-- 7b. Floor Heating — second setpoint device -->
+                        <div class="item span4 itemBlock statusNormal" id="d7b">
+                            <section>
+                                <table id="itemtable7b" border="0" cellpadding="0" cellspacing="0">
+                                    <tr>
+                                        <td id="name">Floor Heating</td>
+                                        <td id="bigtext">18.0 °C</td>
+                                        <td id="img">
+                                            <i class="dz-fa-device fa-solid fa-temperature-arrow-up lcursor"
+                                               style="color:#f0a832;"
+                                               onclick="demoShowSetpoint(event, 18.0, 10, 30, 0.5)"
+                                               title="Click to set temperature"></i>
+                                        </td>
+                                        <td id="status">Set: 18.0 °C &mdash; Idle</td>
+                                        <td id="lastupdate"><span style="font-style:italic">Last Seen</span>: Today 12:22:00</td>
+                                        <td id="type">Setpoint</td>
+                                        <td class="options">
+                                            <span><i class="fa-regular fa-star dz-fa-fav dz-fav-off lcursor"></i></span>
+                                            <a class="btnsmall" href="#">Log</a>
+                                            <a class="btnsmall" href="#">Edit</a>
                                         </td>
                                     </tr>
                                 </table>
@@ -277,5 +307,47 @@
             </div>
         </div>
     </div>
+
+    <!-- Setpoint popup (shown as centered modal via ngOpenPopup) -->
+    <div id="setpoint_popup" class="pop ui-popup ui-body-b ui-overlay-shadow ui-corner-all"
+         style="display:none;"></div>
+
+    <script>
+    /* ── Setpoint demo stubs for temperature.html ── */
+    (function () {
+        window.$.setmin  = 10;
+        window.$.setmax  = 30;
+        window.$.setstep = 0.5;
+
+        window.CloseSetpointPopup = function () { /* overlay handles hiding */ };
+
+        window.SetSetpoint = function () {
+            var inp = document.getElementById('popup_setpoint');
+            var newVal = inp ? parseFloat(inp.value) : null;
+            if (newVal === null) return;
+            var card = document.getElementById(window._demoSetpointCard);
+            if (card) {
+                var big    = card.querySelector('td#bigtext');
+                var status = card.querySelector('td#status');
+                if (big)    big.textContent = newVal.toFixed(1) + ' °C';
+                if (status) status.textContent = 'Set: ' + newVal.toFixed(1) + ' °C';
+            }
+            if (window.ngCloseActivePopup) window.ngCloseActivePopup();
+        };
+
+        window.demoShowSetpoint = function (event, currentVal, min, max, step) {
+            window._demoSetpointCard = event.currentTarget
+                ? (event.currentTarget.closest('[id^="d"]') || {}).id || null
+                : null;
+            window.$.setmin  = min;
+            window.$.setmax  = max;
+            window.$.setstep = step;
+            window.ngOpenPopup('setpoint_popup');
+            if (window.ngShowSetpointArc) {
+                window.ngShowSetpointArc(currentVal, min, max, step, currentVal);
+            }
+        };
+    })();
+    </script>
 </body>
 </html>
