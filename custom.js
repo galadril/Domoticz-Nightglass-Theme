@@ -797,12 +797,15 @@ if (document.readyState === 'loading') {
             });
             /* Hide the sibling favorite image (Domoticz keeps both
                favorite.png and nofavorite.png side by side, toggling
-               visibility). Mark the other one as replaced to prevent
-               a duplicate FA star from being created. */
+               visibility). Mark the other one as replaced and map it
+               to the same FA <i> so src-change updates and recovery
+               logic don't create a duplicate star. */
             var siblings = img.parentNode ? img.parentNode.querySelectorAll('img[src*="favorite"]') : [];
             for (var si = 0; si < siblings.length; si++) {
                 if (siblings[si] !== img && !siblings[si].classList.contains('dz-icon-replaced')) {
                     siblings[si].classList.add('dz-icon-replaced');
+                    siblings[si].setAttribute('data-dz-src', siblings[si].getAttribute('src') || '');
+                    iconMap.set(siblings[si], icon);
                 }
             }
         } else if (resolved.type === 'wind') {
@@ -1071,6 +1074,18 @@ if (document.readyState === 'loading') {
     var BURST_DELAYS = [10, 80, 300, 800, 2000];
 
     function scheduleQuickReplace(node) {
+        /* Try synchronous replacement first — the node is already in the DOM
+           when the MutationObserver fires, so this usually succeeds.          */
+        try {
+            if (!node || node.nodeType !== 1) return;
+            if (node.tagName === 'IMG') {
+                if (node.parentNode) processImg(node);
+                return;
+            }
+            processNewImages(node);
+        } catch (_) { /* ignore — fallback below */ }
+        /* Also schedule an async pass as safety net in case Angular hasn't
+           finished compiling the node's children yet.                       */
         setTimeout(function () {
             if (!node || node.nodeType !== 1) return;
             if (node.tagName === 'IMG') {
@@ -1079,6 +1094,20 @@ if (document.readyState === 'loading') {
             }
             replaceIcons(node);
         }, 0);
+    }
+
+    /* Non-cancellable safety-net timer — ensures at least one full
+       replacement pass runs even when scheduleBurst keeps debouncing
+       due to rapid mutations (e.g. device data refresh via websocket). */
+    var _safetyTimer = null;
+    function scheduleSafetyPass() {
+        if (_safetyTimer) return;
+        _safetyTimer = setTimeout(function () {
+            _safetyTimer = null;
+            replaceIcons(document.body);
+            var extras = window._dzExtraProcessors;
+            if (extras) for (var p = 0; p < extras.length; p++) extras[p]();
+        }, 150);
     }
 
     function scheduleBurst() {
@@ -1095,6 +1124,8 @@ if (document.readyState === 'loading') {
                 if (extras) for (var p = 0; p < extras.length; p++) extras[p]();
             }, BURST_DELAYS[d]));
         }
+        /* Always schedule a non-cancellable safety pass */
+        scheduleSafetyPass();
     }
 
     var iconObserver = new MutationObserver(function (mutations) {
@@ -1184,6 +1215,13 @@ if (document.readyState === 'loading') {
         $rootScope.$on('$viewContentLoaded', function () {
             scheduleBurst();
         });
+        /* Watch for digest cycles — when device data refreshes via
+           websocket/polling, Angular re-renders table rows during
+           $digest. Schedule a non-cancellable safety pass after each
+           digest so icons are re-applied even during rapid updates.  */
+        $rootScope.$watch(function () {
+            scheduleSafetyPass();
+        });
     }
 
     if (document.readyState === 'loading') {
@@ -1198,17 +1236,24 @@ if (document.readyState === 'loading') {
        page change, sort, or filter — DataTables pagination often just
        toggles CSS display on existing rows rather than inserting new
        DOM nodes, so the MutationObserver alone won't catch it.        */
-    if (window.$) {
+    function hookDataTables() {
+        if (!window.$) return;
         $(document).on('draw.dt', function () {
             scheduleBurst();
         });
+        /* Also hook into row invalidation / AJAX reload — these fire when
+           device data refreshes in the background and may not always
+           trigger a full draw.dt event.                                   */
+        $(document).on('xhr.dt', function () {
+            scheduleSafetyPass();
+        });
+    }
+
+    if (window.$) {
+        hookDataTables();
     } else {
         document.addEventListener('DOMContentLoaded', function () {
-            if (window.$) {
-                $(document).on('draw.dt', function () {
-                    scheduleBurst();
-                });
-            }
+            hookDataTables();
         });
     }
 
@@ -1897,65 +1942,9 @@ document.addEventListener('DOMContentLoaded', function () {
             center.insertBefore(iconWrap, h1);
         }
 
-        /* ── 2. Replace canvas progress with SVG ring ───────────── */
+        /* ── 2. Hide the stock canvas progress (styled via CSS) ──── */
         var divProg = document.getElementById('divprogress');
         if (divProg) {
-            var canvas = divProg.querySelector('canvas') || divProg.querySelector('round-progress');
-            if (canvas) {
-                var ringDiv = document.createElement('div');
-                ringDiv.className = 'update-progress-ring';
-                ringDiv.id = 'dzProgressRing';
-                ringDiv.innerHTML =
-                    '<svg viewBox="0 0 160 160" width="160" height="160" xmlns="http://www.w3.org/2000/svg">' +
-                    '<circle class="ring-track" cx="80" cy="80" r="70" fill="none" stroke-width="8"/>' +
-                    '<circle class="ring-fill" cx="80" cy="80" r="70" fill="none" stroke-width="8" stroke-linecap="round" stroke-dasharray="439.82" stroke-dashoffset="439.82"/>' +
-                    '</svg>' +
-                    '<span class="ring-label">0 %</span>';
-                canvas.parentNode.replaceChild(ringDiv, canvas);
-
-                /* Mirror ProgressData changes into the SVG ring */
-                var circumference = 2 * Math.PI * 70;
-                var fillEl = ringDiv.querySelector('.ring-fill');
-                var labelEl = ringDiv.querySelector('.ring-label');
-                var iconWrapEl = center.querySelector('.update-icon-wrap');
-                var spinIcon = iconWrapEl ? iconWrapEl.querySelector('.update-spin-icon') : null;
-
-                function syncProgress() {
-                    var scope = null;
-                    try {
-                        var el = document.querySelector('[data-round-progress-model]') || document.getElementById('dzProgressRing');
-                        if (el && window.angular) {
-                            scope = window.angular.element(el).scope();
-                        }
-                    } catch (e) { /* ignore */ }
-
-                    var pct = 0;
-                    if (scope && scope.ProgressData) {
-                        pct = typeof scope.ProgressData === 'number' ? scope.ProgressData : (scope.ProgressData.current || 0);
-                    }
-                    if (pct < 0) pct = 0;
-                    if (pct > 100) pct = 100;
-
-                    var offset = circumference - (pct / 100) * circumference;
-                    fillEl.setAttribute('stroke-dashoffset', offset);
-                    labelEl.textContent = Math.round(pct) + ' %';
-
-                    if (pct >= 100) {
-                        fillEl.setAttribute('stroke', '#4caf7d');
-                        fillEl.style.filter = 'drop-shadow(0 0 6px rgba(76,175,125,0.4))';
-                        labelEl.textContent = '\u2713';
-                        labelEl.style.color = '#4caf7d';
-                        if (spinIcon) {
-                            spinIcon.className = 'fa-solid fa-circle-check';
-                            spinIcon.style.animation = 'none';
-                            spinIcon.style.color = '#4caf7d';
-                        }
-                        if (iconWrapEl) iconWrapEl.style.borderColor = 'rgba(76,175,125,0.3)';
-                    }
-                }
-
-                setInterval(syncProgress, 500);
-            }
 
             /* ── 3. Style the warning span ──────────────────────── */
             var warnSpan = divProg.querySelector('span[ng-bind-html="bottomText"]');
@@ -2553,8 +2542,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 devIconStyle.id = 'dz-ng-devicon-style';
                 devIconStyle.textContent =
                     'i.dz-fa-device, i.dz-wind { display: none !important; }' +
-                    'body table[id^="itemtable"] img.dz-icon-replaced { display: inline !important; opacity: 1 !important; pointer-events: auto !important; }' +
-                    'body table[id^="itemtable"] img[src*="48"] { opacity: 1 !important; pointer-events: auto !important; }';
+                    'body table[id^="itemtable"] img.dz-icon-replaced:not([data-dz-src*="favorite"]) { display: inline !important; opacity: 1 !important; pointer-events: auto !important; }' +
+                    'body table[id^="itemtable"] img[src*="48"]:not([src*="favorite"]) { opacity: 1 !important; pointer-events: auto !important; }';
                 document.head.appendChild(devIconStyle);
             }
         } else if (devIconStyle) {
@@ -2960,7 +2949,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 iconsDisabledStyle.id = 'dz-ng-icons-disabled';
                 iconsDisabledStyle.textContent =
                     'i.dz-fa-device, i.dz-fa-icon, i.dz-fa-fav, i.dz-fa-trend, i.dz-fa-action, i.dz-fa-nav, i.dz-wind { display: none !important; }' +
-                    'img.dz-icon-replaced { display: inline !important; opacity: 1 !important; pointer-events: auto !important; }';
+                    'img.dz-icon-replaced { display: inline !important; opacity: 1 !important; pointer-events: auto !important; }' +
+                    'img.dz-icon-replaced[data-dz-src*="favorite"] ~ img.dz-icon-replaced[data-dz-src*="favorite"] { display: none !important; }';
                 document.head.appendChild(iconsDisabledStyle);
             }
         } else if (iconsDisabledStyle) { iconsDisabledStyle.remove(); }
