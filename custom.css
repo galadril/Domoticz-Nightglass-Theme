@@ -1797,14 +1797,14 @@ body table[id^="itemtable"] tr .ui-slider {
 
 dztemperaturewidget table[id^="itemtablenotype"] tr td#status,
 dzweatherwidget table[id^="itemtablenotype"] tr td#status {
-    margin-bottom: 6px !important;
+    margin-bottom: 40px !important;
 }
 
 dztemperaturewidget table[id^="itemtablenotype"] tr td.options,
 dzweatherwidget table[id^="itemtablenotype"] tr td.options {
-    position: relative !important;
-    bottom: auto !important;
-    margin-top: auto !important;
+    position: absolute !important;
+    bottom: -10px !important;
+    margin-top: 0 !important;
 }
 
 
@@ -5666,16 +5666,23 @@ body.dashboard div.item.Fan.onn .img1 img {
 @media (max-width: 1199px) and (min-width: 770px) {
 
     /* Options row: flow in document instead of absolute overlay */
-    body table[id^="itemtable"] tr td.options {
+    body table[id^="itemtable"] tr td.options,
+    dztemperaturewidget table[id^="itemtablenotype"] tr td.options,
+    dzweatherwidget table[id^="itemtablenotype"] tr td.options {
         position: relative !important;
         bottom: auto !important;
         right: auto !important;
         margin-top: 6px !important;
     }
 
-    /* Reduce the type row bottom-margin (no longer reserving space for abs options) */
+    /* Reduce the type/status row bottom-margin (no longer reserving space for abs options) */
     body table[id^="itemtable"] tr td#type {
         margin-bottom: 4px !important;
+    }
+
+    dztemperaturewidget table[id^="itemtablenotype"] tr td#status,
+    dzweatherwidget table[id^="itemtablenotype"] tr td#status {
+        margin-bottom: 6px !important;
     }
 
     /* Card footer: flow in document */
@@ -5722,7 +5729,9 @@ body.dashboard div.item.Fan.onn .img1 img {
 
     /* Fix #78: options row overlaps activation buttons on mobile.
        Switch from absolute (desktop) to in-flow positioning.      */
-    body table[id^="itemtable"] tr td.options {
+    body table[id^="itemtable"] tr td.options,
+    dztemperaturewidget table[id^="itemtablenotype"] tr td.options,
+    dzweatherwidget table[id^="itemtablenotype"] tr td.options {
         position: relative !important;
         bottom: auto !important;
         right: auto !important;
@@ -5732,6 +5741,11 @@ body.dashboard div.item.Fan.onn .img1 img {
     /* Remove the bottom-margin reserved for absolute options */
     body table[id^="itemtable"] tr td#type {
         margin-bottom: 4px !important;
+    }
+
+    dztemperaturewidget table[id^="itemtablenotype"] tr td#status,
+    dzweatherwidget table[id^="itemtablenotype"] tr td#status {
+        margin-bottom: 6px !important;
     }
 
     /* Card footer timestamp: flow in document */
