@@ -13,6 +13,7 @@
     { id: 'weather',     href: 'weather.html',      icon: 'fa-cloud-rain',      label: 'Weather'     },
     { id: 'utility',     href: 'utility.html',      icon: 'fa-bolt',            label: 'Utility'     },
     { id: 'popups',      href: 'popups.html',       icon: 'fa-window-restore',  label: 'Popups'      },
+    { id: 'notifications', href: 'notifications.html', icon: 'fa-bell',           label: 'Notifications' },
   ];
 
   var SETUP_ITEMS = [
