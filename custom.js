@@ -2404,7 +2404,8 @@ document.addEventListener('DOMContentLoaded', function () {
         enableAppearance:   true,
         enableEffects:      true,
         enableColors:       true,
-        fontSize:           '100'
+        fontSize:           '100',
+        columnLayout:       false
     };
 
     var _settings = null;
@@ -2932,6 +2933,27 @@ document.addEventListener('DOMContentLoaded', function () {
             ucStyle.remove();
         }
 
+        // Column layout (single-column device grid)
+        var colStyle = document.getElementById('dz-ng-column-style');
+        if (_settings.columnLayout) {
+            if (!colStyle) {
+                colStyle = document.createElement('style');
+                colStyle.id = 'dz-ng-column-style';
+                colStyle.textContent =
+                    '.devicesList .row > [class*="col-"],' +
+                    'section.dashCategory .row > [class*="col-"],' +
+                    '#tempwidgets .row > [class*="col-"],' +
+                    '#weatherwidgets .row > [class*="col-"] {' +
+                    '  width: 100% !important;' +
+                    '  flex: 0 0 100% !important;' +
+                    '  max-width: 100% !important;' +
+                    '}';
+                document.head.appendChild(colStyle);
+            }
+        } else if (colStyle) {
+            colStyle.remove();
+        }
+
         // Font size
         var pct = parseInt(_settings.fontSize, 10) || 100;
         root.style.fontSize = pct === 100 ? '' : (pct + '%');
@@ -3105,6 +3127,7 @@ document.addEventListener('DOMContentLoaded', function () {
             slider('iconSize', 'Device Icon Size', 60, 150, 5, '%', 'Scale device icons on cards') +
             toggle('showLastUpdate', 'Show Last Update', 'Show the formatted timestamp footer on device cards') +
             toggle('uppercaseNames', 'Uppercase Device Names', 'Force device names to UPPERCASE on cards') +
+            toggle('columnLayout', 'Single-Column Layout', 'Stack all device widgets in a single column instead of a responsive grid') +
             '</div>' +
 
             '<div class="ng-settings-section">' +
