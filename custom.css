@@ -2839,14 +2839,10 @@ input.ui-widget-content {
 
 /* ── 9g. RGBW colour picker popup ─────────────────────────────── */
 
-#rgbw_popup,
-#rfy_popup {
+#rgbw_popup {
     background: var(--dz-surface) !important;
     border: 1px solid var(--dz-border) !important;
-    border-radius: 14px !important;
-    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5) !important;
     color: var(--dz-text) !important;
-    padding: 16px !important;
 }
 
     /* RGBW On / Full Light / Night Light / Off buttons — pill style */
@@ -3101,7 +3097,8 @@ input.ui-widget-content {
 #lucci_popup,
 #lucci_dc_popup,
 #falmec_popup,
-#rfy_popup {
+#rfy_popup,
+#rgbw_popup {
     background: var(--dz-surface) !important;
     border: 1px solid var(--dz-border) !important;
     border-radius: 20px !important;
@@ -3483,6 +3480,44 @@ body.dz-light .ng-sp-track {
 .ng-rfy-btn i {
     font-size: 1rem;
     flex-shrink: 0;
+}
+
+/* ── 9h-5. RGBW / Hue Color Picker Popup ─────────────────────── */
+
+#rgbw_popup {
+    width: 340px !important;
+}
+
+/* The injected header is just a layout container — close button
+   positions absolute to the popup; title is centered within it. */
+.ng-rgbw-header {
+    display: block;
+}
+
+/* Pad the Domoticz-generated table (color wheel + sliders) */
+#rgbw_popup > table {
+    width: 100% !important;
+    padding: 6px 20px 12px !important;
+    box-sizing: border-box !important;
+}
+
+/* Pad the color-mode icon row */
+#rgbw_popup > #ColorMode {
+    padding: 0 20px 16px !important;
+}
+
+/* Center the jQWCP widget inside its cell */
+#rgbw_popup .jQWCP-wWidget {
+    margin: 0 auto !important;
+}
+
+/* Chip-style On/Full/Night/Off buttons — full-width row layout */
+#rgbw_popup .btn-group {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 0 4px !important;
+    justify-content: center;
 }
 
 /* ── 9i. Tips of the Day modal ────────────────────────────────── */

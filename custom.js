@@ -4439,6 +4439,35 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function redesignRGBWPopup() {
+        var p = document.getElementById('rgbw_popup');
+        if (!p) return;
+
+        function ensureHeader() {
+            if (p.querySelector('.ng-rgbw-header')) return;
+            var firstChild = p.firstChild;
+            if (!firstChild) return;
+            var hdr = document.createElement('div');
+            hdr.className = 'ng-rgbw-header';
+            hdr.innerHTML =
+                '<button class="ng-popup-close" onclick="ngCloseActivePopup();" aria-label="Close">' +
+                '  <i class="fa-solid fa-xmark"></i></button>' +
+                '<div class="ng-popup-title"><i class="fa-solid fa-palette"></i> Color</div>';
+            p.insertBefore(hdr, firstChild);
+        }
+
+        // Domoticz fills #rgbw_popup dynamically on each show.
+        // Watch for child additions and inject the header each time.
+        new MutationObserver(function (mutations) {
+            var hasNewContent = mutations.some(function (m) {
+                return Array.prototype.some.call(m.addedNodes, function (n) {
+                    return n.nodeType === 1 && !(n.classList && n.classList.contains('ng-rgbw-header'));
+                });
+            });
+            if (hasNewContent) setTimeout(ensureHeader, 0);
+        }).observe(p, { childList: true });
+    }
+
     function redesignRFYPopup() {
         var p = document.getElementById('rfy_popup');
         if (!p || p.dataset.ngDone) return;
@@ -4476,12 +4505,14 @@ document.addEventListener('DOMContentLoaded', function () {
         redesignFalmecPopup();
         redesignThermostat3Popup();
         redesignRFYPopup();
+        redesignRGBWPopup();
         hookSetpointShow();
 
         // Watch each popup for Domoticz's native show/hide (jQuery Mobile)
         // so the overlay opens/closes automatically without needing to hook every show function
         var POPUP_IDS = ['setpoint_popup', 'thermostat3_popup', 'itho_popup',
-                         'lucci_popup', 'lucci_dc_popup', 'falmec_popup', 'rfy_popup'];
+                         'lucci_popup', 'lucci_dc_popup', 'falmec_popup', 'rfy_popup',
+                         'rgbw_popup'];
         if (window.MutationObserver) {
             POPUP_IDS.forEach(function (id) {
                 var el = document.getElementById(id);
@@ -4697,6 +4728,31 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     window.ngShowToast = ngShowToast;
 
+    /* ── Only notify for devices currently visible on screen ────── */
+
+    function isDeviceVisible(idx) {
+        var s = String(idx || '');
+        if (!s) return false;
+        var cards = document.querySelectorAll('div.item.itemBlock, .itemBlock > div.item');
+        for (var i = 0; i < cards.length; i++) {
+            if (window.angular) {
+                try {
+                    var scope = angular.element(cards[i]).scope();
+                    if (scope) {
+                        var item = scope.item || scope.device || scope.widget;
+                        if (item && String(item.idx) === s) return true;
+                    }
+                } catch (e) {}
+            }
+            var tbl = cards[i].querySelector('table[id^="itemtable"]');
+            if (tbl) {
+                var m = tbl.id.match(/\d+/);
+                if (m && m[0] === s) return true;
+            }
+        }
+        return false;
+    }
+
     /* ── Device update handler (Angular $rootScope hook) ─────────── */
 
     function onDeviceUpdate(device) {
@@ -4708,6 +4764,10 @@ document.addEventListener('DOMContentLoaded', function () {
         var idx = String(device.idx || device.ID || '');
         var now = Date.now();
         if (idx && _lastShown[idx] && (now - _lastShown[idx]) < DEBOUNCE_MS) return;
+
+        // Only show a toast if the device has a card on the current page
+        if (!isDeviceVisible(idx)) return;
+
         if (idx) _lastShown[idx] = now;
 
         ngShowToast({
