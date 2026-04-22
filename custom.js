@@ -3721,7 +3721,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         // Fetch devices from Domoticz
-        fetch('/json.htm?type=devices&used=true&filter=all&order=Name', { credentials: 'same-origin' })
+        fetch('/json.htm?type=devices&used=true&order=Name', { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (data) { renderDevices(data.result || []); })
             .catch(function () {
@@ -4747,13 +4747,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // Preset action chips
                 '<div class="ng-rgbw-presets">' +
-                '  <button class="ng-rgbw-preset" onclick="ngRgbwPreset(\'on\')">' +
+                '  <button class="ng-rgbw-preset" onclick="ngRgbwPreset(\'on\',this)">' +
                 '    <i class="fa-solid fa-power-off"></i> On</button>' +
-                '  <button class="ng-rgbw-preset" onclick="ngRgbwPreset(\'full\')">' +
+                '  <button class="ng-rgbw-preset" onclick="ngRgbwPreset(\'full\',this)">' +
                 '    <i class="fa-solid fa-lightbulb"></i> Full</button>' +
-                '  <button class="ng-rgbw-preset" onclick="ngRgbwPreset(\'night\')">' +
+                '  <button class="ng-rgbw-preset" onclick="ngRgbwPreset(\'night\',this)">' +
                 '    <i class="fa-solid fa-moon"></i> Night</button>' +
-                '  <button class="ng-rgbw-preset ng-rgbw-preset--off" onclick="ngRgbwPreset(\'off\')">' +
+                '  <button class="ng-rgbw-preset ng-rgbw-preset--off" onclick="ngRgbwPreset(\'off\',this)">' +
                 '    <i class="fa-regular fa-circle-xmark"></i> Off</button>' +
                 '</div>' +
 
@@ -4864,43 +4864,18 @@ document.addEventListener('DOMContentLoaded', function () {
             updatePreview();
         };
 
-        window.ngRgbwPreset = function (preset) {
-            if (preset === 'on') {
-                if (_idx) {
-                    fetch('/json.htm?type=command&param=switchlight&idx=' + _idx + '&switchcmd=On');
-                    ngCloseActivePopup();
-                }
-            } else if (preset === 'off') {
-                if (_idx) {
-                    fetch('/json.htm?type=command&param=switchlight&idx=' + _idx + '&switchcmd=Off');
-                    ngCloseActivePopup();
-                }
-            } else if (preset === 'full') {
-                // Full white at max brightness
-                if (_isRGBW) {
-                    _mode = 'white'; _warmth = 0.5; _bright = 100;
-                    window.ngRgbwSetMode('white');
-                } else {
-                    _h = 0.15; _s = 0.05; _bright = 100;
-                    var wc2 = document.getElementById('ng-rgbw-canvas');
-                    if (wc2) renderWheel(wc2);
-                }
-                var bs = document.getElementById('ng-rgbw-bright');
-                if (bs) bs.value = 100;
-                updatePreview();
-            } else if (preset === 'night') {
-                // Warm amber at 15% brightness
-                _mode = 'color'; _h = 0.08; _s = 0.85; _bright = 15;
-                var wc3 = document.getElementById('ng-rgbw-canvas');
-                if (wc3) renderWheel(wc3);
-                var bs2 = document.getElementById('ng-rgbw-bright');
-                if (bs2) bs2.value = 15;
-                if (_isRGBW) window.ngRgbwSetMode('color');
-                updatePreview();
-            }
-        };
+        function flashBtn(btn, label) {
+            if (!btn) return;
+            var orig = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> ' + (label || 'Applied!');
+            btn.style.opacity = '0.7';
+            setTimeout(function () {
+                btn.innerHTML = orig;
+                btn.style.opacity = '';
+            }, 1200);
+        }
 
-        window.ngRgbwApply = function () {
+        function sendRGBW() {
             if (!_idx) return;
             var color;
             if (_mode === 'color') {
@@ -4916,7 +4891,47 @@ document.addEventListener('DOMContentLoaded', function () {
                       '&color=' + encodeURIComponent(color) +
                       '&brightness=' + _bright;
             fetch(url).catch(function() {});
-            ngCloseActivePopup();
+        }
+
+        window.ngRgbwPreset = function (preset, btn) {
+            if (preset === 'on') {
+                if (_idx) fetch('/json.htm?type=command&param=switchlight&idx=' + _idx + '&switchcmd=On').catch(function(){});
+                flashBtn(btn, 'On');
+            } else if (preset === 'off') {
+                if (_idx) fetch('/json.htm?type=command&param=switchlight&idx=' + _idx + '&switchcmd=Off').catch(function(){});
+                ngCloseActivePopup();
+            } else if (preset === 'full') {
+                if (_isRGBW) {
+                    _mode = 'white'; _warmth = 0.5; _bright = 100;
+                    window.ngRgbwSetMode('white');
+                } else {
+                    _h = 0.15; _s = 0.05; _bright = 100;
+                    var wc2 = document.getElementById('ng-rgbw-canvas');
+                    if (wc2) renderWheel(wc2);
+                }
+                var bs = document.getElementById('ng-rgbw-bright');
+                if (bs) bs.value = 100;
+                updatePreview();
+                sendRGBW();
+                flashBtn(btn, 'Applied');
+            } else if (preset === 'night') {
+                _mode = 'color'; _h = 0.08; _s = 0.85; _bright = 15;
+                var wc3 = document.getElementById('ng-rgbw-canvas');
+                if (wc3) renderWheel(wc3);
+                var bs2 = document.getElementById('ng-rgbw-bright');
+                if (bs2) bs2.value = 15;
+                if (_isRGBW) window.ngRgbwSetMode('color');
+                updatePreview();
+                sendRGBW();
+                flashBtn(btn, 'Applied');
+            }
+        };
+
+        window.ngRgbwApply = function () {
+            sendRGBW();
+            // Flash the Set button — keep modal open so user can tweak
+            var btn = p.querySelector('.ng-sp-set-btn');
+            flashBtn(btn, 'Applied!');
         };
 
         /* ── Hook ShowRGBWPopup ──────────────────────────────────────── */
@@ -4924,7 +4939,10 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!window.ShowRGBWPopup) { setTimeout(hookShowRGBWPopup, 300); return; }
             if (window.ShowRGBWPopup._ngHooked) return;
             window.ShowRGBWPopup = function (idx, imgid, actualColor) {
-                _idx = idx;
+                // Normalise idx: Domoticz may pass a number, string, or device object
+                _idx = (typeof idx === 'object' && idx !== null)
+                    ? String(idx.idx || idx.ID || '')
+                    : String(idx || '');
 
                 // Parse current colour state
                 var col = {};

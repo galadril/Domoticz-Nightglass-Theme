@@ -51,46 +51,6 @@
     /* Highlight which device card the popup belongs to */
     .ng-showcase-item .pop { min-width: 0; }
 
-    /* ── RGBW demo colour wheel ── */
-    .ng-demo-wheel {
-      width: 160px; height: 160px; border-radius: 50%;
-      background:
-        radial-gradient(circle, rgba(255,255,255,0.82) 0%, transparent 62%),
-        conic-gradient(
-          hsl(0,100%,50%), hsl(30,100%,50%), hsl(60,100%,50%),
-          hsl(90,100%,50%), hsl(120,100%,50%), hsl(150,100%,50%),
-          hsl(180,100%,50%), hsl(210,100%,50%), hsl(240,100%,50%),
-          hsl(270,100%,50%), hsl(300,100%,50%), hsl(330,100%,50%), hsl(360,100%,50%)
-        );
-      box-shadow: 0 0 16px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.06);
-      position: relative; margin: 0 auto; cursor: crosshair;
-    }
-    .ng-demo-wheel::after {
-      content: ''; position: absolute;
-      top: 33%; left: 62%;
-      width: 14px; height: 14px; border-radius: 50%;
-      background: #4e9af1; border: 2px solid #fff;
-      box-shadow: 0 0 6px rgba(0,0,0,.5);
-      transform: translate(-50%,-50%);
-    }
-
-    /* ── Mode icon buttons in RGBW demo ── */
-    .ng-demo-mode-btn {
-      display: inline-flex !important; align-items: center; justify-content: center;
-      width: 44px !important; height: 44px !important;
-      border-radius: 10px !important; border: 1px solid var(--dz-border-b) !important;
-      background: var(--dz-surface-2) !important;
-      font-size: 1.1rem; text-decoration: none;
-      transition: all .2s;
-    }
-    .ng-demo-mode-btn--active {
-      background: rgba(var(--dz-accent-rgb),.15) !important;
-      border-color: rgba(var(--dz-accent-rgb),.45) !important;
-    }
-    .ng-demo-mode-btn:hover {
-      background: var(--dz-border) !important;
-      border-color: var(--dz-accent) !important;
-    }
   </style>
 </head>
 <body>
@@ -116,7 +76,7 @@
 
       <p style="color:var(--dz-text-muted);font-size:.85rem;margin:0 0 8px">
         All redesigned popup controls shown statically below. In a real Domoticz dashboard these open centred on screen with a blurred overlay on device icon click.
-        The RGBW colour wheel is a CSS approximation — the real jQWCP widget renders live in Domoticz.
+        The RGBW popups are rendered with a canvas HSV colour wheel — Nightglass replaces Domoticz's built-in jQWCP widget entirely.
       </p>
 
       <!-- ── Thermostat Setpoint ── -->
@@ -265,6 +225,136 @@
   /* RFY stubs */
   window.CloseRFYPopup    = function () { log('CloseRFYPopup()'); };
   window.RFYEnableSunWind = function (on) { log('RFYEnableSunWind(' + on + ')'); };
+
+  /* ── RGBW canvas demo ── */
+  function buildRgbwDemo(containerId, initialH, initialS, initialMode, isRGBW) {
+    var p = document.getElementById(containerId);
+    if (!p) return;
+
+    var WSIZE = 160, WR = WSIZE / 2;
+    var _h = initialH, _s = initialS, _mode = initialMode || 'color', _warmth = 0.3;
+
+    function hsvToRgb(h, s, v) {
+      var r,g,b,i=Math.floor(h*6),f=h*6-i;
+      var pp=v*(1-s),q=v*(1-f*s),t=v*(1-(1-f)*s);
+      switch(i%6){case 0:r=v;g=t;b=pp;break;case 1:r=q;g=v;b=pp;break;
+        case 2:r=pp;g=v;b=t;break;case 3:r=pp;g=q;b=v;break;
+        case 4:r=t;g=pp;b=v;break;default:r=v;g=pp;b=q;}
+      return {r:Math.round(r*255),g:Math.round(g*255),b:Math.round(b*255)};
+    }
+
+    function drawWheel(canvas) {
+      var ctx=canvas.getContext('2d'),img=ctx.createImageData(WSIZE,WSIZE),d=img.data;
+      for(var y=0;y<WSIZE;y++){for(var x=0;x<WSIZE;x++){
+        var dx=x-WR,dy=y-WR,dist=Math.sqrt(dx*dx+dy*dy),i4=(y*WSIZE+x)*4;
+        if(dist>WR){d[i4+3]=0;continue;}
+        var h=((Math.atan2(dy,dx)/(2*Math.PI))+1)%1,s=dist/WR,rgb=hsvToRgb(h,s,1);
+        d[i4]=rgb.r;d[i4+1]=rgb.g;d[i4+2]=rgb.b;d[i4+3]=255;
+      }}
+      ctx.putImageData(img,0,0);
+    }
+
+    function drawCursor(canvas) {
+      var ctx=canvas.getContext('2d'),angle=_h*2*Math.PI,rad=_s*(WR-5);
+      var cx=WR+rad*Math.cos(angle),cy=WR+rad*Math.sin(angle);
+      var rgb=hsvToRgb(_h,_s,1);
+      ctx.beginPath();ctx.arc(cx,cy,8,0,2*Math.PI);
+      ctx.fillStyle='rgb('+rgb.r+','+rgb.g+','+rgb.b+')';ctx.fill();
+      ctx.strokeStyle='#fff';ctx.lineWidth=2.5;ctx.stroke();
+    }
+
+    function drawWarmth(canvas) {
+      var ctx=canvas.getContext('2d'),g=ctx.createLinearGradient(0,0,canvas.width,0);
+      g.addColorStop(0,'#E8F4FD');g.addColorStop(.5,'#FFF5E0');g.addColorStop(1,'#FFB347');
+      ctx.fillStyle=g;
+      if(ctx.roundRect){ctx.beginPath();ctx.roundRect(0,0,canvas.width,canvas.height,12);ctx.fill();}
+      else{ctx.fillRect(0,0,canvas.width,canvas.height);}
+      var ctx2=canvas.getContext('2d'),cx=_warmth*(canvas.width-1);
+      ctx2.beginPath();ctx2.arc(cx,canvas.height/2,10,0,2*Math.PI);
+      var wr=Math.round(232+(255-232)*_warmth),wg=Math.round(244+(179-244)*_warmth),wb=Math.round(253+(71-253)*_warmth);
+      ctx2.fillStyle='rgb('+wr+','+wg+','+wb+')';ctx2.fill();
+      ctx2.strokeStyle='#fff';ctx2.lineWidth=2.5;ctx2.stroke();
+    }
+
+    function updatePreview() {
+      var sw=p.querySelector('.ng-rgbw-swatch'),hex=p.querySelector('.ng-rgbw-hex');
+      if(_mode==='color'){
+        var rgb=hsvToRgb(_h,_s,1);
+        if(sw)sw.style.background='rgb('+rgb.r+','+rgb.g+','+rgb.b+')';
+        var h2=function(n){return ('0'+n.toString(16)).slice(-2);};
+        if(hex)hex.textContent='#'+h2(rgb.r)+h2(rgb.g)+h2(rgb.b);
+      }else{
+        var wr2=Math.round(232+(255-232)*_warmth),wg2=Math.round(244+(179-244)*_warmth),wb2=Math.round(253+(71-253)*_warmth);
+        if(sw)sw.style.background='rgb('+wr2+','+wg2+','+wb2+')';
+        if(hex)hex.textContent=_warmth<.3?'Cool white':_warmth>.7?'Warm white':'Natural';
+      }
+    }
+
+    p.innerHTML =
+      '<button class="ng-popup-close" disabled style="cursor:default" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>' +
+      '<div class="ng-popup-title"><i class="fa-solid fa-palette"></i> Colour</div>' +
+      (isRGBW ?
+        '<div class="ng-rgbw-tabs">' +
+          '<button class="ng-rgbw-tab' + (_mode==='color'?' ng-rgbw-tab--active':'') + '" data-mode="color" onclick="demoRgbwTab(\''+containerId+'\',\'color\')">' +
+            '<i class="fa-solid fa-circle-half-stroke"></i> Colour</button>' +
+          '<button class="ng-rgbw-tab' + (_mode==='white'?' ng-rgbw-tab--active':'') + '" data-mode="white" onclick="demoRgbwTab(\''+containerId+'\',\'white\')">' +
+            '<i class="fa-solid fa-sun"></i> White</button>' +
+        '</div>' : '') +
+      '<div class="ng-rgbw-pane" id="'+containerId+'-pane-color"' + (_mode==='white'?' style="display:none"':'') + '>' +
+        '<div class="ng-rgbw-wheel-wrap">' +
+          '<canvas id="'+containerId+'-canvas" width="'+WSIZE+'" height="'+WSIZE+'" style="border-radius:50%;display:block"></canvas>' +
+        '</div>' +
+      '</div>' +
+      (isRGBW ?
+        '<div class="ng-rgbw-pane" id="'+containerId+'-pane-white"' + (_mode!=='white'?' style="display:none"':'') + '>' +
+          '<div class="ng-rgbw-warmth-wrap">' +
+            '<canvas id="'+containerId+'-warmth" width="220" height="28" style="display:block;border-radius:14px"></canvas>' +
+          '</div>' +
+          '<div class="ng-rgbw-warmth-labels"><span><i class="fa-solid fa-snowflake"></i> Cool</span><span>Warm <i class="fa-solid fa-fire"></i></span></div>' +
+        '</div>' : '') +
+      '<div class="ng-rgbw-preview"><div class="ng-rgbw-swatch"></div><span class="ng-rgbw-hex">#4e9af1</span></div>' +
+      '<div class="ng-rgbw-slider-row">' +
+        '<i class="fa-solid fa-moon ng-rgbw-icon-dim"></i>' +
+        '<input type="range" class="ng-rgbw-slider" value="80" min="1" max="100" disabled>' +
+        '<i class="fa-solid fa-sun ng-rgbw-icon-bright"></i>' +
+      '</div>' +
+      '<div class="ng-rgbw-presets">' +
+        '<button class="ng-rgbw-preset" onclick="demoLog(\'On\')"><i class="fa-solid fa-power-off"></i> On</button>' +
+        '<button class="ng-rgbw-preset" onclick="demoLog(\'Full\')"><i class="fa-solid fa-lightbulb"></i> Full</button>' +
+        '<button class="ng-rgbw-preset" onclick="demoLog(\'Night\')"><i class="fa-solid fa-moon"></i> Night</button>' +
+        '<button class="ng-rgbw-preset ng-rgbw-preset--off" onclick="demoLog(\'Off\')"><i class="fa-regular fa-circle-xmark"></i> Off</button>' +
+      '</div>' +
+      '<button class="ng-sp-set-btn" onclick="demoLog(\'Set Colour\')"><i class="fa-solid fa-check"></i> Set Colour</button>';
+
+    var wc = document.getElementById(containerId + '-canvas');
+    if (wc) { drawWheel(wc); drawCursor(wc); }
+
+    var wtc = document.getElementById(containerId + '-warmth');
+    if (wtc) drawWarmth(wtc);
+
+    updatePreview();
+
+    // Store state on element for tab switching
+    p._rgbwState = { _h:_h,_s:_s,_mode:_mode,_warmth:_warmth,drawWheel:drawWheel,drawCursor:drawCursor,drawWarmth:drawWarmth,updatePreview:updatePreview,WR:WR,WSIZE:WSIZE };
+  }
+
+  window.demoRgbwTab = function(id, mode) {
+    var p = document.getElementById(id);
+    if (!p || !p._rgbwState) return;
+    var s = p._rgbwState;
+    s._mode = mode;
+    var tabs = p.querySelectorAll('.ng-rgbw-tab');
+    tabs.forEach(function(t){ t.classList.toggle('ng-rgbw-tab--active', t.dataset.mode===mode); });
+    var cp = document.getElementById(id+'-pane-color');
+    var wp = document.getElementById(id+'-pane-white');
+    if (cp) cp.style.display = mode==='color' ? '' : 'none';
+    if (wp) wp.style.display = mode==='white' ? '' : 'none';
+    s.updatePreview();
+  };
+
+  // Build RGBW demos immediately (no dependency on custom.js features)
+  buildRgbwDemo('ng-rgbw-demo-a', 0.58, 0.85, 'color', true);   // blue-ish, RGBW
+  buildRgbwDemo('ng-rgbw-demo-b', 0.58, 0.0,  'white', true);   // white mode, RGBW
 
   /* ── Init arc previews once Feature 9 has redesigned the popups ── */
   function tryInit() {
