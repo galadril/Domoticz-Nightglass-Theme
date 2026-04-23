@@ -1101,25 +1101,21 @@ i.dz-fa-nav {
    4.  TOP BAR  (#topBar — search, room selector, sun times)
    ══════════════════════════════════════════════════════════════════ */
 
+/* All interactive elements in the topbar share a single height anchor */
+#topBar { --topbar-h: 26px; }
+
 #topBar {
     display: flex !important;
     align-items: center !important;
     flex-wrap: wrap;
-    gap: 8px 16px;
+    gap: 6px 12px;
     padding: 6px 0 10px !important;
     margin-bottom: 10px !important;
     border-bottom: 1px solid var(--dz-border) !important;
 }
 
-/* Left group: search + room */
-#tbFilters {
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 8px;
-    flex: 1 1 auto;
-}
-
-/* Right group: time + sun + links */
+/* ── Shared pill mixin applied to the topbar span groups ─────── */
+#tbFilters,
 #tbTimeSun,
 #tbLinks {
     display: inline-flex !important;
@@ -1128,37 +1124,38 @@ i.dz-fa-nav {
     flex-shrink: 0;
 }
 
+#tbFilters { flex: 1 1 auto; }
+
 /* ── Room selector ─────────────────────────────────────────────── */
 #tbFiltRooms {
     display: inline-flex !important;
     align-items: center !important;
-    gap: 5px;
+    gap: 4px;
 }
 
-#tbFiltRooms .tbIcon {
+#tbFiltRooms #tbIconRoom {
     color: var(--dz-text-muted);
-    font-size: 13px;
+    font-size: 12px;
     pointer-events: none;
 }
 
-#tbFiltRooms SELECT {
+/* Target by id to beat Bootstrap/jQuery-UI specificity, no height override */
+#comboroom {
     background: var(--dz-surface-2) !important;
     color: var(--dz-text) !important;
     border: 1px solid var(--dz-border) !important;
     border-radius: 8px !important;
-    padding: 3px 24px 3px 8px !important;
+    padding: 0 6px !important;
     font-size: 12px !important;
-    height: 28px !important;
+    line-height: var(--topbar-h) !important;
+    min-height: var(--topbar-h) !important;
+    box-sizing: border-box !important;
     cursor: pointer !important;
-    transition: border-color 0.15s, box-shadow 0.15s !important;
-    appearance: auto;
+    transition: border-color 0.15s !important;
 }
 
-#tbFiltRooms SELECT:hover {
-    border-color: var(--dz-accent) !important;
-}
-
-#tbFiltRooms SELECT:focus {
+#comboroom:hover  { border-color: var(--dz-accent) !important; }
+#comboroom:focus  {
     border-color: var(--dz-accent) !important;
     box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.15) !important;
     outline: none !important;
@@ -1166,68 +1163,74 @@ i.dz-fa-nav {
 
 /* ── Clock ─────────────────────────────────────────────────────── */
 #jsTbTime {
+    display: inline-flex !important;
+    align-items: center !important;
+    height: var(--topbar-h) !important;
+    padding: 0 9px !important;
     font-variant-numeric: tabular-nums;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
     color: var(--dz-text);
-    letter-spacing: 0.02em;
+    letter-spacing: 0.03em;
     background: var(--dz-surface-2);
     border: 1px solid var(--dz-border);
     border-radius: 8px;
-    padding: 3px 9px;
+    box-sizing: border-box;
 }
 
-/* ── Sun group ─────────────────────────────────────────────────── */
+/* ── Sun group: one pill, items inside ─────────────────────────── */
 #tbSunGroup {
     display: inline-flex !important;
     align-items: center !important;
-    gap: 6px;
+    gap: 5px;
+    height: var(--topbar-h) !important;
+    padding: 0 9px !important;
+    font-size: 12px;
+    color: var(--dz-text-muted);
     background: var(--dz-surface-2);
     border: 1px solid var(--dz-border);
     border-radius: 8px;
-    padding: 3px 9px;
-    font-size: 12px;
-    color: var(--dz-text-muted);
+    box-sizing: border-box;
 }
 
-#tbIconSun .fa-sun {
-    color: var(--dz-warning) !important;
-    font-size: 13px;
-}
+#tbIconSun { color: var(--dz-warning) !important; font-size: 12px; }
 
 #tbSunRise,
 #tbSunSet {
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    font-size: 12px;
 }
 
-#tbSunRise .fa-arrow-up   { color: #f59e42; }
-#tbSunSet  .fa-arrow-down { color: #7eb6f5; }
+#tbSunRise .fa-arrow-up   { color: #f59e42; font-size: 10px; }
+#tbSunSet  .fa-arrow-down { color: #7eb6f5; font-size: 10px; }
 
-/* Divider between rise and set */
+/* Hairline divider between rise and set */
 #tbSunRise::after {
     content: "";
     display: inline-block;
     width: 1px;
     height: 10px;
     background: var(--dz-border);
-    margin-left: 6px;
+    margin-left: 5px;
 }
 
-/* ── Quick-links ───────────────────────────────────────────────── */
-#tbLinks a.btn {
+/* ── Quick-links (same height anchor as pills) ──────────────────── */
+#tbLinks a.btn,
+#tbLinks a.btn.btn-xs {
     display: inline-flex !important;
     align-items: center !important;
     gap: 4px !important;
+    height: var(--topbar-h) !important;
+    padding: 0 10px !important;
+    box-sizing: border-box !important;
     background: var(--dz-surface-2) !important;
     border: 1px solid var(--dz-border) !important;
     color: var(--dz-text-muted) !important;
     border-radius: 8px !important;
-    padding: 3px 10px !important;
     font-size: 12px !important;
     font-weight: 500 !important;
+    line-height: 1 !important;
     transition: border-color 0.15s, background 0.15s, color 0.15s !important;
 }
 
@@ -1237,7 +1240,41 @@ i.dz-fa-nav {
     color: var(--dz-accent) !important;
 }
 
-/* The actual input is kept as an invisible overlay (see command palette section) */
+/* The actual search input is kept as an invisible overlay (see command palette section) */
+
+/* ── Responsive topbar ─────────────────────────────────────────── */
+
+/* Medium — hide link labels, keep icons */
+@media (max-width: 900px) {
+    #topBar { gap: 4px 8px; }
+
+    #tbLinks a.btn span[data-i18n] { display: none !important; }
+    #tbLinks a.btn { padding: 0 8px !important; }
+
+    /* Sun: hide icon label, keep times */
+    #tbIconSun { display: none !important; }
+}
+
+/* Small — hide sun group entirely, shrink room select */
+@media (max-width: 650px) {
+    #tbSunGroup { display: none !important; }
+
+    #comboroom { max-width: 110px !important; }
+}
+
+/* Extra-small — hide clock too, stack filters full-width */
+@media (max-width: 480px) {
+    #topBar { --topbar-h: 24px; gap: 4px; }
+
+    #jsTbTime   { display: none !important; }
+    #tbFilters  { width: 100%; }
+
+    /* Room label icon disappears, keep select */
+    #tbFiltRooms #tbIconRoom { display: none !important; }
+
+    /* Links: icon only */
+    #tbLinks a.btn { padding: 0 7px !important; }
+}
 
 
 /* ══════════════════════════════════════════════════════════════════

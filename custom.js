@@ -6662,36 +6662,40 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Visual styling is 100% CSS (no class needed, applies before first render).
     // JS only attaches click handlers — no DOM mutations, no flicker.
-    function watchSearchBar() {
-        var bar = document.getElementById('tbFiltSearch');
-        if (!bar) { setTimeout(watchSearchBar, 400); return; }
-        if (bar._dzCmdBound) return;
-        bar._dzCmdBound = true;
-
-        // The input is an invisible overlay — intercept all activation paths
-        var input = bar.querySelector('input.jsLiveSearch');
-        if (input) {
-            input.addEventListener('mousedown', function (e) { e.preventDefault(); openPalette(); });
-            input.addEventListener('touchend',  function (e) { e.preventDefault(); openPalette(); });
-            input.addEventListener('focus',     function ()  { this.blur(); openPalette(); });
+    // Use document-level capture delegation — fires before Domoticz's WatchLiveSearch()
+    // handlers, survives DOM recreation on route changes, no timing issues.
+    (function () {
+        function isInsideSearchBar(el) {
+            while (el) {
+                if (el.id === 'tbFiltSearch') return true;
+                if (el.id === 'tbResults')    return false; // ignore clear-results btn
+                el = el.parentElement;
+            }
+            return false;
         }
-        // Catch clicks on the container itself (e.g. the ::after Ctrl+K badge area)
-        bar.addEventListener('click', function (e) {
-            if (!e.target.closest || !e.target.closest('#tbResults')) openPalette();
-        });
-    }
+
+        document.addEventListener('mousedown', function (e) {
+            if (!isInsideSearchBar(e.target)) return;
+            e.preventDefault(); // block native focus on the input
+            openPalette();
+        }, true); // capture phase — beats WatchLiveSearch()
+
+        document.addEventListener('touchend', function (e) {
+            if (!isInsideSearchBar(e.target)) return;
+            e.preventDefault();
+            openPalette();
+        }, true);
+    }());
 
     // ── Init ───────────────────────────────────────────────────────
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function () {
             setTimeout(fetchAll, 800);
-            setTimeout(watchSearchBar, 400);
             hookAngular();
         });
     } else {
         setTimeout(fetchAll, 800);
-        setTimeout(watchSearchBar, 400);
         hookAngular();
     }
 })();
