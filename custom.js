@@ -2633,18 +2633,53 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // Flash a device card when it receives a WebSocket update.
+    // Works for ALL device types (sensors included), not just those whose icon src changes.
+    var _flashTs = {}; // idx → last flash timestamp (prevents rapid re-flashing)
+    var FLASH_MIN_INTERVAL = 1500; // ms
+
+    function wsFlashCard(device) {
+        var idx = String(device.idx || device.ID || '');
+        if (!idx) return;
+        var now = Date.now();
+        if (_flashTs[idx] && now - _flashTs[idx] < FLASH_MIN_INTERVAL) return;
+        _flashTs[idx] = now;
+
+        var s = device.Status || '';
+        var on = (['On', 'Group On', 'Chime', 'Panic', 'Mixed'].indexOf(s) >= 0 ||
+                  s.indexOf('Set ') === 0 || s.indexOf('NightMode') === 0 || s.indexOf('Disco ') === 0);
+        // For sensors without an on/off concept, always use the 'on' (positive) flash colour
+        var hasBinary = (device.Type === 'Scene' || device.Type === 'Group' ||
+                         (device.SwitchType && device.SwitchType.length > 0));
+        var cls = (!hasBinary || on) ? 'dz-flash-on' : 'dz-flash-off';
+
+        setTimeout(function () {
+            var card = findCardByIdx(idx);
+            if (!card) return;
+            card.classList.remove('dz-flash-on', 'dz-flash-off');
+            void card.offsetWidth; // force reflow so animation restarts
+            card.classList.add(cls);
+            card.addEventListener('animationend', function rm() {
+                card.removeEventListener('animationend', rm);
+                card.classList.remove('dz-flash-on', 'dz-flash-off');
+            });
+        }, 0);
+    }
+
     function attachSparklineWsHook() {
         if (!window.angular) { setTimeout(attachSparklineWsHook, 600); return; }
         var bodyEl = angular.element(document.body);
         if (!bodyEl || !bodyEl.injector || !bodyEl.injector()) { setTimeout(attachSparklineWsHook, 400); return; }
         try {
             var $rootScope = bodyEl.injector().get('$rootScope');
-            // Fast path: instant DOM update from WebSocket device data (no HTTP).
-            // Fires when Domoticz pushes a device_request message; may not cover
-            // all sensor types depending on which Angular controllers are active.
-            $rootScope.$on('device_update', function (evt, device) { wsAppendSparkline(device); });
-            // device_update (WebSocket) + DOM observer are the only update paths.
-            // time_update → HTTP polling removed to prevent API flooding.
+            $rootScope.$on('device_update', function (evt, device) {
+                wsAppendSparkline(device);
+                wsFlashCard(device);
+            });
+            // Scenes use a separate broadcast channel
+            $rootScope.$on('scene_update', function (evt, scene) {
+                wsFlashCard(scene);
+            });
         } catch (e) {
             setTimeout(attachSparklineWsHook, 600);
         }
