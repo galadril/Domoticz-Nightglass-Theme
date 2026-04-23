@@ -3057,14 +3057,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /* ── New API: ThemeSettings in Domoticz preferences DB (build ≥ 17806) ── */
 
-    // Reads settings from getsettings.  Returns a Promise that resolves with
-    // the stored object (or null if no settings saved yet) and rejects if the
-    // new API is not available (older build or network error).
+    // Resolves with the Domoticz build number, or 0 on failure.
+    function getBuildNumber() {
+        return apiCall({ type: 'command', param: 'getversion' }).then(function (data) {
+            return (data && (data.Revision || data.build_number)) || 0;
+        }).catch(function () { return 0; });
+    }
+
+    // Reads ThemeSettings from getsettings.  Always resolves — returns the
+    // stored object if present, or null when no settings have been saved yet
+    // (first use with the new API).  Rejects only on a network/parse error.
     function loadFromGetsettings() {
         return apiCall({ type: 'command', param: 'getsettings' }).then(function (data) {
-            if (!data || !Object.prototype.hasOwnProperty.call(data, 'ThemeSettings')) {
-                return Promise.reject('ThemeSettings not in getsettings response (old build)');
-            }
+            if (!data || data.status !== 'OK') return Promise.reject('getsettings failed');
             var stored = data.ThemeSettings && data.ThemeSettings[THEME_NAME];
             return stored || null;
         });
@@ -3179,27 +3184,54 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function loadSettings() {
-        // 1. Try new ThemeSettings API (Domoticz build ≥ 17806)
-        return loadFromGetsettings().then(function (stored) {
-            _useNewApi    = true;
-            _apiAvailable = true;
-            _settings = Object.assign({}, DEFAULTS, stored || {});
-            saveToLocalStorage();
-            return _settings;
-        }).catch(function () {
-            // 2. Fall back to legacy user-variable storage (older builds)
+        // Check build number first so we know which storage backend to use.
+        return getBuildNumber().then(function (build) {
+            if (build >= 17806) {
+                // New API: read from getsettings, fall back to user vars for migration.
+                _useNewApi    = true;
+                _apiAvailable = true;
+                return loadFromGetsettings().then(function (stored) {
+                    if (stored) {
+                        // Settings already persisted via new API — use them.
+                        _settings = Object.assign({}, DEFAULTS, stored);
+                    } else {
+                        // Nothing in ThemeSettings yet; pull from user variables
+                        // as a one-time migration source (read-only — saves will
+                        // now go through the new API).
+                        return loadJsonUvar().then(function (migrated) {
+                            _settings = Object.assign({}, DEFAULTS, migrated || {});
+                            return _settings;
+                        }).catch(function () {
+                            _settings = Object.assign({}, DEFAULTS);
+                            return _settings;
+                        });
+                    }
+                    return _settings;
+                }).catch(function () {
+                    // getsettings failed — degrade to user variables.
+                    return loadJsonUvar().then(function (stored) {
+                        _settings = Object.assign({}, DEFAULTS, stored || {});
+                        return _settings;
+                    }).catch(function () {
+                        _settings = Object.assign({}, DEFAULTS, loadFromLocalStorage() || {});
+                        return _settings;
+                    });
+                }).then(function (s) {
+                    saveToLocalStorage();
+                    return s;
+                });
+            }
+
+            // Older build — use user variables.
+            _useNewApi    = false;
             return loadJsonUvar().then(function (stored) {
-                _useNewApi    = false;
                 _apiAvailable = true;
                 _settings = Object.assign({}, DEFAULTS, stored || {});
                 saveToLocalStorage();
                 return _settings;
             }).catch(function () {
-                // 3. Both APIs unavailable — use localStorage cache
-                _useNewApi    = false;
                 _apiAvailable = false;
-                var stored = loadFromLocalStorage();
-                _settings = Object.assign({}, DEFAULTS, stored || {});
+                _settings = Object.assign({}, DEFAULTS, loadFromLocalStorage() || {});
                 return _settings;
             });
         });
