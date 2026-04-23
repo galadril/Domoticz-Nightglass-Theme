@@ -2502,6 +2502,26 @@ document.addEventListener('DOMContentLoaded', function () {
         })(0);
     }
 
+    // Read the current bigtext value from the DOM and append to cache — no HTTP.
+    function appendFromBigtext(idx, td) {
+        if (!cache[idx]) return;
+        var text = td ? (td.textContent || td.innerText || '') : '';
+        var val = parseSparklineValue(text);
+        if (isNaN(val)) return;
+        cache[idx].push(val);
+        if (cache[idx].length > MAX_POINTS) cache[idx].splice(0, cache[idx].length - MAX_POINTS);
+        lastRefresh[idx] = Date.now();
+        var snap = cache[idx].slice();
+        setTimeout(function () {
+            var card = findCardByIdx(idx);
+            if (!card) return;
+            var wrap = card.querySelector('.dz-sparkline-wrap');
+            if (!wrap) return;
+            wrap.innerHTML = svgSparkline(snap, idx);
+            wrap.style.display = '';
+        }, 0);
+    }
+
     // Watch for bigtext mutations (Angular rewrites text nodes when a device updates)
     var _sparkObs = null;
     function startSparklineObserver() {
@@ -2521,16 +2541,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     : null;
                 if (!card) continue;
                 var idx = getCardIdx(card);
-                if (idx) refreshSingle(idx);
+                // Use DOM value directly — zero HTTP calls
+                if (idx) appendFromBigtext(idx, td);
             }
         });
         if (!document.body) return;
         _sparkObs.observe(document.body, { subtree: true, childList: true });
     }
 
-    // Safety-net periodic refresh — only needed when Angular's time_update is
-    // not available (e.g., websocket disconnected).  The time_update hook above
-    // handles the normal ~60 s refresh cadence, so this interval is long.
+    // Safety-net: re-fetch graph data every 10 min as absolute fallback.
+    // Normal updates come from device_update (WebSocket) + bigtext DOM observer.
     function schedulePeriodicRefresh() {
         setInterval(function () {
             var cards = document.querySelectorAll('div.item.itemBlock, .itemBlock > div.item');
@@ -2540,7 +2560,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 var idx = getCardIdx(cards[c]);
                 if (idx) refreshSingle(idx);
             }
-        }, 10 * 60 * 1000); // 10-min fallback; time_update fires every ~60 s normally
+        }, 10 * 60 * 1000); // 10-min absolute fallback only
     }
 
     if (document.readyState === 'loading') {
@@ -2623,10 +2643,8 @@ document.addEventListener('DOMContentLoaded', function () {
             // Fires when Domoticz pushes a device_request message; may not cover
             // all sensor types depending on which Angular controllers are active.
             $rootScope.$on('device_update', function (evt, device) { wsAppendSparkline(device); });
-            // Reliable fallback: Domoticz broadcasts time_update every ~60 s
-            // regardless of which page is open.  This ensures sparklines always
-            // stay fresh even when device_update is not delivered for sensors.
-            $rootScope.$on('time_update', function () { refreshAllVisible(); });
+            // device_update (WebSocket) + DOM observer are the only update paths.
+            // time_update → HTTP polling removed to prevent API flooding.
         } catch (e) {
             setTimeout(attachSparklineWsHook, 600);
         }
@@ -6088,6 +6106,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function stateLabel(d) { return d.Data || d.Status || ''; }
 
+    // Maps a device to the Domoticz Angular route where it appears
+    function deviceRoute(d) {
+        var t  = (d.Type        || '').toLowerCase();
+        var st = (d.SwitchType  || '').toLowerCase();
+        if (t === 'scene' || t === 'group')                        return '/Scenes';
+        if (t.indexOf('temp') >= 0 || t.indexOf('humid') >= 0)    return '/Temp';
+        if (t.indexOf('wind') >= 0 || t.indexOf('rain') >= 0 ||
+            t.indexOf('uv')   >= 0 || t.indexOf('baro') >= 0)     return '/Weather';
+        if (t.indexOf('light')   >= 0 || t.indexOf('color')  >= 0 ||
+            t.indexOf('lighting')>= 0 || t.indexOf('chime')  >= 0 ||
+            st.indexOf('dimmer') >= 0 || st.indexOf('blind')  >= 0 ||
+            st.indexOf('door')   >= 0 || st.indexOf('motion') >= 0 ||
+            st.indexOf('contact')>= 0 || st.indexOf('smoke')  >= 0)
+                                                                   return '/Switches';
+        return '/Utility';
+    }
+
     // ── API calls ──────────────────────────────────────────────────
 
     function apiToggle(d, cb) {
@@ -6183,16 +6218,24 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (showRecent) {
-            var recentDevices = _recentKeys
-                .map(function (k) { return _recentMap[k] && _recentMap[k].device; })
-                .filter(Boolean)
-                .slice(0, 8);
-            var seen = {};
-            recentDevices.forEach(function (d) { seen[String(d.idx)] = true; });
-            var fill = _allDevices
-                .filter(function (d) { return !seen[String(d.idx)]; })
-                .slice(0, Math.max(0, 8 - recentDevices.length));
-            items = recentDevices.concat(fill);
+            // Default: show favorites (Favorite == 1), sorted by name
+            var favs = _allDevices.filter(function (d) { return d.Favorite == 1; });
+            favs.sort(function (a, b) { return (a.Name || '').localeCompare(b.Name || ''); });
+            if (favs.length > 0) {
+                items = favs.slice(0, 12);
+            } else {
+                // No favorites set — fall back to recently changed
+                var recentDevices = _recentKeys
+                    .map(function (k) { return _recentMap[k] && _recentMap[k].device; })
+                    .filter(Boolean)
+                    .slice(0, 8);
+                var seen = {};
+                recentDevices.forEach(function (d) { seen[String(d.idx)] = true; });
+                var fill = _allDevices
+                    .filter(function (d) { return !seen[String(d.idx)]; })
+                    .slice(0, Math.max(0, 8 - recentDevices.length));
+                items = recentDevices.concat(fill);
+            }
         } else {
             items = _allDevices
                 .filter(function (d) { return matches(d.Name || '', q); })
@@ -6208,10 +6251,11 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        if (showRecent && _recentKeys.length > 0) {
+        if (showRecent) {
             var hdr2 = document.createElement('div');
             hdr2.className = 'dz-cmd-section';
-            hdr2.textContent = 'Recently Changed';
+            var favCount = _allDevices.filter(function (d) { return d.Favorite == 1; }).length;
+            hdr2.textContent = favCount > 0 ? 'Favorites' : 'Recently Changed';
             _list.appendChild(hdr2);
         }
 
@@ -6253,12 +6297,12 @@ document.addEventListener('DOMContentLoaded', function () {
         stateEl.textContent = stateLabel(device);
         el.appendChild(stateEl);
 
-        if (tog || dim) {
-            var hint = document.createElement('div');
-            hint.className = 'dz-cmd-hint';
-            hint.innerHTML = '<kbd>\u21b5</kbd>';
-            el.appendChild(hint);
-        }
+        var hint = document.createElement('div');
+        hint.className = 'dz-cmd-hint';
+        hint.innerHTML = tog || dim
+            ? '<kbd>\u21b5</kbd>'                                           // ↵ toggle
+            : '<i class="fa-solid fa-arrow-right" style="font-size:11px;opacity:.5;"></i>'; // → navigate
+        el.appendChild(hint);
 
         var sliderRow = null;
         if (dim) {
@@ -6323,16 +6367,18 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         closePalette();
+        // Try to find card on current page first; if not visible, navigate there
         var tbl3 = document.getElementById('itemtable' + device.idx);
-        if (tbl3) {
-            var card3 = tbl3.closest
-                ? tbl3.closest('div.item.itemBlock, .itemBlock > div.item')
-                : null;
-            if (card3) {
-                card3.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                card3.classList.add('dz-flash-on');
-                setTimeout(function () { card3.classList.remove('dz-flash-on'); }, 700);
-            }
+        var card3 = tbl3 && tbl3.closest
+            ? tbl3.closest('div.item.itemBlock, .itemBlock > div.item')
+            : null;
+        if (card3) {
+            card3.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            card3.classList.add('dz-flash-on');
+            setTimeout(function () { card3.classList.remove('dz-flash-on'); }, 700);
+        } else {
+            // Device not on current page — navigate to its type page
+            window.location.hash = '#' + deviceRoute(device);
         }
     }
 
@@ -6389,7 +6435,7 @@ document.addEventListener('DOMContentLoaded', function () {
         footer.id = 'dz-cmd-footer';
         footer.innerHTML =
             '<span><kbd>\u2191</kbd><kbd>\u2193</kbd> navigate</span>' +
-            '<span><kbd>\u21b5</kbd> toggle\u202fand\u202factivate</span>' +
+            '<span><kbd>\u21b5</kbd> toggle\u202f/\u202fgo\u202fto</span>' +
             '<span><kbd>Esc</kbd> close</span>';
         box.appendChild(footer);
 
@@ -6442,11 +6488,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.addEventListener('keydown', function (e) {
         if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+            e.preventDefault(); // always prevent browser Ctrl+K (address bar search)
             var active = document.activeElement;
+            // Don't open when typing in a text field (unless it's our own input)
             if (active && active !== _input &&
                 (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' ||
                  active.isContentEditable)) return;
-            e.preventDefault();
             _overlay ? closePalette() : openPalette();
         }
     });
