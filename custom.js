@@ -841,13 +841,15 @@ if (document.readyState === 'loading') {
             src.indexOf('gdown.') !== -1 ||
             src.indexOf('gequal.') !== -1 ||
             src.indexOf('equal.') !== -1)        return 'dz-fa-trend';
-        /* Action buttons in table rows */
+        /* Action buttons in table rows.
+           Use '/up.' and '/down.' (with path separator) to avoid false-
+           positives on 'setup.png' which contains the substring 'up.'. */
         if (src.indexOf('delete.') !== -1 ||
             src.indexOf('rename.') !== -1 ||
             src.indexOf('remove.') !== -1 ||
             src.indexOf('add.')    !== -1 ||
-            src.indexOf('up.')     !== -1 ||
-            src.indexOf('down.')   !== -1 ||
+            src.indexOf('/up.')    !== -1 ||
+            src.indexOf('/down.')  !== -1 ||
             src.indexOf('override.') !== -1)     return 'dz-fa-action';
         /* Table status / state icons */
         if (src.indexOf('ok.')      !== -1 ||
