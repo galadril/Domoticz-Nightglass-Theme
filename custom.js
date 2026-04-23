@@ -2229,6 +2229,62 @@ document.addEventListener('DOMContentLoaded', function () {
         startSparklineObserver();
     }
     schedulePeriodicRefresh();
+
+    // ── WebSocket-driven sparkline updates ───────────────────────────
+    // Appends new sensor values directly from Angular's device_update event
+    // (broadcast whenever Domoticz's WebSocket feed delivers a device change),
+    // completely replacing the HTTP-fetch path for subsequent data points.
+
+    function parseSparklineValue(data) {
+        // Extracts the leading numeric value from strings like "21.5 C",
+        // "45 %", "250 Watt", "1.234 kWh", etc.  Returns NaN for non-numeric
+        // payloads like "On" / "Off" so those are silently skipped.
+        if (!data) return NaN;
+        var m = String(data).match(/^-?[\d.]+/);
+        return m ? parseFloat(m[0]) : NaN;
+    }
+
+    function wsAppendSparkline(device) {
+        var idx = String(device.idx || device.ID || '');
+        if (!idx || !cache[idx]) return; // only update sparklines already seeded with history
+
+        var val = parseSparklineValue(device.Data || '');
+        if (isNaN(val)) return;
+
+        // Append and trim rolling window
+        cache[idx].push(val);
+        if (cache[idx].length > MAX_POINTS) cache[idx].splice(0, cache[idx].length - MAX_POINTS);
+
+        // Re-render the sparkline directly — no HTTP round-trip needed
+        var card = findCardByIdx(idx);
+        if (!card) return;
+        var wrap = card.querySelector('.dz-sparkline-wrap');
+        if (!wrap) return;
+        wrap.innerHTML = svgSparkline(cache[idx], idx);
+        wrap.style.display = '';
+
+        // Update lastRefresh so the MutationObserver path won't also fire an
+        // HTTP refresh for 30 s after this real-time update.
+        lastRefresh[idx] = Date.now();
+    }
+
+    function attachSparklineWsHook() {
+        if (!window.angular) { setTimeout(attachSparklineWsHook, 600); return; }
+        var bodyEl = angular.element(document.body);
+        if (!bodyEl || !bodyEl.injector || !bodyEl.injector()) { setTimeout(attachSparklineWsHook, 400); return; }
+        try {
+            var $rootScope = bodyEl.injector().get('$rootScope');
+            $rootScope.$on('device_update', function (evt, device) { wsAppendSparkline(device); });
+        } catch (e) {
+            setTimeout(attachSparklineWsHook, 600);
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attachSparklineWsHook);
+    } else {
+        attachSparklineWsHook();
+    }
 })();
 
 
@@ -2455,8 +2511,11 @@ document.addEventListener('DOMContentLoaded', function () {
 (function () {
     'use strict';
 
-    var UVAR_PREFIX = 'ngTheme_';
-    var UVAR_TYPE = 2; // string type for user variables
+    // All settings are stored as a single JSON string in one user variable,
+    // rather than one user variable per key.  This cuts API traffic from
+    // ~30 calls per load/save down to 1.
+    var UVAR_NAME = 'ngTheme_settings'; // the single JSON user variable
+    var UVAR_TYPE = 2;                  // Domoticz "string" type
 
     // Base path for API calls
     var BASE = (function () {
@@ -2516,13 +2575,14 @@ document.addEventListener('DOMContentLoaded', function () {
         toastBlacklist:     '[]'
     };
 
-    var _settings = null;
-    var _uvarCache = {}; // name → {idx, value}
+    var _settings      = null;
+    var _uvarIdx       = null; // Domoticz idx of the ngTheme_settings variable
     var _panelInjected = false;
-    var _apiAvailable = true; // false if Domoticz API is unreachable
-    var LS_KEY = 'ngThemeSettings';
+    var _apiAvailable  = true; // false if Domoticz API is unreachable
+    var _saveTimer     = null; // debounce handle for API writes
+    var LS_KEY         = 'ngThemeSettings';
 
-    /* ── Domoticz User Variable API helpers ─────────────────────── */
+    /* ── Domoticz API helper ──────────────────────────────────────── */
 
     function apiCall(params) {
         var url = BASE + 'json.htm?' + Object.keys(params).map(function (k) {
@@ -2534,46 +2594,70 @@ document.addEventListener('DOMContentLoaded', function () {
         }).then(function (r) { return r.json(); });
     }
 
-    function loadAllUvars() {
+    /* ── Single-variable JSON storage ────────────────────────────── */
+    // Loads all user variables, finds ngTheme_settings and parses its JSON.
+    // If that variable doesn't exist but old per-key ngTheme_* variables do,
+    // migrates them transparently (no data loss on first upgrade).
+    function loadJsonUvar() {
         return apiCall({ type: 'command', param: 'getuservariables' }).then(function (data) {
-            _uvarCache = {};
-            if (data && data.result) {
-                data.result.forEach(function (uv) {
-                    if (uv.Name.indexOf(UVAR_PREFIX) === 0) {
-                        _uvarCache[uv.Name] = { idx: uv.idx, value: uv.Value };
-                    }
-                });
+            if (!data || !data.result) return null;
+
+            // Look for the new consolidated variable first
+            for (var i = 0; i < data.result.length; i++) {
+                var uv = data.result[i];
+                if (uv.Name === UVAR_NAME) {
+                    _uvarIdx = uv.idx;
+                    try { return JSON.parse(uv.Value); } catch (e) { return null; }
+                }
             }
+
+            // Migration path: absorb old per-key ngTheme_<key> variables
+            var migrated = {};
+            var oldPrefix = 'ngTheme_';
+            data.result.forEach(function (uv) {
+                if (uv.Name.indexOf(oldPrefix) === 0 && uv.Name !== UVAR_NAME) {
+                    var key = uv.Name.slice(oldPrefix.length);
+                    if (key in DEFAULTS) {
+                        var raw = uv.Value;
+                        // Old variables stored booleans as the strings "true"/"false"
+                        migrated[key] = typeof DEFAULTS[key] === 'boolean' ? raw === 'true' : raw;
+                    }
+                }
+            });
+            return Object.keys(migrated).length ? migrated : null;
         });
     }
 
-    function getUvar(key) {
-        var name = UVAR_PREFIX + key;
-        return _uvarCache[name] ? _uvarCache[name].value : undefined;
+    // Serialises _settings to JSON and writes/creates the single user variable.
+    // Debounced at 400 ms so rapid consecutive saveSetting() calls (e.g. applying
+    // a preset) collapse into one API request.
+    function saveJsonUvar() {
+        clearTimeout(_saveTimer);
+        _saveTimer = setTimeout(function () {
+            var json = JSON.stringify(_settings);
+            if (_uvarIdx) {
+                apiCall({
+                    type: 'command', param: 'updateuservariable',
+                    idx: _uvarIdx, vname: UVAR_NAME, vtype: UVAR_TYPE, vvalue: json
+                });
+            } else {
+                apiCall({
+                    type: 'command', param: 'adduservariable',
+                    vname: UVAR_NAME, vtype: UVAR_TYPE, vvalue: json
+                }).then(function () {
+                    // Re-fetch so we have the idx for future update calls
+                    return apiCall({ type: 'command', param: 'getuservariables' });
+                }).then(function (data) {
+                    if (!data || !data.result) return;
+                    data.result.forEach(function (uv) {
+                        if (uv.Name === UVAR_NAME) _uvarIdx = uv.idx;
+                    });
+                });
+            }
+        }, 400);
     }
 
-    function setUvar(key, value) {
-        var name = UVAR_PREFIX + key;
-        var strVal = String(value);
-        if (_uvarCache[name] && _uvarCache[name].idx) {
-            _uvarCache[name].value = strVal;
-            return apiCall({
-                type: 'command', param: 'updateuservariable',
-                idx: _uvarCache[name].idx, vname: name, vtype: UVAR_TYPE, vvalue: strVal
-            });
-        } else {
-            _uvarCache[name] = { idx: null, value: strVal };
-            return apiCall({
-                type: 'command', param: 'adduservariable',
-                vname: name, vtype: UVAR_TYPE, vvalue: strVal
-            }).then(function () {
-                // Reload to get the new idx
-                return loadAllUvars();
-            });
-        }
-    }
-
-    /* ── Settings object ───────────────────────────────────────── */
+    /* ── Settings persistence ─────────────────────────────────────── */
 
     function loadFromLocalStorage() {
         try {
@@ -2588,18 +2672,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function loadSettings() {
-        return loadAllUvars().then(function () {
-            _settings = {};
-            Object.keys(DEFAULTS).forEach(function (key) {
-                var raw = getUvar(key);
-                if (raw === undefined) {
-                    _settings[key] = DEFAULTS[key];
-                } else if (typeof DEFAULTS[key] === 'boolean') {
-                    _settings[key] = raw === 'true';
-                } else {
-                    _settings[key] = raw;
-                }
-            });
+        return loadJsonUvar().then(function (stored) {
+            // JSON.parse preserves native types (boolean true, not string "true"),
+            // so no per-key type coercion is needed here.
+            _settings = Object.assign({}, DEFAULTS, stored || {});
             _apiAvailable = true;
             saveToLocalStorage();
             return _settings;
@@ -2613,7 +2689,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function saveSetting(key, value) {
         _settings[key] = value;
-        if (_apiAvailable) setUvar(key, value);
+        if (_apiAvailable) saveJsonUvar(); // debounced, batches rapid changes
         saveToLocalStorage();
         applySettings();
     }
@@ -3426,30 +3502,19 @@ document.addEventListener('DOMContentLoaded', function () {
         toast.offsetHeight;
         toast.classList.add('ng-preset-toast--visible');
 
-        var promises = keys.map(function (key) {
+        // Apply all color keys to _settings locally (synchronous), then persist
+        // the whole blob with one API call — much faster than one call per key.
+        keys.forEach(function (key) {
             _settings[key] = colors[key];
-            saveToLocalStorage();
-            if (_apiAvailable) {
-                var p = setUvar(key, colors[key]);
-                if (p && typeof p.then === 'function') {
-                    return p.then(function () {
-                        completed++;
-                        var percent = Math.round((completed / total) * 100);
-                        fill.style.width = percent + '%';
-                        pct.textContent = completed + ' / ' + total;
-                    }).catch(function () {
-                        completed++;
-                        var percent = Math.round((completed / total) * 100);
-                        fill.style.width = percent + '%';
-                        pct.textContent = completed + ' / ' + total;
-                    });
-                }
-            }
             completed++;
-            return Promise.resolve();
+            var percent = Math.round((completed / total) * 100);
+            fill.style.width = percent + '%';
+            pct.textContent = completed + ' / ' + total;
         });
+        saveToLocalStorage();
+        if (_apiAvailable) saveJsonUvar();
 
-        Promise.all(promises).then(function () {
+        Promise.resolve().then(function () {
             applySettings();
             label.textContent = 'Theme applied!';
             fill.style.width = '100%';
@@ -5508,5 +5573,86 @@ document.addEventListener('DOMContentLoaded', function () {
         document.addEventListener('DOMContentLoaded', init);
     } else {
         init();
+    }
+})();
+
+
+/* ── Feature 11: WebSocket Live Card Updates ─────────────────────── */
+// Hooks into Domoticz's Angular device_update event (fired for every
+// WebSocket message from the server) to:
+//   1. Instantly refresh the card-footer timestamp so it always shows
+//      the real last-update time rather than waiting for the next burst.
+//   2. Trigger an icon-replacement burst immediately so any on/off state
+//      change rendered by Angular is picked up without the full burst delay.
+(function () {
+    'use strict';
+
+    var MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun',
+                        'Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    function fmtLastUpdate(raw) {
+        var m = String(raw || '').match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
+        var d = m ? new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5]) : new Date();
+        var now  = new Date();
+        var h    = d.getHours(), min = ('0' + d.getMinutes()).slice(-2);
+        var ampm = h >= 12 ? 'pm' : 'am';
+        var h12  = (h % 12) || 12;
+        var time = h12 + ':' + min + '\u202f' + ampm;
+        var sameDay = d.getFullYear() === now.getFullYear() &&
+                      d.getMonth()    === now.getMonth()    &&
+                      d.getDate()     === now.getDate();
+        if (sameDay) return 'today\u202f' + time;
+        return MONTHS_SHORT[d.getMonth()] + '\u202f' + d.getDate() + ',\u202f' + time;
+    }
+
+    function findCard(idx) {
+        var tbl = document.getElementById('itemtable' + idx);
+        if (!tbl) return null;
+        var el = tbl.parentElement;
+        while (el && el !== document.body) {
+            if (el.classList.contains('itemBlock')) return el;
+            if (el.classList.contains('item') && el.parentElement &&
+                el.parentElement.classList.contains('itemBlock')) return el;
+            el = el.parentElement;
+        }
+        return null;
+    }
+
+    function onDeviceUpdate(device) {
+        var idx = String(device.idx || device.ID || '');
+        if (!idx) return;
+
+        var card = findCard(idx);
+        if (!card) return;
+
+        // Instantly update the card-footer timestamp (.dz-time is injected by
+        // us, so Angular's data-binding will not overwrite it).
+        var luSpan = card.querySelector('.dz-card-footer .dz-time');
+        if (luSpan) {
+            var formatted = fmtLastUpdate(device.LastUpdate);
+            if (luSpan.textContent !== formatted) luSpan.textContent = formatted;
+        }
+
+        // Schedule an icon-replacement burst so on/off state changes rendered
+        // by Angular in the same digest cycle are caught immediately.
+        if (window._dzScheduleBurst) window._dzScheduleBurst();
+    }
+
+    function attachHooks() {
+        if (!window.angular) { setTimeout(attachHooks, 600); return; }
+        var bodyEl = angular.element(document.body);
+        if (!bodyEl || !bodyEl.injector || !bodyEl.injector()) { setTimeout(attachHooks, 400); return; }
+        try {
+            var $rootScope = bodyEl.injector().get('$rootScope');
+            $rootScope.$on('device_update', function (evt, device) { onDeviceUpdate(device); });
+        } catch (e) {
+            setTimeout(attachHooks, 600);
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attachHooks);
+    } else {
+        attachHooks();
     }
 })();
