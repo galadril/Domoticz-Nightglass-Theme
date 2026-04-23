@@ -9548,3 +9548,322 @@ body.dz-light .entity-log-table tbody tr.even td {
 body.dz-light .entity-log-table tbody tr:hover td {
     background: rgba(var(--dz-accent-rgb), 0.06) !important;
 }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   COMMAND PALETTE  (Ctrl+K)
+   ══════════════════════════════════════════════════════════════════ */
+
+#dz-cmd-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: clamp(60px, 12vh, 130px);
+    animation: dzCmdFadeIn 0.12s ease;
+}
+
+#dz-cmd-overlay.dz-cmd-closing {
+    animation: dzCmdFadeOut 0.15s ease forwards;
+}
+
+@keyframes dzCmdFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes dzCmdFadeOut {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+}
+
+#dz-cmd-box {
+    width: min(640px, calc(100vw - 32px));
+    background: var(--dz-surface);
+    border: 1px solid var(--dz-border);
+    border-radius: 14px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.55), 0 4px 16px rgba(0,0,0,0.3);
+    overflow: hidden;
+    animation: dzCmdSlideIn 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#dz-cmd-overlay.dz-cmd-closing #dz-cmd-box {
+    animation: dzCmdSlideOut 0.15s ease forwards;
+}
+
+@keyframes dzCmdSlideIn {
+    from { transform: translateY(-12px) scale(0.97); opacity: 0; }
+    to   { transform: translateY(0)     scale(1);    opacity: 1; }
+}
+@keyframes dzCmdSlideOut {
+    from { transform: translateY(0)    scale(1);    opacity: 1; }
+    to   { transform: translateY(-8px) scale(0.97); opacity: 0; }
+}
+
+/* ── Header / search input ───────────────────────────────────── */
+
+#dz-cmd-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--dz-border);
+}
+
+#dz-cmd-header > .fa-magnifying-glass {
+    color: var(--dz-text-muted);
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
+#dz-cmd-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--dz-text);
+    font-size: 16px;
+    font-family: inherit;
+    caret-color: var(--dz-accent);
+    min-width: 0;
+}
+
+#dz-cmd-input::placeholder {
+    color: var(--dz-text-muted);
+    font-weight: 400;
+}
+
+.dz-cmd-esc {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-family: inherit;
+    color: var(--dz-text-muted);
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-radius: 5px;
+    padding: 3px 7px;
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s;
+}
+.dz-cmd-esc:hover { color: var(--dz-text); }
+
+/* ── Results list ────────────────────────────────────────────── */
+
+#dz-cmd-list {
+    max-height: 420px;
+    overflow-y: auto;
+    padding: 6px 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--dz-border) transparent;
+}
+
+.dz-cmd-section {
+    padding: 8px 18px 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dz-text-muted);
+    user-select: none;
+}
+
+.dz-cmd-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 18px;
+    cursor: pointer;
+    border-radius: 0;
+    transition: background 0.08s;
+    min-height: 52px;
+    flex-wrap: wrap;
+}
+
+.dz-cmd-item:hover,
+.dz-cmd-item--active {
+    background: rgba(var(--dz-accent-rgb), 0.10);
+}
+
+.dz-cmd-item--active {
+    background: rgba(var(--dz-accent-rgb), 0.13);
+}
+
+/* Icon bubble */
+.dz-cmd-icon {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    color: var(--dz-text-muted);
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.dz-cmd-icon--on {
+    background: rgba(var(--dz-accent-rgb), 0.15);
+    border-color: rgba(var(--dz-accent-rgb), 0.35);
+    color: var(--dz-accent);
+}
+
+/* Body: name + meta */
+.dz-cmd-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.dz-cmd-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--dz-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dz-cmd-meta {
+    font-size: 11px;
+    color: var(--dz-text-muted);
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Match highlight */
+mark.dz-cmd-mark {
+    background: rgba(var(--dz-accent-rgb), 0.25);
+    color: var(--dz-accent);
+    border-radius: 2px;
+    padding: 0 1px;
+}
+
+/* State badge */
+.dz-cmd-state {
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--dz-text-muted);
+    min-width: 40px;
+    text-align: right;
+    white-space: nowrap;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dz-cmd-state--on {
+    color: var(--dz-accent);
+}
+
+/* Enter hint */
+.dz-cmd-hint {
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.1s;
+}
+
+.dz-cmd-item--active .dz-cmd-hint,
+.dz-cmd-item:hover .dz-cmd-hint {
+    opacity: 1;
+}
+
+.dz-cmd-hint kbd {
+    font-size: 11px;
+    font-family: inherit;
+    color: var(--dz-text-muted);
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    padding: 2px 6px;
+}
+
+/* Dimmer slider row */
+.dz-cmd-slider-row {
+    flex-basis: 100%;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0 2px 48px;
+}
+
+.dz-cmd-slider-row--visible {
+    display: flex;
+}
+
+.dz-cmd-slider {
+    flex: 1;
+    height: 4px;
+    accent-color: var(--dz-accent);
+    cursor: pointer;
+}
+
+.dz-cmd-slider-val {
+    font-size: 12px;
+    color: var(--dz-text-muted);
+    min-width: 34px;
+    text-align: right;
+}
+
+/* Empty state */
+.dz-cmd-empty {
+    padding: 32px 18px;
+    text-align: center;
+    color: var(--dz-text-muted);
+    font-size: 14px;
+}
+
+/* Loading state */
+.dz-cmd-loading {
+    padding: 24px 18px;
+    text-align: center;
+    color: var(--dz-text-muted);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* ── Footer keyboard hints ───────────────────────────────────── */
+
+#dz-cmd-footer {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 9px 18px;
+    border-top: 1px solid var(--dz-border);
+    font-size: 11px;
+    color: var(--dz-text-muted);
+}
+
+#dz-cmd-footer kbd {
+    font-size: 10px;
+    font-family: inherit;
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin-right: 2px;
+}
+
+/* ── Light mode overrides ────────────────────────────────────── */
+
+body.dz-light #dz-cmd-overlay {
+    background: rgba(0, 0, 0, 0.35);
+}
+
+body.dz-light #dz-cmd-box {
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.12);
+}
