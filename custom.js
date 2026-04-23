@@ -3076,11 +3076,28 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Shows or hides the persistent "unsaved changes" banner inside the panel.
-    function _showUnsavedBanner(show) {
+    var _unsavedToastEl = null;
+
+    // Shows or dismisses the persistent "unsaved changes" toast notification.
+    function _showUnsavedToast(show) {
         if (!_useNewApi) return;
-        var banner = document.getElementById('ng-unsaved-banner');
-        if (banner) banner.style.display = show ? '' : 'none';
+        if (show) {
+            if (_unsavedToastEl && _unsavedToastEl.parentNode) return; // already visible
+            if (typeof window.ngShowToast !== 'function') return;
+            _unsavedToastEl = window.ngShowToast({
+                icon:     'fa-floppy-disk',
+                color:    'var(--dz-warning, #f0a832)',
+                title:    'Unsaved theme changes',
+                body:     'Click <strong>Save to Domoticz</strong> to persist across all browsers.',
+                duration: 0,
+                type:     'system'
+            });
+        } else {
+            if (_unsavedToastEl && typeof window.ngRemoveToast === 'function') {
+                window.ngRemoveToast(_unsavedToastEl);
+            }
+            _unsavedToastEl = null;
+        }
     }
 
     // Updates Angular scope's ThemeSettings in-memory so the value is
@@ -3098,7 +3115,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         } catch (e) {}
         _dirty = true;
-        _showUnsavedBanner(true);
+        _showUnsavedToast(true);
     }
 
     // Persists settings to the Domoticz database by calling Angular's
@@ -3119,7 +3136,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             scope.StoreSettings();
             _dirty = false;
-            _showUnsavedBanner(false);
+            _showUnsavedToast(false);
             if (btn) {
                 var orig = btn.innerHTML;
                 btn.innerHTML = '<i class="fa-solid fa-check"></i> Saved!';
@@ -3847,13 +3864,6 @@ document.addEventListener('DOMContentLoaded', function () {
             '<div class="ng-presets-grid" id="ngPresetsGrid">' +
             '<div class="ng-preset-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading presets…</div>' +
             '</div></div></div>' +
-
-            (_useNewApi
-                ? '<div id="ng-unsaved-banner" class="ng-unsaved-banner" style="' + (_dirty ? '' : 'display:none;') + '">' +
-                  '<i class="fa-solid fa-triangle-exclamation"></i>' +
-                  ' You have unsaved changes — click <strong>Save to Domoticz</strong> to persist across all browsers.' +
-                  '</div>'
-                : '') +
 
             '<div class="ng-settings-grid">' +
 
@@ -5914,20 +5924,24 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         el.addEventListener('mouseenter', function () {
+            if (!duration) return;
             clearTimeout(timerId);
             remaining = Math.max(0, remaining - (Date.now() - startedAt));
             progress.style.transition = 'none';
             progress.style.width = ((remaining / duration) * 100).toFixed(1) + '%';
         });
         el.addEventListener('mouseleave', function () {
+            if (!duration) return;
             startedAt = Date.now();
             startDrain(remaining);
         });
 
-        startDrain(duration);
+        if (duration > 0) startDrain(duration);
+        // duration === 0 → persistent: no progress bar, no auto-dismiss
         return el;
     }
     window.ngShowToast = ngShowToast;
+    window.ngRemoveToast = removeToast;
 
     /* ── Only notify for devices currently visible on screen ────── */
 
