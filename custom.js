@@ -635,6 +635,101 @@ if (document.readyState === 'loading') {
         return false;
     }
 
+    /* -- Angular scope helper: get the device object for a DOM node --
+       Walks up the DOM at click-time (lazy) so there are no race
+       conditions with Angular's multi-cycle render.                  */
+    function getDeviceFromIcon(el) {
+        if (!window.angular) return null;
+        var node = el;
+        while (node && node !== document.body) {
+            try {
+                var scope = angular.element(node).scope();
+                if (scope) {
+                    /* dzLightWidget exposes device on ctrl.device or
+                       directly as scope.device / scope.item          */
+                    var d = (scope.ctrl && scope.ctrl.device) ||
+                             scope.device || scope.item || scope.widget;
+                    if (d && d.Type !== undefined) return d;
+                }
+            } catch (e) {}
+            node = node.parentElement;
+        }
+        return null;
+    }
+
+    /* -- Determines whether clicking the device icon should optimistically
+       swap the on/off color before the API response arrives.
+       Only true for devices where the click sends a genuine binary
+       toggle command (isActive ? Off : On).
+       Source reference: www/app/widgets/dzLightWidget.js             */
+    function isDirectToggle(d) {
+        if (!d) return false;
+
+        // Only light-family types — everything else (Temperature, Humidity,
+        // Wind, Rain, UV, P1, General…) is a read-only utility/sensor widget.
+        // Scenes and Groups are excluded: they render two separate on/off
+        // action buttons; the single icon does not represent toggleable state.
+        var lightTypes = ['Light/Switch', 'Lighting 1', 'Lighting 2',
+                          'Lighting 5', 'Lighting 6', 'Color Switch',
+                          'Chime', 'Home Confort'];
+        if (lightTypes.indexOf(d.Type) < 0) return false;
+
+        // Read-only sensors — isClickable() returns false
+        var readOnly = ['Door Contact', 'Contact', 'Motion Sensor', 'Dusk Sensor'];
+        if (readOnly.indexOf(d.SwitchType) >= 0) return false;
+
+        // Push On / Push Off always send a fixed command, they don't toggle state
+        if (d.SwitchType === 'Push On Button' || d.SwitchType === 'Push Off Button') return false;
+
+        // Doorbell — momentary push signal, not a persistent on/off state
+        if (d.SwitchType === 'Doorbell') return false;
+
+        // X10 Siren / Smoke Detector — alarm signals, not meaningful on/off toggles
+        if (d.SwitchType === 'X10 Siren' || d.SwitchType === 'Smoke Detector') return false;
+
+        // Security devices — complex arm/disarm logic, not a simple on/off flip
+        if (d.Type === 'Security') return false;
+
+        // TPI only active within unit range 64–95
+        if (d.SwitchType === 'TPI' && (d.Unit < 64 || d.Unit > 95)) return false;
+
+        // Fan subtypes → opens specialized popup
+        if (d.SubType) {
+            var sub = d.SubType;
+            if (sub.indexOf('Itho')         === 0 || sub.indexOf('Orcon')       === 0 ||
+                sub.indexOf('Lucci Air DC') === 0 || sub.indexOf('Lucci')       === 0 ||
+                sub.indexOf('Westinghouse') === 0 || sub.indexOf('Falmec')      === 0) {
+                return false;
+            }
+        }
+
+        // Thermostat 3 → ShowTherm3Popup
+        if (d.Type === 'Thermostat 3') return false;
+
+        // RGB / RGBW dimmers → ShowRGBWPopup; state changes come from the
+        // dialog and are reflected by the MutationObserver on img src change —
+        // no optimistic toggle needed on the icon click itself
+        var dimmerTypes = ['Dimmer', 'Blinds Percentage', 'Blinds % + Stop', 'TPI'];
+        if (dimmerTypes.indexOf(d.SwitchType) >= 0) {
+            var isRGB = d.SubType &&
+                        (d.SubType.indexOf('RGB') >= 0 || d.SubType.indexOf('WW') >= 0);
+            if (isRGB) return false;
+            // Non-RGB dimmers fall through: clicking them does toggle on/off
+        }
+
+        // Selector → level-based, not a binary on/off toggle
+        if (d.SwitchType === 'Selector') return false;
+
+        // Blinds (all variants) → directional (up/down/stop), not on/off
+        if (d.SwitchType && d.SwitchType.indexOf('Blinds') >= 0) return false;
+        if (d.SwitchType === 'Venetian Blinds US' ||
+            d.SwitchType === 'Venetian Blinds EU') return false;
+
+        // Everything else in the light-family: standard On/Off switches,
+        // Door Lock / Door Lock Inverted, non-RGB dimmers, Media Player, Chime
+        return true;
+    }
+
     /* -- Core replacement function -------------------------------- */
 
     function getSizeClass(img, src) {
@@ -822,13 +917,24 @@ if (document.readyState === 'loading') {
             icon.setAttribute('data-dz-state', resolved.color === resolved.colorOn ? 'on' : 'off');
             /* Optimistic toggle: immediately swap color on click so the user
                sees instant visual feedback before Angular/API round-trip.
-               Skip for action buttons (popup on/off, scene/group/blind
-               2nd/3rd icons) — those are not toggleable state icons.       */
+               Only fires for devices whose click actually sends a binary
+               on/off command — checked lazily via Angular scope so we
+               don't fight Angular's multi-cycle render timing.
+               Skipped for:
+                 • action buttons (popup/blind 2nd-3rd icon cells)
+                 • read-only sensors (Contact, Motion, Dusk)
+                 • popup devices (RGBW, fans, Thermostat 3)
+                 • directional devices (blinds, selectors)
+                 • utility/temp/weather/sensor widgets (no SwitchType)  */
             if (!isActionButton(img)) {
                 icon.addEventListener('click', function () {
                     var onColor  = this.getAttribute('data-dz-color-on');
                     var offColor = this.getAttribute('data-dz-color-off');
                     if (!onColor || !offColor) return;
+
+                    // Check device type from Angular scope at click-time
+                    if (!isDirectToggle(getDeviceFromIcon(this))) return;
+
                     var nowOn = this.getAttribute('data-dz-state') === 'on';
                     this.setAttribute('data-dz-state', nowOn ? 'off' : 'on');
                     this.style.color = nowOn ? offColor : onColor;
