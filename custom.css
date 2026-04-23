@@ -2078,7 +2078,7 @@ body table[id^="itemtable"] tr td.options {
     display: flex !important;
     flex-wrap: wrap;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     padding: 8px 0 2px !important;
     margin-top: auto !important;
     border-top: 0px solid rgba(var(--dz-overlay-rgb), 0.05) !important;
@@ -2117,8 +2117,8 @@ body table[id^="itemtable"] tr td.options {
     body table[id^="itemtable"] tr td.options .btnsmall,
     body table[id^="itemtable"] tr td.options .btnsmall-sel,
     body table[id^="itemtable"] tr td.options .btnsmall-dis {
-        font-size: 0.7rem !important;
-        padding: 3px 10px !important;
+        font-size: 0.68rem !important;
+        padding: 2px 8px !important;
         border-radius: 20px !important;
         border: 1px solid var(--dz-border-b) !important;
         background: var(--dz-surface) !important;
