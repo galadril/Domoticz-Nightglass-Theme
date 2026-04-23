@@ -6122,40 +6122,27 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
    26. STATE-CHANGE FLASH ANIMATION
    ══════════════════════════════════════════════════════════════════ */
 
+/* outline is used instead of box-shadow: outline is NEVER clipped by
+   ancestor overflow:hidden, so it always shows regardless of page layout. */
+
 @keyframes dz-card-flash-on {
-    0% {
-        box-shadow: 0 0 0 0 rgba(78,154,241,0), var(--dz-widget-shadow, 0 2px 8px rgba(0,0,0,.25));
-    }
-
-    35% {
-        box-shadow: 0 0 0 8px rgba(78,154,241,0.45), var(--dz-widget-shadow, 0 2px 8px rgba(0,0,0,.25));
-    }
-
-    100% {
-        box-shadow: 0 0 0 0 rgba(78,154,241,0), var(--dz-widget-shadow, 0 2px 8px rgba(0,0,0,.25));
-    }
+    0%   { outline: 3px solid rgba(78, 154, 241, 0);    outline-offset: 0px; }
+    30%  { outline: 3px solid rgba(78, 154, 241, 0.75); outline-offset: 3px; }
+    100% { outline: 3px solid rgba(78, 154, 241, 0);    outline-offset: 6px; }
 }
 
 @keyframes dz-card-flash-off {
-    0% {
-        box-shadow: 0 0 0 0 rgba(180,80,80,0), var(--dz-widget-shadow, 0 2px 8px rgba(0,0,0,.25));
-    }
-
-    35% {
-        box-shadow: 0 0 0 8px rgba(180,80,80,0.4), var(--dz-widget-shadow, 0 2px 8px rgba(0,0,0,.25));
-    }
-
-    100% {
-        box-shadow: 0 0 0 0 rgba(180,80,80,0), var(--dz-widget-shadow, 0 2px 8px rgba(0,0,0,.25));
-    }
+    0%   { outline: 3px solid rgba(220, 80, 80, 0);    outline-offset: 0px; }
+    30%  { outline: 3px solid rgba(220, 80, 80, 0.75); outline-offset: 3px; }
+    100% { outline: 3px solid rgba(220, 80, 80, 0);    outline-offset: 6px; }
 }
 
 .dz-flash-on {
-    animation: dz-card-flash-on 0.6s ease-out forwards !important;
+    animation: dz-card-flash-on 0.65s ease-out forwards !important;
 }
 
 .dz-flash-off {
-    animation: dz-card-flash-off 0.6s ease-out forwards !important;
+    animation: dz-card-flash-off 0.65s ease-out forwards !important;
 }
 
 
@@ -9910,34 +9897,70 @@ body.dz-light #dz-cmd-box {
     box-shadow: 0 20px 60px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.12);
 }
 
-/* ── Patched Domoticz search bar → command palette trigger ───── */
+/* ── Domoticz search bar → command palette trigger (pure CSS) ──── */
+/* Applies before first render — zero flicker, no JS DOM mutations. */
 
-/* Make the whole search area look clickable */
-#tbFiltSearch.dz-cmd-search-patched {
-    cursor: pointer;
-}
-
-/* Style the input to look like a palette trigger hint */
-#tbFiltSearch.dz-cmd-search-patched input.jsLiveSearch {
+/* Style the container as a pill button */
+#tbFiltSearch {
+    position: relative !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    padding: 3px 8px !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 8px !important;
     cursor: pointer !important;
-    caret-color: transparent;
-    background: transparent;
-    border-color: var(--dz-border);
-    color: var(--dz-text-muted);
-    font-style: italic;
-    min-width: 220px;
-    transition: border-color 0.15s, color 0.15s;
+    transition: border-color 0.15s, box-shadow 0.15s !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
 }
 
-#tbFiltSearch.dz-cmd-search-patched input.jsLiveSearch:hover,
-#tbFiltSearch.dz-cmd-search-patched input.jsLiveSearch:focus {
-    border-color: var(--dz-accent);
-    color: var(--dz-text);
-    outline: none;
-    box-shadow: none;
+#tbFiltSearch:hover {
+    border-color: var(--dz-accent) !important;
+    box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.15) !important;
 }
 
-/* Clear-results button is no longer relevant */
-#tbFiltSearch.dz-cmd-search-patched #tbResults {
+/* Hide results/clear button — superseded by palette */
+#tbFiltSearch #tbResults {
     display: none !important;
+}
+
+/* Keep the #tbSearch icon span, style it consistently */
+#tbFiltSearch #tbSearch {
+    pointer-events: none !important;
+    font-size: 12px !important;
+    opacity: 0.7 !important;
+}
+
+/* Make the input an invisible full-size click target */
+#tbFiltSearch input.jsLiveSearch {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    opacity: 0 !important;
+    cursor: pointer !important;
+    z-index: 1 !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Ctrl+K badge shown via CSS — always correct, no JS timing */
+#tbFiltSearch::after {
+    content: "Ctrl\00a0K";
+    display: inline-block !important;
+    background: var(--dz-surface-2) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-bottom-width: 2px !important;
+    border-radius: 4px !important;
+    padding: 1px 5px !important;
+    font-size: 10px !important;
+    color: var(--dz-text-muted) !important;
+    font-family: inherit !important;
+    pointer-events: none !important;
+    white-space: nowrap !important;
+    line-height: 1.4 !important;
 }

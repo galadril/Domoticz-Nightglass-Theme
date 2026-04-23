@@ -2422,15 +2422,22 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // addSparklines runs on page load and route changes only.
-    // NOT registered in _dzExtraProcessors to avoid running on every icon-burst
-    // and flooding Domoticz with param=graph seed requests.
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', addSparklines);
-    } else {
-        addSparklines();
+    // addSparklines is NOT in _dzExtraProcessors (avoids flooding param=graph calls).
+    // It runs on DOMContentLoaded (with retries, since Angular renders after DOMContentLoaded),
+    // on hashchange, and on Angular's $routeChangeSuccess.
+    function scheduleSparklineInit() {
+        // Three retries to catch Angular's lazy rendering on initial load / route change
+        setTimeout(addSparklines, 400);
+        setTimeout(addSparklines, 1200);
+        setTimeout(addSparklines, 2500);
     }
-    window.addEventListener('hashchange', function () { setTimeout(addSparklines, 500); });
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', scheduleSparklineInit);
+    } else {
+        scheduleSparklineInit();
+    }
+    window.addEventListener('hashchange', scheduleSparklineInit);
 
     // ── Sparkline Auto-Refresh ────────────────────────────────────────
     // Re-fetches a device's sparkline data when its displayed value changes,
@@ -2648,20 +2655,41 @@ document.addEventListener('DOMContentLoaded', function () {
         var s = device.Status || '';
         var on = (['On', 'Group On', 'Chime', 'Panic', 'Mixed'].indexOf(s) >= 0 ||
                   s.indexOf('Set ') === 0 || s.indexOf('NightMode') === 0 || s.indexOf('Disco ') === 0);
-        // For sensors without an on/off concept, always use the 'on' (positive) flash colour
+        // Sensors have no binary state — always use the positive (blue) flash
         var hasBinary = (device.Type === 'Scene' || device.Type === 'Group' ||
                          (device.SwitchType && device.SwitchType.length > 0));
         var cls = (!hasBinary || on) ? 'dz-flash-on' : 'dz-flash-off';
 
         setTimeout(function () {
-            var card = findCardByIdx(idx);
-            if (!card) return;
-            card.classList.remove('dz-flash-on', 'dz-flash-off');
-            void card.offsetWidth; // force reflow so animation restarts
-            card.classList.add(cls);
-            card.addEventListener('animationend', function rm() {
-                card.removeEventListener('animationend', rm);
-                card.classList.remove('dz-flash-on', 'dz-flash-off');
+            // Primary lookup: standard dashboard/switch card via itemtable{idx}
+            var flashEl = findCardByIdx(idx);
+
+            // Always use the outermost itemBlock so outline isn't clipped by inner overflow
+            if (flashEl && !flashEl.classList.contains('itemBlock')) {
+                var outer = flashEl.closest ? flashEl.closest('.itemBlock') : flashEl.parentElement;
+                if (outer) flashEl = outer;
+            }
+
+            // Fallback: weather widgets use id="{idx}" directly inside #weatherwidgets
+            if (!flashEl) {
+                var byId = document.getElementById(idx);
+                if (byId) flashEl = byId;
+            }
+
+            // Fallback: any element whose id ends with the idx (covers various page templates)
+            if (!flashEl) {
+                var any = document.querySelector('[id$="_' + idx + '"], [id="domoticz_' + idx + '"]');
+                if (any) flashEl = any;
+            }
+
+            if (!flashEl) return;
+
+            flashEl.classList.remove('dz-flash-on', 'dz-flash-off');
+            void flashEl.offsetWidth; // reflow so animation restarts if already playing
+            flashEl.classList.add(cls);
+            flashEl.addEventListener('animationend', function rm() {
+                flashEl.removeEventListener('animationend', rm);
+                flashEl.classList.remove('dz-flash-on', 'dz-flash-off');
             });
         }, 0);
     }
@@ -2676,9 +2704,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 wsAppendSparkline(device);
                 wsFlashCard(device);
             });
-            // Scenes use a separate broadcast channel
             $rootScope.$on('scene_update', function (evt, scene) {
                 wsFlashCard(scene);
+            });
+            // Re-seed sparklines after Angular route changes
+            $rootScope.$on('$routeChangeSuccess', function () {
+                scheduleSparklineInit();
             });
         } catch (e) {
             setTimeout(attachSparklineWsHook, 600);
@@ -6582,42 +6613,25 @@ document.addEventListener('DOMContentLoaded', function () {
     // visibility via ng-show), we just hijack its click/focus behaviour and
     // restyle it to show the Ctrl+K hint.
 
-    var _isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+    // Visual styling is 100% CSS (no class needed, applies before first render).
+    // JS only attaches click handlers — no DOM mutations, no flicker.
+    function watchSearchBar() {
+        var bar = document.getElementById('tbFiltSearch');
+        if (!bar) { setTimeout(watchSearchBar, 400); return; }
+        if (bar._dzCmdBound) return;
+        bar._dzCmdBound = true;
 
-    function patchSearchBar(bar) {
-        if (bar.classList.contains('dz-cmd-search-patched')) return;
-        bar.classList.add('dz-cmd-search-patched');
-
-        // Update placeholder so the hint is obvious
+        // The input is an invisible overlay — intercept all activation paths
         var input = bar.querySelector('input.jsLiveSearch');
         if (input) {
-            input.setAttribute('placeholder',
-                (_isMac ? '\u2318' : 'Ctrl') + '+K \u2014 Search devices & scenes\u2026');
-            input.setAttribute('readonly', 'true'); // prevent native keyboard on mobile
-            // Open palette on any interaction
             input.addEventListener('mousedown', function (e) { e.preventDefault(); openPalette(); });
             input.addEventListener('touchend',  function (e) { e.preventDefault(); openPalette(); });
             input.addEventListener('focus',     function ()  { this.blur(); openPalette(); });
         }
-
-        // Also intercept the search-icon click
-        var icon = bar.querySelector('#tbSearch, .jsTbSearch');
-        if (icon) {
-            icon.addEventListener('click', function (e) { e.stopPropagation(); openPalette(); });
-        }
-    }
-
-    function watchSearchBar() {
-        var bar = document.getElementById('tbFiltSearch');
-        if (!bar) { setTimeout(watchSearchBar, 600); return; }
-
-        // Patch immediately if visible (not ng-hide'd)
-        if (!bar.classList.contains('ng-hide')) patchSearchBar(bar);
-
-        // Re-patch whenever Angular makes it visible again (route change)
-        new MutationObserver(function () {
-            if (!bar.classList.contains('ng-hide')) patchSearchBar(bar);
-        }).observe(bar, { attributes: true, attributeFilter: ['class'] });
+        // Catch clicks on the container itself (e.g. the ::after Ctrl+K badge area)
+        bar.addEventListener('click', function (e) {
+            if (!e.target.closest || !e.target.closest('#tbResults')) openPalette();
+        });
     }
 
     // ── Init ───────────────────────────────────────────────────────
