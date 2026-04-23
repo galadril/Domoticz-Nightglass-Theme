@@ -5634,48 +5634,43 @@ table.mobileitem,
    Presentation attributes have lower specificity than CSS, so we can
    override fill/stroke here without !important for most elements.      */
 
-/* Popup card background (overrides PopupGradient — the gradient is also
-   updated dynamically in JS via applyPopupGradient())                  */
+/* Popup card background — uses --dz-surface-2 (the card surface token)
+   which is defined for both dark and light mode.  The SVG gradient is
+   also updated dynamically in JS via applyPopupGradient().             */
 .DeviceDetails rect.popup {
-    fill: var(--dz-card-bg);
-    stroke: var(--dz-border-color);
+    fill: var(--dz-surface-2);
+    stroke: var(--dz-border);
     stroke-width: 0.5;
 }
 
-/* Drop-shadow rect: keep subtle, just slightly darker than background */
+/* Drop-shadow rect: subtle depth cue */
 .DeviceDetails rect#shadow {
-    fill: rgba(0, 0, 0, 0.35);
+    fill: rgba(0, 0, 0, 0.25);
 }
 
 /* All text inside the popup → themed text color
-   (SVG default is black; overridden here for dark theme)               */
+   (SVG default is black — invisible on dark backgrounds)               */
 .DeviceDetails text,
 .DeviceDetails tspan {
     fill: var(--dz-text);
 }
 
-/* Button label texts have fill="white" as presentation attribute which
-   would be overridden above.  Re-pin them to white so they stay readable
-   on the accent-colored button rects.  Attribute selectors override the
-   general 'text' rule since they have higher specificity.              */
+/* Button label texts have fill="white" as a presentation attribute.
+   Re-pin them to white so they stay readable on the accent buttons.
+   Attribute selectors have higher specificity than the general rule.   */
 .DeviceDetails text[fill="white"],
 .DeviceDetails tspan[fill="white"] {
     fill: #ffffff;
 }
 
-/* Action button rects: replace the photo-texture pattern with a flat
-   accent-colored pill matching the rest of the Nightglass UI.          */
+/* Action button rects: replace the photo-texture pattern fill with a
+   flat accent-coloured pill matching the rest of the Nightglass UI.    */
 .DeviceDetails rect[id="Log"],
 .DeviceDetails rect[id="Edit"],
 .DeviceDetails rect[id="Timers"],
 .DeviceDetails rect[id="Notifications"],
 .DeviceDetails rect[id="Forecast"] {
-    fill: var(--dz-accent-color);
-}
-
-/* Notifications active state: use a slightly brighter/distinct shade */
-.DeviceDetails rect[id="Notifications"][fill="url(#ButtonImage2)"] {
-    fill: var(--dz-accent-hover, #6aaef7);
+    fill: var(--dz-accent);
 }
 
 /* foreignObject status divs (HTML text sensors) → inherit theme text */
@@ -5686,16 +5681,6 @@ table.mobileitem,
 /* Font Awesome icon wrappers injected by Nightglass inside the popup */
 .DeviceDetails .dz-fp-icon-wrap {
     overflow: visible;
-}
-
-/* Light mode: popup background should be near-white card bg, not pure white */
-body.dz-light .DeviceDetails rect.popup {
-    fill: var(--dz-card-bg);
-    stroke: var(--dz-border-color);
-}
-body.dz-light .DeviceDetails text,
-body.dz-light .DeviceDetails tspan {
-    fill: var(--dz-text);
 }
 
 

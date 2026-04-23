@@ -1541,9 +1541,10 @@ if (document.readyState === 'loading') {
         if (!defsEl) return;
         var grad = document.getElementById('PopupGradient');
         if (!grad) return;
+        // Match --dz-surface-2 token values: dark #2a2b35, light #f5f6fa
         var isDark = !document.body.classList.contains('dz-light');
-        var stop1 = isDark ? '#252836' : '#f8f9fc';
-        var stop2 = isDark ? '#1b1d2a' : '#edf0f5';
+        var stop1 = isDark ? '#2a2b35' : '#f5f6fa';
+        var stop2 = isDark ? '#23252f' : '#edf0f5';
         var stops = grad.querySelectorAll('stop');
         if (stops[0]) stops[0].style.cssText = 'stop-color:' + stop1 + ';stop-opacity:1';
         if (stops[1]) stops[1].style.cssText = 'stop-color:' + stop2 + ';stop-opacity:1';
@@ -2354,7 +2355,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function tryNextSensor(idx, wrap, si) {
         if (si >= SENSORS.length) return;
         var url = BASE + 'json.htm?type=command&param=graph&sensor=' + SENSORS[si] + '&idx=' + idx + '&range=day';
-        fetch(url, { credentials: 'same-origin' })
+        fetch(url, { credentials: 'same-origin', cache: 'no-store' })
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 var result = data && data.result;
@@ -2466,7 +2467,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (si >= SENSORS.length) return;
             var url = BASE + 'json.htm?type=command&param=graph&sensor=' + SENSORS[si] +
                       '&idx=' + idx + '&range=hour';
-            fetch(url, { credentials: 'same-origin' })
+            fetch(url, { credentials: 'same-origin', cache: 'no-store' })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     var result = data && data.result;
