@@ -6209,13 +6209,46 @@ document.addEventListener('DOMContentLoaded', function () {
                .indexOf(d.SwitchType || '') >= 0;
     }
 
+    // Derive a display unit for sensor devices that return bare numbers
+    function _derivedUnit(d) {
+        if (d.SensorUnit) return d.SensorUnit;
+        var sub  = (d.SubType || '').toLowerCase();
+        var type = (d.Type    || '').toLowerCase();
+        var sw   = d.SwitchTypeVal;
+        if (sub === 'electric' || type === 'usage')            return 'W';
+        if (sub === 'gas'   || sub === 'water')                return 'm\u00b3';
+        if (sub === 'kwh'   || sub === 'managed counter')      return 'kWh';
+        if (sub === 'counter incremental')                     return '';
+        if (sub === 'voltage' || sub === 'a/d')                return 'mV';
+        if (sub === 'current' || type === 'current')           return 'A';
+        if (sub === 'pressure')                                return 'Bar';
+        if (sub === 'lux')                                     return 'lx';
+        if (sub === 'percentage' || sub === 'humidity')        return '%';
+        if (sub === 'visibility')                              return sw === 1 ? 'mi' : 'km';
+        if (sub === 'solar radiation')                         return 'W/m\u00b2';
+        if (type === 'rain')                                   return 'mm';
+        return '';
+    }
+
     function stateLabel(d) {
-        // Toggleable devices: prefer Status ("On" / "Off" / "Set 75%")
+        // Toggleable devices: prefer Status ("On" / "Off" / "Set 75 %")
         if (isToggleable(d)) return d.Status || d.Data || '';
-        var data = d.Data || '';
+        var data = (d.Data || '').trim();
         if (!data) return d.Status || '';
-        // P1/energy meters return multiple ';'-separated values — show only the first
-        var first = data.split(';')[0].trim();
+
+        // Take only the first ';'- or newline-separated segment
+        var first = data.split(/[;\n]/)[0].trim();
+
+        // Strip "Label: value" prefixes produced by P1/counter devices
+        // e.g. "Usage1: 1234.567 kWh" → "1234.567 kWh"
+        first = first.replace(/^[A-Za-z][A-Za-z0-9 _]*:\s*/, '');
+
+        // If the result is still a bare number, append the derived unit
+        if (/^-?\d+(\.\d+)?$/.test(first)) {
+            var unit = _derivedUnit(d);
+            if (unit) first += '\u00a0' + unit;
+        }
+
         return first || d.Status || '';
     }
 
@@ -6387,7 +6420,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         var iconWrap = document.createElement('div');
         iconWrap.className = 'dz-cmd-icon' + (on ? ' dz-cmd-icon--on' : '');
-        iconWrap.innerHTML = '<i class="fa-solid ' + iconFor(device) + '"></i>';
+        iconWrap.innerHTML = '<i class="' + iconFor(device) + '"></i>';
         el.appendChild(iconWrap);
 
         var body = document.createElement('div');

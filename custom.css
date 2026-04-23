@@ -346,6 +346,9 @@ strong {
     color: var(--dz-text);
 }
 
+#tbLinks A {
+    margin-bottom: 0px !important;
+}
 
 /* ══════════════════════════════════════════════════════════════════
    3.  NAVBAR  (matches idea/index.html pilot)
@@ -9852,16 +9855,15 @@ mark.dz-cmd-mark {
     padding: 0 1px;
 }
 
-/* State badge */
+/* State badge — fixed width so values align in the same column */
 .dz-cmd-state {
     flex-shrink: 0;
+    width: 82px;
     font-size: 12px;
     font-weight: 600;
     color: var(--dz-text-muted);
-    min-width: 40px;
     text-align: right;
     white-space: nowrap;
-    max-width: 120px;
     overflow: hidden;
     text-overflow: ellipsis;
 }
