@@ -9788,6 +9788,36 @@ mark.dz-cmd-mark {
     padding: 2px 6px;
 }
 
+/* Navigate button (arrow) — always present, revealed on hover/active */
+.dz-cmd-nav-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--dz-border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--dz-text-muted);
+    font-size: 11px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.1s, background 0.1s;
+    margin-right: 2px;
+}
+
+.dz-cmd-item--active .dz-cmd-nav-btn,
+.dz-cmd-item:hover .dz-cmd-nav-btn {
+    opacity: 1;
+}
+
+.dz-cmd-nav-btn:hover {
+    background: rgba(var(--dz-accent-rgb), 0.15);
+    color: var(--dz-accent);
+    border-color: var(--dz-accent);
+}
+
 /* Dimmer slider row */
 .dz-cmd-slider-row {
     flex-basis: 100%;

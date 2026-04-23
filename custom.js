@@ -6297,12 +6297,27 @@ document.addEventListener('DOMContentLoaded', function () {
         stateEl.textContent = stateLabel(device);
         el.appendChild(stateEl);
 
-        var hint = document.createElement('div');
-        hint.className = 'dz-cmd-hint';
-        hint.innerHTML = tog || dim
-            ? '<kbd>\u21b5</kbd>'                                           // ↵ toggle
-            : '<i class="fa-solid fa-arrow-right" style="font-size:11px;opacity:.5;"></i>'; // → navigate
-        el.appendChild(hint);
+        // Navigate button — always present, visible on hover / keyboard focus
+        var navBtn = document.createElement('button');
+        navBtn.className = 'dz-cmd-nav-btn';
+        navBtn.title = 'Go to page (Shift+\u21b5)';
+        navBtn.innerHTML = '<i class="fa-solid fa-arrow-right"></i>';
+        navBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            navigateToDevice(device);
+        });
+        el.appendChild(navBtn);
+
+        // Toggle hint — only shown for toggleable devices
+        if (tog || dim) {
+            var hint = document.createElement('div');
+            hint.className = 'dz-cmd-hint';
+            hint.innerHTML = '<kbd>\u21b5</kbd>';
+            el.appendChild(hint);
+        }
+
+        // Store device reference for keyboard Shift+Enter
+        el._dzDevice = device;
 
         var sliderRow = null;
         if (dim) {
@@ -6336,6 +6351,23 @@ document.addEventListener('DOMContentLoaded', function () {
         return el;
     }
 
+    function navigateToDevice(device) {
+        closePalette();
+        // Try to scroll to card if it's already on the current page
+        var tbl = document.getElementById('itemtable' + device.idx);
+        var card = tbl && tbl.closest
+            ? tbl.closest('div.item.itemBlock, .itemBlock > div.item')
+            : null;
+        if (card) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            card.classList.add('dz-flash-on');
+            setTimeout(function () { card.classList.remove('dz-flash-on'); }, 700);
+        } else {
+            // Navigate to the correct Domoticz type page (hash is the path, no leading #)
+            window.location.hash = deviceRoute(device);
+        }
+    }
+
     function onActivate(device, el, stateEl, iconWrap, sliderRow) {
         if (isDimmer(device) && sliderRow) {
             if (!sliderRow.classList.contains('dz-cmd-slider-row--visible')) {
@@ -6345,41 +6377,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
         }
-        if (isToggleable(device)) {
-            apiToggle(device, function (d) {
-                var nowOn = isOn(d);
-                stateEl.textContent = stateLabel(d);
-                stateEl.classList.toggle('dz-cmd-state--on', nowOn);
-                iconWrap.classList.toggle('dz-cmd-icon--on', nowOn);
-                var tbl2 = document.getElementById('itemtable' + d.idx);
-                if (tbl2) {
-                    var card2 = tbl2.closest
-                        ? tbl2.closest('div.item.itemBlock, .itemBlock > div.item')
-                        : null;
-                    if (card2) {
-                        card2.classList.add(nowOn ? 'dz-flash-on' : 'dz-flash-off');
-                        setTimeout(function () {
-                            card2.classList.remove('dz-flash-on', 'dz-flash-off');
-                        }, 700);
-                    }
+        if (!isToggleable(device)) return; // Enter only toggles; use nav button or Shift+Enter to navigate
+        apiToggle(device, function (d) {
+            var nowOn = isOn(d);
+            stateEl.textContent = stateLabel(d);
+            stateEl.classList.toggle('dz-cmd-state--on', nowOn);
+            iconWrap.classList.toggle('dz-cmd-icon--on', nowOn);
+            var tbl2 = document.getElementById('itemtable' + d.idx);
+            if (tbl2) {
+                var card2 = tbl2.closest
+                    ? tbl2.closest('div.item.itemBlock, .itemBlock > div.item')
+                    : null;
+                if (card2) {
+                    card2.classList.add(nowOn ? 'dz-flash-on' : 'dz-flash-off');
+                    setTimeout(function () {
+                        card2.classList.remove('dz-flash-on', 'dz-flash-off');
+                    }, 700);
                 }
-            });
-            return;
-        }
-        closePalette();
-        // Try to find card on current page first; if not visible, navigate there
-        var tbl3 = document.getElementById('itemtable' + device.idx);
-        var card3 = tbl3 && tbl3.closest
-            ? tbl3.closest('div.item.itemBlock, .itemBlock > div.item')
-            : null;
-        if (card3) {
-            card3.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            card3.classList.add('dz-flash-on');
-            setTimeout(function () { card3.classList.remove('dz-flash-on'); }, 700);
-        } else {
-            // Device not on current page — navigate to its type page
-            window.location.hash = '#' + deviceRoute(device);
-        }
+            }
+        });
     }
 
     // ── Active item ────────────────────────────────────────────────
@@ -6435,7 +6451,8 @@ document.addEventListener('DOMContentLoaded', function () {
         footer.id = 'dz-cmd-footer';
         footer.innerHTML =
             '<span><kbd>\u2191</kbd><kbd>\u2193</kbd> navigate</span>' +
-            '<span><kbd>\u21b5</kbd> toggle\u202f/\u202fgo\u202fto</span>' +
+            '<span><kbd>\u21b5</kbd> toggle</span>' +
+            '<span><kbd>\u21e7\u21b5</kbd> go\u202fto\u202fpage</span>' +
             '<span><kbd>Esc</kbd> close</span>';
         box.appendChild(footer);
 
@@ -6459,7 +6476,13 @@ document.addEventListener('DOMContentLoaded', function () {
             } else if (e.key === 'Enter') {
                 e.preventDefault();
                 var target = _activeIdx >= 0 ? items[_activeIdx] : items[0];
-                if (target) target.click();
+                if (!target) return;
+                if (e.shiftKey) {
+                    // Shift+Enter → always navigate to device page
+                    if (target._dzDevice) navigateToDevice(target._dzDevice);
+                } else {
+                    target.click(); // Enter → toggle (or expand dimmer)
+                }
             } else if (e.key === 'Escape') {
                 closePalette();
             }
