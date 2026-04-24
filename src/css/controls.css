@@ -1,0 +1,363 @@
+/* ══════════════════════════════════════════════════════════════════
+   7.  BUTTONS  (flat dark style)
+   ══════════════════════════════════════════════════════════════════ */
+
+.btn {
+    background-image: none !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease;
+}
+
+    .btn.btn-default {
+        background: var(--dz-surface-2) !important;
+        color: var(--dz-text) !important;
+        border: 1px solid var(--dz-border-b) !important;
+    }
+
+        .btn.btn-default:hover {
+            background: var(--dz-border) !important;
+            border-color: var(--dz-accent) !important;
+        }
+
+        .btn.btn-default.active,
+        .btn.btn-default.active:hover,
+        .btn.btn-default.active:focus {
+            background: var(--dz-accent) !important;
+            border-color: var(--dz-accent) !important;
+            color: #fff !important;
+            box-shadow: none !important;
+        }
+
+/* General selector-switch active button — covers all widget types (scene, device, etc.) */
+.btn-group .btn-selected,
+.btn-group .btn.btn-selected {
+    background: var(--dz-accent) !important;
+    background-image: none !important;
+    border-color: var(--dz-accent) !important;
+    color: #fff !important;
+}
+
+    .btn-group .btn-selected:hover,
+    .btn-group .btn.btn-selected:hover {
+        background: var(--dz-accent-hover) !important;
+        border-color: var(--dz-accent-hover) !important;
+    }
+
+.btnsmall,
+.btnsmall-sel {
+    background: var(--dz-surface-2) !important;
+    background-image: none !important;
+    color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 6px !important;
+    transition: all 0.2s ease;
+}
+
+    .btnsmall:hover {
+        background: var(--dz-border) !important;
+        border-color: var(--dz-accent) !important;
+        color: #fff !important;
+        box-shadow: none !important;
+    }
+
+.btnsmall-sel {
+    background: rgba(var(--dz-accent-rgb), 0.18) !important;
+    border-color: var(--dz-accent) !important;
+}
+
+.btnsmall-dis {
+    background: var(--dz-bg-alt) !important;
+    background-image: none !important;
+    color: var(--dz-text-muted) !important;
+    border: 1px solid var(--dz-surface-3) !important;
+    border-radius: 6px !important;
+    opacity: 0.6;
+}
+
+.btnstyle,
+.btnstyle3 {
+    background: var(--dz-surface-2) !important;
+    background-image: none !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 8px !important;
+    color: var(--dz-text) !important;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    line-height: 1.2;
+}
+
+    .btnstyle:hover,
+    .btnstyle3:hover {
+        background: var(--dz-border) !important;
+        border-color: var(--dz-accent) !important;
+        color: #fff !important;
+    }
+
+.btnstyle-sel,
+.btnstyle3-sel {
+    background: rgba(var(--dz-accent-rgb), 0.18) !important;
+    background-image: none !important;
+    border: 1px solid var(--dz-accent) !important;
+    border-radius: 8px !important;
+    color: #fff !important;
+}
+
+.btnstylerev {
+    background: var(--dz-surface-2) !important;
+    background-image: none !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 8px !important;
+    color: var(--dz-text) !important;
+}
+
+.btnstyle3:disabled,
+.btnstyle3-dis {
+    background: var(--dz-bg-alt) !important;
+    background-image: none !important;
+    color: var(--dz-text-muted) !important;
+    border: 1px solid var(--dz-surface-3) !important;
+    opacity: 0.6;
+}
+
+.btn-primary {
+    background-color: var(--dz-accent) !important;
+    background-image: none !important;
+    border-color: var(--dz-accent) !important;
+    color: #fff !important;
+}
+
+    .btn-primary:hover {
+        background-color: var(--dz-accent-hover) !important;
+    }
+
+.btn-danger {
+    background-color: var(--dz-danger) !important;
+    background-image: none !important;
+    border-color: var(--dz-danger) !important;
+}
+
+    .btn-danger:hover {
+        background-color: var(--dz-danger-hover) !important;
+    }
+
+.btn-success {
+    background-color: var(--dz-success) !important;
+    background-image: none !important;
+    border-color: var(--dz-success) !important;
+}
+
+    .btn-success:hover {
+        background-color: var(--dz-success-hover) !important;
+    }
+
+.btn-warning {
+    background-color: var(--dz-warning) !important;
+    background-image: none !important;
+    border-color: var(--dz-warning) !important;
+}
+
+    .btn-warning:hover {
+        background-color: var(--dz-warning-hover) !important;
+    }
+
+.btn-info {
+    background-color: var(--dz-accent) !important;
+    background-image: none !important;
+    border-color: var(--dz-accent) !important;
+}
+
+    .btn-info:hover {
+        background-color: var(--dz-accent-hover) !important;
+    }
+
+/* Modern glass-style buttons */
+.btn-modern {
+    background: rgba(var(--dz-accent-rgb), 0.12) !important;
+    border: 1px solid rgba(var(--dz-accent-rgb), 0.35) !important;
+    color: var(--dz-text) !important;
+    border-radius: 10px !important;
+}
+
+    .btn-modern:hover {
+        background: rgba(var(--dz-accent-rgb), 0.25) !important;
+        border-color: rgba(var(--dz-accent-rgb), 0.6) !important;
+        color: #fff !important;
+        box-shadow: 0 8px 24px rgba(var(--dz-accent-rgb), 0.2) !important;
+    }
+
+.btn-modern-warning {
+    background: rgba(240, 168, 50, 0.12) !important;
+    border-color: rgba(240, 168, 50, 0.35) !important;
+}
+
+    .btn-modern-warning:hover:not(:disabled) {
+        background: rgba(240, 168, 50, 0.25) !important;
+        border-color: rgba(240, 168, 50, 0.6) !important;
+        box-shadow: 0 8px 24px rgba(240, 168, 50, 0.2) !important;
+    }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   8.  FORM INPUTS  (clean pill-style like idea/index.html)
+   ══════════════════════════════════════════════════════════════════ */
+
+input[type="text"],
+input[type="password"],
+input[type="number"],
+input[type="email"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+textarea {
+    background-color: var(--dz-surface-2) !important;
+    color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 8px !important;
+    padding: 6px 12px !important;
+    font-family: inherit !important;
+    font-size: 0.88rem !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+    input:focus,
+    textarea:focus {
+        background-color: var(--dz-surface-3) !important;
+        color: var(--dz-text) !important;
+        border-color: var(--dz-accent) !important;
+        box-shadow: 0 0 0 3px rgba(var(--dz-accent-rgb), 0.12) !important;
+        outline: none !important;
+    }
+
+/* ── Themed Device Container ─────────────────────────────────────────────── */
+#devicecontainer {
+    margin-top: 3px;
+    background: var(--dz-surface-2);
+    background-image: linear-gradient(to bottom, var(--dz-surface-2), var(--dz-bg));
+    border: 1px solid var(--dz-border-color, #2e3040);
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+    width: 100%;
+    height: 240px;
+    overflow-y: scroll;
+    padding: 12px 16px;
+    color: var(--dz-body-text, #e2e4ed);
+    font-size: 1em;
+}
+
+    #devicecontainer input[type="checkbox"].devicecheckbox {
+        accent-color: var(--dz-accent-color, #4e9af1);
+        width: 18px;
+        height: 18px;
+        margin-right: 10px;
+        vertical-align: middle;
+        border-radius: 6px;
+        background: rgba(255,255,255,0.08);
+        border: 1.5px solid var(--dz-accent-color, #4e9af1);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+        transition: border-color 0.2s;
+    }
+
+        #devicecontainer input[type="checkbox"].devicecheckbox:checked {
+            border-color: var(--dz-accent-color, #4e9af1);
+            background: rgba(78,154,241,0.18);
+        }
+
+    #devicecontainer label, #devicecontainer br, #devicecontainer input[type="checkbox"] {
+        cursor: pointer;
+    }
+
+    #devicecontainer .devicecheckbox + span {
+        vertical-align: middle;
+        margin-right: 18px;
+    }
+
+    #devicecontainer input[type="checkbox"]:focus {
+        outline: 2px solid var(--dz-accent-color, #4e9af1);
+        outline-offset: 2px;
+    }
+
+    #devicecontainer::-webkit-scrollbar {
+        width: 10px;
+        background: var(--dz-surface-3);
+        border-radius: 8px;
+    }
+
+    #devicecontainer::-webkit-scrollbar-thumb {
+        background: rgba(78, 154, 241, 0.18);
+        border-radius: 8px;
+    }
+
+select {
+    background-color: var(--dz-surface-2) !important;
+    color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 8px !important;
+    padding: 4px 8px;
+    font-size: 0.88rem;
+}
+
+/* jQuery UI inputs */
+textarea.ui-widget-content,
+input.ui-widget-content {
+    background-color: var(--dz-surface-2) !important;
+    background-image: none !important;
+    color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 8px !important;
+}
+
+.inputbox {
+    background: var(--dz-surface-2) !important;
+    color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border-b);
+    border-radius: 6px;
+    padding: 4px 8px;
+}
+
+/* Room / floorplan combos */
+#comboroom,
+#combofloorplan {
+    background: var(--dz-surface-2) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    color: var(--dz-text) !important;
+    border-radius: 8px;
+    font-family: inherit;
+}
+
+/* Glass-style inputs */
+.glass-input {
+    background: var(--dz-surface-2) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 10px !important;
+    color: var(--dz-text) !important;
+}
+
+    .glass-input:focus {
+        border-color: var(--dz-accent) !important;
+        box-shadow: 0 0 12px rgba(var(--dz-accent-rgb), 0.12) !important;
+        background: rgba(var(--dz-border-rgb), 0.9) !important;
+    }
+
+    .glass-input::placeholder {
+        color: var(--dz-text-muted) !important;
+    }
+
+/* dz-picker */
+.dz-picker-btn {
+    background: var(--dz-surface-2) !important;
+    color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 8px !important;
+}
+
+    .dz-picker-btn:focus {
+        border-color: var(--dz-accent) !important;
+        box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.15) !important;
+    }
+
+

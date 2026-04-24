@@ -1,0 +1,1947 @@
+/* ══════════════════════════════════════════════════════════════════
+   DASHBOARD 2.0 WIDGETS (dd-* components)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Widget container */
+.dd-widget {
+    /*background: var(--dz-surface-2) !important;*/
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 14px !important;
+    color: var(--dz-text) !important;
+    overflow: hidden;
+}
+
+.dd-widget-header {
+    background: var(--dz-surface-2) !important;
+    border-bottom: 1px solid var(--dz-border) !important;
+    color: var(--dz-text) !important;
+}
+
+    .dd-widget-header .dd-widget-title {
+        color: var(--dz-text) !important;
+    }
+
+.dd-widget-body {
+    /*background: var(--dz-surface-2) !important;*/
+    color: var(--dz-text) !important;
+}
+
+/* Weather forecast widget */
+    .dd-forecast {
+        color: var(--dz-text) !important;
+    }
+
+    .dd-forecast-header {
+        color: var(--dz-text) !important;
+        font-weight: 600;
+    }
+
+    .dd-forecast-grid {
+        border-top: 1px solid var(--dz-border);
+    }
+
+    .dd-forecast-day {
+        border-right: 1px solid var(--dz-border);
+        color: var(--dz-text) !important;
+    }
+
+        .dd-forecast-day:last-child {
+            border-right: none;
+        }
+
+    .dd-forecast-dayname {
+        color: var(--dz-text-soft) !important;
+        font-weight: 600;
+    }
+
+    .dd-forecast-temps {
+        color: var(--dz-text) !important;
+        font-weight: 600;
+    }
+
+    .dd-forecast-label {
+        color: var(--dz-text-muted) !important;
+    }
+
+    .dd-forecast-precip,
+    .dd-forecast-wind {
+        color: var(--dz-text-muted) !important;
+        font-size: 0.82rem;
+    }
+    /* Sun/Moon widget */
+    .dd-sun-moon {
+        color: var(--dz-text) !important;
+    }
+
+    .dd-sun-moon-times {
+        color: var(--dz-text-soft) !important;
+    }
+
+    .dd-sun-moon-label {
+        color: var(--dz-text-muted) !important;
+    }
+    /* Favorites tabs */
+    .dd-favorites-tabs {
+        background: var(--dz-surface-2) !important;
+        border-bottom: 1px solid var(--dz-border) !important;
+    }
+
+        .dd-favorites-tabs button,
+        .dd-favorites-tabs a {
+            color: var(--dz-text-muted) !important;
+            background: transparent !important;
+        }
+
+            .dd-favorites-tabs button:hover,
+            .dd-favorites-tabs a:hover {
+                color: var(--dz-text) !important;
+            }
+
+            .dd-favorites-tabs .active,
+            .dd-favorites-tabs button.active,
+            .dd-favorites-tabs a.active {
+                color: var(--dz-accent) !important;
+                border-bottom-color: var(--dz-accent) !important;
+            }
+    /* Energy dashboard widget */
+    .dd-energy-stats,
+    .dd-energy-stat {
+        color: var(--dz-text) !important;
+    }
+
+    .dd-energy-stat-label {
+        color: var(--dz-text-muted) !important;
+    }
+
+    .dd-energy-stat-value {
+        color: var(--dz-text) !important;
+    }
+    /* Generic widget stat blocks */
+    .dd-stat-value {
+        color: var(--dz-text) !important;
+    }
+
+    .dd-stat-label {
+        color: var(--dz-text-muted) !important;
+    }
+    /* Widget edit mode outline */
+    .dd-widget.dd-edit-mode {
+        border-color: rgba(var(--dz-accent-rgb), 0.4) !important;
+    }
+    /* Widget loading/error states */
+    .dd-widget-loading,
+    .dd-widget-error {
+        color: var(--dz-text-muted) !important;
+    }
+    /* ══════════════════════════════════════════════════════════════════
+   SETTINGS PAGE FORMS & TABLES
+   ══════════════════════════════════════════════════════════════════ */
+    /* Settings content panels */
+    #settingscontent h2,
+    #settingscontent h3 {
+        color: var(--dz-text) !important;
+    }
+
+    #settingscontent label {
+        color: var(--dz-text-soft) !important;
+    }
+
+    #settingscontent table td {
+        color: var(--dz-text-soft) !important;
+        padding: 6px 8px;
+    }
+
+    #settingscontent span[data-i18n] {
+        color: var(--dz-text-soft) !important;
+    }
+    /* Combobox / select elements in settings */
+    #settingscontent select,
+    #settingscontent .combobox,
+    select.combobox {
+        background: var(--dz-surface-2) !important;
+        color: var(--dz-text) !important;
+        border: 1px solid var(--dz-border) !important;
+        border-radius: 6px !important;
+        padding: 4px 8px;
+    }
+
+        #settingscontent select:focus,
+        select.combobox:focus {
+            border-color: var(--dz-accent) !important;
+            outline: none;
+        }
+
+        #settingscontent select option,
+        select.combobox option {
+            background: var(--dz-surface-2) !important;
+            color: var(--dz-text) !important;
+        }
+    /* Settings page inputs */
+    #settingscontent input[type="text"],
+    #settingscontent input[type="password"],
+    #settingscontent input[type="number"],
+    #settingscontent input[type="email"],
+    #settingscontent textarea {
+        background: var(--dz-surface-2) !important;
+        color: var(--dz-text) !important;
+        border: 1px solid var(--dz-border) !important;
+        border-radius: 6px !important;
+    }
+
+        #settingscontent input[type="text"]:focus,
+        #settingscontent input[type="password"]:focus,
+        #settingscontent input[type="number"]:focus,
+        #settingscontent textarea:focus {
+            border-color: var(--dz-accent) !important;
+        }
+    /* Settings checkboxes label text */
+    #settingscontent input[type="checkbox"] + label,
+    #settingscontent label[for] {
+        color: var(--dz-text-soft) !important;
+    }
+    /* Settings page horizontal rules and borders */
+    #settingscontent hr {
+        border-color: var(--dz-border);
+    }
+    /* Settings span6 columns */
+    #settingscontent .span6 {
+        color: var(--dz-text) !important;
+    }
+    /* ══════════════════════════════════════════════════════════════════
+   ENERGY / UTILITY DASHBOARD BACKGROUNDS
+   ══════════════════════════════════════════════════════════════════ */
+
+    #utilitycontent,
+    #energycontent,
+    #dashcontent,
+    #weathercontent,
+    #tempcontent,
+    #switchcontent,
+    #scenecontent,
+    #cameracontent {
+        background: transparent !important;
+        color: var(--dz-text) !important;
+    }
+        /* Content area headers */
+        #utilitycontent h2,
+        #energycontent h2,
+        #dashcontent h2,
+        #weathercontent h2,
+        #tempcontent h2,
+        #switchcontent h2,
+        #scenecontent h2 {
+            color: var(--dz-text) !important;
+        }
+    /* Panel/section containers inside content */
+    .container-fluid,
+    .container {
+        color: var(--dz-text);
+    }
+    /* ══════════════════════════════════════════════════════════════════
+   HIGHCHARTS ADDITIONAL FIXES
+   ══════════════════════════════════════════════════════════════════ */
+    /* Ensure chart backgrounds are fully transparent */
+    .highcharts-background {
+        fill: transparent !important;
+    }
+
+    .highcharts-plot-background {
+        fill: transparent !important;
+    }
+    /* Axis lines */
+    .highcharts-axis-line {
+        stroke: var(--dz-border-b) !important;
+    }
+    /* Tick marks */
+    .highcharts-tick {
+        stroke: var(--dz-border-b) !important;
+    }
+    /* Credits link */
+    .highcharts-credits {
+        fill: var(--dz-text-faint) !important;
+    }
+    /* Plot border */
+    .highcharts-plot-border {
+        stroke: var(--dz-border) !important;
+    }
+    /* Navigator (range selector in stock charts) */
+    .highcharts-navigator-mask-inside {
+        fill: rgba(var(--dz-accent-rgb), 0.08) !important;
+    }
+
+    .highcharts-navigator-outline {
+        stroke: var(--dz-border) !important;
+    }
+    /* Context menu */
+    .highcharts-menu {
+        background: var(--dz-surface-2) !important;
+        border: 1px solid var(--dz-border) !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+    }
+
+    .highcharts-menu-item {
+        color: var(--dz-text-soft) !important;
+        transition: background 0.15s;
+    }
+
+        .highcharts-menu-item:hover {
+            background: rgba(var(--dz-accent-rgb), 0.12) !important;
+            color: var(--dz-text) !important;
+        }
+    /* Hamburger button */
+    .highcharts-button-box {
+        fill: var(--dz-surface-2) !important;
+        stroke: var(--dz-border-b) !important;
+    }
+
+    .highcharts-button-symbol {
+        stroke: var(--dz-text-soft) !important;
+    }
+
+
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
+    }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   DOMOTICZ SETTINGS PAGES — Nightglass Panel Redesign
+   Transforms the stock Domoticz settings forms into clean,
+   card-based sections matching the Nightglass theme settings UI.
+   Targets: #settingscontent and all its tab panes.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Settings container ──────────────────────────────────────── */
+
+#settingscontent {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 12px;
+    overflow-x: hidden;
+}
+
+/* ── Page section headers (h1 inside .page-header-small) ─────── */
+
+#settingscontent .page-header-small {
+    border-bottom: none !important;
+    margin-bottom: 20px;
+    padding-bottom: 0;
+}
+
+    #settingscontent .page-header-small h1 {
+        font-size: 1.25rem !important;
+        font-weight: 700 !important;
+        color: var(--dz-text) !important;
+        letter-spacing: -0.01em;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0;
+        padding: 20px 24px 16px;
+        background: linear-gradient(135deg, rgba(var(--dz-accent-rgb), 0.10), rgba(var(--dz-accent-rgb), 0.03));
+        border: 1px solid rgba(var(--dz-accent-rgb), 0.18);
+        border-radius: 14px;
+    }
+
+        #settingscontent .page-header-small h1::before {
+            font-family: "Font Awesome 7 Free", FontAwesome, sans-serif;
+            font-weight: 900;
+            font-size: 1.1rem;
+            color: var(--dz-accent);
+            opacity: 0.85;
+        }
+
+        /* Inline icons inside page headers (e.g. Security info link) */
+        #settingscontent .page-header-small h1 i,
+        #settingscontent .page-header-small h1 .fa-regular,
+        #settingscontent .page-header-small h1 .fa-solid {
+            font-size: 0.85rem !important;
+            vertical-align: middle;
+        }
+
+        #settingscontent .page-header-small h1 a.norm-link {
+            font-size: 0.85rem;
+            line-height: 1;
+        }
+
+/* Section-specific icons via tab context */
+#tabsystem .page-header-small h1::before { content: "\f013"; }
+#tablog .page-header-small h1::before { content: "\f1c0"; }
+#tabnotifications .page-header-small h1::before { content: "\f0f3"; }
+#tabemail .page-header-small h1::before { content: "\f0e0"; }
+#tabmeters .page-header-small h1::before { content: "\f0e4"; }
+#tabenergydashboard .page-header-small h1::before { content: "\f0e7"; }
+#tabfloorplan .page-header-small h1::before { content: "\f279"; }
+#tabsecurity .page-header-small h1::before { content: "\f023"; }
+#tabother .page-header-small h1::before { content: "\f1de"; }
+#tabbackuprestore .page-header-small h1::before { content: "\f0c7"; }
+
+/* Debug Levels has its own section header */
+#debuglevels .page-header-small h1::before { content: "\f188"; }
+
+/* ── Section cards (h2 headings as card headers) ─────────────── */
+
+#settingscontent section > .row-fluid,
+#settingscontent section > div:not(.page-header-small):not(.row-fluid) {
+    margin-bottom: 16px;
+}
+
+#settingscontent .row-fluid > .span6,
+#settingscontent .row-fluid > .span4,
+#settingscontent .row-fluid > .span12 {
+    background: var(--dz-surface-2) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 14px !important;
+    padding: 0 !important;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+#settingscontent .row-fluid > .span6 > h2,
+#settingscontent .row-fluid > .span4 > h2,
+#settingscontent .row-fluid > .span12 > h2,
+#settingscontent .row-fluid > .span6 > div > h2,
+#settingscontent .row-fluid > .span4 > div > h2,
+#settingscontent .row-fluid > .span12 > div > h2 {
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    color: var(--dz-text-muted) !important;
+    background: rgba(var(--dz-overlay-rgb), 0.02) !important;
+    border-bottom: 1px solid var(--dz-border) !important;
+    border-radius: 14px 14px 0 0;
+    padding: 14px 20px !important;
+    margin: 0 !important;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ── Tables inside settings cards ────────────────────────────── */
+
+#settingscontent table.display {
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    width: 100% !important;
+    table-layout: auto !important;
+}
+
+    #settingscontent table.display td {
+        border: none !important;
+        border-bottom: 1px solid rgba(var(--dz-overlay-rgb), 0.04) !important;
+        padding: 10px 16px !important;
+        color: var(--dz-text-soft) !important;
+        font-size: 0.86rem !important;
+        vertical-align: middle !important;
+        width: auto !important;
+        background: transparent !important;
+    }
+
+    /* Label cells (align="right") — fixed width, right-aligned */
+    #settingscontent table.display td[align="right"] {
+        white-space: nowrap;
+        padding-right: 12px !important;
+        text-align: right;
+    }
+
+    /* Value cells — no forced width; table-layout:auto distributes space naturally */
+
+    /* Constrain all inputs/selects/textareas inside settings tables */
+    #settingscontent table.display input[type="text"],
+    #settingscontent table.display input[type="input"],
+    #settingscontent table.display input[type="password"],
+    #settingscontent table.display input[type="email"],
+    #settingscontent table.display input[type="number"],
+    #settingscontent table.display textarea {
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    #settingscontent table.display select {
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    #settingscontent table.display tr:last-child td {
+        border-bottom: none !important;
+    }
+
+    #settingscontent table.display tr:hover td {
+        background: rgba(var(--dz-overlay-rgb), 0.02) !important;
+    }
+
+    #settingscontent table.display thead th {
+        background: rgba(var(--dz-overlay-rgb), 0.02) !important;
+        border-bottom: 1px solid var(--dz-border) !important;
+        color: var(--dz-text-muted) !important;
+        font-size: 0.75rem !important;
+        font-weight: 700 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 10px 20px !important;
+    }
+
+/* ── Labels & text ───────────────────────────────────────────── */
+
+#settingscontent label {
+    color: var(--dz-text-soft) !important;
+    font-weight: 500 !important;
+    font-size: 0.88rem !important;
+}
+
+#settingscontent td[align="right"] label,
+#settingscontent td[align="right"] span[data-i18n] {
+    color: var(--dz-text-muted) !important;
+    font-size: 0.82rem !important;
+    white-space: nowrap;
+}
+
+#settingscontent span[data-i18n] {
+    color: var(--dz-text-soft) !important;
+}
+
+#settingscontent p {
+    color: var(--dz-text-soft) !important;
+    padding: 8px 20px;
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+/* ── Inputs inside settings ──────────────────────────────────── */
+
+#settingscontent input[type="text"],
+#settingscontent input[type="input"],
+#settingscontent input[type="password"],
+#settingscontent input[type="number"],
+#settingscontent input[type="email"],
+#settingscontent textarea {
+    background: var(--dz-surface-3) !important;
+    color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 8px !important;
+    padding: 6px 12px !important;
+    font-size: 0.86rem !important;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+    #settingscontent input[type="text"]:focus,
+    #settingscontent input[type="input"]:focus,
+    #settingscontent input[type="password"]:focus,
+    #settingscontent input[type="number"]:focus,
+    #settingscontent input[type="email"]:focus,
+    #settingscontent textarea:focus {
+        border-color: var(--dz-accent) !important;
+        box-shadow: 0 0 0 3px rgba(var(--dz-accent-rgb), 0.12) !important;
+        outline: none !important;
+    }
+
+#settingscontent select,
+#settingscontent .combobox {
+    background: var(--dz-surface-3) !important;
+    color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 8px !important;
+    padding: 6px 12px !important;
+    font-size: 0.86rem !important;
+    transition: border-color 0.2s;
+}
+
+    #settingscontent select:focus,
+    #settingscontent .combobox:focus {
+        border-color: var(--dz-accent) !important;
+        box-shadow: 0 0 0 3px rgba(var(--dz-accent-rgb), 0.12) !important;
+        outline: none !important;
+    }
+
+    #settingscontent select option {
+        background: var(--dz-surface-2) !important;
+        color: var(--dz-text) !important;
+    }
+
+/* ── Checkboxes ──────────────────────────────────────────────── */
+
+#settingscontent input[type="checkbox"] {
+    accent-color: var(--dz-accent);
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+    margin-right: 6px;
+    cursor: pointer;
+}
+
+    #settingscontent input[type="checkbox"] + label {
+        cursor: pointer;
+        vertical-align: middle;
+    }
+
+/* ── Buttons inside settings ─────────────────────────────────── */
+
+#settingscontent .btn-info {
+    background: var(--dz-accent) !important;
+    border-color: var(--dz-accent) !important;
+    color: #fff !important;
+    border-radius: 8px !important;
+    padding: 5px 16px !important;
+    font-size: 0.82rem !important;
+    font-weight: 500;
+    transition: background 0.15s;
+}
+
+    #settingscontent .btn-info:hover {
+        background: var(--dz-accent-hover) !important;
+    }
+
+#settingscontent .btn-danger {
+    background: var(--dz-danger) !important;
+    border-color: var(--dz-danger) !important;
+    color: #fff !important;
+    border-radius: 8px !important;
+    padding: 5px 16px !important;
+    font-size: 0.82rem !important;
+    font-weight: 500;
+}
+
+    #settingscontent .btn-danger:hover {
+        background: var(--dz-danger-hover) !important;
+    }
+
+#settingscontent .btn-primary {
+    border-radius: 8px !important;
+    padding: 8px 22px !important;
+    font-size: 0.88rem !important;
+    font-weight: 600;
+}
+
+#settingscontent .btn-warning {
+    border-radius: 8px !important;
+    padding: 8px 22px !important;
+    font-size: 0.88rem !important;
+    font-weight: 600;
+}
+
+/* ── Accordion / Card headers (Notifications tab) ────────────── */
+
+#settingscontent .card-header {
+    background: rgba(var(--dz-overlay-rgb), 0.02) !important;
+    border-bottom: 1px solid var(--dz-border) !important;
+    border-radius: 14px 14px 0 0;
+    padding: 0 !important;
+    margin: 0;
+}
+
+    #settingscontent .card-header a {
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px !important;
+        text-decoration: none !important;
+        color: var(--dz-text-muted) !important;
+        transition: color 0.2s;
+    }
+
+        #settingscontent .card-header a:hover {
+            color: var(--dz-text) !important;
+        }
+
+    #settingscontent .card-header h2.mb-0 {
+        font-size: 0.78rem !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.06em !important;
+        color: inherit !important;
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        width: 100%;
+    }
+
+        #settingscontent .card-header h2.mb-0 i {
+            color: var(--dz-text-muted) !important;
+            font-size: 0.75rem;
+            transition: transform 0.25s ease, color 0.2s;
+            float: none !important;
+            margin-left: auto;
+            order: 99;
+        }
+
+#settingscontent .card-body {
+    padding: 12px 16px 16px !important;
+}
+
+    /* Help text and links below tables in card bodies */
+    #settingscontent .card-body > span,
+    #settingscontent .card-body > a,
+    #settingscontent .card-body > .norm-link {
+        display: inline-block;
+        padding: 4px 0;
+        font-size: 0.82rem;
+        color: var(--dz-text-muted);
+    }
+
+/* Accordion card wrappers — give them card appearance */
+#settingscontent .accordion .span6,
+#settingscontent .accordion .span12,
+#tabnotifications .row-fluid > .span6,
+#tabnotifications .row-fluid > .span12 {
+    background: var(--dz-surface-2) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 14px !important;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+/* ── Collapse body transition ────────────────────────────────── */
+
+#settingscontent .collapse {
+    transition: max-height 0.3s ease;
+}
+
+/* ── Sunrise/sunset label ────────────────────────────────────── */
+
+#settingscontent #sunriseset {
+    color: var(--dz-text-muted) !important;
+    font-size: 0.85rem;
+    padding: 8px 16px;
+    display: block;
+    line-height: 1.6;
+}
+
+/* ── Notification tab accordion cards — consistent inner spacing ── */
+
+#tabnotifications .card-body span[data-i18n],
+#tabnotifications .card-body > span {
+    display: inline-block;
+    padding: 4px 0;
+    font-size: 0.82rem;
+    color: var(--dz-text-muted);
+}
+
+/* Warning text in notification cards */
+#settingscontent span[style*="color:red"],
+#settingscontent span[style*="color: red"],
+#tabnotifications span[style*="color:red"],
+#tabnotifications span[style*="color: red"] {
+    color: var(--dz-danger) !important;
+    font-size: 0.82rem;
+}
+
+/* FCM / wide input tables — ensure textareas don't overflow */
+#settingscontent table.display textarea {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    resize: vertical;
+}
+
+/* Inline help text (font-size:11px/12px spans inside table cells) */
+#settingscontent table.display td div[style*="font-size"],
+#settingscontent table.display td span[style*="font-size"] {
+    color: var(--dz-text-faint) !important;
+    font-size: 0.78rem !important;
+    margin-top: 4px;
+}
+
+/* File input inside settings */
+#settingscontent table.display input[type="file"] {
+    color: var(--dz-text-soft);
+    font-size: 0.82rem;
+    max-width: 100%;
+}
+
+/* ── Norm-link inside settings ───────────────────────────────── */
+
+#settingscontent .norm-link,
+#settingscontent .norm-link a,
+#settingscontent a.norm-link {
+    color: var(--dz-accent) !important;
+}
+
+    #settingscontent .norm-link:hover,
+    #settingscontent a.norm-link:hover {
+        color: var(--dz-accent-light) !important;
+    }
+
+/* ── Backup/Restore tab — center section ─────────────────────── */
+
+#tabbackuprestore section {
+    text-align: center;
+}
+
+#tabbackuprestore .row-fluid > .span12 {
+    text-align: center;
+    padding: 20px !important;
+}
+
+#tabbackuprestore span[style*="color:#fff"],
+#tabbackuprestore strong[style*="color:#fff"],
+#tabbackuprestore span[style*="color: #fff"],
+#tabbackuprestore strong[style*="color: #fff"] {
+    color: var(--dz-text) !important;
+}
+
+#tabbackuprestore #dbsize_display,
+#tabbackuprestore #dbfreesize_display {
+    color: var(--dz-accent) !important;
+}
+
+/* ── Security tab info link ──────────────────────────────────── */
+
+#tabsecurity .norm-link {
+    display: inline-block;
+    padding: 8px 20px;
+}
+
+/* ── Notification red warning text ───────────────────────────── */
+
+#settingscontent span[style*="color:red"],
+#settingscontent span[style*="color: red"] {
+    color: var(--dz-danger) !important;
+}
+
+/* ── File input styling ──────────────────────────────────────── */
+
+#settingscontent input[type="file"] {
+    color: var(--dz-text-soft);
+    font-size: 0.84rem;
+}
+
+/* ── Inline help text ────────────────────────────────────────── */
+
+#settingscontent td span[style*="font-size:11px"],
+#settingscontent td span[style*="font-size:12px"],
+#settingscontent td div[style*="font-size:11px"],
+#settingscontent td div[style*="font-size:12px"] {
+    color: var(--dz-text-faint) !important;
+    font-size: 0.78rem !important;
+}
+
+/* ── Energy Dashboard specific — wider selects ───────────────── */
+
+#tabenergydashboard select {
+    max-width: 100%;
+}
+
+/* ── Card entrance animation for settings sections ───────────── */
+
+#settingscontent .row-fluid > [class^="span"] {
+    animation: ngSettingsCardIn 0.35s ease both;
+}
+
+@keyframes ngSettingsCardIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Stagger the cards */
+#settingscontent .row-fluid:nth-child(1) > [class^="span"] { animation-delay: 0.05s; }
+#settingscontent .row-fluid:nth-child(2) > [class^="span"] { animation-delay: 0.10s; }
+#settingscontent .row-fluid:nth-child(3) > [class^="span"] { animation-delay: 0.15s; }
+#settingscontent .row-fluid:nth-child(4) > [class^="span"] { animation-delay: 0.20s; }
+#settingscontent .row-fluid:nth-child(5) > [class^="span"] { animation-delay: 0.25s; }
+#settingscontent .row-fluid:nth-child(6) > [class^="span"] { animation-delay: 0.30s; }
+
+/* ── Textarea in settings ────────────────────────────────────── */
+
+#settingscontent textarea {
+    min-height: 80px;
+    resize: vertical;
+    font-family: 'Courier New', 'Consolas', monospace;
+}
+
+/* ── Responsive: single column on narrow screens ─────────────── */
+
+@media (max-width: 767px) {
+    #settingscontent .row-fluid > .span6,
+    #settingscontent .row-fluid > .span4 {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   DEVICE DETAIL PAGES (Log, Timers, Notifications, Edit, etc.)
+   Targets: .js-device-logs, .js-device-timers, .js-device-notifications,
+            and generic device detail containers with .page-header-small
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Page header with back button ────────────────────────────── */
+
+.page-header-with-button {
+    position: relative;
+    border-bottom: none !important;
+    margin-bottom: 24px;
+    padding-bottom: 0;
+}
+
+    .page-header-with-button h1 {
+        font-size: 1.25rem !important;
+        font-weight: 700 !important;
+        color: var(--dz-text) !important;
+        letter-spacing: -0.01em;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0;
+        padding: 20px 24px 16px;
+        background: linear-gradient(135deg, rgba(var(--dz-accent-rgb), 0.10), rgba(var(--dz-accent-rgb), 0.03));
+        border: 1px solid rgba(var(--dz-accent-rgb), 0.18);
+        border-radius: 14px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .page-header-with-button > div {
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .page-header-with-button > div > .btnstyle3 {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.82rem !important;
+        padding: 8px 16px !important;
+        white-space: nowrap;
+    }
+
+@media (max-width: 767px) {
+    /* Header: stack title + buttons vertically */
+    .page-header-with-button {
+        display: flex !important;
+        flex-direction: column !important;
+        position: static !important;
+        margin-bottom: 12px !important;
+    }
+
+    .page-header-with-button h1 {
+        font-size: 0.92rem !important;
+        padding: 10px 12px 8px !important;
+        word-break: break-word !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        border-radius: 10px !important;
+        gap: 6px !important;
+    }
+
+    .page-header-with-button > div {
+        position: static !important;
+        transform: none !important;
+        justify-content: center !important;
+        margin-top: 6px !important;
+        width: 100% !important;
+        gap: 6px !important;
+    }
+
+    .page-header-with-button > div > .btnstyle3 {
+        font-size: 0.72rem !important;
+        padding: 5px 10px !important;
+    }
+
+    /* Detail containers: prevent horizontal overflow */
+    .js-device-logs,
+    .js-device-timers,
+    .js-device-notifications {
+        padding: 0 6px !important;
+        max-width: 100vw !important;
+        overflow-x: hidden !important;
+        box-sizing: border-box !important;
+    }
+
+    /* All tables inside detail pages: scrollable */
+    .js-device-logs table,
+    .js-device-timers table,
+    .js-device-notifications table {
+        display: block !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        max-width: 100% !important;
+    }
+
+    /* Keep thead/tbody/tr block-level so the scroll works */
+    .js-device-logs table thead,
+    .js-device-logs table tbody,
+    .js-device-timers table thead,
+    .js-device-timers table tbody,
+    .js-device-notifications table thead,
+    .js-device-notifications table tbody {
+        display: table;
+        width: 100%;
+        table-layout: auto;
+    }
+
+    /* Charts: constrain to viewport */
+    .device-log-chart,
+    .device-log-chart_sm,
+    .device-log-chart_md {
+        max-width: 100% !important;
+        overflow-x: auto !important;
+    }
+
+    /* DataTables wrapper: horizontal scroll for wide tables */
+    .js-device-logs .dataTables_wrapper,
+    .js-device-timers .dataTables_wrapper,
+    .js-device-notifications .dataTables_wrapper {
+        border-radius: 10px !important;
+        overflow-x: auto !important;
+        max-width: 100% !important;
+    }
+
+    /* Table cells: tighter padding on mobile */
+    .entity-log-table thead tr th {
+        padding: 8px 10px !important;
+        font-size: 0.68rem !important;
+    }
+
+    .entity-log-table tbody tr td {
+        padding: 8px 10px !important;
+        font-size: 0.78rem !important;
+    }
+
+    /* Toolbar / pagination: wrap for small screens */
+    .js-device-logs .fg-toolbar,
+    .js-device-timers .fg-toolbar,
+    .js-device-notifications .fg-toolbar {
+        padding: 8px 10px !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 6px;
+    }
+
+    /* Section headings */
+    .js-device-logs h2,
+    .js-device-timers h2,
+    .js-device-notifications h2 {
+        font-size: 0.75rem !important;
+        margin: 20px 0 8px;
+    }
+
+    /* Clear / action button row */
+    #updelclr {
+        text-align: center;
+    }
+
+    #updelclr .btnstyle3 {
+        font-size: 0.78rem !important;
+        padding: 7px 14px !important;
+    }
+
+    /* Generic non-class page headers */
+    .container:not(.bannercontent) > .page-header-small:not(.page-header-with-button) h1 {
+        font-size: 0.92rem !important;
+        padding: 10px 12px 8px;
+        word-break: break-word;
+    }
+
+    /* Fix #79: back button — icon-only on small screens to save space */
+    .page-header-with-button > div > .btnstyle3 .btn-label,
+    .page-header-with-button > div > a[back-button] .btn-label {
+        display: none !important;
+    }
+
+    /* Prevent detail page container from causing horizontal overflow */
+    .container.js-view:not(.bannercontent) {
+        padding: 0 8px !important;
+        overflow-x: hidden;
+    }
+
+    /* Highcharts containers inside detail pages */
+    [id^="graphcontent"],
+    [id^="chartcontent"] {
+        max-width: 100% !important;
+        overflow-x: auto !important;
+    }
+
+    /* Generic wide content containers on detail pages */
+    .page-header-with-button ~ div,
+    .page-header-small ~ div {
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        box-sizing: border-box !important;
+    }
+}
+
+/* ── Device detail container ─────────────────────────────────── */
+
+.js-device-logs,
+.js-device-timers,
+.js-device-notifications {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 12px;
+}
+
+/* ── Section headings (h2 for "Today", "Last 7 days", etc.) ──── */
+
+.js-device-logs h2,
+.js-device-timers h2,
+.js-device-notifications h2 {
+    font-size: 0.82rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    color: var(--dz-text-muted) !important;
+    margin: 28px 0 12px;
+    padding: 0 4px 8px;
+    border-bottom: 1px solid var(--dz-surface-3);
+}
+
+/* ── Chart containers in device logs ─────────────────────────── */
+
+.device-log-chart {
+    margin-bottom: 20px;
+    border-radius: 12px !important;
+    overflow: hidden;
+}
+
+.device-log-chart_sm {
+    min-height: 100px;
+}
+
+.device-log-chart_md {
+    min-height: 200px;
+}
+
+/* ── DataTables inside device detail pages ────────────────────── */
+
+.js-device-logs .dataTables_wrapper,
+.js-device-timers .dataTables_wrapper,
+.js-device-notifications .dataTables_wrapper {
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+/* entity-log-table specific (text log, timer list, etc.) */
+.entity-log-table {
+    width: 100% !important;
+}
+
+    .entity-log-table thead tr th {
+        background: rgba(var(--dz-overlay-rgb), 0.03) !important;
+        color: var(--dz-text-muted) !important;
+        font-size: 0.72rem !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.06em !important;
+        padding: 12px 16px !important;
+        border-bottom: 1px solid var(--dz-border) !important;
+    }
+
+    .entity-log-table tbody tr td {
+        padding: 10px 16px !important;
+        color: var(--dz-text) !important;
+        font-size: 0.82rem !important;
+        border-bottom: 1px solid var(--dz-surface-3) !important;
+    }
+
+    .entity-log-table tbody tr:hover td {
+        background: rgba(var(--dz-accent-rgb), 0.05) !important;
+    }
+
+    .entity-log-table tbody tr.odd td {
+        background: transparent !important;
+    }
+
+    .entity-log-table tbody tr.even td {
+        background: rgba(var(--dz-overlay-rgb), 0.015) !important;
+    }
+
+    .entity-log-table tbody tr.odd:hover td,
+    .entity-log-table tbody tr.even:hover td {
+        background: rgba(var(--dz-accent-rgb), 0.05) !important;
+    }
+
+/* ── fg-toolbar inside device logs (DataTables header/footer) ── */
+
+.js-device-logs .fg-toolbar,
+.js-device-timers .fg-toolbar,
+.js-device-notifications .fg-toolbar {
+    background: transparent !important;
+    border: none !important;
+    padding: 12px 16px !important;
+}
+
+/* ── fg-button (pagination buttons) inside device detail ──────── */
+
+.js-device-logs .fg-button,
+.js-device-timers .fg-button,
+.js-device-notifications .fg-button {
+    background: var(--dz-surface-2) !important;
+    background-image: none !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 6px !important;
+    color: var(--dz-text-soft) !important;
+    padding: 4px 10px !important;
+    font-size: 0.78rem !important;
+    transition: all 0.2s ease;
+}
+
+    .js-device-logs .fg-button:hover,
+    .js-device-timers .fg-button:hover,
+    .js-device-notifications .fg-button:hover {
+        background: rgba(var(--dz-accent-rgb), 0.12) !important;
+        border-color: var(--dz-accent) !important;
+        color: #fff !important;
+    }
+
+    .js-device-logs .fg-button.ui-state-disabled,
+    .js-device-timers .fg-button.ui-state-disabled,
+    .js-device-notifications .fg-button.ui-state-disabled {
+        opacity: 0.4 !important;
+        cursor: default;
+    }
+
+/* ── Clear / action button row (#updelclr) ───────────────────── */
+
+#updelclr {
+    margin-top: 8px;
+    margin-bottom: 24px;
+}
+
+    #updelclr .btnstyle3 {
+        font-size: 0.82rem !important;
+        padding: 8px 20px !important;
+    }
+
+/* ── Back button styling ─────────────────────────────────────── */
+
+a.btnstyle3[back-button],
+a[back-button].btnstyle3 {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem !important;
+    padding: 8px 16px !important;
+}
+
+/* ── Device detail generic container (non-class pages) ────────── */
+
+.container:not(.bannercontent) > .page-header-small:not(.page-header-with-button) {
+    border-bottom: none !important;
+    margin-bottom: 20px;
+}
+
+    .container:not(.bannercontent) > .page-header-small:not(.page-header-with-button) h1 {
+        font-size: 1.25rem !important;
+        font-weight: 700 !important;
+        color: var(--dz-text) !important;
+        padding: 20px 24px 16px;
+        background: linear-gradient(135deg, rgba(var(--dz-accent-rgb), 0.10), rgba(var(--dz-accent-rgb), 0.03));
+        border: 1px solid rgba(var(--dz-accent-rgb), 0.18);
+        border-radius: 14px;
+        margin: 0;
+    }
+
+/* ── Timer table styling ─────────────────────────────────────── */
+
+.js-device-timers table.display {
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+/* ── Notification table styling ──────────────────────────────── */
+
+.js-device-notifications table.display {
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+/* ── Edit device dialog / forms ──────────────────────────────── */
+
+/* Generic tables inside device detail pages */
+.js-device-logs table.display:not(.dataTable),
+.js-device-timers table.display:not(.dataTable),
+.js-device-notifications table.display:not(.dataTable) {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+    .js-device-logs table.display:not(.dataTable) td,
+    .js-device-timers table.display:not(.dataTable) td,
+    .js-device-notifications table.display:not(.dataTable) td {
+        padding: 8px 12px !important;
+        color: var(--dz-text) !important;
+    }
+
+    .js-device-logs table.display:not(.dataTable) label,
+    .js-device-timers table.display:not(.dataTable) label,
+    .js-device-notifications table.display:not(.dataTable) label {
+        color: var(--dz-text-soft) !important;
+    }
+
+/* ── DataTables sort icon styling ────────────────────────────── */
+
+.entity-log-table .DataTables_sort_wrapper {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.entity-log-table .DataTables_sort_icon {
+    opacity: 0.5;
+}
+
+.entity-log-table .sorting_desc .DataTables_sort_icon,
+.entity-log-table .sorting_asc .DataTables_sort_icon {
+    opacity: 1;
+    color: var(--dz-accent) !important;
+}
+
+/* ── Processing indicator ────────────────────────────────────── */
+
+.dataTables_processing {
+    background: var(--dz-surface-2) !important;
+    color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 8px !important;
+    padding: 8px 16px !important;
+}
+
+/* ── Staggered entrance for device detail sections ───────────── */
+
+.js-device-logs > *,
+.js-device-timers > *,
+.js-device-notifications > * {
+    animation: dz-fade-in 0.35s ease both;
+}
+
+    .js-device-logs > *:nth-child(1) { animation-delay: 0.05s; }
+    .js-device-logs > *:nth-child(2) { animation-delay: 0.10s; }
+    .js-device-logs > *:nth-child(3) { animation-delay: 0.15s; }
+    .js-device-logs > *:nth-child(4) { animation-delay: 0.20s; }
+    .js-device-logs > *:nth-child(5) { animation-delay: 0.25s; }
+    .js-device-logs > *:nth-child(6) { animation-delay: 0.30s; }
+    .js-device-logs > *:nth-child(7) { animation-delay: 0.35s; }
+    .js-device-logs > *:nth-child(8) { animation-delay: 0.40s; }
+
+@keyframes dz-fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Device detail section headers (h3 panels) ───────────────── */
+/* Matches "General settings", "Sub/Slave Devices", etc. —
+   the same styled panel look as the Nightglass settings sections. */
+
+.container.js-view > .page-header-small:not(.page-header-with-button) {
+    border-bottom: none !important;
+    padding: 0 !important;
+    margin-bottom: 0;
+    margin-top: 28px;
+}
+
+    .container.js-view > .page-header-small:not(.page-header-with-button):first-of-type {
+        margin-top: 0;
+    }
+
+    .container.js-view > .page-header-small:not(.page-header-with-button) h3 {
+        font-size: 0.82rem !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.06em !important;
+        color: var(--dz-text) !important;
+        margin: 0;
+        padding: 14px 20px 12px;
+        background: var(--dz-surface-2);
+        border: 1px solid var(--dz-border);
+        border-radius: 12px 12px 0 0;
+    }
+
+/* ── Device detail form containers ───────────────────────────── */
+/* The .page-content-container and naked tables that follow h3 panels */
+
+.container.js-view > .page-content-container {
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+}
+
+/* Form tables inside detail pages (table.table-details, #paramstable) */
+.container.js-view table.table-details,
+.container.js-view table#paramstable {
+    width: 100%;
+}
+
+    .container.js-view table.table-details td,
+    .container.js-view table#paramstable td {
+        padding: 8px 12px !important;
+        color: var(--dz-text) !important;
+        vertical-align: middle;
+    }
+
+    .container.js-view table.table-details label,
+    .container.js-view table#paramstable label {
+        color: var(--dz-text-soft) !important;
+        font-weight: 600;
+        font-size: 0.82rem;
+        white-space: nowrap;
+    }
+
+    .container.js-view table.table-details input[type="text"],
+    .container.js-view table.table-details textarea,
+    .container.js-view table#paramstable input[type="text"],
+    .container.js-view table#paramstable textarea {
+        background: var(--dz-input-bg) !important;
+        color: var(--dz-input-text) !important;
+        border: 1px solid var(--dz-input-border) !important;
+        border-radius: 8px !important;
+        padding: 8px 12px !important;
+        font-size: 0.85rem;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .container.js-view table.table-details select,
+    .container.js-view table#paramstable select {
+        background: var(--dz-input-bg) !important;
+        color: var(--dz-input-text) !important;
+        border: 1px solid var(--dz-input-border) !important;
+        border-radius: 8px !important;
+        padding: 6px 10px !important;
+        font-size: 0.85rem;
+    }
+
+/* Sub-device editor and similar naked sections after h3 panels */
+.container.js-view > device-subdevices-editor,
+.container.js-view > .dataTables_wrapper {
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    display: block;
+}
+
+/* Delete / Clear button rows inside detail editors */
+.container.js-view table#delclr {
+    margin-top: 12px;
+}
+
+/* Detail page container: constrain width + center */
+.container.js-view:not(.bannercontent) {
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 0 12px;
+}
+
+/* Mobile: make form fields full width */
+@media (max-width: 767px) {
+    .container.js-view table.table-details input[type="text"],
+    .container.js-view table.table-details textarea,
+    .container.js-view table#paramstable input[type="text"],
+    .container.js-view table#paramstable textarea {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .container.js-view table.table-details select,
+    .container.js-view table#paramstable select {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .container.js-view table.table-details td,
+    .container.js-view table#paramstable td {
+        display: block !important;
+        width: 100% !important;
+        padding: 4px 8px !important;
+    }
+
+    .container.js-view table.table-details tr,
+    .container.js-view table#paramstable tr {
+        display: block !important;
+        margin-bottom: 8px;
+    }
+
+    .container.js-view > .page-content-container,
+    .container.js-view > device-subdevices-editor {
+        padding: 10px 10px;
+    }
+
+    .container.js-view > .page-header-small:not(.page-header-with-button) {
+        margin-bottom: 0 !important;
+        margin-top: 16px !important;
+    }
+
+    .container.js-view > .page-header-small:not(.page-header-with-button) h3 {
+        font-size: 0.72rem !important;
+        padding: 8px 12px 6px;
+    }
+}
+
+/* ── Light mode overrides for device detail pages ────────────── */
+
+body.dz-light .entity-log-table tbody tr.odd td {
+    background: transparent !important;
+}
+
+body.dz-light .entity-log-table tbody tr.even td {
+    background: rgba(0, 0, 0, 0.02) !important;
+}
+
+body.dz-light .entity-log-table tbody tr:hover td {
+    background: rgba(var(--dz-accent-rgb), 0.06) !important;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   COMMAND PALETTE  (Ctrl+K)
+   ══════════════════════════════════════════════════════════════════ */
+
+#dz-cmd-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: clamp(60px, 12vh, 130px);
+    animation: dzCmdFadeIn 0.12s ease;
+}
+
+#dz-cmd-overlay.dz-cmd-closing {
+    animation: dzCmdFadeOut 0.15s ease forwards;
+}
+
+@keyframes dzCmdFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes dzCmdFadeOut {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+}
+
+#dz-cmd-box {
+    width: min(640px, calc(100vw - 32px));
+    background: var(--dz-surface);
+    border: 1px solid var(--dz-border);
+    border-radius: 14px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.55), 0 4px 16px rgba(0,0,0,0.3);
+    overflow: hidden;
+    animation: dzCmdSlideIn 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#dz-cmd-overlay.dz-cmd-closing #dz-cmd-box {
+    animation: dzCmdSlideOut 0.15s ease forwards;
+}
+
+@keyframes dzCmdSlideIn {
+    from { transform: translateY(-12px) scale(0.97); opacity: 0; }
+    to   { transform: translateY(0)     scale(1);    opacity: 1; }
+}
+@keyframes dzCmdSlideOut {
+    from { transform: translateY(0)    scale(1);    opacity: 1; }
+    to   { transform: translateY(-8px) scale(0.97); opacity: 0; }
+}
+
+/* ── Header / search input ───────────────────────────────────── */
+
+#dz-cmd-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--dz-border);
+}
+
+#dz-cmd-header > .fa-magnifying-glass {
+    color: var(--dz-text-muted);
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
+#dz-cmd-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--dz-text);
+    font-size: 16px;
+    font-family: inherit;
+    caret-color: var(--dz-accent);
+    min-width: 0;
+}
+
+#dz-cmd-input::placeholder {
+    color: var(--dz-text-muted);
+    font-weight: 400;
+}
+
+.dz-cmd-esc {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-family: inherit;
+    color: var(--dz-text-muted);
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-radius: 5px;
+    padding: 3px 7px;
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s;
+}
+.dz-cmd-esc:hover { color: var(--dz-text); }
+
+/* ── Results list ────────────────────────────────────────────── */
+
+#dz-cmd-list {
+    max-height: 420px;
+    overflow-y: auto;
+    padding: 6px 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--dz-border) transparent;
+}
+
+.dz-cmd-section {
+    padding: 8px 18px 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dz-text-muted);
+    user-select: none;
+}
+
+.dz-cmd-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 18px;
+    cursor: pointer;
+    border-radius: 0;
+    transition: background 0.08s;
+    min-height: 52px;
+    flex-wrap: wrap;
+}
+
+.dz-cmd-item:hover,
+.dz-cmd-item--active {
+    background: rgba(var(--dz-accent-rgb), 0.10);
+}
+
+.dz-cmd-item--active {
+    background: rgba(var(--dz-accent-rgb), 0.13);
+}
+
+/* Icon bubble */
+.dz-cmd-icon {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    color: var(--dz-text-muted);
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.dz-cmd-icon--on {
+    background: rgba(var(--dz-accent-rgb), 0.15);
+    border-color: rgba(var(--dz-accent-rgb), 0.35);
+    color: var(--dz-accent);
+}
+
+/* Body: name + meta */
+.dz-cmd-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.dz-cmd-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--dz-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dz-cmd-meta {
+    font-size: 11px;
+    color: var(--dz-text-muted);
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Match highlight */
+mark.dz-cmd-mark {
+    background: rgba(var(--dz-accent-rgb), 0.25);
+    color: var(--dz-accent);
+    border-radius: 2px;
+    padding: 0 1px;
+}
+
+/* State badge — fixed width so values align in the same column */
+.dz-cmd-state {
+    flex-shrink: 0;
+    width: 82px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--dz-text-muted);
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dz-cmd-state--on {
+    color: var(--dz-accent);
+}
+
+/* Enter hint */
+.dz-cmd-hint {
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.1s;
+}
+
+.dz-cmd-item--active .dz-cmd-hint,
+.dz-cmd-item:hover .dz-cmd-hint {
+    opacity: 1;
+}
+
+.dz-cmd-hint kbd {
+    font-size: 11px;
+    font-family: inherit;
+    color: var(--dz-text-muted);
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    padding: 2px 6px;
+}
+
+/* Navigate button (arrow) — always present, revealed on hover/active */
+.dz-cmd-nav-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--dz-border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--dz-text-muted);
+    font-size: 11px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.1s, background 0.1s;
+    margin-right: 2px;
+}
+
+.dz-cmd-item--active .dz-cmd-nav-btn,
+.dz-cmd-item:hover .dz-cmd-nav-btn {
+    opacity: 1;
+}
+
+.dz-cmd-nav-btn:hover {
+    background: rgba(var(--dz-accent-rgb), 0.15);
+    color: var(--dz-accent);
+    border-color: var(--dz-accent);
+}
+
+/* Dimmer slider row */
+.dz-cmd-slider-row {
+    flex-basis: 100%;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0 2px 48px;
+}
+
+.dz-cmd-slider-row--visible {
+    display: flex;
+}
+
+.dz-cmd-slider {
+    flex: 1;
+    height: 4px;
+    accent-color: var(--dz-accent);
+    cursor: pointer;
+}
+
+.dz-cmd-slider-val {
+    font-size: 12px;
+    color: var(--dz-text-muted);
+    min-width: 34px;
+    text-align: right;
+}
+
+/* Empty state */
+.dz-cmd-empty {
+    padding: 32px 18px;
+    text-align: center;
+    color: var(--dz-text-muted);
+    font-size: 14px;
+}
+
+/* Loading state */
+.dz-cmd-loading {
+    padding: 24px 18px;
+    text-align: center;
+    color: var(--dz-text-muted);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* ── Footer keyboard hints ───────────────────────────────────── */
+
+#dz-cmd-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 9px 18px;
+    border-top: 1px solid var(--dz-border);
+    font-size: 11px;
+    color: var(--dz-text-muted);
+}
+
+.dz-cmd-footer-tip {
+    opacity: 0.6;
+    white-space: nowrap;
+}
+
+.dz-cmd-footer-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+#dz-cmd-footer kbd {
+    font-size: 10px;
+    font-family: inherit;
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin-right: 2px;
+}
+
+/* ── Light mode overrides ────────────────────────────────────── */
+
+body.dz-light #dz-cmd-overlay {
+    background: rgba(0, 0, 0, 0.35);
+}
+
+body.dz-light #dz-cmd-box {
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.12);
+}
+
+/* ── Domoticz search bar → command palette trigger (pure CSS) ──── */
+/* Applies before first render — zero flicker, no JS DOM mutations. */
+
+/* Style the container as a pill button */
+#tbFiltSearch {
+    position: relative !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    padding: 3px 8px !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    transition: border-color 0.15s, box-shadow 0.15s !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
+}
+
+#tbFiltSearch:hover {
+    border-color: var(--dz-accent) !important;
+    box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.15) !important;
+}
+
+/* Hide results/clear button — superseded by palette */
+#tbFiltSearch #tbResults {
+    display: none !important;
+}
+
+/* Keep the #tbSearch icon span, style it consistently */
+#tbFiltSearch #tbSearch {
+    pointer-events: none !important;
+    font-size: 12px !important;
+    opacity: 0.7 !important;
+}
+
+/* Make the input an invisible full-size click target */
+#tbFiltSearch input.jsLiveSearch {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    opacity: 0 !important;
+    cursor: pointer !important;
+    z-index: 1 !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Ctrl+K badge shown via CSS — always correct, no JS timing */
+#tbFiltSearch::after {
+    content: "Ctrl\00a0K";
+    display: inline-block !important;
+    background: var(--dz-surface-2) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-bottom-width: 2px !important;
+    border-radius: 4px !important;
+    padding: 1px 5px !important;
+    font-size: 10px !important;
+    color: var(--dz-text-muted) !important;
+    font-family: inherit !important;
+    pointer-events: none !important;
+    white-space: nowrap !important;
+    line-height: 1.4 !important;
+}

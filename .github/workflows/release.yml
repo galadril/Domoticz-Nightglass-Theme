@@ -60,13 +60,21 @@ jobs:
           git push origin "${{ steps.version.outputs.next }}"
 
       # ── 5. Publish GitHub release with auto-generated notes ──────────────
-      #   Attaches custom.css and custom.js as downloadable assets so users
-      #   can install the theme directly from the release page.
+      #   Bundles the theme into a zip so users can install by extracting
+      #   the folder into www/styles/. Also attaches the entry-point files
+      #   individually for users who only need to update those.
+      - name: Bundle theme zip
+        run: |
+          zip -r "nightglass-${{ steps.version.outputs.next }}.zip" \
+            custom.css custom.js src/ \
+            --exclude "*.DS_Store" "*.gitkeep"
+
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${{ steps.version.outputs.next }}" \
+            "nightglass-${{ steps.version.outputs.next }}.zip" \
             custom.css \
             custom.js \
             --title "Nightglass ${{ steps.version.outputs.next }}" \
