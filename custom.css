@@ -5366,8 +5366,9 @@ table.mobileitem,
     background: var(--dz-bg);
     border: 1px solid var(--dz-border);
     border-radius: 10px;
-    overflow: hidden;
+    /* overflow must stay visible so dropdown menus can escape the container */
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    margin-top: 20px;
 }
 
 /* ── Left panel ────────────────────────────────────────────────── */
@@ -5676,13 +5677,9 @@ table.mobileitem,
     padding: 6px 12px 0 !important;
     display: flex;
     flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
+    /* overflow must stay visible so the "add script" dropdown can escape */
     gap: 2px;
-    scrollbar-width: none;
 }
-
-    .events-editor__file-list::-webkit-scrollbar { display: none; }
 
 .events-editor__file {
     background: transparent !important;
@@ -6050,6 +6047,49 @@ table.mobileitem,
 .events-editor-tree-item.ng-lang-blockly .events-editor-tree-item__file::before  { background: #c8a0ff; }
 .events-editor-tree-item_active.ng-lang-blockly::before                           { background: #c8a0ff; }
 .events-editor-tree-item_active.ng-lang-blockly .events-editor-tree-item__file    { color: #c8a0ff !important; }
+
+/* ── Bootstrap 2 icon-* → Font Awesome replacement ────────────── */
+/* The events editor uses <i class="icon-*"> glyphicon sprites.    */
+/* Reset the sprite background and inject FA via ::before.          */
+
+.events-editor i[class^="icon-"],
+.events-editor i[class*=" icon-"] {
+    background-image: none !important;
+    background-position: 0 0 !important;
+    font-family: "Font Awesome 6 Free" !important;
+    font-weight: 900 !important;
+    font-style: normal !important;
+    display: inline-block;
+    width: auto !important;
+    height: auto !important;
+    line-height: inherit;
+    vertical-align: middle;
+}
+
+/* Folder open/close */
+.events-editor .icon-folder-open::before  { content: "\f07c"; color: var(--dz-accent); opacity: 0.8; }
+.events-editor .icon-folder-close::before { content: "\f07b"; color: var(--dz-text-muted); }
+
+/* Expand / collapse all */
+.events-editor .icon-plus-sign::before    { content: "\f055"; }
+.events-editor .icon-minus-sign::before   { content: "\f056"; }
+
+/* Splitter chevrons */
+.events-editor .icon-chevron-left::before  { content: "\f053"; font-size: 0.7em; }
+.events-editor .icon-chevron-right::before { content: "\f054"; font-size: 0.7em; }
+
+/* Tab bar — manage menu + states + add */
+.events-editor .icon-tasks::before        { content: "\f0ae"; }
+.events-editor .icon-info-sign::before    { content: "\f05a"; }
+.events-editor .icon-plus::before         { content: "\2b"; font-size: 0.9em; }
+
+/* Context menu */
+.events-editor .icon-pencil::before       { content: "\f303"; }
+.events-editor .icon-trash::before        { content: "\f1f8"; }
+
+/* EventViewer header */
+.events-editor .icon-align-justify::before  { content: "\f039"; }
+.events-editor .icon-question-sign::before  { content: "\f059"; }
 
 /* ── Blockly toolbox ───────────────────────────────────────────── */
 .blocklyToolboxDiv {
