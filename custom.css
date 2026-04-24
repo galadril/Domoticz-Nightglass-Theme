@@ -5361,284 +5361,727 @@ table.mobileitem,
    EVENT AUTOMATION EDITOR
    ══════════════════════════════════════════════════════════════════ */
 
-/* Outer container */
+/* ── Outer shell ───────────────────────────────────────────────── */
 .events-editor {
-    background: var(--dz-surface);
-    border: 1px solid var(--dz-surface-3);
+    background: var(--dz-bg);
+    border: 1px solid var(--dz-border);
     border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
 }
 
-/* Left panel heading */
+/* ── Left panel ────────────────────────────────────────────────── */
+.events-editor__tree {
+    background: var(--dz-surface);
+    border-right: 1px solid var(--dz-border);
+}
+
 .events-editor__tree h2 {
     color: var(--dz-text);
-    margin: 0 0 6px 0;
-    font-size: 14px;
+    margin: 0 0 8px 0;
+    padding: 12px 12px 0;
+    font-size: 11px;
     font-weight: 600;
-    padding: 4px 6px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dz-text-muted);
 }
 
-/* Search input in tree toolbar */
+/* Search + toolbar row */
+.events-editor__toolbar {
+    padding: 0 8px 8px;
+    gap: 4px;
+}
+
 .events-editor__search {
-    background-color: var(--dz-bg) !important;
+    background: var(--dz-bg) !important;
     color: var(--dz-text) !important;
-    border: 1px solid var(--dz-border-b) !important;
-    border-radius: 4px;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 6px !important;
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+    transition: border-color 0.15s;
 }
 
     .events-editor__search::placeholder {
-        color: var(--dz-text-muted) !important;
+        color: var(--dz-text-faint) !important;
     }
 
     .events-editor__search:focus {
         border-color: var(--dz-accent) !important;
         outline: none;
+        box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.15);
     }
 
-/* Expand / collapse toolbar buttons */
 .events-editor__toolbar-btn {
-    background-color: var(--dz-surface-2) !important;
-    border-color: var(--dz-border-b) !important;
-    color: var(--dz-text-soft) !important;
+    background: var(--dz-bg) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 5px !important;
+    color: var(--dz-text-muted) !important;
+    width: 26px;
+    height: 26px;
+    padding: 0 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
 }
 
     .events-editor__toolbar-btn:hover {
-        background-color: var(--dz-border) !important;
+        background: var(--dz-border) !important;
         color: var(--dz-text) !important;
     }
 
-/* Script tree panel */
+/* ── Script tree ───────────────────────────────────────────────── */
 .events-editor-tree {
-    background-color: var(--dz-bg) !important;
-    border: 1px solid var(--dz-surface-3);
-    border-radius: 6px;
+    background: var(--dz-bg) !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 4px 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--dz-border) transparent;
 }
 
-/* Splitter toggle button */
-.events-editor__splitter {
-    background-color: rgba(var(--dz-accent-rgb), 0.08) !important;
-    color: var(--dz-text-muted) !important;
-    border: 1px solid var(--dz-surface-3) !important;
-    border-radius: 4px;
-}
-
-    .events-editor__splitter:hover {
-        background-color: rgba(var(--dz-accent-rgb), 0.18) !important;
-        color: var(--dz-text) !important;
-    }
-
-/* Right editor pane */
-.events-editor__editor {
-    background-color: var(--dz-bg) !important;
-    border-radius: 6px;
-}
-
-/* ── File tabs ─────────────────────────────────────────────────── */
-.events-editor__file-list {
-    background-color: var(--dz-surface);
-    border-bottom: 1px solid var(--dz-surface-3);
-}
-
-.events-editor__file {
-    background-color: var(--dz-surface-2) !important;
-    border-color: var(--dz-border-b) !important;
-    color: var(--dz-text-soft) !important;
-}
-
-    .events-editor__file:hover {
-        background-color: var(--dz-border) !important;
-        color: var(--dz-text) !important;
-    }
-
-.events-editor__file_active {
-    background-color: var(--dz-bg) !important;
-    color: var(--dz-text) !important;
-    border-bottom-color: var(--dz-bg) !important;
-}
-
-.events-editor__file-close {
-    color: var(--dz-text-muted);
-}
-
-    .events-editor__file-close:hover {
-        color: var(--dz-danger) !important;
-    }
-
-/* ── File header bar (name input, state buttons, actions) ──────── */
-.events-editor-file__header {
-    background-color: var(--dz-surface) !important;
-    border-bottom: 1px solid var(--dz-surface-3);
-}
-
-.events-editor-file__name {
-    background-color: var(--dz-bg) !important;
-    color: var(--dz-text) !important;
-    border: 1px solid var(--dz-border-b) !important;
-    border-radius: 4px;
-}
-
-    .events-editor-file__name:focus {
-        border-color: var(--dz-accent) !important;
-        outline: none;
-    }
-
-/* Trigger type select */
-.events-editor-file__type > select,
-.events-editor-file__type select {
-    background-color: var(--dz-surface-2) !important;
-    color: var(--dz-text) !important;
-    border: 1px solid var(--dz-border-b) !important;
-}
-
-/* ── ACE editor settings bar ───────────────────────────────────── */
-.ace-settings__theme {
-    background-color: var(--dz-surface-2) !important;
-    color: var(--dz-text) !important;
-    border-color: var(--dz-border-b) !important;
-}
-
-.ace-settings__font-size {
-    color: var(--dz-text-soft) !important;
-}
-
-/* ── ACE status bar ────────────────────────────────────────────── */
-.ace-statusbar {
-    background-color: var(--dz-surface) !important;
-    border-top-color: var(--dz-surface-3) !important;
-    color: var(--dz-text-muted) !important;
-}
-
-/* ── CurrentStates content table ───────────────────────────────── */
-.events-editor-file__content-table {
-    background-color: var(--dz-surface) !important;
-    color: var(--dz-text) !important;
-}
-
-    .events-editor-file__content-table th {
-        background-color: var(--dz-surface-2) !important;
-        color: var(--dz-text-soft) !important;
-        border-color: var(--dz-border-b) !important;
-    }
-
-    .events-editor-file__content-table td {
-        border-color: var(--dz-surface-3) !important;
-        color: var(--dz-text) !important;
-    }
-
-    .events-editor-file__content-table tr:hover td {
-        background-color: var(--dz-surface-2) !important;
-    }
-
-/* ── Tree item links ───────────────────────────────────────────── */
-.events-editor-tree-item__file,
-.events-editor-tree-item__file:link,
-.events-editor-tree-item__file:visited {
-    color: var(--dz-text-soft) !important;
-}
-
-    .events-editor-tree-item__file:hover,
-    .events-editor-tree-item__file:active {
-        color: var(--dz-accent) !important;
-    }
-
-.events-editor-tree-item_active .events-editor-tree-item__file,
-.events-editor-tree-item_active .events-editor-tree-item__file:link {
-    color: var(--dz-accent) !important;
-}
-
-.events-editor-tree-item_disabled .events-editor-tree-item__file,
-.events-editor-tree-item_disabled .events-editor-tree-item__file:link {
-    color: var(--dz-text-muted) !important;
-    opacity: 0.6;
-}
-
-/* Selected tree item highlight */
-.events-editor-tree-item_selected {
-    background-color: rgba(var(--dz-accent-rgb), 0.15) !important;
-    border-radius: 4px;
-}
+    .events-editor-tree::-webkit-scrollbar { width: 4px; }
+    .events-editor-tree::-webkit-scrollbar-thumb { background: var(--dz-border); border-radius: 2px; }
+    .events-editor-tree::-webkit-scrollbar-track { background: transparent; }
 
 /* ── Folder headers ────────────────────────────────────────────── */
+.events-editor-folder-list {
+    padding: 0 4px;
+}
+
 .events-editor-folder__header,
 .events-editor-folder__header:link,
 .events-editor-folder__header:visited {
-    color: var(--dz-text) !important;
+    display: flex !important;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px !important;
+    border-radius: 6px;
+    color: var(--dz-text-soft) !important;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    transition: background 0.12s, color 0.12s;
+    text-decoration: none !important;
 }
+
+    .events-editor-folder__header i {
+        color: var(--dz-accent);
+        opacity: 0.7;
+        width: 14px;
+        text-align: center;
+        flex-shrink: 0;
+        transition: opacity 0.12s;
+    }
 
     .events-editor-folder__header:hover,
     .events-editor-folder__header:active {
-        color: var(--dz-accent) !important;
+        background: rgba(var(--dz-accent-rgb), 0.07) !important;
+        color: var(--dz-text) !important;
+        text-decoration: none !important;
     }
 
+        .events-editor-folder__header:hover i {
+            opacity: 1;
+        }
+
 .events-editor-folder__count {
-    background-color: var(--dz-border);
-    color: var(--dz-text-muted);
+    margin-left: auto;
+    background: var(--dz-surface-3) !important;
+    color: var(--dz-text-muted) !important;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 1px 6px;
+    min-width: 18px;
+    text-align: center;
 }
 
-/* Folder drag-over highlight */
+.events-editor-folder__children {
+    padding-left: 20px !important;
+    margin: 0;
+}
+
+/* ── Tree items ────────────────────────────────────────────────── */
+.events-editor-tree-item {
+    padding: 1px 4px !important;
+    position: relative;
+}
+
+.events-editor-tree-item__file,
+.events-editor-tree-item__file:link,
+.events-editor-tree-item__file:visited {
+    display: flex !important;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px !important;
+    padding-left: 10px !important;
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--dz-text-soft) !important;
+    text-decoration: none !important;
+    transition: background 0.12s, color 0.12s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    position: relative;
+}
+
+    /* Replace script.png with a clean FA-icon-style dot via ::before */
+    .events-editor-tree-item__file::before {
+        content: "";
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--dz-border-b);
+        flex-shrink: 0;
+        background-image: none !important;
+        position: static !important;
+        left: auto !important;
+        transition: background 0.12s;
+    }
+
+    .events-editor-tree-item__file:hover,
+    .events-editor-tree-item__file:active {
+        background: rgba(var(--dz-accent-rgb), 0.08) !important;
+        color: var(--dz-text) !important;
+        text-decoration: none !important;
+    }
+
+        .events-editor-tree-item__file:hover::before {
+            background: var(--dz-accent);
+        }
+
+/* Active item — accent left bar + highlight */
+.events-editor-tree-item_active {
+    position: relative;
+}
+
+    .events-editor-tree-item_active::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 4px;
+        bottom: 4px;
+        width: 2px;
+        border-radius: 2px;
+        background: var(--dz-accent);
+    }
+
+    .events-editor-tree-item_active .events-editor-tree-item__file,
+    .events-editor-tree-item_active .events-editor-tree-item__file:link {
+        background: rgba(var(--dz-accent-rgb), 0.12) !important;
+        color: var(--dz-accent) !important;
+        font-weight: 500;
+    }
+
+        .events-editor-tree-item_active .events-editor-tree-item__file::before {
+            background: var(--dz-accent);
+            box-shadow: 0 0 6px rgba(var(--dz-accent-rgb), 0.6);
+        }
+
+/* Disabled item */
+.events-editor-tree-item_disabled .events-editor-tree-item__file,
+.events-editor-tree-item_disabled .events-editor-tree-item__file:link {
+    color: var(--dz-text-faint) !important;
+    opacity: 0.7;
+}
+
+    .events-editor-tree-item_disabled .events-editor-tree-item__file::before {
+        background: var(--dz-surface-3);
+    }
+
+/* Selected (multi-select) */
+.events-editor-tree-item_selected {
+    background: rgba(var(--dz-accent-rgb), 0.1) !important;
+    border-radius: 6px;
+}
+
+/* Status labels inside tree items */
+.events-editor-tree-item__file .label-important {
+    font-size: 9px !important;
+    padding: 1px 5px !important;
+    border-radius: 4px !important;
+    background: rgba(var(--dz-accent-rgb), 0.15) !important;
+    color: var(--dz-text-muted) !important;
+    border: 1px solid var(--dz-border) !important;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    vertical-align: middle;
+}
+
+.events-editor-tree-item__file .label-warning {
+    font-size: 9px !important;
+    padding: 1px 5px !important;
+    border-radius: 4px !important;
+    background: rgba(224, 85, 85, 0.12) !important;
+    color: var(--dz-danger) !important;
+    border: 1px solid rgba(224, 85, 85, 0.3) !important;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    vertical-align: middle;
+}
+
+/* Drag */
+.events-editor-tree-item[draggable="true"] { cursor: grab; }
+.events-editor-tree-item[draggable="true"]:active { cursor: grabbing; }
+
+/* Drag-over folder highlight */
 .events-editor-folder.drag-over {
-    background-color: rgba(var(--dz-accent-rgb), 0.12) !important;
-    border-radius: 4px;
+    background: rgba(var(--dz-accent-rgb), 0.08) !important;
+    border-radius: 6px;
 }
 
     .events-editor-folder.drag-over > .events-editor-folder__header {
         color: var(--dz-accent) !important;
     }
 
+/* ── Splitter ──────────────────────────────────────────────────── */
+.events-editor__splitter {
+    width: 18px !important;
+    margin: 28px 6px 0 !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 6px !important;
+    background: var(--dz-surface) !important;
+    color: var(--dz-text-faint) !important;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 8px !important;
+}
+
+    .events-editor__splitter:hover {
+        background: rgba(var(--dz-accent-rgb), 0.12) !important;
+        border-color: var(--dz-accent) !important;
+        color: var(--dz-accent) !important;
+    }
+
+/* ── Right editor pane ─────────────────────────────────────────── */
+.events-editor__editor {
+    background: var(--dz-bg) !important;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Tab bar ───────────────────────────────────────────────────── */
+.events-editor__file-list {
+    background: var(--dz-surface) !important;
+    border-bottom: 1px solid var(--dz-border) !important;
+    padding: 6px 12px 0 !important;
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 2px;
+    scrollbar-width: none;
+}
+
+    .events-editor__file-list::-webkit-scrollbar { display: none; }
+
+.events-editor__file {
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    border-bottom: none !important;
+    border-radius: 6px 6px 0 0 !important;
+    color: var(--dz-text-muted) !important;
+    padding: 5px 10px !important;
+    font-size: 12px;
+    white-space: nowrap;
+    transition: background 0.12s, color 0.12s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: default;
+    text-decoration: none !important;
+    position: relative;
+}
+
+    .events-editor__file:hover {
+        background: rgba(var(--dz-accent-rgb), 0.06) !important;
+        color: var(--dz-text-soft) !important;
+        text-decoration: none !important;
+    }
+
+/* Active tab — visually "lifts" into the editor background */
+.events-editor__file_active {
+    background: var(--dz-bg) !important;
+    border-color: var(--dz-border) !important;
+    border-bottom-color: var(--dz-bg) !important;
+    color: var(--dz-text) !important;
+    font-weight: 500;
+}
+
+    .events-editor__file_active:hover {
+        background: var(--dz-bg) !important;
+        color: var(--dz-text) !important;
+    }
+
+/* Close button — visible on hover only */
+.events-editor__file-close {
+    background: none !important;
+    border: none !important;
+    color: transparent !important;
+    font-size: 13px !important;
+    padding: 0 !important;
+    margin-left: 2px !important;
+    margin-top: 0 !important;
+    line-height: 1;
+    border-radius: 3px;
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.12s, color 0.12s;
+    flex-shrink: 0;
+}
+
+    .events-editor__file:hover .events-editor__file-close,
+    .events-editor__file_active .events-editor__file-close {
+        color: var(--dz-text-muted) !important;
+    }
+
+    .events-editor__file-close:hover {
+        background: rgba(224, 85, 85, 0.15) !important;
+        color: var(--dz-danger) !important;
+    }
+
+/* ── File header (name, state toggle, controls) ────────────────── */
+.events-editor-file__header {
+    background: var(--dz-surface) !important;
+    border-bottom: 1px solid var(--dz-border) !important;
+    padding: 8px 12px !important;
+    min-height: unset !important;
+    height: auto !important;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+    .events-editor-file__header .form-inline {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
+        width: 100%;
+    }
+
+.events-editor-file__name {
+    background: var(--dz-bg) !important;
+    color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 6px !important;
+    padding: 4px 10px !important;
+    font-size: 13px !important;
+    font-weight: 500;
+    transition: border-color 0.15s;
+    min-width: 160px;
+}
+
+    .events-editor-file__name:focus {
+        border-color: var(--dz-accent) !important;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.15);
+    }
+
+/* Enabled/Disabled toggle */
+.events-editor-file__header .btn-group .btn {
+    font-size: 11px !important;
+    padding: 3px 10px !important;
+    border-radius: 0 !important;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    transition: background 0.12s, color 0.12s;
+}
+
+    .events-editor-file__header .btn-group .btn:first-child {
+        border-radius: 6px 0 0 6px !important;
+    }
+
+    .events-editor-file__header .btn-group .btn:last-child {
+        border-radius: 0 6px 6px 0 !important;
+    }
+
+    /* "Enabled" active state — subtle green tint */
+    .events-editor-file__header .btn-group .btn.active:last-child {
+        background: rgba(76, 175, 125, 0.18) !important;
+        color: var(--dz-success) !important;
+        border-color: rgba(76, 175, 125, 0.35) !important;
+    }
+
+    /* "Disabled" active state — muted */
+    .events-editor-file__header .btn-group .btn.active:first-child {
+        background: rgba(var(--dz-overlay-rgb), 0.06) !important;
+        color: var(--dz-text-muted) !important;
+    }
+
+/* Trigger select */
+.events-editor-file__type {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 0;
+}
+
+    .events-editor-file__type .add-on {
+        background: var(--dz-surface-2) !important;
+        border: 1px solid var(--dz-border-b) !important;
+        border-right: none !important;
+        border-radius: 6px 0 0 6px !important;
+        color: var(--dz-text-muted) !important;
+        font-size: 11px !important;
+        padding: 4px 8px !important;
+        height: auto !important;
+        white-space: nowrap;
+    }
+
+    .events-editor-file__type > select,
+    .events-editor-file__type select {
+        background: var(--dz-bg) !important;
+        color: var(--dz-text) !important;
+        border: 1px solid var(--dz-border-b) !important;
+        border-radius: 0 6px 6px 0 !important;
+        padding: 4px 8px !important;
+        font-size: 12px !important;
+        height: auto !important;
+    }
+
+/* ── ACE settings bar ──────────────────────────────────────────── */
+.ace-settings {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    vertical-align: middle;
+}
+
+.ace-settings__theme {
+    background: var(--dz-bg) !important;
+    color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 6px !important;
+    padding: 3px 6px !important;
+    font-size: 11px !important;
+    height: auto !important;
+}
+
+.ace-settings__font-size {
+    color: var(--dz-text-soft) !important;
+    font-size: 12px;
+    min-width: 18px;
+    text-align: center;
+}
+
+/* Ace font-size buttons */
+.ace-settings .btn-xs {
+    background: var(--dz-bg) !important;
+    border: 1px solid var(--dz-border) !important;
+    color: var(--dz-text-soft) !important;
+    border-radius: 5px !important;
+    padding: 2px 6px !important;
+    font-size: 11px !important;
+    transition: background 0.12s;
+}
+
+    .ace-settings .btn-xs:hover {
+        background: var(--dz-border) !important;
+        color: var(--dz-text) !important;
+    }
+
+    .ace-settings .btn-xs.active {
+        background: rgba(var(--dz-accent-rgb), 0.15) !important;
+        border-color: var(--dz-accent) !important;
+        color: var(--dz-accent) !important;
+    }
+
+/* Help link (dzVents docs) */
+.events-editor-file__header .pull-right > a.btn {
+    font-size: 11px !important;
+    padding: 4px 10px !important;
+    border-radius: 6px !important;
+    background: var(--dz-bg) !important;
+    border-color: var(--dz-border) !important;
+    color: var(--dz-text-soft) !important;
+}
+
+    .events-editor-file__header .pull-right > a.btn:hover {
+        color: var(--dz-accent) !important;
+        border-color: var(--dz-accent) !important;
+    }
+
+/* Save / Delete button group */
+.events-editor-file__header .pull-right .btn-group .btn-primary {
+    font-size: 12px !important;
+    padding: 4px 14px !important;
+    font-weight: 600;
+    border-radius: 6px 0 0 6px !important;
+}
+
+.events-editor-file__header .pull-right .btn-group .btn-danger {
+    font-size: 12px !important;
+    padding: 4px 10px !important;
+    border-radius: 0 6px 6px 0 !important;
+}
+
+/* ── ACE status bar ────────────────────────────────────────────── */
+.ace-statusbar {
+    background: var(--dz-surface) !important;
+    border-top: 1px solid var(--dz-border) !important;
+    color: var(--dz-text-muted) !important;
+    font-size: 11px !important;
+    padding: 0 12px !important;
+    height: 22px !important;
+    line-height: 22px !important;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    justify-content: flex-end;
+}
+
+/* ── Device states table ───────────────────────────────────────── */
+.events-editor-file__content-table {
+    background: var(--dz-bg) !important;
+    color: var(--dz-text) !important;
+}
+
+    .events-editor-file__content-table th {
+        background: var(--dz-surface) !important;
+        color: var(--dz-text-soft) !important;
+        border-color: var(--dz-border) !important;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .events-editor-file__content-table td {
+        border-color: var(--dz-border) !important;
+        color: var(--dz-text) !important;
+        font-size: 12px;
+    }
+
+    .events-editor-file__content-table tr:hover td {
+        background: var(--dz-surface) !important;
+    }
+
 /* ── Context menu ──────────────────────────────────────────────── */
 .events-context-menu .dropdown-menu {
-    background-color: var(--dz-surface) !important;
-    border-color: var(--dz-border-b) !important;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+    background: var(--dz-surface) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    padding: 4px !important;
+    overflow: hidden;
+    min-width: 160px;
 }
 
     .events-context-menu .dropdown-menu li a {
         color: var(--dz-text-soft) !important;
+        border-radius: 5px !important;
+        padding: 6px 10px !important;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background 0.1s, color 0.1s;
     }
 
         .events-context-menu .dropdown-menu li a:hover {
-            background-color: var(--dz-border) !important;
+            background: rgba(var(--dz-accent-rgb), 0.1) !important;
             color: var(--dz-text) !important;
         }
 
-/* ── Events dropdown menus (file tabs + create) ────────────────── */
+        .events-context-menu .dropdown-menu li a i {
+            width: 14px;
+            text-align: center;
+            color: var(--dz-text-muted);
+        }
+
+/* ── Create / tab dropdown menus ───────────────────────────────── */
 .events-editor__menu {
-    background-color: var(--dz-surface) !important;
-    border-color: var(--dz-border-b) !important;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+    background: var(--dz-surface) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    padding: 4px !important;
+    min-width: 160px;
 }
 
-.events-editor__menu-item {
-    color: var(--dz-text-soft) !important;
+    .events-editor__menu li a,
+    .events-editor__menu-item {
+        color: var(--dz-text-soft) !important;
+        border-radius: 5px !important;
+        padding: 6px 10px !important;
+        font-size: 12px !important;
+        display: block;
+        transition: background 0.1s, color 0.1s;
+        text-decoration: none !important;
+    }
+
+    .events-editor__menu li a:hover,
+    .events-editor__menu li a:focus {
+        background: rgba(var(--dz-accent-rgb), 0.1) !important;
+        color: var(--dz-text) !important;
+    }
+
+/* Submenu arrow */
+.events-editor__menu .dropdown-submenu > a::after {
+    border-left-color: var(--dz-text-muted) !important;
 }
 
-.events-editor__menu li a:hover,
-.events-editor__menu li a:focus {
-    background-color: var(--dz-border) !important;
-    color: var(--dz-text) !important;
-}
+/* ── Language-type accent colors (added by JS via ng-lang-* classes) ─ */
+/* dzVents */
+.events-editor-tree-item.ng-lang-dzvents .events-editor-tree-item__file::before { background: #4e9af1; }
+.events-editor-tree-item_active.ng-lang-dzvents::before                          { background: #4e9af1; }
+/* Lua */
+.events-editor-tree-item.ng-lang-lua .events-editor-tree-item__file::before      { background: #f0a832; }
+.events-editor-tree-item_active.ng-lang-lua::before                               { background: #f0a832; }
+.events-editor-tree-item_active.ng-lang-lua .events-editor-tree-item__file        { color: #f0a832 !important; }
+/* Python */
+.events-editor-tree-item.ng-lang-python .events-editor-tree-item__file::before   { background: #4caf7d; }
+.events-editor-tree-item_active.ng-lang-python::before                            { background: #4caf7d; }
+.events-editor-tree-item_active.ng-lang-python .events-editor-tree-item__file     { color: #4caf7d !important; }
+/* Blockly */
+.events-editor-tree-item.ng-lang-blockly .events-editor-tree-item__file::before  { background: #c8a0ff; }
+.events-editor-tree-item_active.ng-lang-blockly::before                           { background: #c8a0ff; }
+.events-editor-tree-item_active.ng-lang-blockly .events-editor-tree-item__file    { color: #c8a0ff !important; }
 
 /* ── Blockly toolbox ───────────────────────────────────────────── */
 .blocklyToolboxDiv {
-    background-color: var(--dz-surface) !important;
-    border-right: 1px solid var(--dz-surface-3) !important;
+    background: var(--dz-surface) !important;
+    border-right: 1px solid var(--dz-border) !important;
 }
 
 .blocklyTreeLabel {
     color: var(--dz-text-soft) !important;
+    font-size: 12px;
 }
 
-.blocklyTreeRow:hover .blocklyTreeLabel,
-.blocklyTreeSelected .blocklyTreeLabel {
-    color: var(--dz-text) !important;
+.blocklyTreeRow {
+    border-radius: 5px !important;
+    transition: background 0.1s;
 }
 
-.blocklyTreeRow:hover {
-    background-color: var(--dz-border) !important;
-}
+    .blocklyTreeRow:hover {
+        background: rgba(var(--dz-accent-rgb), 0.08) !important;
+    }
+
+    .blocklyTreeRow:hover .blocklyTreeLabel {
+        color: var(--dz-text) !important;
+    }
 
 .blocklyTreeSelected {
-    background-color: rgba(var(--dz-accent-rgb), 0.2) !important;
+    background: rgba(var(--dz-accent-rgb), 0.18) !important;
 }
+
+    .blocklyTreeSelected .blocklyTreeLabel {
+        color: var(--dz-accent) !important;
+    }
 
 /* Icon lists (custom icons page) */
 .iconlist .iconlistitem {

@@ -6893,3 +6893,103 @@ document.addEventListener('DOMContentLoaded', function () {
         hookAngular();
     }
 })();
+
+/* ── Feature 12: Events Editor Language Classes ──────────────────── */
+// Reads each open event's interpreter type from the Angular $ctrl scope
+// and stamps a `ng-lang-<type>` class on the corresponding tree item so
+// CSS can colour-code items per language without any HTML changes.
+(function () {
+    'use strict';
+
+    var LANG_MAP = {
+        dzvents: 'ng-lang-dzvents',
+        lua:     'ng-lang-lua',
+        python:  'ng-lang-python',
+        blockly: 'ng-lang-blockly',
+    };
+
+    function stampLangClasses() {
+        var editor = document.querySelector('.events-editor');
+        if (!editor) return;
+
+        // Get controller via Angular scope on the events-editor element
+        var scope;
+        try {
+            scope = angular.element(editor).scope();
+            if (scope && scope.$ctrl) scope = scope.$ctrl;
+            else scope = angular.element(editor).isolateScope() || angular.element(editor).scope();
+        } catch (e) { return; }
+
+        var ctrl = scope && (scope.$ctrl || scope);
+        if (!ctrl || !ctrl.folders) return;
+
+        // Build a map of eventId → interpreter from all known events
+        var interpMap = {};
+        var allEvents = (ctrl.events || []);
+        for (var i = 0; i < allEvents.length; i++) {
+            var ev = allEvents[i];
+            if (ev && ev.id != null && ev.interpreter) {
+                interpMap[String(ev.id)] = ev.interpreter.toLowerCase();
+            }
+        }
+
+        // Stamp classes on tree items
+        var items = editor.querySelectorAll('.events-editor-tree-item');
+        for (var j = 0; j < items.length; j++) {
+            var li = items[j];
+            // Angular repeats set ng-repeat on <li>; we can pull the event from scope
+            var itemScope;
+            try { itemScope = angular.element(li).scope(); } catch (e) { continue; }
+            if (!itemScope || !itemScope.event) continue;
+
+            var lang = interpMap[String(itemScope.event.id)];
+            if (!lang) lang = (itemScope.event.interpreter || '').toLowerCase();
+            var cls  = LANG_MAP[lang];
+
+            // Remove old lang classes, add new one
+            for (var key in LANG_MAP) {
+                li.classList.remove(LANG_MAP[key]);
+            }
+            if (cls) li.classList.add(cls);
+        }
+    }
+
+    function init() {
+        // Run after Angular has rendered the events tree
+        var delays = [600, 1200, 2500];
+        delays.forEach(function (d) { setTimeout(stampLangClasses, d); });
+
+        // Re-stamp on route change (navigating to Events page)
+        try {
+            var $rootScope = angular.element(document.body).injector().get('$rootScope');
+            $rootScope.$on('$routeChangeSuccess', function () {
+                setTimeout(stampLangClasses, 800);
+                setTimeout(stampLangClasses, 1800);
+            });
+        } catch (e) {}
+
+        // Also re-stamp when tree items appear (MutationObserver)
+        var treeObserver = new MutationObserver(function (mutations) {
+            var relevant = mutations.some(function (m) {
+                return m.target.closest && m.target.closest('.events-editor-tree');
+            });
+            if (relevant) setTimeout(stampLangClasses, 150);
+        });
+
+        function hookTree() {
+            var tree = document.querySelector('.events-editor-tree');
+            if (tree) {
+                treeObserver.observe(tree, { childList: true, subtree: true });
+            } else {
+                setTimeout(hookTree, 1000);
+            }
+        }
+        hookTree();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
