@@ -171,16 +171,10 @@ if (document.readyState === 'loading') {
 
 (function () {
     'use strict';
-    /* Capture base URL at evaluation time (currentScript is only available
-       while the script is executing, not inside deferred callbacks).       */
-    var logoSrc = (document.currentScript && document.currentScript.src)
-        ? document.currentScript.src.replace(/src\/js\/core\.js.*$/, '') + 'images/ic_launcher.png'
-        : 'styles/images/ic_launcher.png';
-
     function replaceLogo() {
         var img = document.querySelector('.brand > img');
         if (img && img.src.indexOf('ic_launcher') === -1) {
-            img.src = logoSrc;
+            img.src = 'styles/default/images/ic_launcher.png';
         }
     }
     if (document.readyState === 'loading') {

@@ -53,7 +53,6 @@
 }
 
     .brand > img {
-        content: url('images/ic_launcher.png') !important;
         width: 40px !important;
         height: 40px !important;
         vertical-align: middle;
