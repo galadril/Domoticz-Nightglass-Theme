@@ -1,0 +1,1425 @@
+/* ══════════════════════════════════════════════════════════════════
+   9.  MODALS & DIALOGS
+       Covers: Bootstrap modal, jQuery UI dialog, Bootbox,
+       Noty toasts, RGBW / Setpoint / RFY popups, Tips modal.
+       Design: dark surface card, subtle border, accent highlights,
+       consistent with idea/index.html surface/border palette.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 9a. Modal backdrop ───────────────────────────────────────── */
+
+.modal-backdrop,
+.modal-backdrop.fade.in {
+    background: rgba(14, 15, 20, 0.75) !important;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+/* ── 9b. Bootstrap .modal ─────────────────────────────────────── */
+
+.modal {
+    background-color: transparent !important;
+    border: none !important;
+    border-radius: 14px !important;
+    overflow: hidden;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--dz-border) !important;
+}
+
+    .modal .modal-content,
+    .modal-content {
+        background: var(--dz-surface) !important;
+        border: 1px solid var(--dz-border) !important;
+        border-radius: 14px !important;
+        box-shadow: none !important;
+        color: var(--dz-text);
+    }
+
+.modal-header {
+    background: var(--dz-surface-2) !important;
+    border-bottom: 1px solid var(--dz-border) !important;
+    border-radius: 14px 14px 0 0 !important;
+    padding: 14px 20px !important;
+}
+
+    .modal-header .close,
+    .modal-header button.close {
+        color: var(--dz-text-muted) !important;
+        text-shadow: none !important;
+        opacity: 0.6 !important;
+        font-size: 1.3rem;
+        transition: opacity 0.15s, color 0.15s;
+    }
+
+        .modal-header .close:hover {
+            color: var(--dz-text) !important;
+            opacity: 1 !important;
+        }
+
+.modal-title {
+    color: var(--dz-text) !important;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.modal-body {
+    background: var(--dz-surface) !important;
+    color: var(--dz-text) !important;
+    padding: 16px 20px !important;
+}
+
+.modal-footer {
+    background: var(--dz-bg-alt) !important;
+    border-top: 1px solid var(--dz-border) !important;
+    border-radius: 0 0 14px 14px !important;
+    padding: 12px 20px !important;
+}
+
+    /* Footer buttons → accent pill style */
+    .modal-footer .btn {
+        border-radius: 8px !important;
+        font-size: 0.82rem;
+        padding: 6px 16px !important;
+        transition: all 0.15s;
+    }
+
+/* ── 9c. Bootbox dialogs ──────────────────────────────────────── */
+
+.bootbox .modal-content {
+    background: var(--dz-surface) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 14px !important;
+}
+
+.bootbox .bootbox-close-button.close {
+    color: var(--dz-text-muted) !important;
+    text-shadow: none !important;
+    opacity: 0.6 !important;
+    font-size: 1.3rem;
+    transition: opacity 0.15s, color 0.15s;
+}
+
+    .bootbox .bootbox-close-button.close:hover {
+        color: var(--dz-text) !important;
+        opacity: 1 !important;
+    }
+
+.bootbox-body {
+    color: var(--dz-text) !important;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.bootbox-form {
+    color: var(--dz-text) !important;
+}
+
+.bootbox-input,
+.bootbox-input-text {
+    background: var(--dz-surface-2) !important;
+    color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 8px !important;
+    padding: 6px 10px !important;
+}
+
+    .bootbox-input:focus,
+    .bootbox-input-text:focus {
+        border-color: var(--dz-accent) !important;
+        box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.15) !important;
+        outline: none !important;
+    }
+
+/* ── 9c-2. jQuery UI widget overlay ──────────────────────────── */
+
+.ui-widget-overlay {
+    background: rgba(0, 0, 0, 0.7) !important;
+    background-image: none !important;
+    opacity: 1 !important;
+}
+
+/* ── 9d. jQuery UI .ui-dialog ─────────────────────────────────── */
+
+.ui-dialog {
+    background: var(--dz-surface) !important;
+    background-image: none !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5) !important;
+    padding: 0 !important;
+    overflow: hidden;
+    color: var(--dz-text) !important;
+}
+
+    .ui-dialog .ui-dialog-titlebar {
+        background: var(--dz-surface-2) !important;
+        background-image: none !important;
+        border-bottom: 1px solid var(--dz-border) !important;
+        border-radius: 14px 14px 0 0 !important;
+        padding: 12px 16px !important;
+        color: var(--dz-text) !important;
+    }
+
+    .ui-dialog .ui-dialog-title {
+        color: var(--dz-text) !important;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    .ui-dialog .ui-dialog-titlebar-close {
+        background: transparent !important;
+        border: none !important;
+        color: var(--dz-text-muted) !important;
+        opacity: 0.7;
+        transition: opacity 0.15s, color 0.15s;
+        right: 10px !important;
+        top: 50% !important;
+        transform: translateY(-50%);
+        width: 28px !important;
+        height: 28px !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+    }
+
+        .ui-dialog .ui-dialog-titlebar-close:hover {
+            opacity: 1;
+            color: var(--dz-text) !important;
+            background: rgba(var(--dz-overlay-rgb), 0.06) !important;
+        }
+
+        /* Hide the sprite-based icon span and replace with FA icon */
+        .ui-dialog .ui-dialog-titlebar-close .ui-icon {
+            background-image: none !important;
+            text-indent: 0 !important;
+            overflow: visible !important;
+            width: auto !important;
+            height: auto !important;
+            margin: 0 !important;
+            position: static !important;
+        }
+
+            .ui-dialog .ui-dialog-titlebar-close .ui-icon::before {
+                font-family: "Font Awesome 7 Free", FontAwesome, sans-serif;
+                font-weight: 900;
+                content: "\f00d";
+                color: inherit;
+                font-size: 0.85rem;
+                display: block;
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+            }
+
+/* .ui-close (RGBW / RFY popups) — replace background sprite with FA icon */
+.ui-close {
+    background: none !important;
+    background-image: none !important;
+    width: 28px !important;
+    height: 28px !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    color: var(--dz-text-muted);
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 10;
+}
+
+    .ui-close:hover {
+        background: rgba(var(--dz-overlay-rgb), 0.08) !important;
+        color: var(--dz-text);
+    }
+
+    .ui-close::before {
+        font-family: "Font Awesome 7 Free", FontAwesome, sans-serif;
+        font-weight: 900;
+        content: "\f00d";
+        font-size: 0.85rem;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+.ui-dialog .ui-dialog-content {
+    background: var(--dz-surface) !important;
+    color: var(--dz-text) !important;
+    padding: 16px !important;
+}
+
+.ui-dialog .ui-dialog-buttonpane {
+    background: var(--dz-bg-alt) !important;
+    border-top: 1px solid var(--dz-border) !important;
+    padding: 10px 16px !important;
+    margin-top: 0 !important;
+}
+
+    .ui-dialog .ui-dialog-buttonpane .ui-button {
+        background: var(--dz-surface-2) !important;
+        background-image: none !important;
+        color: var(--dz-text) !important;
+        border: 1px solid var(--dz-border-b) !important;
+        border-radius: 8px !important;
+        padding: 6px 16px !important;
+        font-size: 0.82rem;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+        .ui-dialog .ui-dialog-buttonpane .ui-button:hover {
+            background: var(--dz-border) !important;
+            border-color: var(--dz-accent) !important;
+        }
+
+/* ── 9e. Generic .ui-widget-content / .ui-state-default ──────── */
+/*    Careful not to hit sliders — excluded via :not()              */
+
+.ui-dialog-buttonpane,
+.ui-widget-content:not(.ui-slider) {
+    background-color: var(--dz-surface) !important;
+    background-image: none !important;
+    color: var(--dz-text) !important;
+}
+
+.ui-dialog-titlebar,
+.ui-state-default:not(.ui-slider-handle),
+.ui-widget-header:not(.ui-slider-handle, .ui-slider-range) {
+    background-color: var(--dz-surface-2) !important;
+    background-image: none !important;
+    color: var(--dz-text) !important;
+    border-color: var(--dz-border-b) !important;
+}
+
+/* ── 9f. Noty toast notifications ──────────────────────────────── */
+/* Target the relax theme's type selectors with equal specificity   */
+/* so !important cleanly wins over the light-theme defaults.        */
+
+.noty_theme__relax.noty_bar {
+    background-color: var(--dz-surface) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45) !important;
+    color: var(--dz-text) !important;
+    overflow: hidden !important;
+    font-family: inherit !important;
+    position: relative !important;
+}
+
+/* Kill the relax theme's bright type backgrounds */
+.noty_theme__relax.noty_type__alert,
+.noty_theme__relax.noty_type__notification,
+.noty_theme__relax.noty_type__success,
+.noty_theme__relax.noty_type__error,
+.noty_theme__relax.noty_type__warning,
+.noty_theme__relax.noty_type__info,
+.noty_theme__relax.noty_type__information {
+    background-color: var(--dz-surface) !important;
+    border-color: var(--dz-border-b) !important;
+    color: var(--dz-text) !important;
+}
+
+/* Accent stripe — coloured left border on the bar */
+.noty_theme__relax.noty_type__success {
+    border-left: 3px solid var(--dz-success) !important;
+}
+
+.noty_theme__relax.noty_type__error {
+    border-left: 3px solid var(--dz-danger) !important;
+}
+
+.noty_theme__relax.noty_type__warning {
+    border-left: 3px solid var(--dz-warning) !important;
+}
+
+.noty_theme__relax.noty_type__info,
+.noty_theme__relax.noty_type__information {
+    border-left: 3px solid var(--dz-accent) !important;
+}
+
+/* Body text area */
+.noty_theme__relax.noty_bar .noty_body {
+    background: transparent !important;
+    color: var(--dz-text) !important;
+    padding: 13px 40px 13px 16px !important;
+    font-size: 0.86rem !important;
+    line-height: 1.5 !important;
+}
+
+/* Close button */
+.noty_close_button {
+    background: rgba(var(--dz-overlay-rgb), 0.06) !important;
+    color: var(--dz-text-muted) !important;
+    border-radius: 6px !important;
+    top: 8px !important;
+    right: 8px !important;
+    width: 24px !important;
+    height: 24px !important;
+    line-height: 24px !important;
+    font-size: 0.8rem !important;
+    transition: background 0.15s, color 0.15s;
+}
+
+    .noty_close_button:hover {
+        background: rgba(var(--dz-overlay-rgb), 0.14) !important;
+        color: var(--dz-text) !important;
+    }
+
+/* Progress bar */
+.noty_progressbar {
+    background-color: rgba(var(--dz-accent-rgb), 0.35) !important;
+    height: 2px !important;
+    opacity: 1 !important;
+}
+
+/* ── 9g. RGBW colour picker popup ─────────────────────────────── */
+
+#rgbw_popup {
+    background: var(--dz-surface) !important;
+    border: 1px solid var(--dz-border) !important;
+    color: var(--dz-text) !important;
+}
+
+    /* RGBW On / Full Light / Night Light / Off buttons — pill style */
+    #rgbw_popup .btn-group .btn.btn-small,
+    #ledtable .btn-group .btn.btn-small {
+        background: var(--dz-surface-2) !important;
+        background-image: none !important;
+        color: var(--dz-text-muted) !important;
+        border: 1px solid var(--dz-border-b) !important;
+        border-radius: 20px !important;
+        padding: 4px 14px !important;
+        font-size: 0.76rem !important;
+        font-weight: 500;
+        text-shadow: none !important;
+        box-shadow: none !important;
+        transition: all 0.2s ease;
+        margin: 2px;
+    }
+
+        #rgbw_popup .btn-group .btn.btn-small:hover,
+        #ledtable .btn-group .btn.btn-small:hover {
+            background: var(--dz-border) !important;
+            color: var(--dz-text) !important;
+            border-color: var(--dz-accent) !important;
+        }
+
+        #rgbw_popup .btn-group .btn.btn-small:active,
+        #rgbw_popup .btn-group .btn.btn-small.active,
+        #ledtable .btn-group .btn.btn-small:active,
+        #ledtable .btn-group .btn.btn-small.active {
+            background: rgba(var(--dz-accent-rgb), 0.18) !important;
+            color: #fff !important;
+            border-color: var(--dz-accent) !important;
+        }
+
+    /* RGBW sliders */
+    #rgbw_popup .dimslider {
+        background: var(--dz-border) !important;
+        border: none !important;
+        border-radius: 6px !important;
+    }
+
+    /* ── jQWCP — jQuery Wheel Color Picker widget ──────────────── */
+
+    /* Main container */
+    #rgbw_popup .jQWCP-wWidget,
+    #rgbw-picker .jQWCP-wWidget {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    /* Color wheel (hue + temperature wheel) */
+    #rgbw_popup .jQWCP-wWheel,
+    #rgbw-picker .jQWCP-wWheel {
+        border-radius: 50%;
+        box-shadow: 0 0 16px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(var(--dz-overlay-rgb), 0.06);
+        background-color: transparent;
+    }
+
+    /* Wheel overlay (saturation dim layer) */
+    #rgbw_popup .jQWCP-wWheelOverlay,
+    #rgbw-picker .jQWCP-wWheelOverlay {
+        border-radius: 50%;
+    }
+
+    /* Wheel cursor (the draggable dot on the wheel) */
+    #rgbw_popup .jQWCP-wWheelCursor,
+    #rgbw-picker .jQWCP-wWheelCursor {
+        border: 2px solid #fff !important;
+        border-radius: 50% !important;
+        box-shadow: 0 0 6px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.2) !important;
+        width: 14px !important;
+        height: 14px !important;
+        margin-left: -7px !important;
+        margin-top: -7px !important;
+    }
+
+    /* Slider wrappers (Value, Kelvin/Temperature, Master, RGB channels, etc.) */
+    #rgbw_popup .jQWCP-slider-wrapper,
+    #rgbw-picker .jQWCP-slider-wrapper {
+        background: var(--dz-surface-2) !important;
+        border: 1px solid var(--dz-border) !important;
+        border-radius: 8px !important;
+        padding: 4px !important;
+        margin-top: 8px !important;
+        overflow: hidden;
+    }
+
+    /* Canvas slider bars (the gradient strips) */
+    #rgbw_popup .jQWCP-slider,
+    #rgbw-picker .jQWCP-slider {
+        border-radius: 6px !important;
+        cursor: pointer;
+    }
+
+    /* Slider cursors (small triangular / bar indicator) */
+    #rgbw_popup .jQWCP-scursor,
+    #rgbw-picker .jQWCP-scursor {
+        border-color: #fff transparent transparent transparent !important;
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+    }
+
+    /* Preview swatch box */
+    #rgbw_popup .jQWCP-wPreview,
+    #rgbw-picker .jQWCP-wPreview {
+        border: 1px solid var(--dz-border) !important;
+        border-radius: 8px !important;
+        overflow: hidden;
+        margin-top: 8px;
+    }
+
+    #rgbw_popup .jQWCP-wPreviewBox,
+    #rgbw-picker .jQWCP-wPreviewBox {
+        border-radius: 6px !important;
+    }
+
+/* ── Color Mode selection row (#ColorMode) ─────────────────── */
+
+#ColorMode {
+    padding: 8px 0 !important;
+}
+
+    #ColorMode td {
+        display: flex !important;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        padding: 0 !important;
+    }
+
+        /* Mode icons — hide links whose image is hidden (display:none) */
+        #ColorMode td a {
+            display: none;
+        }
+
+            /* Only show <a> tags that contain a visible image */
+            #ColorMode td a:has(img:not([style*="display: none"])) {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 44px;
+                height: 44px;
+                border-radius: 10px;
+                border: 1px solid var(--dz-border-b);
+                background: var(--dz-surface-2);
+                transition: all 0.2s ease;
+                overflow: hidden;
+            }
+
+            #ColorMode td a:hover {
+                background: var(--dz-border);
+                border-color: var(--dz-accent);
+                box-shadow: 0 0 8px rgba(var(--dz-accent-rgb), 0.15);
+            }
+
+            /* Mode icon images — fit inside the button-like container */
+            #ColorMode td a img {
+                width: 32px !important;
+                height: 32px !important;
+                object-fit: contain;
+                transition: transform 0.15s ease;
+            }
+
+            #ColorMode td a:hover img {
+                transform: scale(1.08);
+            }
+
+            /* Selected mode icon — accent highlight */
+            #ColorMode td a img.selected {
+                filter: drop-shadow(0 0 4px rgba(var(--dz-accent-rgb), 0.5));
+            }
+
+            /* When selected icon is shown, highlight its parent link */
+            #ColorMode td a:has(img.selected:not([style*="display: none"])) {
+                background: rgba(var(--dz-accent-rgb), 0.15);
+                border-color: rgba(var(--dz-accent-rgb), 0.4);
+                box-shadow: 0 0 10px rgba(var(--dz-accent-rgb), 0.2);
+            }
+
+/* RGBW popup / LED table layout cleanup */
+#rgbw_popup table,
+#ledtable {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+    #rgbw_popup table td,
+    #ledtable td {
+        color: var(--dz-text) !important;
+        vertical-align: middle;
+    }
+
+    #rgbw_popup table tr td[style*="padding-left"],
+    #ledtable tr td[style*="padding-left"] {
+        padding-left: 0px !important;
+    }
+
+/* ── 9h. Redesigned Popups ────────────────────────────────────── */
+
+/* ── 9h-0. Overlay backdrop + modal centering ─────────────────── */
+
+#ng-popup-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.62);
+    z-index: 1050;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+}
+#ng-popup-overlay.ng-popup-overlay--open {
+    display: flex;
+    animation: ng-overlay-in 0.2s ease;
+}
+
+/* Centered modal state applied by ngOpenPopup() */
+.pop.ng-popup--modal {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 1060 !important;
+    display: block !important;
+    animation: ng-popup-in 0.22s cubic-bezier(0.34, 1.12, 0.64, 1);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+@keyframes ng-overlay-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes ng-popup-in {
+    from { opacity: 0; transform: translate(-50%, -46%) scale(0.87); }
+    to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@media (max-width: 420px) {
+    .pop.ng-popup--modal {
+        width: calc(100vw - 32px) !important;
+        max-height: 85vh;
+    }
+}
+
+/* Shared base reset for all redesigned popups */
+#setpoint_popup,
+#thermostat3_popup,
+#itho_popup,
+#lucci_popup,
+#lucci_dc_popup,
+#falmec_popup,
+#rfy_popup,
+#rgbw_popup {
+    background: var(--dz-surface) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.65), 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+    color: var(--dz-text) !important;
+    padding: 0 !important;
+    overflow: hidden;
+    min-width: unset !important;
+}
+
+/* Close button (shared) */
+.ng-popup-close {
+    position: absolute !important;
+    top: 12px !important;
+    right: 12px !important;
+    background: none !important;
+    border: none !important;
+    cursor: pointer !important;
+    padding: 6px !important;
+    font-size: 1rem !important;
+    color: var(--dz-text-muted) !important;
+    opacity: 0.6;
+    line-height: 1;
+    transition: opacity 0.15s, color 0.15s;
+    z-index: 2;
+}
+.ng-popup-close:hover {
+    opacity: 1 !important;
+    color: var(--dz-text) !important;
+}
+
+/* Popup header title (shared) */
+.ng-popup-title {
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--dz-text-muted);
+    padding: 20px 44px 4px;
+}
+.ng-popup-title i {
+    margin-right: 5px;
+    opacity: 0.7;
+}
+
+/* ── 9h-1. Setpoint Arc Dial ──────────────────────────────────── */
+
+#setpoint_popup {
+    width: 300px !important;
+}
+
+/* Actual/current value row */
+.ng-sp-actual-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 0 0;
+}
+.ng-sp-actual-label {
+    font-size: 0.72rem;
+    color: var(--dz-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.ng-sp-actual-val {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--dz-text);
+}
+
+/* Arc SVG wrapper */
+.ng-sp-arc-wrap {
+    padding: 4px 24px 0;
+}
+
+/* SVG track (background arc) */
+.ng-sp-track {
+    stroke: var(--dz-border-b) !important;
+    opacity: 0.55;
+}
+body.dz-light .ng-sp-track {
+    stroke: var(--dz-border) !important;
+    opacity: 0.35;
+}
+
+/* SVG value text */
+.ng-sp-val-big {
+    font-size: 26px;
+    font-weight: 700;
+    font-family: inherit;
+}
+.ng-sp-unit {
+    font-size: 16px;
+    fill: var(--dz-text-muted);
+    font-family: inherit;
+}
+.ng-sp-cold-dot { fill: #1e90ff; }
+.ng-sp-hot-dot  { fill: #e05555; }
+
+/* Step controls row */
+.ng-sp-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 4px 24px 12px;
+}
+
+/* + / - step buttons */
+.ng-sp-btn {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 50% !important;
+    border: 1.5px solid var(--dz-border-b) !important;
+    background: var(--dz-surface-2) !important;
+    color: var(--dz-text) !important;
+    font-size: 1rem !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+    flex-shrink: 0;
+}
+.ng-sp-btn:hover {
+    border-color: var(--dz-accent) !important;
+    color: var(--dz-accent) !important;
+    background: rgba(var(--dz-accent-rgb), 0.08) !important;
+}
+.ng-sp-btn:active {
+    background: rgba(var(--dz-accent-rgb), 0.18) !important;
+    transform: scale(0.93);
+}
+
+/* Readout display between + / - */
+.ng-sp-readout {
+    font-size: 1.65rem;
+    font-weight: 700;
+    min-width: 90px;
+    text-align: center;
+    letter-spacing: -0.02em;
+    transition: color 0.2s;
+}
+
+/* Set button */
+.ng-sp-set-btn {
+    display: block !important;
+    width: calc(100% - 48px) !important;
+    margin: 0 24px 20px !important;
+    padding: 11px 0 !important;
+    background: var(--dz-accent) !important;
+    border: none !important;
+    border-radius: 12px !important;
+    color: #fff !important;
+    font-size: 0.92rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.04em;
+    cursor: pointer !important;
+    transition: background 0.15s, transform 0.1s;
+}
+.ng-sp-set-btn:hover {
+    background: var(--dz-accent-hover) !important;
+}
+.ng-sp-set-btn:active {
+    transform: scale(0.97);
+}
+
+/* ── 9h-2. Fan Speed Segmented Control (Itho / Lucci / Falmec) ── */
+
+#itho_popup,
+#lucci_popup,
+#lucci_dc_popup,
+#falmec_popup {
+    width: 280px !important;
+}
+
+/* Segmented speed buttons */
+.ng-seg-group {
+    display: flex;
+    gap: 8px;
+    padding: 14px 16px 8px;
+}
+
+.ng-seg-btn {
+    flex: 1;
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 13px 8px !important;
+    background: var(--dz-surface-2) !important;
+    border: 1.5px solid var(--dz-border-b) !important;
+    border-radius: 12px !important;
+    color: var(--dz-text) !important;
+    font-size: 0.75rem !important;
+    font-weight: 600;
+    cursor: pointer !important;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+    text-align: center;
+}
+.ng-seg-btn i {
+    font-size: 1.1rem;
+    display: block;
+}
+.ng-seg-num {
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1;
+}
+.ng-seg-icon {
+    font-size: 1.1rem;
+    line-height: 1;
+}
+.ng-seg-btn:hover {
+    background: rgba(var(--dz-accent-rgb), 0.10) !important;
+    border-color: var(--dz-accent) !important;
+    color: var(--dz-accent) !important;
+}
+.ng-seg-btn:active {
+    transform: scale(0.94);
+}
+.ng-seg-btn--full {
+    width: calc(100% - 32px) !important;
+    margin: 2px 16px 14px !important;
+    flex-direction: row !important;
+    gap: 8px !important;
+    padding: 11px 14px !important;
+    justify-content: center !important;
+    flex: unset;
+    font-size: 0.85rem !important;
+}
+.ng-seg-btn--full i { font-size: 0.95rem; display: inline; }
+
+/* Row of 2-3 action buttons */
+.ng-popup-row-2 {
+    display: flex;
+    gap: 8px;
+    padding: 4px 16px 16px;
+}
+.ng-action-btn {
+    flex: 1;
+    padding: 11px 8px !important;
+    background: var(--dz-surface-2) !important;
+    border: 1.5px solid var(--dz-border-b) !important;
+    border-radius: 12px !important;
+    color: var(--dz-text) !important;
+    font-size: 0.82rem !important;
+    font-weight: 600;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+.ng-action-btn:hover {
+    background: rgba(var(--dz-accent-rgb), 0.10) !important;
+    border-color: var(--dz-accent) !important;
+    color: var(--dz-accent) !important;
+}
+.ng-action-btn--danger {
+    border-color: rgba(var(--dz-danger-rgb), 0.4) !important;
+}
+.ng-action-btn--danger:hover {
+    background: rgba(var(--dz-danger-rgb), 0.10) !important;
+    border-color: var(--dz-danger) !important;
+    color: var(--dz-danger) !important;
+}
+
+/* ── 9h-3. Thermostat3 Motor Control ─────────────────────────── */
+
+#thermostat3_popup {
+    width: 280px !important;
+}
+
+.ng-motor-grid {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    padding: 12px 20px 20px;
+}
+.ng-motor-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    flex: 1;
+}
+.ng-motor-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--dz-text-muted);
+    margin-bottom: 2px;
+}
+.ng-motor-divider {
+    width: 1px;
+    background: var(--dz-border);
+    align-self: stretch;
+    margin: 0 12px;
+    opacity: 0.5;
+}
+.ng-motor-btn {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 12px !important;
+    border: 1.5px solid var(--dz-border-b) !important;
+    background: var(--dz-surface-2) !important;
+    color: var(--dz-text) !important;
+    font-size: 1rem !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+}
+.ng-motor-btn:hover {
+    background: rgba(var(--dz-accent-rgb), 0.10) !important;
+    border-color: var(--dz-accent) !important;
+    color: var(--dz-accent) !important;
+}
+.ng-motor-btn:active { transform: scale(0.9); }
+.ng-motor-btn--stop {
+    background: rgba(var(--dz-warning-rgb, 240, 168, 50), 0.08) !important;
+    border-color: rgba(var(--dz-warning-rgb, 240, 168, 50), 0.4) !important;
+    color: var(--dz-warning) !important;
+}
+.ng-motor-btn--stop:hover {
+    background: rgba(var(--dz-warning-rgb, 240, 168, 50), 0.18) !important;
+    border-color: var(--dz-warning) !important;
+}
+.ng-motor-btn--off {
+    border-color: rgba(var(--dz-danger-rgb), 0.35) !important;
+    color: var(--dz-danger) !important;
+}
+.ng-motor-btn--off:hover {
+    background: rgba(var(--dz-danger-rgb), 0.10) !important;
+    border-color: var(--dz-danger) !important;
+}
+
+/* ── 9h-4. RFY Sun/Wind Popup ─────────────────────────────────── */
+
+#rfy_popup {
+    width: 280px !important;
+}
+
+.ng-rfy-btn {
+    display: flex !important;
+    align-items: center;
+    gap: 10px;
+    width: calc(100% - 32px) !important;
+    margin: 6px 16px !important;
+    padding: 13px 16px !important;
+    border-radius: 12px !important;
+    border: 1.5px solid var(--dz-border-b) !important;
+    background: var(--dz-surface-2) !important;
+    color: var(--dz-text) !important;
+    font-size: 0.88rem !important;
+    font-weight: 600;
+    cursor: pointer !important;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.ng-rfy-btn:last-child { margin-bottom: 18px !important; }
+.ng-rfy-btn--enable:hover {
+    background: rgba(var(--dz-success-rgb), 0.10) !important;
+    border-color: var(--dz-success) !important;
+    color: var(--dz-success) !important;
+}
+.ng-rfy-btn--disable:hover {
+    background: rgba(var(--dz-danger-rgb), 0.10) !important;
+    border-color: var(--dz-danger) !important;
+    color: var(--dz-danger) !important;
+}
+.ng-rfy-btn i {
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+/* ── 9h-5. RGBW / Hue Colour Picker Popup ─────────────────────── */
+/*  Nightglass replaces jQWCP with a canvas HSV wheel + sliders.    */
+
+#rgbw_popup {
+    width: 300px !important;
+    padding: 0 20px 20px !important;
+}
+
+/* Mode tabs: Colour / White */
+.ng-rgbw-tabs {
+    display: flex;
+    gap: 6px;
+    margin: 12px 0 16px;
+}
+
+.ng-rgbw-tab {
+    flex: 1;
+    padding: 7px 10px;
+    border: 1px solid var(--dz-border);
+    border-radius: 10px;
+    background: var(--dz-surface-2);
+    color: var(--dz-text-muted);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.ng-rgbw-tab--active {
+    background: var(--dz-accent-color) !important;
+    border-color: var(--dz-accent-color) !important;
+    color: #fff !important;
+}
+
+/* Colour wheel pane */
+.ng-rgbw-pane {
+    margin-bottom: 12px;
+}
+
+.ng-rgbw-wheel-wrap {
+    display: flex;
+    justify-content: center;
+}
+
+.ng-rgbw-wheel-wrap canvas {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+}
+
+/* White temperature pane */
+.ng-rgbw-warmth-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 20px 0 8px;
+}
+
+.ng-rgbw-warmth-wrap canvas {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+}
+
+.ng-rgbw-warmth-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: var(--dz-text-faint);
+    padding: 4px 2px 0;
+}
+
+/* Preview swatch */
+.ng-rgbw-preview {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 4px 0 12px;
+}
+
+.ng-rgbw-swatch {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--dz-border);
+    flex-shrink: 0;
+    background: #fff;
+    transition: background 0.1s;
+}
+
+.ng-rgbw-hex {
+    font-size: 0.78rem;
+    font-family: monospace;
+    color: var(--dz-text-muted);
+    letter-spacing: 0.03em;
+}
+
+/* Brightness slider row */
+.ng-rgbw-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.ng-rgbw-icon-dim {
+    color: var(--dz-text-faint);
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.ng-rgbw-icon-bright {
+    color: var(--dz-accent-color);
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.ng-rgbw-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--dz-border);
+    outline: none;
+    cursor: pointer;
+}
+
+.ng-rgbw-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid var(--dz-accent-color);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    cursor: grab;
+}
+
+.ng-rgbw-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid var(--dz-accent-color);
+    cursor: grab;
+}
+
+/* Preset action chip buttons */
+.ng-rgbw-presets {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+
+.ng-rgbw-preset {
+    padding: 7px 4px;
+    border: 1px solid var(--dz-border);
+    border-radius: 10px;
+    background: var(--dz-surface-2);
+    color: var(--dz-text-muted);
+    font-size: 0.72rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    transition: background 0.15s, color 0.15s;
+}
+
+.ng-rgbw-preset:hover {
+    background: var(--dz-border);
+    color: var(--dz-text);
+}
+
+.ng-rgbw-preset--off {
+    border-color: rgba(220, 53, 69, 0.35) !important;
+    color: #dc3545 !important;
+}
+
+.ng-rgbw-preset--off:hover {
+    background: rgba(220, 53, 69, 0.1) !important;
+}
+
+/* ── 9i. Tips of the Day modal ────────────────────────────────── */
+
+.tips-modal .modal-content,
+.tips-modal .modal-header,
+.tips-modal .modal-body,
+.tips-modal .modal-footer {
+    background: var(--dz-surface) !important;
+    color: var(--dz-text) !important;
+}
+
+.tips-modal .modal-header {
+    border-bottom: 1px solid var(--dz-border) !important;
+}
+
+.tips-modal .modal-footer {
+    border-top: 1px solid var(--dz-border) !important;
+}
+
+.tips-icon {
+    color: var(--dz-accent);
+}
+
+/* ── 9j. Device selector modal ────────────────────────────────── */
+
+.device-selector-modal .modal-content {
+    background: var(--dz-surface) !important;
+}
+
+.device-selector__section {
+    border: 1px solid var(--dz-border);
+    border-radius: 8px;
+    background: var(--dz-surface-2);
+}
+
+.device-selector__item {
+    color: var(--dz-text);
+    border-bottom: 1px solid var(--dz-surface-3);
+}
+
+    .device-selector__item:hover {
+        background: rgba(var(--dz-accent-rgb), 0.08);
+    }
+
+    .device-selector__item.selected {
+        background: rgba(var(--dz-accent-rgb), 0.15);
+        color: var(--dz-accent);
+    }
+
+/* ── 9k. General form inputs inside dialogs ───────────────────── */
+
+.modal input[type="text"],
+.modal input[type="password"],
+.modal input[type="number"],
+.modal input[type="email"],
+.modal textarea,
+.modal select,
+.ui-dialog input[type="text"],
+.ui-dialog input[type="password"],
+.ui-dialog input[type="number"],
+.ui-dialog textarea,
+.ui-dialog select {
+    background: var(--dz-surface-2) !important;
+    color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 8px !important;
+    padding: 5px 10px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+    .modal input[type="text"]:focus,
+    .modal input[type="password"]:focus,
+    .modal input[type="number"]:focus,
+    .modal input[type="email"]:focus,
+    .modal textarea:focus,
+    .modal select:focus,
+    .ui-dialog input:focus,
+    .ui-dialog textarea:focus,
+    .ui-dialog select:focus {
+        border-color: var(--dz-accent) !important;
+        box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.15) !important;
+        outline: none !important;
+    }
+
+/* Labels inside dialogs */
+.modal label,
+.ui-dialog label {
+    color: var(--dz-text-soft);
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+/* ── 9l. Thermostat popup (inline in index.html) ──────────────── */
+
+#popup_therm,
+[id^="dialog-"] {
+    color: var(--dz-text);
+}
+
+/* ── 9m. Mobile-responsive modal / dialog (#80) ──────────────── */
+@media (max-width: 767px) {
+    .modal-dialog {
+        width: 95vw !important;
+        max-width: 95vw !important;
+        margin: 8px auto !important;
+    }
+
+    .modal-body {
+        max-height: 65vh !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        padding: 12px 14px !important;
+    }
+
+    .modal-footer {
+        padding: 10px 14px !important;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    /* Make form tables inside modals stack vertically */
+    .modal table,
+    .modal table tbody,
+    .modal table tr,
+    .modal table td {
+        display: block !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .modal table td {
+        padding: 4px 0 !important;
+    }
+
+    .modal table tr {
+        margin-bottom: 10px !important;
+    }
+
+    /* Full-width inputs inside modals */
+    .modal input[type="text"],
+    .modal input[type="number"],
+    .modal input[type="email"],
+    .modal input[type="password"],
+    .modal textarea,
+    .modal select,
+    .ui-dialog input[type="text"],
+    .ui-dialog input[type="number"],
+    .ui-dialog textarea,
+    .ui-dialog select {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* jQuery UI dialogs */
+    .ui-dialog {
+        width: 95vw !important;
+        max-width: 95vw !important;
+        left: 2.5vw !important;
+    }
+
+    .ui-dialog .ui-dialog-content {
+        max-height: 60vh !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   10. SLIDERS (dim slider, jQuery UI slider)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Global slider track */
+.ui-slider {
+    background: var(--dz-border) !important;
+    border: none !important;
+    border-radius: 6px !important;
+    height: 6px !important;
+}
+
+    /* Global slider handle */
+    .ui-slider .ui-slider-handle {
+        background: var(--dz-accent) !important;
+        background-image: none !important;
+        border: 2px solid #fff !important;
+        border-radius: 50% !important;
+        width: 18px !important;
+        height: 18px !important;
+        top: -7px !important;
+        cursor: grab !important;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+        outline: none !important;
+    }
+
+        .ui-slider .ui-slider-handle:active {
+            cursor: grabbing !important;
+        }
+
+/* Global slider range fill */
+.ui-slider-range {
+    background: linear-gradient(90deg, var(--dz-accent), var(--dz-accent-light)) !important;
+    border-radius: 6px !important;
+}
+
+/* .dimslider base — override Domoticz's default gradient background */
+.dimslider {
+    background: var(--dz-border) !important;
+    background-image: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 6px !important;
+}
+
+    .dimslider .ui-slider-handle {
+        background: var(--dz-accent) !important;
+        background-image: none !important;
+    }
+
+    .dimslider .ui-slider-range {
+        background: linear-gradient(90deg, var(--dz-accent), var(--dz-accent-light)) !important;
+    }
+
+

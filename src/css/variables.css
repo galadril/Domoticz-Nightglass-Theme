@@ -1,0 +1,250 @@
+@import url("../../css/legacy.css");
+/* Don't remove this line! */
+@import url("common.css");
+@import url("../../font-awesome/css/regular.min.css");
+/* Load FA7 regular (outline) style; Domoticz only loads solid by default */
+
+/*
+ * ═══════════════════════════════════════════════════════════════════
+ *  Domoticz Dark — A clean, modern dark dashboard theme
+ *
+ *  Color palette
+ *  ─────────────
+ *  Body / deepest bg:  #1b1d25
+ *  Surface 1 (nav):    #23252f
+ *  Surface 2 (cards):  #2a2b35
+ *  Surface 3 (hover):  #33354a
+ *  Border / faint:     #2e3040
+ *  Border / strong:    #3a3b47
+ *  Accent blue:        #4e9af1
+ *  Text primary:       #e2e4ed
+ *  Text secondary:     #b0b3c6
+ *  Text muted:         #7c7f93
+ *  Green / success:    #4caf7d
+ *  Red / danger:       #e05555
+ *  Yellow / warning:   #f0a832
+ * ═══════════════════════════════════════════════════════════════════
+ */
+
+
+/* ══════════════════════════════════════════════════════════════════
+   1.  CSS VARIABLE OVERRIDES  (variables.css + dashboard.css tokens)
+   ══════════════════════════════════════════════════════════════════ */
+
+:root {
+    /* Accent */
+    --dz-accent-color: #4e9af1;
+    --dz-accent-red: #e05555;
+    /* Body */
+    --dz-body-bg: #1b1d25;
+    --dz-body-bg-start: #1b1d25;
+    --dz-body-bg-end: #16181f;
+    --dz-body-text: #e2e4ed;
+    /* Widgets */
+    --dz-widget-bg: #23252f;
+    --dz-widget-text: #e2e4ed;
+    --dz-widget-border-radius: 12px;
+    --dz-widget-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    --dz-widget-name-bg: #2a2b35;
+    --dz-widget-name-border: #3a3b47;
+    --dz-widget-name-text: #e2e4ed;
+    --dz-widget-name-font-size: 130%;
+    --dz-widget-status-text: #b0b3c6;
+    --dz-widget-value-font-size: 140%;
+    --dz-widget-hover-bg: #2e3040;
+    --dz-widget-hover-name-bg: #33354a;
+    --dz-widget-hover-name-border: #4e9af1;
+    --dz-widget-hover-name-text: #e2e4ed;
+    /* Status colours */
+    --dz-status-normal: #2a2b35;
+    --dz-status-protected: #2a3050;
+    --dz-status-timeout: #e05555;
+    --dz-status-low-battery: #f0a832;
+    --dz-status-disabled: #3a3b47;
+    --dz-status-disabled-opacity: 0.75;
+    /* Evohome colours (unchanged) */
+    --dz-status-evo-off: var(--dz-status-disabled);
+    --dz-status-evo-25: #ff0302;
+    --dz-status-evo-22: #ff6a2a;
+    --dz-status-evo-19: #fe9b2d;
+    --dz-status-evo-16: #79bc5c;
+    --dz-status-evo-min: #6ca5fd;
+    /* Form inputs */
+    --dz-input-bg: #2a2b35;
+    --dz-input-text: #e2e4ed;
+    --dz-input-border: #3a3b47;
+    --dz-input-focus-bg: #33354a;
+    /* Modals & dialogs */
+    --dz-modal-bg: #23252f;
+    --dz-modal-bg-start: #23252f;
+    --dz-modal-bg-end: #1e2028;
+    --dz-modal-text: #e2e4ed;
+    --dz-modal-header-bg: #2a2b35;
+    /* Navbar */
+    --dz-nav-bg: #23252f;
+    /* Buttons */
+    --dz-btn-bg: #2a2b35;
+    --dz-btn-text: #e2e4ed;
+    --dz-btn-border: #3a3b47;
+    --dz-btn-hover-bg: #33354a;
+    --dz-btn-shadow: none;
+    --dz-btn-text-shadow: none;
+    --dz-btn-primary-bg: #4e9af1;
+    --dz-btn-primary-text: #fff;
+    --dz-btn-warning-bg: #f0a832;
+    --dz-btn-danger-bg: #e05555;
+    --dz-btn-danger-bg-alpha: rgba(224, 85, 85, 0.85);
+    --dz-btn-info-bg: #4e9af1;
+    --dz-btn-success-bg: #4caf7d;
+    /* Content panels */
+    --dz-panel-bg: rgba(35, 37, 47, 0.7);
+    --dz-panel-bg-dark: rgba(27, 29, 37, 0.85);
+    --dz-panel-text: #e2e4ed;
+    /* DataTable rows */
+    --dz-table-odd-bg: #23252f;
+    --dz-table-odd-text: #e2e4ed;
+    --dz-table-even-bg: #1e2028;
+    --dz-table-even-text: #e2e4ed;
+    /* Dashboard 2.0 tokens */
+    --dz-dd-grid-line: rgba(255, 255, 255, 0.04);
+    --dz-dd-skeleton-start: #2a2b35;
+    --dz-dd-skeleton-mid: #33354a;
+    --dz-border-color: #2e3040;
+    --dd-navbar-h: 54px;
+    /* Dashboard widget accent tokens */
+    --dz-widget-accent: #4e9af1;
+    --dz-widget-amber: #f0a832;
+    --dz-widget-energy-export: #4caf7d;
+    --dz-widget-energy-price: #c8a0ff;
+    --dz-widget-energy-gas: #ff7043;
+    --dz-widget-energy-water: #4e9af1;
+    --dz-widget-stat-radius: 10px;
+    --dz-widget-stat-muted: rgba(226, 228, 237, 0.5);
+    --dz-widget-weather-cloud: #7c7f93;
+    --dz-widget-weather-snow: #b0b3c6;
+    --dz-widget-weather-storm: #e05555;
+    --dz-widget-moon-color: #e0d8c8;
+    /* -- Semantic aliases (used throughout custom.css; redefine in body.dz-light for light mode) -- */
+    --dz-bg: #1b1d25;
+    --dz-bg-alt: #1e2028;
+    --dz-surface: #23252f;
+    --dz-surface-2: #2a2b35;
+    --dz-surface-3: #2e3040;
+    --dz-border: #33354a;
+    --dz-border-b: #3a3b47;
+    --dz-text: #e2e4ed;
+    --dz-text-soft: #b0b3c6;
+    --dz-text-muted: #7c7f93;
+    --dz-text-faint: #555770;
+    --dz-accent: #4e9af1;
+    --dz-accent-light: #6db3f8;
+    --dz-accent-hover: #3d89e0;
+    --dz-danger: #e05555;
+    --dz-danger-hover: #c94444;
+    --dz-warning: #f0a832;
+    --dz-warning-hover: #d99528;
+    --dz-success: #4caf7d;
+    --dz-success-hover: #3d9e6c;
+    /* RGB channel variants for rgba() compositing */
+    --dz-accent-rgb: 78, 154, 241;
+    --dz-surface-rgb: 35, 37, 47;
+    --dz-border-rgb: 51, 53, 74;
+    --dz-overlay-rgb: 255, 255, 255;
+}
+
+
+/* ======================================================================
+   1b. LIGHT MODE VARIABLE OVERRIDES  (body.dz-light)
+   ====================================================================== */
+
+body.dz-light {
+    /* Semantic */
+    --dz-bg: #f0f2f5;
+    --dz-bg-alt: #e8eaed;
+    --dz-surface: #ffffff;
+    --dz-surface-2: #f5f6fa;
+    --dz-surface-3: #e8eaed;
+    --dz-border: #d0d3dc;
+    --dz-border-b: #c4c7d0;
+    --dz-text: #1a1c24;
+    --dz-text-soft: #4a4d5e;
+    --dz-text-muted: #6b6e7f;
+    --dz-text-faint: #9094a8;
+    --dz-accent: #2a7de1;
+    --dz-accent-light: #4e9af1;
+    --dz-accent-hover: #1d6bc8;
+    --dz-danger: #d63b3b;
+    --dz-danger-hover: #b32e2e;
+    --dz-warning: #c07818;
+    --dz-warning-hover: #a86614;
+    --dz-success: #2e8c58;
+    --dz-success-hover: #247048;
+    --dz-accent-rgb: 42, 125, 225;
+    --dz-surface-rgb: 255, 255, 255;
+    --dz-border-rgb: 208, 211, 220;
+    --dz-overlay-rgb: 0, 0, 0;
+    /* Domoticz built-in variable overrides */
+    --dz-body-bg: #f0f2f5;
+    --dz-body-bg-start: #f0f2f5;
+    --dz-body-bg-end: #e8eaed;
+    --dz-body-text: #1a1c24;
+    --dz-widget-bg: #ffffff;
+    --dz-widget-text: #1a1c24;
+    --dz-widget-shadow: 0 2px 8px rgba(0, 0, 0, 0.10);
+    --dz-widget-name-bg: #f5f6fa;
+    --dz-widget-name-border: #d0d3dc;
+    --dz-widget-name-text: #1a1c24;
+    --dz-widget-status-text: #4a4d5e;
+    --dz-widget-hover-bg: #f0f2f5;
+    --dz-widget-hover-name-bg: #e8eaed;
+    --dz-widget-hover-name-border: #2a7de1;
+    --dz-widget-hover-name-text: #1a1c24;
+    --dz-status-normal: #f5f6fa;
+    --dz-status-protected: #e8eef8;
+    --dz-status-disabled: #d0d3dc;
+    --dz-input-bg: #f5f6fa;
+    --dz-input-text: #1a1c24;
+    --dz-input-border: #c4c7d0;
+    --dz-input-focus-bg: #e8eaed;
+    --dz-modal-bg: #ffffff;
+    --dz-modal-bg-start: #ffffff;
+    --dz-modal-bg-end: #f5f6fa;
+    --dz-modal-text: #1a1c24;
+    --dz-modal-header-bg: #f5f6fa;
+    --dz-nav-bg: #ffffff;
+    --dz-btn-bg: #f5f6fa;
+    --dz-btn-text: #1a1c24;
+    --dz-btn-border: #c4c7d0;
+    --dz-btn-hover-bg: #e8eaed;
+    --dz-btn-primary-bg: #2a7de1;
+    --dz-btn-primary-text: #fff;
+    --dz-btn-danger-bg: #d63b3b;
+    --dz-btn-danger-bg-alpha: rgba(214, 59, 59, 0.85);
+    --dz-btn-info-bg: #2a7de1;
+    --dz-btn-success-bg: #2e8c58;
+    --dz-btn-warning-bg: #c07818;
+    --dz-panel-bg: rgba(255, 255, 255, 0.80);
+    --dz-panel-bg-dark: rgba(240, 242, 245, 0.90);
+    --dz-panel-text: #1a1c24;
+    --dz-table-odd-bg: #ffffff;
+    --dz-table-odd-text: #1a1c24;
+    --dz-table-even-bg: #f5f6fa;
+    --dz-table-even-text: #1a1c24;
+    --dz-dd-grid-line: rgba(0, 0, 0, 0.04);
+    --dz-dd-skeleton-start: #f5f6fa;
+    --dz-dd-skeleton-mid: #e8eaed;
+    --dz-border-color: #d0d3dc;
+    --dz-widget-accent: #2a7de1;
+    --dz-widget-stat-muted: rgba(26, 28, 36, 0.5);
+    --dz-widget-weather-cloud: #6b6e7f;
+    --dz-widget-weather-snow: #4a4d5e;
+    --dz-widget-moon-color: #c8a060;
+    --dz-widget-energy-export: #2e8c58;
+    --dz-widget-energy-price: #7c4fc0;
+    --dz-widget-energy-gas: #c94a1a;
+    --dz-widget-energy-water: #2a7de1;
+    --dz-widget-weather-storm: #d63b3b;
+    --dz-warning-hover: #a86614;
+    --dz-success-hover: #247048;
+}
+
