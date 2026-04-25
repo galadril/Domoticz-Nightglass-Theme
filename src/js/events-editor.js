@@ -193,3 +193,810 @@
     }
 })();
 
+/* ── Automation Wizard ─────────────────────────────────────────────
+   A multi-step overlay that lets users visually compose a trigger +
+   actions and generates ready-to-use dzVents code, optionally
+   injected directly into the Ace editor.
+   ─────────────────────────────────────────────────────────────────── */
+(function () {
+    'use strict';
+
+    /* ── Trigger / action definitions ──────────────────────────────── */
+    var TRIGGERS = [
+        { id: 'device',   icon: 'fa-plug',         label: 'Device State',  desc: 'When a device turns on, off, or changes value' },
+        { id: 'time',     icon: 'fa-clock',         label: 'Time Schedule', desc: 'At a specific time with optional day filter' },
+        { id: 'sun',      icon: 'fa-sun',           label: 'Sun Event',     desc: 'At sunrise or sunset with optional offset' },
+        { id: 'interval', icon: 'fa-rotate',        label: 'Interval',      desc: 'Repeat every N minutes or hours' },
+        { id: 'security', icon: 'fa-shield-halved', label: 'Security',      desc: 'When the security panel state changes' },
+        { id: 'variable', icon: 'fa-list-check',    label: 'Variable',      desc: 'When a user variable is updated' },
+    ];
+
+    var ACTIONS = [
+        { id: 'switch',   icon: 'fa-toggle-on',    label: 'Switch Device', desc: 'Turn on, off, toggle or dim a device' },
+        { id: 'notify',   icon: 'fa-bell',          label: 'Notification',  desc: 'Send a push notification or alert' },
+        { id: 'scene',    icon: 'fa-layer-group',   label: 'Scene',         desc: 'Activate or deactivate a scene' },
+        { id: 'variable', icon: 'fa-pen-to-square', label: 'Set Variable',  desc: 'Update a user variable value' },
+        { id: 'http',     icon: 'fa-globe',         label: 'HTTP Request',  desc: 'Call a webhook or external service' },
+        { id: 'custom',   icon: 'fa-code',          label: 'Custom Code',   desc: 'Write your own dzVents Lua snippet' },
+    ];
+
+    var STEP_LABELS = ['Trigger', 'Configure', 'Actions', 'Review'];
+
+    /* ── State ──────────────────────────────────────────────────────── */
+    var st = { step: 1, triggerType: null, triggerConfig: {}, actions: [], name: '' };
+    var _devs = null, _scenes = null;
+
+    /* ── API ────────────────────────────────────────────────────────── */
+    function loadDevs(cb) {
+        if (_devs) { cb(_devs); return; }
+        $.getJSON('json.htm?type=devices&filter=all&used=true&orderby=Name', function (d) {
+            _devs = (d && d.result) ? d.result : [];
+            cb(_devs);
+        }).fail(function () { cb([]); });
+    }
+
+    function loadScenes(cb) {
+        if (_scenes) { cb(_scenes); return; }
+        $.getJSON('json.htm?type=scenes&order=name', function (d) {
+            _scenes = (d && d.result) ? d.result : [];
+            cb(_scenes);
+        }).fail(function () { cb([]); });
+    }
+
+    /* ── Code generation ────────────────────────────────────────────── */
+    function luaEsc(s) { return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+
+    function generateCode() {
+        var i4 = '    ', i8 = '        ', i12 = '            ';
+        var t = st.triggerType, tc = st.triggerConfig;
+        var L = [];
+
+        L.push('return {');
+        L.push(i4 + 'active = true,');
+        L.push(i4 + 'logging = {');
+        L.push(i8  + 'level = domoticz.LOG_INFO,');
+        L.push(i8  + "marker = '" + luaEsc(st.name || 'MyAutomation') + "'");
+        L.push(i4 + '},');
+        L.push(i4 + 'on = {');
+
+        if (t === 'device') {
+            L.push(i8 + 'devices = {');
+            L.push(i12 + "'" + luaEsc(tc.device || 'Your Device') + "'");
+            L.push(i8 + '},');
+        } else if (t === 'time') {
+            var days = tc.days ? ' on ' + tc.days : '';
+            L.push(i8 + 'timer = {');
+            L.push(i12 + "'at " + (tc.time || '07:00') + days + "'");
+            L.push(i8 + '},');
+        } else if (t === 'sun') {
+            var ev  = tc.event || 'sunrise';
+            var off = parseInt(tc.offset) || 0;
+            var sun = off === 0 ? 'at ' + ev
+                    : Math.abs(off) + ' minutes ' + (off < 0 ? 'before' : 'after') + ' ' + ev;
+            L.push(i8 + 'timer = {');
+            L.push(i12 + "'" + sun + "'");
+            L.push(i8 + '},');
+        } else if (t === 'interval') {
+            var n = parseInt(tc.value) || 5, unit = tc.unit || 'minutes';
+            var iv = (n === 1 && unit === 'hours') ? 'every hour' : 'every ' + n + ' ' + unit;
+            L.push(i8 + 'timer = {');
+            L.push(i12 + "'" + iv + "'");
+            L.push(i8 + '},');
+        } else if (t === 'security') {
+            L.push(i8 + 'security = {');
+            L.push(i12 + 'domoticz.' + (tc.state || 'SECURITY_ARMED_AWAY'));
+            L.push(i8 + '},');
+        } else if (t === 'variable') {
+            L.push(i8 + 'variables = {');
+            L.push(i12 + "'" + luaEsc(tc.varName || 'YourVariable') + "'");
+            L.push(i8 + '},');
+        }
+
+        L.push(i4 + '},');
+
+        var param = t === 'device' ? 'device'
+                  : t === 'variable' ? 'variable'
+                  : t === 'security' ? 'security' : 'timer';
+        L.push(i4 + 'execute = function(domoticz, ' + param + ')');
+
+        var bi = i8;
+        var hasCond = t === 'device' && tc.condition && tc.condition !== 'any';
+        if (hasCond) {
+            var cv = tc.condition === 'on' ? "'On'" : "'Off'";
+            L.push(i8 + 'if (device.state == ' + cv + ') then');
+            bi = i12;
+        }
+
+        if (!st.actions.length) {
+            L.push(bi + '-- Add your actions here');
+        } else {
+            st.actions.forEach(function (a) {
+                var c = a.config || {};
+                if (a.type === 'switch') {
+                    var act = c.action || 'switchOn';
+                    if (act === 'dim') {
+                        L.push(bi + "domoticz.devices('" + luaEsc(c.device || 'Device') + "').dimTo(" + (parseInt(c.level) || 50) + ")");
+                    } else {
+                        L.push(bi + "domoticz.devices('" + luaEsc(c.device || 'Device') + "')." + act + "()");
+                    }
+                } else if (a.type === 'notify') {
+                    L.push(bi + "domoticz.notify('" + luaEsc(c.title || 'Alert') + "', '" + luaEsc(c.message || '') + "', domoticz.PRIORITY_NORMAL)");
+                } else if (a.type === 'scene') {
+                    var sa = c.action === 'off' ? 'deActivate' : 'activate';
+                    L.push(bi + "domoticz.scenes('" + luaEsc(c.scene || 'Scene') + "')." + sa + "()");
+                } else if (a.type === 'variable') {
+                    var vv = (c.value !== undefined && c.value !== '') ? c.value : '0';
+                    var vvs = isNaN(Number(vv)) ? "'" + luaEsc(String(vv)) + "'" : vv;
+                    L.push(bi + "domoticz.variables('" + luaEsc(c.varName || 'MyVar') + "').set(" + vvs + ")");
+                } else if (a.type === 'http') {
+                    L.push(bi + 'domoticz.openURL({');
+                    L.push(bi + i4 + "url = '" + luaEsc(c.url || 'https://example.com/webhook') + "',");
+                    L.push(bi + i4 + "method = '" + (c.method || 'GET') + "'");
+                    L.push(bi + '})');
+                } else if (a.type === 'custom') {
+                    (c.code || '-- your code here').split('\n').forEach(function (l) { L.push(bi + l); });
+                }
+            });
+        }
+
+        if (hasCond) L.push(i8 + 'end');
+        L.push(i4 + 'end');
+        L.push('}');
+        return L.join('\n');
+    }
+
+    /* ── Syntax highlighting ────────────────────────────────────────── */
+    function escH(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function highlightLua(code) {
+        return code.split('\n').map(function (line) {
+            var h = escH(line);
+            if (/^\s*--/.test(line)) return '<span class="nwc-cmt">' + h + '</span>';
+            h = h.replace(/( --[^\n]*)$/, '<span class="nwc-cmt">$1</span>');
+            h = h.replace(/\b(return|function|end|if|then|else|elseif|local|and|or|not|nil|true|false)\b/g,
+                '<span class="nwc-kw">$1</span>');
+            h = h.replace(/\bdomoticz\b/g, '<span class="nwc-obj">domoticz</span>');
+            h = h.replace(/'([^']*)'/g, "<span class=\"nwc-str\">'$1'</span>");
+            h = h.replace(/\b(\d+)\b/g, '<span class="nwc-num">$1</span>');
+            return h;
+        }).join('\n');
+    }
+
+    /* ── DOM helpers ────────────────────────────────────────────────── */
+    function mk(tag, cls, html) {
+        var e = document.createElement(tag);
+        if (cls)  e.className = cls;
+        if (html !== undefined) e.innerHTML = html;
+        return e;
+    }
+
+    function opt(val, label, cur) {
+        return '<option value="' + escH(val) + '"' + (val === cur ? ' selected' : '') + '>' + escH(label) + '</option>';
+    }
+
+    function cardHTML(item, sel) {
+        return '<div class="ng-wiz-card' + (sel ? ' wiz-selected' : '') + '" data-id="' + item.id + '">' +
+            '<div class="ng-wiz-card-icon"><i class="fa-solid ' + item.icon + '"></i></div>' +
+            '<div class="ng-wiz-card-text"><h5>' + item.label + '</h5><p>' + item.desc + '</p></div></div>';
+    }
+
+    /* ── Step renderers ─────────────────────────────────────────────── */
+
+    function renderStep1(body) {
+        var html = '<div class="ng-wiz-step-heading"><h4>What triggers this automation?</h4>' +
+            '<p>Choose the type of event that will start this automation.</p></div>' +
+            '<div class="ng-wiz-grid">';
+        TRIGGERS.forEach(function (t) { html += cardHTML(t, st.triggerType === t.id); });
+        html += '</div>';
+        body.innerHTML = html;
+
+        body.querySelectorAll('.ng-wiz-card').forEach(function (card) {
+            card.addEventListener('click', function () {
+                var id = this.getAttribute('data-id');
+                if (st.triggerType !== id) { st.triggerType = id; st.triggerConfig = {}; }
+                body.querySelectorAll('.ng-wiz-card').forEach(function (c) { c.classList.remove('wiz-selected'); });
+                this.classList.add('wiz-selected');
+                updateFooter();
+            });
+        });
+    }
+
+    function renderStep2(body) {
+        var t  = st.triggerType;
+        var tc = st.triggerConfig;
+        var def = TRIGGERS.find(function (x) { return x.id === t; }) || { label: '' };
+
+        var html = '<div class="ng-wiz-step-heading"><h4>Configure the trigger</h4>' +
+            '<p>Set the details for your <strong>' + def.label + '</strong> trigger.</p></div>';
+
+        if (t === 'device') {
+            html += '<div class="ng-wiz-form">' +
+                '<div class="ng-wiz-field"><label>Device</label>' +
+                '<select id="nwf-device"><option value="">Loading devices…</option></select></div>' +
+                '<div class="ng-wiz-field"><label>Condition</label>' +
+                '<select id="nwf-condition">' +
+                opt('any', 'Any change', tc.condition || 'any') +
+                opt('on',  'Turns On',   tc.condition) +
+                opt('off', 'Turns Off',  tc.condition) +
+                '</select></div></div>';
+        } else if (t === 'time') {
+            html += '<div class="ng-wiz-form"><div class="ng-wiz-row">' +
+                '<div class="ng-wiz-field"><label>Time</label>' +
+                '<input type="time" id="nwf-time" value="' + escH(tc.time || '07:00') + '"></div>' +
+                '<div class="ng-wiz-field"><label>Days</label><select id="nwf-days">' +
+                opt('',                    'Every day', tc.days) +
+                opt('mon,tue,wed,thu,fri', 'Weekdays',  tc.days) +
+                opt('sat,sun',             'Weekend',   tc.days) +
+                opt('mon', 'Monday', tc.days) + opt('tue', 'Tuesday',   tc.days) +
+                opt('wed', 'Wednesday', tc.days) + opt('thu', 'Thursday', tc.days) +
+                opt('fri', 'Friday',  tc.days) + opt('sat', 'Saturday', tc.days) +
+                opt('sun', 'Sunday',  tc.days) +
+                '</select></div></div></div>';
+        } else if (t === 'sun') {
+            html += '<div class="ng-wiz-form"><div class="ng-wiz-row">' +
+                '<div class="ng-wiz-field"><label>Event</label><select id="nwf-sunevent">' +
+                opt('sunrise', 'Sunrise', tc.event || 'sunrise') +
+                opt('sunset',  'Sunset',  tc.event) + '</select></div>' +
+                '<div class="ng-wiz-field"><label>Offset (minutes, negative = before)</label>' +
+                '<input type="number" id="nwf-sunoffset" value="' + (tc.offset || 0) + '" min="-120" max="120">' +
+                '</div></div></div>';
+        } else if (t === 'interval') {
+            html += '<div class="ng-wiz-form"><div class="ng-wiz-row">' +
+                '<div class="ng-wiz-field"><label>Every</label>' +
+                '<input type="number" id="nwf-ivval" value="' + (tc.value || 5) + '" min="1" max="1440"></div>' +
+                '<div class="ng-wiz-field"><label>Unit</label><select id="nwf-ivunit">' +
+                opt('minutes', 'Minutes', tc.unit || 'minutes') +
+                opt('hours',   'Hours',   tc.unit) + '</select></div></div></div>';
+        } else if (t === 'security') {
+            html += '<div class="ng-wiz-form"><div class="ng-wiz-field"><label>Security state</label>' +
+                '<select id="nwf-secstate">' +
+                opt('SECURITY_ARMED_AWAY', 'Armed Away', tc.state || 'SECURITY_ARMED_AWAY') +
+                opt('SECURITY_ARMED_HOME', 'Armed Home', tc.state) +
+                opt('SECURITY_DISARMED',   'Disarmed',   tc.state) + '</select></div></div>';
+        } else if (t === 'variable') {
+            html += '<div class="ng-wiz-form"><div class="ng-wiz-field"><label>Variable name</label>' +
+                '<input type="text" id="nwf-varname" value="' + escH(tc.varName || '') + '" placeholder="e.g. MyVar">' +
+                '</div></div>';
+        }
+
+        body.innerHTML = html;
+
+        // Pre-populate state defaults so code gen always has them
+        if (t === 'time'     && !tc.time)          tc.time      = '07:00';
+        if (t === 'sun'      && !tc.event)          tc.event     = 'sunrise';
+        if (t === 'sun'      && tc.offset == null)  tc.offset    = 0;
+        if (t === 'interval' && !tc.value)          tc.value     = 5;
+        if (t === 'interval' && !tc.unit)           tc.unit      = 'minutes';
+        if (t === 'security' && !tc.state)          tc.state     = 'SECURITY_ARMED_AWAY';
+        if (t === 'device'   && !tc.condition)      tc.condition = 'any';
+
+        function bnd(id, key) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('change', function () { tc[key] = this.value; updateFooter(); });
+            el.addEventListener('input',  function () { tc[key] = this.value; updateFooter(); });
+        }
+
+        if (t === 'device') {
+            loadDevs(function (devs) {
+                var sel = document.getElementById('nwf-device');
+                if (!sel) return;
+                sel.innerHTML = '<option value="">— Select a device —</option>';
+                devs.forEach(function (d) {
+                    var o = document.createElement('option');
+                    o.value = d.Name; o.textContent = d.Name;
+                    if (d.Name === tc.device) o.selected = true;
+                    sel.appendChild(o);
+                });
+            });
+        }
+        bnd('nwf-device',    'device');
+        bnd('nwf-condition', 'condition');
+        bnd('nwf-time',      'time');
+        bnd('nwf-days',      'days');
+        bnd('nwf-sunevent',  'event');
+        bnd('nwf-sunoffset', 'offset');
+        bnd('nwf-ivval',     'value');
+        bnd('nwf-ivunit',    'unit');
+        bnd('nwf-secstate',  'state');
+        bnd('nwf-varname',   'varName');
+    }
+
+    function renderStep3(body) {
+        body.innerHTML =
+            '<div class="ng-wiz-step-heading"><h4>What should happen?</h4>' +
+            '<p>Add one or more actions. They run in order when the trigger fires.</p></div>' +
+            '<div class="ng-wiz-actions-list" id="nw-act-list"></div>' +
+            '<button class="ng-wiz-add-action-btn" id="nw-add-act">' +
+            '<i class="fa-solid fa-plus"></i> Add Action</button>';
+
+        renderActionList();
+        document.getElementById('nw-add-act').addEventListener('click', openActionPicker);
+    }
+
+    function renderActionList() {
+        var list = document.getElementById('nw-act-list');
+        if (!list) return;
+        list.innerHTML = '';
+
+        if (!st.actions.length) {
+            list.innerHTML =
+                '<div class="ng-wiz-empty-hint"><i class="fa-solid fa-wand-magic-sparkles"></i>' +
+                'No actions yet — click "Add Action" below.</div>';
+            return;
+        }
+
+        st.actions.forEach(function (a, idx) {
+            var def = ACTIONS.find(function (x) { return x.id === a.type; }) || { icon: 'fa-bolt', label: a.type };
+            var item = mk('div', 'ng-wiz-action-item');
+            item.innerHTML =
+                '<div class="ng-wiz-action-header">' +
+                '<div class="ng-wiz-action-icon"><i class="fa-solid ' + def.icon + '"></i></div>' +
+                '<div class="ng-wiz-action-label">' + def.label + '</div>' +
+                '<div class="ng-wiz-action-summary">' + actionSummary(a) + '</div>' +
+                '<button class="ng-wiz-action-remove" data-idx="' + idx + '" title="Remove">' +
+                '<i class="fa-solid fa-xmark"></i></button></div>' +
+                '<div class="ng-wiz-action-body">' + actionFormHTML(a, idx) + '</div>';
+            list.appendChild(item);
+        });
+
+        list.querySelectorAll('.ng-wiz-action-remove').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                st.actions.splice(parseInt(this.getAttribute('data-idx')), 1);
+                renderActionList();
+            });
+        });
+
+        st.actions.forEach(function (a, idx) { wireActionForm(a, idx); });
+    }
+
+    function actionSummary(a) {
+        var c = a.config || {};
+        if (a.type === 'switch')   return escH((c.device  || '') + (c.action ? ' · ' + c.action : ''));
+        if (a.type === 'notify')   return escH(c.title    || 'Notification');
+        if (a.type === 'scene')    return escH(c.scene    || 'Scene');
+        if (a.type === 'variable') return 'Set ' + escH(c.varName || 'variable');
+        if (a.type === 'http')     return escH((c.url || '').replace(/^https?:\/\//, '').substring(0, 28));
+        if (a.type === 'custom')   return 'Lua snippet';
+        return '';
+    }
+
+    function actionFormHTML(a, idx) {
+        var c = a.config || {}, p = 'nwa' + idx;
+        if (a.type === 'switch') {
+            return '<div class="ng-wiz-form"><div class="ng-wiz-row">' +
+                '<div class="ng-wiz-field"><label>Device</label>' +
+                '<select id="' + p + '-dev"><option value="">Loading…</option></select></div>' +
+                '<div class="ng-wiz-field"><label>Action</label><select id="' + p + '-act">' +
+                opt('switchOn',     'Turn On',  c.action || 'switchOn') +
+                opt('switchOff',    'Turn Off', c.action) +
+                opt('toggleSwitch', 'Toggle',   c.action) +
+                opt('dim',          'Dim to %', c.action) +
+                '</select></div></div>' +
+                '<div class="ng-wiz-field" id="' + p + '-dw" style="' + (c.action === 'dim' ? '' : 'display:none') + '">' +
+                '<label>Dim level (%)</label>' +
+                '<input type="number" id="' + p + '-lv" value="' + (c.level || 50) + '" min="0" max="100">' +
+                '</div></div>';
+        } else if (a.type === 'notify') {
+            return '<div class="ng-wiz-form">' +
+                '<div class="ng-wiz-field"><label>Title</label>' +
+                '<input type="text" id="' + p + '-ttl" value="' + escH(c.title || '') + '" placeholder="Alert title"></div>' +
+                '<div class="ng-wiz-field"><label>Message</label>' +
+                '<input type="text" id="' + p + '-msg" value="' + escH(c.message || '') + '" placeholder="Something happened!"></div></div>';
+        } else if (a.type === 'scene') {
+            return '<div class="ng-wiz-form"><div class="ng-wiz-row">' +
+                '<div class="ng-wiz-field"><label>Scene</label>' +
+                '<select id="' + p + '-sc"><option value="">Loading…</option></select></div>' +
+                '<div class="ng-wiz-field"><label>Action</label><select id="' + p + '-sa">' +
+                opt('on',  'Activate',   c.action || 'on') +
+                opt('off', 'Deactivate', c.action) + '</select></div></div></div>';
+        } else if (a.type === 'variable') {
+            return '<div class="ng-wiz-form"><div class="ng-wiz-row">' +
+                '<div class="ng-wiz-field"><label>Variable name</label>' +
+                '<input type="text" id="' + p + '-vn" value="' + escH(c.varName || '') + '" placeholder="MyVar"></div>' +
+                '<div class="ng-wiz-field"><label>New value</label>' +
+                '<input type="text" id="' + p + '-vv" value="' + escH(c.value !== undefined ? String(c.value) : '') + '" placeholder="42"></div>' +
+                '</div></div>';
+        } else if (a.type === 'http') {
+            return '<div class="ng-wiz-form"><div class="ng-wiz-row">' +
+                '<div class="ng-wiz-field" style="flex:3"><label>URL</label>' +
+                '<input type="url" id="' + p + '-url" value="' + escH(c.url || '') + '" placeholder="https://…"></div>' +
+                '<div class="ng-wiz-field" style="flex:1"><label>Method</label><select id="' + p + '-meth">' +
+                opt('GET',  'GET',  c.method || 'GET') +
+                opt('POST', 'POST', c.method) + '</select></div></div></div>';
+        } else if (a.type === 'custom') {
+            return '<div class="ng-wiz-form"><div class="ng-wiz-field"><label>Lua snippet</label>' +
+                '<textarea id="' + p + '-code" spellcheck="false">' + escH(c.code || '') + '</textarea></div></div>';
+        }
+        return '';
+    }
+
+    function wireActionForm(a, idx) {
+        var c = a.config = a.config || {}, p = 'nwa' + idx;
+
+        function bnd(id, key) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('input', function () { c[key] = this.value; });
+        }
+
+        if (a.type === 'switch') {
+            loadDevs(function (devs) {
+                var sel = document.getElementById(p + '-dev');
+                if (!sel) return;
+                sel.innerHTML = '<option value="">— Select —</option>';
+                devs.forEach(function (d) {
+                    var o = document.createElement('option');
+                    o.value = d.Name; o.textContent = d.Name;
+                    if (d.Name === c.device) o.selected = true;
+                    sel.appendChild(o);
+                });
+                sel.addEventListener('change', function () { c.device = this.value; });
+            });
+            var actEl  = document.getElementById(p + '-act');
+            var dimWrp = document.getElementById(p + '-dw');
+            if (actEl) actEl.addEventListener('change', function () {
+                c.action = this.value;
+                if (dimWrp) dimWrp.style.display = this.value === 'dim' ? '' : 'none';
+            });
+            bnd(p + '-lv', 'level');
+        } else if (a.type === 'notify') {
+            bnd(p + '-ttl', 'title');
+            bnd(p + '-msg', 'message');
+        } else if (a.type === 'scene') {
+            loadScenes(function (scs) {
+                var sel = document.getElementById(p + '-sc');
+                if (!sel) return;
+                sel.innerHTML = '<option value="">— Select —</option>';
+                scs.forEach(function (sc) {
+                    var o = document.createElement('option');
+                    o.value = sc.Name; o.textContent = sc.Name;
+                    if (sc.Name === c.scene) o.selected = true;
+                    sel.appendChild(o);
+                });
+                sel.addEventListener('change', function () { c.scene = this.value; });
+            });
+            var saEl = document.getElementById(p + '-sa');
+            if (saEl) saEl.addEventListener('change', function () { c.action = this.value; });
+        } else if (a.type === 'variable') {
+            bnd(p + '-vn', 'varName');
+            bnd(p + '-vv', 'value');
+        } else if (a.type === 'http') {
+            bnd(p + '-url', 'url');
+            var methEl = document.getElementById(p + '-meth');
+            if (methEl) methEl.addEventListener('change', function () { c.method = this.value; });
+        } else if (a.type === 'custom') {
+            bnd(p + '-code', 'code');
+        }
+    }
+
+    function renderStep4(body) {
+        var code = generateCode();
+        body.innerHTML =
+            '<div class="ng-wiz-step-heading"><h4>Name &amp; review</h4>' +
+            '<p>Give your automation a name, then create it. The generated script will open in the editor ready to save.</p></div>' +
+            '<div class="ng-wiz-review-layout">' +
+            '<div class="ng-wiz-form" style="max-width:100%">' +
+            '<div class="ng-wiz-field"><label>Automation name</label>' +
+            '<input type="text" id="nwf-aname" value="' + escH(st.name || '') + '" ' +
+            'placeholder="e.g. Evening lights on" style="font-size:15px!important;font-weight:600;padding:9px 12px!important">' +
+            '</div></div>' +
+            '<div class="ng-wiz-code-preview">' +
+            '<div class="ng-wiz-code-bar">' +
+            '<span class="ng-wiz-code-lang"><i class="fa-solid fa-code"></i> dzVents — Lua</span>' +
+            '<button class="ng-wiz-copy-btn" id="nwf-copy"><i class="fa-solid fa-copy"></i> Copy</button>' +
+            '</div>' +
+            '<pre class="ng-wiz-code-block" id="nwf-codeblk">' + highlightLua(code) + '</pre>' +
+            '</div></div>';
+
+        var nameInp = document.getElementById('nwf-aname');
+        var codeBlk = document.getElementById('nwf-codeblk');
+        if (nameInp) {
+            nameInp.addEventListener('input', function () {
+                st.name = this.value;
+                if (codeBlk) codeBlk.innerHTML = highlightLua(generateCode());
+            });
+        }
+        var copyBtn = document.getElementById('nwf-copy');
+        if (copyBtn && navigator.clipboard) {
+            copyBtn.addEventListener('click', function () {
+                navigator.clipboard.writeText(generateCode()).then(function () {
+                    copyBtn.classList.add('wiz-copied');
+                    copyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+                    setTimeout(function () {
+                        copyBtn.classList.remove('wiz-copied');
+                        copyBtn.innerHTML = '<i class="fa-solid fa-copy"></i> Copy';
+                    }, 2200);
+                });
+            });
+        }
+    }
+
+    /* ── Action type picker ─────────────────────────────────────────── */
+    function openActionPicker() {
+        var picker = document.getElementById('ng-wiz-action-picker');
+        if (!picker) {
+            picker = mk('div', '');
+            picker.id = 'ng-wiz-action-picker';
+            picker.innerHTML =
+                '<div class="ng-wiz-picker-modal">' +
+                '<div class="ng-wiz-picker-head">' +
+                '<h4><i class="fa-solid fa-plus" style="margin-right:7px;color:var(--dz-accent)"></i>Choose an action type</h4>' +
+                '<button class="ng-wiz-close" id="nw-picker-x" style="width:28px;height:28px;font-size:16px">&times;</button>' +
+                '</div><div class="ng-wiz-picker-grid"></div></div>';
+            document.body.appendChild(picker);
+            picker.addEventListener('click', function (e) { if (e.target === picker) closeActionPicker(); });
+            document.getElementById('nw-picker-x').addEventListener('click', closeActionPicker);
+        }
+        var grid = picker.querySelector('.ng-wiz-picker-grid');
+        grid.innerHTML = '';
+        ACTIONS.forEach(function (a) {
+            var wrap = mk('div', '', cardHTML(a, false));
+            wrap.querySelector('.ng-wiz-card').addEventListener('click', function () {
+                st.actions.push({ type: a.id, config: {} });
+                closeActionPicker();
+                renderActionList();
+            });
+            grid.appendChild(wrap);
+        });
+        setTimeout(function () { picker.classList.add('wiz-open'); }, 10);
+    }
+
+    function closeActionPicker() {
+        var picker = document.getElementById('ng-wiz-action-picker');
+        if (picker) picker.classList.remove('wiz-open');
+    }
+
+    /* ── Wizard open / close ────────────────────────────────────────── */
+    function openWizard() {
+        if (!document.getElementById('ng-automation-wizard')) buildDOM();
+        st.step = 1; st.triggerType = null; st.triggerConfig = {}; st.actions = []; st.name = '';
+        render(); updateSteps(); updateFooter();
+        setTimeout(function () {
+            document.getElementById('ng-automation-wizard').classList.add('ng-wiz-open');
+        }, 10);
+    }
+
+    function closeWizard() {
+        var ov = document.getElementById('ng-automation-wizard');
+        if (ov) ov.classList.remove('ng-wiz-open');
+        closeActionPicker();
+    }
+
+    function buildDOM() {
+        var stepsHTML = STEP_LABELS.map(function (label, i) {
+            return (i > 0 ? '<div class="ng-wiz-step-line"></div>' : '') +
+                '<div class="ng-wiz-step-node" data-step="' + (i + 1) + '" title="' + label + '">' +
+                '<div class="ng-wiz-step-circle">' + (i + 1) + '</div></div>';
+        }).join('');
+
+        var ov = mk('div', '');
+        ov.id = 'ng-automation-wizard';
+        ov.innerHTML =
+            '<div class="ng-wiz-modal">' +
+            '<div class="ng-wiz-header">' +
+            '<div class="ng-wiz-steps">' + stepsHTML + '</div>' +
+            '<div class="ng-wiz-header-title">' +
+            '<h3><i class="fa-solid fa-wand-magic-sparkles" style="color:var(--dz-accent);margin-right:8px"></i>Automation Wizard</h3>' +
+            '<p>Build a new dzVents automation — no code required</p>' +
+            '</div>' +
+            '<button class="ng-wiz-close" id="nw-x" title="Close">&times;</button>' +
+            '</div>' +
+            '<div class="ng-wiz-body" id="nw-body"></div>' +
+            '<div class="ng-wiz-footer">' +
+            '<div class="ng-wiz-footer-left">' +
+            '<button class="ng-wiz-btn ng-wiz-btn-ghost" id="nw-back" style="display:none">' +
+            '<i class="fa-solid fa-arrow-left"></i> Back</button>' +
+            '</div>' +
+            '<div class="ng-wiz-footer-right">' +
+            '<button class="ng-wiz-btn ng-wiz-btn-ghost" id="nw-cancel">Cancel</button>' +
+            '<button class="ng-wiz-btn ng-wiz-btn-primary" id="nw-next">Next <i class="fa-solid fa-arrow-right"></i></button>' +
+            '</div></div></div>';
+
+        document.body.appendChild(ov);
+        ov.addEventListener('click', function (e) { if (e.target === ov) closeWizard(); });
+        document.getElementById('nw-x').addEventListener('click',      closeWizard);
+        document.getElementById('nw-cancel').addEventListener('click', closeWizard);
+        document.getElementById('nw-back').addEventListener('click',   goBack);
+        document.getElementById('nw-next').addEventListener('click',   goNext);
+    }
+
+    function goBack() {
+        if (st.step > 1) { st.step--; render(); updateSteps(); updateFooter(); }
+    }
+
+    function goNext() {
+        var btn = document.getElementById('nw-next');
+        if (btn && btn.dataset.final === '1') { createAutomation(); return; }
+        if (!validateStep()) return;
+        st.step++; render(); updateSteps(); updateFooter();
+    }
+
+    function validateStep() {
+        if (st.step === 1 && !st.triggerType) {
+            var body = document.getElementById('nw-body');
+            if (body) { body.style.animation = 'none'; void body.offsetWidth; body.style.animation = 'ngWizShake 0.35s ease'; }
+            return false;
+        }
+        if (st.step === 2 && st.triggerType === 'device' && !st.triggerConfig.device) {
+            var devSel = document.getElementById('nwf-device');
+            if (devSel) {
+                devSel.style.borderColor = 'var(--dz-danger,#e05555)';
+                setTimeout(function () { devSel.style.borderColor = ''; }, 1500);
+            }
+            return false;
+        }
+        return true;
+    }
+
+    function render() {
+        var body = document.getElementById('nw-body');
+        if (!body) return;
+        body.style.cssText = 'opacity:0;transform:translateX(12px);transition:opacity 0.14s,transform 0.14s';
+        setTimeout(function () {
+            if      (st.step === 1) renderStep1(body);
+            else if (st.step === 2) renderStep2(body);
+            else if (st.step === 3) renderStep3(body);
+            else if (st.step === 4) renderStep4(body);
+            body.style.cssText = 'opacity:1;transform:translateX(0);transition:opacity 0.14s,transform 0.14s';
+        }, 110);
+    }
+
+    function updateSteps() {
+        document.querySelectorAll('#ng-automation-wizard .ng-wiz-step-node').forEach(function (node) {
+            var s = parseInt(node.getAttribute('data-step'));
+            node.classList.remove('wiz-active', 'wiz-done');
+            if (s === st.step) node.classList.add('wiz-active');
+            if (s <  st.step)  node.classList.add('wiz-done');
+        });
+    }
+
+    function updateFooter() {
+        var back = document.getElementById('nw-back');
+        var next = document.getElementById('nw-next');
+        if (!back || !next) return;
+
+        back.style.display = st.step === 1 ? 'none' : '';
+
+        if (st.step === 4) {
+            next.className     = 'ng-wiz-btn ng-wiz-btn-success';
+            next.innerHTML     = '<i class="fa-solid fa-wand-magic-sparkles"></i> Create Automation';
+            next.dataset.final = '1';
+        } else {
+            next.className     = 'ng-wiz-btn ng-wiz-btn-primary';
+            next.innerHTML     = 'Next <i class="fa-solid fa-arrow-right"></i>';
+            next.dataset.final = '';
+        }
+
+        var dis = (st.step === 1 && !st.triggerType) ||
+                  (st.step === 2 && st.triggerType === 'device' && !st.triggerConfig.device);
+        next.disabled      = dis;
+        next.style.opacity = dis ? '0.42' : '';
+    }
+
+    /* ── Create automation ──────────────────────────────────────────── */
+    function createAutomation() {
+        var code = generateCode();
+        var name = st.name || 'MyAutomation';
+        closeWizard();
+
+        // Always copy to clipboard as a guaranteed fallback
+        if (navigator.clipboard) navigator.clipboard.writeText(code).catch(function () {});
+
+        var injected = tryInjectIntoEditor(code, name);
+        if (!injected) {
+            showToast(
+                '<i class="fa-solid fa-circle-check" style="color:var(--dz-success,#4caf7d);margin-right:8px"></i>' +
+                'Code copied to clipboard! Create a new dzVents event and paste it in the editor.'
+            );
+        }
+    }
+
+    function tryInjectIntoEditor(code, name) {
+        var toolbar = document.querySelector('.events-editor__toolbar');
+        if (!toolbar) return false;
+
+        // Find the + (new event) button
+        var addBtn = null;
+        toolbar.querySelectorAll('button, [class*="btn"]').forEach(function (b) {
+            if (b.querySelector('.fa-circle-plus, .fa-plus') ||
+                /plus/i.test(b.className + ' ' + b.innerHTML)) addBtn = b;
+        });
+        if (!addBtn) return false;
+
+        addBtn.click();
+
+        // Click the dzVents option in the dropdown that appears
+        setTimeout(function () {
+            document.querySelectorAll('.dropdown-menu li a, .events-editor__menu li a').forEach(function (a) {
+                if (/dzvents/i.test(a.textContent)) a.click();
+            });
+        }, 220);
+
+        // Inject into Ace once Angular has rendered
+        setTimeout(function () { injectIntoAce(code, name); }, 950);
+        setTimeout(function () { injectIntoAce(code, name); }, 1900);
+        return true;
+    }
+
+    function injectIntoAce(code, name) {
+        try {
+            var aces = document.querySelectorAll('.ace_editor');
+            if (!aces.length || typeof ace === 'undefined') return;
+            var ed = ace.edit(aces[aces.length - 1]);
+            if (ed.getValue() === code) return; // already set
+            ed.setValue(code, -1);
+            ed.focus();
+
+            var nameField = document.querySelector('.events-editor-file__name');
+            if (nameField && nameField.value !== name) {
+                nameField.value = name;
+                nameField.dispatchEvent(new Event('input',  { bubbles: true }));
+                nameField.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            showToast(
+                '<i class="fa-solid fa-check-circle" style="color:var(--dz-success,#4caf7d);margin-right:8px"></i>' +
+                '<strong>' + escH(name) + '</strong> is ready in the editor — hit Save to activate!'
+            );
+        } catch (e) {}
+    }
+
+    function showToast(html) {
+        var t = mk('div', '');
+        t.style.cssText =
+            'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);' +
+            'background:var(--dz-surface);border:1px solid var(--dz-border-b);border-radius:10px;' +
+            'padding:12px 22px;font-size:13px;color:var(--dz-text);' +
+            'box-shadow:0 8px 28px rgba(0,0,0,0.45);z-index:10100;white-space:nowrap;' +
+            'animation:ngWizToastIn 0.3s ease both;';
+        t.innerHTML = html;
+        document.body.appendChild(t);
+        setTimeout(function () {
+            t.style.transition = 'opacity 0.4s';
+            t.style.opacity    = '0';
+            setTimeout(function () { t.remove(); }, 500);
+        }, 5000);
+    }
+
+    /* ── Inject wizard button into toolbar ──────────────────────────── */
+    function addWizardButton() {
+        if (document.getElementById('ng-wizard-trigger')) return;
+        var toolbar = document.querySelector('.events-editor__toolbar');
+        if (!toolbar) return;
+
+        var btn = mk('button', '');
+        btn.id        = 'ng-wizard-trigger';
+        btn.title     = 'Create a new automation with the step-by-step wizard';
+        btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Quick Wizard';
+        btn.addEventListener('click', openWizard);
+        toolbar.appendChild(btn);
+    }
+
+    /* ── Init ───────────────────────────────────────────────────────── */
+    function initWizard() {
+        [700, 1500, 2800].forEach(function (d) { setTimeout(addWizardButton, d); });
+
+        try {
+            var $root = angular.element(document.body).injector().get('$rootScope');
+            $root.$on('$routeChangeSuccess', function () { setTimeout(addWizardButton, 900); });
+        } catch (e) {}
+
+        var mo = new MutationObserver(function (muts) {
+            if (muts.some(function (m) { return m.addedNodes.length > 0; }) &&
+                document.querySelector('.events-editor__toolbar') &&
+                !document.getElementById('ng-wizard-trigger')) {
+                setTimeout(addWizardButton, 250);
+            }
+        });
+        mo.observe(document.body, { childList: true, subtree: true });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initWizard);
+    } else {
+        initWizard();
+    }
+})();
