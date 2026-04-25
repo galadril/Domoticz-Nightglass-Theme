@@ -905,3 +905,691 @@
 }
 
 
+/* ══════════════════════════════════════════════════════════════════
+   AUTOMATION WIZARD
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Trigger button ──────────────────────────────────────────────── */
+#ng-wizard-trigger {
+    background: linear-gradient(135deg, var(--dz-accent), rgba(var(--dz-accent-rgb), 0.72)) !important;
+    border: none !important;
+    border-radius: 6px !important;
+    color: #fff !important;
+    padding: 4px 10px !important;
+    font-size: 11px !important;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.12s, box-shadow 0.15s;
+    box-shadow: 0 2px 8px rgba(var(--dz-accent-rgb), 0.3);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+    #ng-wizard-trigger:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(var(--dz-accent-rgb), 0.42);
+    }
+
+/* ── Overlay ──────────────────────────────────────────────────────── */
+#ng-automation-wizard {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+    #ng-automation-wizard.ng-wiz-open {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+/* ── Modal ───────────────────────────────────────────────────────── */
+.ng-wiz-modal {
+    background: var(--dz-surface);
+    border: 1px solid var(--dz-border-b);
+    border-radius: 16px;
+    box-shadow: 0 32px 80px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.04);
+    width: 100%;
+    max-width: 860px;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform: translateY(24px) scale(0.97);
+    transition: transform 0.32s cubic-bezier(0.34, 1.46, 0.64, 1);
+}
+
+    #ng-automation-wizard.ng-wiz-open .ng-wiz-modal {
+        transform: translateY(0) scale(1);
+    }
+
+/* ── Header ──────────────────────────────────────────────────────── */
+.ng-wiz-header {
+    background: var(--dz-surface-2);
+    border-bottom: 1px solid var(--dz-border);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0;
+}
+
+.ng-wiz-header-title {
+    flex: 1;
+    min-width: 0;
+}
+
+    .ng-wiz-header-title h3 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--dz-text);
+        letter-spacing: -0.01em;
+    }
+
+    .ng-wiz-header-title p {
+        margin: 2px 0 0;
+        font-size: 11px;
+        color: var(--dz-text-muted);
+    }
+
+/* ── Step progress ───────────────────────────────────────────────── */
+.ng-wiz-steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-shrink: 0;
+}
+
+.ng-wiz-step-node {
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
+
+.ng-wiz-step-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--dz-bg);
+    border: 2px solid var(--dz-border-b);
+    color: var(--dz-text-faint);
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.25s, border-color 0.25s, color 0.25s, box-shadow 0.25s;
+    position: relative;
+    z-index: 1;
+}
+
+    .ng-wiz-step-node.wiz-active .ng-wiz-step-circle {
+        background: var(--dz-accent);
+        border-color: var(--dz-accent);
+        color: #fff;
+        box-shadow: 0 0 14px rgba(var(--dz-accent-rgb), 0.45);
+    }
+
+    .ng-wiz-step-node.wiz-done .ng-wiz-step-circle {
+        background: rgba(var(--dz-accent-rgb), 0.18);
+        border-color: var(--dz-accent);
+        color: var(--dz-accent);
+    }
+
+.ng-wiz-step-line {
+    width: 30px;
+    height: 2px;
+    background: var(--dz-border);
+    transition: background 0.25s;
+}
+
+    .ng-wiz-step-node.wiz-done .ng-wiz-step-line {
+        background: rgba(var(--dz-accent-rgb), 0.35);
+    }
+
+/* ── Close button ────────────────────────────────────────────────── */
+.ng-wiz-close {
+    background: var(--dz-bg) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 8px !important;
+    color: var(--dz-text-muted) !important;
+    width: 32px;
+    height: 32px;
+    padding: 0 !important;
+    font-size: 18px !important;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    flex-shrink: 0;
+}
+
+    .ng-wiz-close:hover {
+        background: rgba(224, 85, 85, 0.1) !important;
+        color: var(--dz-danger) !important;
+        border-color: rgba(224, 85, 85, 0.3) !important;
+    }
+
+/* ── Body ────────────────────────────────────────────────────────── */
+.ng-wiz-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    min-height: 320px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--dz-border) transparent;
+}
+
+    .ng-wiz-body::-webkit-scrollbar { width: 4px; }
+    .ng-wiz-body::-webkit-scrollbar-thumb { background: var(--dz-border); border-radius: 2px; }
+    .ng-wiz-body::-webkit-scrollbar-track { background: transparent; }
+
+/* ── Step heading ────────────────────────────────────────────────── */
+.ng-wiz-step-heading {
+    margin: 0 0 20px;
+}
+
+    .ng-wiz-step-heading h4 {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--dz-text);
+        margin: 0 0 5px;
+        letter-spacing: -0.02em;
+    }
+
+    .ng-wiz-step-heading p {
+        font-size: 13px;
+        color: var(--dz-text-muted);
+        margin: 0;
+    }
+
+/* ── Card grid ───────────────────────────────────────────────────── */
+.ng-wiz-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 10px;
+}
+
+.ng-wiz-card {
+    background: var(--dz-bg);
+    border: 2px solid var(--dz-border);
+    border-radius: 11px;
+    padding: 14px 15px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, transform 0.12s, box-shadow 0.15s;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    user-select: none;
+}
+
+    .ng-wiz-card:hover {
+        border-color: rgba(var(--dz-accent-rgb), 0.45);
+        background: rgba(var(--dz-accent-rgb), 0.04);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+    }
+
+    .ng-wiz-card.wiz-selected {
+        border-color: var(--dz-accent);
+        background: rgba(var(--dz-accent-rgb), 0.08);
+        box-shadow: 0 0 0 1px rgba(var(--dz-accent-rgb), 0.25), 0 6px 20px rgba(0, 0, 0, 0.1);
+    }
+
+.ng-wiz-card-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    background: rgba(var(--dz-accent-rgb), 0.12);
+    color: var(--dz-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+
+    .ng-wiz-card.wiz-selected .ng-wiz-card-icon {
+        background: rgba(var(--dz-accent-rgb), 0.22);
+    }
+
+.ng-wiz-card-text h5 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--dz-text);
+    margin: 0 0 3px;
+}
+
+.ng-wiz-card-text p {
+    font-size: 11px;
+    color: var(--dz-text-muted);
+    margin: 0;
+    line-height: 1.45;
+}
+
+/* ── Form fields ─────────────────────────────────────────────────── */
+.ng-wiz-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 520px;
+}
+
+.ng-wiz-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+    .ng-wiz-field label {
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--dz-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+    }
+
+    .ng-wiz-field input[type="text"],
+    .ng-wiz-field input[type="number"],
+    .ng-wiz-field input[type="time"],
+    .ng-wiz-field input[type="url"],
+    .ng-wiz-field select,
+    .ng-wiz-field textarea {
+        background: var(--dz-bg) !important;
+        color: var(--dz-text) !important;
+        border: 1px solid var(--dz-border-b) !important;
+        border-radius: 7px !important;
+        padding: 7px 10px !important;
+        font-size: 13px !important;
+        height: auto !important;
+        transition: border-color 0.15s, box-shadow 0.15s;
+        font-family: inherit !important;
+        box-sizing: border-box;
+        width: 100%;
+    }
+
+    .ng-wiz-field input:focus,
+    .ng-wiz-field select:focus,
+    .ng-wiz-field textarea:focus {
+        border-color: var(--dz-accent) !important;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(var(--dz-accent-rgb), 0.12);
+    }
+
+    .ng-wiz-field textarea {
+        min-height: 90px;
+        font-family: 'Consolas', 'Monaco', monospace !important;
+        font-size: 12px !important;
+        resize: vertical;
+    }
+
+.ng-wiz-row {
+    display: flex;
+    gap: 10px;
+}
+
+    .ng-wiz-row .ng-wiz-field {
+        flex: 1;
+    }
+
+/* ── Action builder (step 3) ─────────────────────────────────────── */
+.ng-wiz-actions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.ng-wiz-action-item {
+    background: var(--dz-bg);
+    border: 1px solid var(--dz-border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.ng-wiz-action-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    user-select: none;
+}
+
+.ng-wiz-action-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    background: rgba(var(--dz-accent-rgb), 0.12);
+    color: var(--dz-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.ng-wiz-action-label {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--dz-text);
+}
+
+.ng-wiz-action-summary {
+    font-size: 11px;
+    color: var(--dz-text-faint);
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ng-wiz-action-remove {
+    background: none !important;
+    border: none !important;
+    color: var(--dz-text-faint) !important;
+    padding: 4px !important;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    transition: color 0.12s, background 0.12s;
+}
+
+    .ng-wiz-action-remove:hover {
+        color: var(--dz-danger) !important;
+        background: rgba(224, 85, 85, 0.1) !important;
+    }
+
+.ng-wiz-action-body {
+    border-top: 1px solid var(--dz-border);
+    padding: 14px;
+    background: rgba(var(--dz-accent-rgb), 0.02);
+}
+
+    .ng-wiz-action-body .ng-wiz-form {
+        max-width: 100%;
+    }
+
+.ng-wiz-add-action-btn {
+    background: transparent !important;
+    border: 2px dashed rgba(var(--dz-accent-rgb), 0.35) !important;
+    border-radius: 10px !important;
+    color: var(--dz-accent) !important;
+    padding: 10px !important;
+    width: 100%;
+    font-size: 13px !important;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+    .ng-wiz-add-action-btn:hover {
+        background: rgba(var(--dz-accent-rgb), 0.07) !important;
+        border-color: rgba(var(--dz-accent-rgb), 0.55) !important;
+    }
+
+.ng-wiz-empty-hint {
+    text-align: center;
+    padding: 28px 20px;
+    color: var(--dz-text-faint);
+    font-size: 13px;
+}
+
+    .ng-wiz-empty-hint i {
+        display: block;
+        font-size: 26px;
+        opacity: 0.25;
+        margin-bottom: 10px;
+    }
+
+/* ── Code preview (step 4) ───────────────────────────────────────── */
+.ng-wiz-review-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.ng-wiz-code-preview {
+    background: var(--dz-bg);
+    border: 1px solid var(--dz-border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.ng-wiz-code-bar {
+    background: var(--dz-surface-2);
+    border-bottom: 1px solid var(--dz-border);
+    padding: 7px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.ng-wiz-code-lang {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--dz-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ng-wiz-copy-btn {
+    background: var(--dz-surface) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 5px !important;
+    color: var(--dz-text-muted) !important;
+    padding: 3px 10px !important;
+    font-size: 11px !important;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: background 0.12s, color 0.12s;
+}
+
+    .ng-wiz-copy-btn:hover {
+        background: var(--dz-border) !important;
+        color: var(--dz-text) !important;
+    }
+
+    .ng-wiz-copy-btn.wiz-copied {
+        color: var(--dz-success, #4caf7d) !important;
+        border-color: rgba(76, 175, 125, 0.35) !important;
+    }
+
+.ng-wiz-code-block {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.65;
+    padding: 16px;
+    overflow: auto;
+    white-space: pre;
+    margin: 0;
+    max-height: 300px;
+    color: var(--dz-text-soft);
+    scrollbar-width: thin;
+    scrollbar-color: var(--dz-border) transparent;
+}
+
+    .ng-wiz-code-block::-webkit-scrollbar { width: 4px; height: 4px; }
+    .ng-wiz-code-block::-webkit-scrollbar-thumb { background: var(--dz-border); border-radius: 2px; }
+
+/* Lua syntax highlight tokens */
+.nwc-kw  { color: #c792ea; }
+.nwc-obj { color: #82aaff; }
+.nwc-str { color: #c3e88d; }
+.nwc-num { color: #f78c6c; }
+.nwc-cmt { color: #546e7a; font-style: italic; }
+
+/* ── Footer ──────────────────────────────────────────────────────── */
+.ng-wiz-footer {
+    background: var(--dz-surface-2);
+    border-top: 1px solid var(--dz-border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    gap: 10px;
+}
+
+.ng-wiz-footer-left,
+.ng-wiz-footer-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ng-wiz-btn {
+    padding: 7px 16px !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: opacity 0.15s, transform 0.1s;
+    border: 1px solid transparent !important;
+    white-space: nowrap;
+}
+
+    .ng-wiz-btn:hover     { opacity: 0.88; }
+    .ng-wiz-btn:active    { transform: scale(0.97); }
+    .ng-wiz-btn:disabled  { opacity: 0.42 !important; cursor: not-allowed; transform: none !important; }
+
+.ng-wiz-btn-ghost {
+    background: var(--dz-surface) !important;
+    border-color: var(--dz-border) !important;
+    color: var(--dz-text-soft) !important;
+}
+
+    .ng-wiz-btn-ghost:hover {
+        background: var(--dz-border) !important;
+        color: var(--dz-text) !important;
+        opacity: 1;
+    }
+
+.ng-wiz-btn-primary {
+    background: var(--dz-accent) !important;
+    color: #fff !important;
+    box-shadow: 0 2px 10px rgba(var(--dz-accent-rgb), 0.4);
+}
+
+.ng-wiz-btn-success {
+    background: linear-gradient(135deg, #4caf7d, #2e9e6c) !important;
+    color: #fff !important;
+    box-shadow: 0 2px 10px rgba(76, 175, 125, 0.4);
+}
+
+/* ── Action type mini-picker ─────────────────────────────────────── */
+#ng-wiz-action-picker {
+    position: fixed;
+    inset: 0;
+    z-index: 10060;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+    #ng-wiz-action-picker.wiz-open {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+.ng-wiz-picker-modal {
+    background: var(--dz-surface);
+    border: 1px solid var(--dz-border-b);
+    border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+    width: 100%;
+    max-width: 580px;
+    overflow: hidden;
+    transform: scale(0.95);
+    transition: transform 0.2s cubic-bezier(0.34, 1.5, 0.64, 1);
+}
+
+    #ng-wiz-action-picker.wiz-open .ng-wiz-picker-modal {
+        transform: scale(1);
+    }
+
+.ng-wiz-picker-head {
+    background: var(--dz-surface-2);
+    border-bottom: 1px solid var(--dz-border);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+    .ng-wiz-picker-head h4 {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--dz-text);
+        margin: 0;
+    }
+
+.ng-wiz-picker-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 14px;
+}
+
+/* ── Animations ──────────────────────────────────────────────────── */
+@keyframes ngWizShake {
+    0%, 100% { transform: translateX(0); }
+    20%       { transform: translateX(-7px); }
+    40%       { transform: translateX(7px); }
+    60%       { transform: translateX(-4px); }
+    80%       { transform: translateX(4px); }
+}
+
+@keyframes ngWizToastIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+    .ng-wiz-modal { max-height: 100dvh; border-radius: 0; }
+    .ng-wiz-grid, .ng-wiz-picker-grid { grid-template-columns: 1fr; }
+    .ng-wiz-steps { display: none; }
+}
+
+
