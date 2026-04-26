@@ -1514,6 +1514,14 @@
         border-color: rgba(76, 175, 125, 0.35) !important;
     }
 
+/* Ace editor mounted inside the wizard review step */
+.ng-wiz-ace-preview {
+    height: 300px;
+    width: 100%;
+    font-size: 13px;
+    /* Ace sets its own background via the theme — no override needed */
+}
+
 .ng-wiz-code-block {
     font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
     font-size: 12px;

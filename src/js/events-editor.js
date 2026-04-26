@@ -245,7 +245,7 @@
 
     /* ── State ──────────────────────────────────────────────────────── */
     var st = { step: 1, triggerType: null, triggerConfig: {}, actions: [], name: '' };
-    var _devs = null, _scenes = null;
+    var _devs = null, _scenes = null, _wizAce = null;
 
     /* ── API ────────────────────────────────────────────────────────── */
     function loadDevs(cb) {
@@ -855,10 +855,13 @@
     }
 
     function renderStep4(body) {
+        // Destroy any leftover Ace instance from a previous visit to this step
+        if (_wizAce) { try { _wizAce.destroy(); } catch (e) {} _wizAce = null; }
+
         var code = generateCode();
         body.innerHTML =
             '<div class="ng-wiz-step-heading"><h4>Name &amp; review</h4>' +
-            '<p>Give your automation a name, then create it. The generated script will open in the editor ready to save.</p></div>' +
+            '<p>Give your automation a name and optionally tweak the code before creating it.</p></div>' +
             '<div class="ng-wiz-review-layout">' +
             '<div class="ng-wiz-form" style="max-width:100%">' +
             '<div class="ng-wiz-field"><label>Automation name</label>' +
@@ -870,21 +873,54 @@
             '<span class="ng-wiz-code-lang"><i class="fa-solid fa-code"></i> dzVents — Lua</span>' +
             '<button class="ng-wiz-copy-btn" id="nwf-copy"><i class="fa-solid fa-copy"></i> Copy</button>' +
             '</div>' +
-            '<pre class="ng-wiz-code-block" id="nwf-codeblk">' + highlightLua(code) + '</pre>' +
+            '<div id="nwf-codeblk" class="ng-wiz-ace-preview"></div>' +
             '</div></div>';
 
+        // Try to mount a real Ace editor; fall back to <pre> if Ace isn't loaded yet
+        if (typeof ace !== 'undefined') {
+            try {
+                var ed = ace.edit('nwf-codeblk');
+                ed.setTheme(localStorage.getItem('dz-ace-theme') || 'ace/theme/tomorrow_night');
+                ed.session.setMode('ace/mode/lua');
+                ed.setValue(code, -1);
+                ed.setOptions({
+                    fontSize: '13px',
+                    showPrintMargin: false,
+                    tabSize: 4,
+                    useSoftTabs: true,
+                    enableBasicAutocompletion: true,
+                    enableLiveAutocompletion: true,
+                });
+                _wizAce = ed;
+            } catch (e) { _fallbackPre(code); }
+        } else {
+            _fallbackPre(code);
+        }
+
+        function _fallbackPre(c) {
+            var blk = document.getElementById('nwf-codeblk');
+            if (blk) blk.innerHTML = '<pre class="ng-wiz-code-block" style="border:none;border-radius:0;max-height:300px">' + highlightLua(c) + '</pre>';
+        }
+
         var nameInp = document.getElementById('nwf-aname');
-        var codeBlk = document.getElementById('nwf-codeblk');
         if (nameInp) {
             nameInp.addEventListener('input', function () {
                 st.name = this.value;
-                if (codeBlk) codeBlk.innerHTML = highlightLua(generateCode());
+                var nc = generateCode();
+                if (_wizAce) {
+                    _wizAce.setValue(nc, -1);
+                } else {
+                    var blk = document.getElementById('nwf-codeblk');
+                    if (blk) blk.innerHTML = highlightLua(nc);
+                }
             });
         }
+
         var copyBtn = document.getElementById('nwf-copy');
         if (copyBtn && navigator.clipboard) {
             copyBtn.addEventListener('click', function () {
-                navigator.clipboard.writeText(generateCode()).then(function () {
+                var txt = _wizAce ? _wizAce.getValue() : generateCode();
+                navigator.clipboard.writeText(txt).then(function () {
                     copyBtn.classList.add('wiz-copied');
                     copyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
                     setTimeout(function () {
@@ -942,6 +978,7 @@
     }
 
     function closeWizard() {
+        if (_wizAce) { try { _wizAce.destroy(); } catch (e) {} _wizAce = null; }
         var ov = document.getElementById('ng-automation-wizard');
         if (ov) ov.classList.remove('ng-wiz-open');
         closeActionPicker();
@@ -1060,7 +1097,7 @@
 
     /* ── Create automation ──────────────────────────────────────────── */
     function createAutomation() {
-        var code = generateCode();
+        var code = _wizAce ? _wizAce.getValue() : generateCode();
         var name = st.name || 'MyAutomation';
         closeWizard();
 
