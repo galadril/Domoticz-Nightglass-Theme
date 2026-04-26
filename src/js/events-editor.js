@@ -258,7 +258,7 @@
 
     function loadScenes(cb) {
         if (_scenes) { cb(_scenes); return; }
-        $.getJSON('json.htm?type=scenes&order=name', function (d) {
+        $.getJSON('json.htm?type=command&param=getscenes', function (d) {
             _scenes = (d && d.result) ? d.result : [];
             cb(_scenes);
         }).fail(function () { cb([]); });
