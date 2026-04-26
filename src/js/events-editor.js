@@ -222,6 +222,49 @@
 
     var STEP_LABELS = ['Trigger', 'Configure', 'Actions', 'Review'];
 
+    /* ── Per-device-category condition options ──────────────────────── */
+    var DEVICE_CONDITIONS = {
+        switch:      [{ id:'any',label:'Any change'},{id:'on',label:'Turns On'},{id:'off',label:'Turns Off'}],
+        dimmer:      [{ id:'any',label:'Any change'},{id:'on',label:'Turns On'},{id:'off',label:'Turns Off'},
+                      {id:'level_above',label:'Level above',hasValue:true,unit:'%',def:50},
+                      {id:'level_below',label:'Level below',hasValue:true,unit:'%',def:50}],
+        motion:      [{id:'any',label:'Any change'},{id:'on',label:'Motion detected'},{id:'off',label:'No motion'}],
+        door:        [{id:'any',label:'Any change'},{id:'open',label:'Opens'},{id:'closed',label:'Closes'}],
+        temperature: [{id:'any',label:'Any change'},
+                      {id:'above',label:'Above',hasValue:true,unit:'°',def:20},
+                      {id:'below',label:'Below',hasValue:true,unit:'°',def:20}],
+        temphum:     [{id:'any',label:'Any change'},
+                      {id:'temp_above',label:'Temperature above',hasValue:true,unit:'°',def:20},
+                      {id:'temp_below',label:'Temperature below',hasValue:true,unit:'°',def:20},
+                      {id:'hum_above', label:'Humidity above',  hasValue:true,unit:'%',def:60},
+                      {id:'hum_below', label:'Humidity below',  hasValue:true,unit:'%',def:60}],
+        humidity:    [{id:'any',label:'Any change'},
+                      {id:'above',label:'Above',hasValue:true,unit:'%',def:60},
+                      {id:'below',label:'Below',hasValue:true,unit:'%',def:60}],
+        percentage:  [{id:'any',label:'Any change'},
+                      {id:'above',label:'Above',hasValue:true,unit:'%',def:50},
+                      {id:'below',label:'Below',hasValue:true,unit:'%',def:50}],
+        power:       [{id:'any',label:'Any change'},
+                      {id:'above',label:'Usage above',hasValue:true,unit:'W',def:100},
+                      {id:'below',label:'Usage below',hasValue:true,unit:'W',def:100}],
+        wind:        [{id:'any',label:'Any change'},{id:'above',label:'Speed above',hasValue:true,unit:'bft',def:5}],
+        rain:        [{id:'any',label:'Any change'},{id:'above',label:'Rate above',hasValue:true,unit:'mm/h',def:5}],
+        uv:          [{id:'any',label:'Any change'},{id:'above',label:'UV index above',hasValue:true,unit:'',def:5}],
+        co2:         [{id:'any',label:'Any change'},
+                      {id:'above',label:'CO₂ above',hasValue:true,unit:'ppm',def:1000},
+                      {id:'below',label:'CO₂ below',hasValue:true,unit:'ppm',def:1000}],
+        lux:         [{id:'any',label:'Any change'},
+                      {id:'above',label:'Above',hasValue:true,unit:'lux',def:500},
+                      {id:'below',label:'Below',hasValue:true,unit:'lux',def:500}],
+        voltage:     [{id:'any',label:'Any change'},
+                      {id:'above',label:'Above',hasValue:true,unit:'V',def:12},
+                      {id:'below',label:'Below',hasValue:true,unit:'V',def:12}],
+        counter:     [{id:'any',label:'Any change'},{id:'above',label:'Counter above',hasValue:true,unit:'',def:100}],
+        custom:      [{id:'any',label:'Any change'},
+                      {id:'above',label:'Value above',hasValue:true,unit:'',def:0},
+                      {id:'below',label:'Value below',hasValue:true,unit:'',def:0}],
+    };
+
     /* ── State ──────────────────────────────────────────────────────── */
     var st = { step: 1, triggerType: null, triggerConfig: {}, actions: [], name: '' };
     var _devs = null, _scenes = null;
@@ -241,6 +284,91 @@
             _scenes = (d && d.result) ? d.result : [];
             cb(_scenes);
         }).fail(function () { cb([]); });
+    }
+
+    /* ── Device category detection ──────────────────────────────────── */
+    function getDeviceCategory(dev) {
+        if (!dev) return 'switch';
+        var type   = (dev.Type       || '').toLowerCase();
+        var sub    = (dev.SubType    || '').toLowerCase();
+        var sw     = (dev.SwitchType || '').toLowerCase();
+
+        if (sw === 'dimmer' || sw === 'blinds' || sw === 'venetian blinds') return 'dimmer';
+        if (sw === 'motion sensor')                                          return 'motion';
+        if (/door/.test(sw))                                                 return 'door';
+
+        if (type === 'temp')                                       return 'temperature';
+        if (/^temp\s*\+\s*hum/.test(type))                        return 'temphum';
+        if (type === 'humidity')                                   return 'humidity';
+        if (type === 'wind')                                       return 'wind';
+        if (type === 'rain')                                       return 'rain';
+        if (type === 'uv')                                         return 'uv';
+        if (type === 'air quality')                                return 'co2';
+        if (type === 'lux')                                        return 'lux';
+        if (/p1 smart meter/.test(type) || sub === 'kwh')         return 'power';
+        if (type === 'rfxmeter')                                   return 'counter';
+
+        if (sub === 'temperature')                                 return 'temperature';
+        if (sub === 'humidity')                                    return 'humidity';
+        if (sub === 'percentage')                                  return 'percentage';
+        if (sub === 'custom sensor')                               return 'custom';
+        if (sub === 'kwh')                                         return 'power';
+        if (sub === 'voltage')                                     return 'voltage';
+        if (sub === 'lux')                                         return 'lux';
+
+        return 'switch';
+    }
+
+    /* ── Condition → Lua expression ─────────────────────────────────── */
+    var _COND_EXPR = {
+        on:         "device.state == 'On'",
+        off:        "device.state == 'Off'",
+        open:       "device.state == 'Open'",
+        closed:     "device.state == 'Closed'",
+        level_above:'device.level > {v}',
+        level_below:'device.level < {v}',
+        above: {
+            temperature:'device.temperature > {v}',
+            temphum:    'device.temperature > {v}',
+            humidity:   'device.humidity > {v}',
+            percentage: 'device.percentage > {v}',
+            power:      'device.usage > {v}',
+            wind:       'device.speed > {v}',
+            rain:       'device.rain > {v}',
+            uv:         'device.uv > {v}',
+            co2:        'device.co2 > {v}',
+            lux:        'device.lux > {v}',
+            voltage:    'device.voltage > {v}',
+            counter:    'device.counter > {v}',
+            custom:     'device.sensorValue > {v}',
+        },
+        below: {
+            temperature:'device.temperature < {v}',
+            temphum:    'device.temperature < {v}',
+            humidity:   'device.humidity < {v}',
+            percentage: 'device.percentage < {v}',
+            power:      'device.usage < {v}',
+            co2:        'device.co2 < {v}',
+            lux:        'device.lux < {v}',
+            voltage:    'device.voltage < {v}',
+            custom:     'device.sensorValue < {v}',
+        },
+        temp_above: 'device.temperature > {v}',
+        temp_below: 'device.temperature < {v}',
+        hum_above:  'device.humidity > {v}',
+        hum_below:  'device.humidity < {v}',
+    };
+
+    function buildConditionLine(tc, indent) {
+        var c   = tc.condition;
+        var cat = tc.deviceCategory || 'switch';
+        var v   = tc.conditionValue != null ? tc.conditionValue : 0;
+        if (!c || c === 'any') return null;
+
+        var expr = _COND_EXPR[c];
+        if (typeof expr === 'object') expr = expr[cat]; // 'above'/'below' are cat-keyed
+        if (!expr) return null;
+        return indent + 'if (' + expr.replace('{v}', v) + ') then';
     }
 
     /* ── Code generation ────────────────────────────────────────────── */
@@ -300,12 +428,8 @@
         L.push(i4 + 'execute = function(domoticz, ' + param + ')');
 
         var bi = i8;
-        var hasCond = t === 'device' && tc.condition && tc.condition !== 'any';
-        if (hasCond) {
-            var cv = tc.condition === 'on' ? "'On'" : "'Off'";
-            L.push(i8 + 'if (device.state == ' + cv + ') then');
-            bi = i12;
-        }
+        var condLine = t === 'device' ? buildConditionLine(tc, i8) : null;
+        if (condLine) { L.push(condLine); bi = i12; }
 
         if (!st.actions.length) {
             L.push(bi + '-- Add your actions here');
@@ -339,7 +463,7 @@
             });
         }
 
-        if (hasCond) L.push(i8 + 'end');
+        if (condLine) L.push(i8 + 'end');
         L.push(i4 + 'end');
         L.push('}');
         return L.join('\n');
@@ -416,11 +540,11 @@
                 '<div class="ng-wiz-field"><label>Device</label>' +
                 '<div id="nwf-device-picker"></div></div>' +
                 '<div class="ng-wiz-field"><label>Condition</label>' +
-                '<select id="nwf-condition">' +
-                opt('any', 'Any change', tc.condition || 'any') +
-                opt('on',  'Turns On',   tc.condition) +
-                opt('off', 'Turns Off',  tc.condition) +
-                '</select></div></div>';
+                '<select id="nwf-condition">' + opt('any', 'Any change', 'any') + '</select></div>' +
+                '<div class="ng-wiz-field ng-wiz-row" id="nwf-condval-wrap" style="display:none">' +
+                '<div class="ng-wiz-field" style="flex:1"><label id="nwf-condval-label">Value</label>' +
+                '<input type="number" id="nwf-condval" step="0.1" value="' + (tc.conditionValue != null ? tc.conditionValue : '') + '">' +
+                '</div></div></div>';
         } else if (t === 'time') {
             html += '<div class="ng-wiz-form"><div class="ng-wiz-row">' +
                 '<div class="ng-wiz-field"><label>Time</label>' +
@@ -480,12 +604,14 @@
         }
 
         if (t === 'device') {
-            buildDevicePicker('nwf-device-picker', tc.device, function (name) {
+            // Restore condition options if device category is already known
+            if (tc.deviceCategory) updateDeviceCondition({ _cat: tc.deviceCategory }, tc);
+            buildDevicePicker('nwf-device-picker', tc.device, function (name, dev) {
                 tc.device = name;
+                updateDeviceCondition(dev, tc);
                 updateFooter();
             });
         }
-        bnd('nwf-condition', 'condition');
         bnd('nwf-time',      'time');
         bnd('nwf-days',      'days');
         bnd('nwf-sunevent',  'event');
@@ -606,6 +732,53 @@
         return '';
     }
 
+    /* ── Dynamic condition field ────────────────────────────────────── */
+    function updateDeviceCondition(dev, tc) {
+        var cat = dev && dev._cat ? dev._cat : getDeviceCategory(dev);
+        tc.deviceCategory = cat;
+
+        var opts = DEVICE_CONDITIONS[cat] || DEVICE_CONDITIONS.switch;
+        var valid = opts.some(function (o) { return o.id === tc.condition; });
+        if (!valid) { tc.condition = 'any'; tc.conditionValue = undefined; }
+
+        var sel = document.getElementById('nwf-condition');
+        if (!sel) return;
+        sel.innerHTML = '';
+        opts.forEach(function (o) {
+            var el = document.createElement('option');
+            el.value = o.id; el.textContent = o.label;
+            el.selected = o.id === (tc.condition || 'any');
+            sel.appendChild(el);
+        });
+
+        var curOpt = opts.find(function (o) { return o.id === (tc.condition || 'any'); });
+        toggleConditionValue(curOpt, tc);
+
+        sel.onchange = function () {
+            tc.condition = this.value;
+            var newOpt = opts.find(function (o) { return o.id === this.value; }, this);
+            toggleConditionValue(newOpt, tc);
+            updateFooter();
+        };
+    }
+
+    function toggleConditionValue(condOpt, tc) {
+        var wrap = document.getElementById('nwf-condval-wrap');
+        var inp  = document.getElementById('nwf-condval');
+        var lbl  = document.getElementById('nwf-condval-label');
+        if (!wrap || !inp) return;
+        if (condOpt && condOpt.hasValue) {
+            wrap.style.display = '';
+            if (lbl) lbl.textContent = 'Value' + (condOpt.unit ? ' (' + condOpt.unit + ')' : '');
+            if (tc.conditionValue == null) tc.conditionValue = condOpt.def;
+            inp.value = tc.conditionValue;
+            inp.onchange = inp.oninput = function () { tc.conditionValue = parseFloat(this.value); };
+        } else {
+            wrap.style.display = 'none';
+            tc.conditionValue = undefined;
+        }
+    }
+
     /* ── Searchable device picker ───────────────────────────────────── */
     function buildDevicePicker(containerId, currentValue, onChange) {
         var wrap = document.getElementById(containerId);
@@ -646,7 +819,7 @@
                     selWrap.classList.add('ng-wiz-dp-has-sel');
                     listEl.querySelectorAll('.ng-wiz-dp-row--sel').forEach(function (r) { r.classList.remove('ng-wiz-dp-row--sel'); });
                     row.classList.add('ng-wiz-dp-row--sel');
-                    onChange(d.Name);
+                    onChange(d.Name, d);
                 });
                 listEl.appendChild(row);
             });
