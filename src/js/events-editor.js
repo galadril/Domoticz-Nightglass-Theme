@@ -229,10 +229,10 @@
     /* ── API ────────────────────────────────────────────────────────── */
     function loadDevs(cb) {
         if (_devs) { cb(_devs); return; }
-        $.getJSON('json.htm?type=devices&filter=all&used=true&orderby=Name', function (d) {
-            _devs = (d && d.result) ? d.result : [];
-            cb(_devs);
-        }).fail(function () { cb([]); });
+        fetch('json.htm?type=command&param=getdevices&filter=all&used=true&order=Name', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) { _devs = d.result || []; cb(_devs); })
+            .catch(function () { cb([]); });
     }
 
     function loadScenes(cb) {
@@ -913,11 +913,10 @@
         var name = st.name || 'MyAutomation';
         closeWizard();
 
-        // Always copy to clipboard as a guaranteed fallback
-        if (navigator.clipboard) navigator.clipboard.writeText(code).catch(function () {});
-
-        var injected = tryInjectIntoEditor(code, name);
-        if (!injected) {
+        var opened = tryOpenViaAngular(code, name);
+        if (!opened) {
+            // Fallback: copy to clipboard
+            if (navigator.clipboard) navigator.clipboard.writeText(code).catch(function () {});
             showToast(
                 '<i class="fa-solid fa-circle-check" style="color:var(--dz-success,#4caf7d);margin-right:8px"></i>' +
                 'Code copied to clipboard! Create a new dzVents event and paste it in the editor.'
@@ -925,31 +924,35 @@
         }
     }
 
-    function tryInjectIntoEditor(code, name) {
-        var toolbar = document.querySelector('.events-editor__toolbar');
-        if (!toolbar) return false;
+    /* Open a new unsaved dzVents tab directly via Angular controller */
+    function tryOpenViaAngular(code, name) {
+        try {
+            var editorEl = document.querySelector('.events-editor');
+            if (!editorEl) return false;
+            var scope = angular.element(editorEl).scope();
+            if (!scope || !scope.$ctrl || typeof scope.$ctrl.openEvent !== 'function') return false;
 
-        // Find the + (new event) button
-        var addBtn = null;
-        toolbar.querySelectorAll('button, [class*="btn"]').forEach(function (b) {
-            if (b.querySelector('.fa-circle-plus, .fa-plus') ||
-                /plus/i.test(b.className + ' ' + b.innerHTML)) addBtn = b;
-        });
-        if (!addBtn) return false;
+            var event = {
+                id:           name,
+                eventstatus:  '1',
+                name:         name,
+                interpreter:  'dzVents',
+                type:         'All',
+                xmlstatement: code,
+                logicarray:   '',
+                isChanged:    true,
+                isNew:        true
+            };
 
-        addBtn.click();
+            scope.$apply(function () { scope.$ctrl.openEvent(event); });
 
-        // Click the dzVents option in the dropdown that appears
-        setTimeout(function () {
-            document.querySelectorAll('.dropdown-menu li a, .events-editor__menu li a').forEach(function (a) {
-                if (/dzvents/i.test(a.textContent)) a.click();
-            });
-        }, 220);
-
-        // Inject into Ace once Angular has rendered
-        setTimeout(function () { injectIntoAce(code, name); }, 950);
-        setTimeout(function () { injectIntoAce(code, name); }, 1900);
-        return true;
+            // Back-fill Ace in case xmlstatement isn't picked up on first render
+            setTimeout(function () { injectIntoAce(code, name); }, 600);
+            setTimeout(function () { injectIntoAce(code, name); }, 1400);
+            return true;
+        } catch (e) {
+            return false;
+        }
     }
 
     function injectIntoAce(code, name) {
