@@ -392,7 +392,7 @@
         if (t === 'device') {
             html += '<div class="ng-wiz-form">' +
                 '<div class="ng-wiz-field"><label>Device</label>' +
-                '<select id="nwf-device"><option value="">Loading devices…</option></select></div>' +
+                '<div id="nwf-device-picker"></div></div>' +
                 '<div class="ng-wiz-field"><label>Condition</label>' +
                 '<select id="nwf-condition">' +
                 opt('any', 'Any change', tc.condition || 'any') +
@@ -458,19 +458,11 @@
         }
 
         if (t === 'device') {
-            loadDevs(function (devs) {
-                var sel = document.getElementById('nwf-device');
-                if (!sel) return;
-                sel.innerHTML = '<option value="">— Select a device —</option>';
-                devs.forEach(function (d) {
-                    var o = document.createElement('option');
-                    o.value = d.Name; o.textContent = d.Name;
-                    if (d.Name === tc.device) o.selected = true;
-                    sel.appendChild(o);
-                });
+            buildDevicePicker('nwf-device-picker', tc.device, function (name) {
+                tc.device = name;
+                updateFooter();
             });
         }
-        bnd('nwf-device',    'device');
         bnd('nwf-condition', 'condition');
         bnd('nwf-time',      'time');
         bnd('nwf-days',      'days');
@@ -547,7 +539,7 @@
         if (a.type === 'switch') {
             return '<div class="ng-wiz-form"><div class="ng-wiz-row">' +
                 '<div class="ng-wiz-field"><label>Device</label>' +
-                '<select id="' + p + '-dev"><option value="">Loading…</option></select></div>' +
+                '<div id="' + p + '-dev-picker"></div></div>' +
                 '<div class="ng-wiz-field"><label>Action</label><select id="' + p + '-act">' +
                 opt('switchOn',     'Turn On',  c.action || 'switchOn') +
                 opt('switchOff',    'Turn Off', c.action) +
@@ -592,6 +584,56 @@
         return '';
     }
 
+    /* ── Searchable device picker ───────────────────────────────────── */
+    function buildDevicePicker(containerId, currentValue, onChange) {
+        var wrap = document.getElementById(containerId);
+        if (!wrap) return;
+
+        var selectedName = currentValue || '';
+        wrap.className = 'ng-wiz-dev-picker';
+        wrap.innerHTML =
+            '<div class="ng-wiz-dp-selected' + (selectedName ? ' ng-wiz-dp-has-sel' : '') + '">' +
+            '<i class="fa-solid fa-plug"></i>' +
+            '<span class="ng-wiz-dp-sel-name">' + (selectedName ? escH(selectedName) : 'Select a device…') + '</span>' +
+            '</div>' +
+            '<input class="ng-wiz-dp-search" type="text" placeholder="Search devices…" autocomplete="off">' +
+            '<div class="ng-wiz-dp-list"><div class="ng-wiz-dp-loading">Loading devices…</div></div>';
+
+        var searchEl = wrap.querySelector('.ng-wiz-dp-search');
+        var listEl   = wrap.querySelector('.ng-wiz-dp-list');
+        var selWrap  = wrap.querySelector('.ng-wiz-dp-selected');
+        var selEl    = wrap.querySelector('.ng-wiz-dp-sel-name');
+        var allDevs  = [];
+
+        function renderList(q) {
+            q = (q || '').toLowerCase().trim();
+            var hits = q ? allDevs.filter(function (d) { return d.Name.toLowerCase().indexOf(q) !== -1; }) : allDevs;
+            if (!hits.length) {
+                listEl.innerHTML = '<div class="ng-wiz-dp-empty">No devices found.</div>';
+                return;
+            }
+            listEl.innerHTML = '';
+            hits.slice(0, 60).forEach(function (d) {
+                var row = mk('div', 'ng-wiz-dp-row' + (d.Name === selectedName ? ' ng-wiz-dp-row--sel' : ''));
+                row.innerHTML =
+                    '<span class="ng-wiz-dp-row-name">' + escH(d.Name) + '</span>' +
+                    '<span class="ng-wiz-dp-row-type">' + escH(d.Type || '') + '</span>';
+                row.addEventListener('click', function () {
+                    selectedName = d.Name;
+                    selEl.textContent = d.Name;
+                    selWrap.classList.add('ng-wiz-dp-has-sel');
+                    listEl.querySelectorAll('.ng-wiz-dp-row--sel').forEach(function (r) { r.classList.remove('ng-wiz-dp-row--sel'); });
+                    row.classList.add('ng-wiz-dp-row--sel');
+                    onChange(d.Name);
+                });
+                listEl.appendChild(row);
+            });
+        }
+
+        loadDevs(function (devs) { allDevs = devs; renderList(''); });
+        searchEl.addEventListener('input', function () { renderList(this.value); });
+    }
+
     function wireActionForm(a, idx) {
         var c = a.config = a.config || {}, p = 'nwa' + idx;
 
@@ -601,18 +643,7 @@
         }
 
         if (a.type === 'switch') {
-            loadDevs(function (devs) {
-                var sel = document.getElementById(p + '-dev');
-                if (!sel) return;
-                sel.innerHTML = '<option value="">— Select —</option>';
-                devs.forEach(function (d) {
-                    var o = document.createElement('option');
-                    o.value = d.Name; o.textContent = d.Name;
-                    if (d.Name === c.device) o.selected = true;
-                    sel.appendChild(o);
-                });
-                sel.addEventListener('change', function () { c.device = this.value; });
-            });
+            buildDevicePicker(p + '-dev-picker', c.device, function (name) { c.device = name; });
             var actEl  = document.getElementById(p + '-act');
             var dimWrp = document.getElementById(p + '-dw');
             if (actEl) actEl.addEventListener('change', function () {
@@ -939,18 +970,21 @@
         }, 5000);
     }
 
-    /* ── Inject wizard button into toolbar ──────────────────────────── */
+    /* ── Inject wizard button into file-list nav ─────────────────────── */
     function addWizardButton() {
         if (document.getElementById('ng-wizard-trigger')) return;
-        var toolbar = document.querySelector('.events-editor__toolbar');
-        if (!toolbar) return;
+        var statesLink = document.querySelector(
+            'nav.events-editor__file-list a[ng-click*="setActiveEventId(\'states\')"]'
+        );
+        if (!statesLink) return;
 
-        var btn = mk('button', '');
+        var btn = mk('a', 'events-editor__file');
         btn.id        = 'ng-wizard-trigger';
+        btn.href      = 'javascript:void(0)';
         btn.title     = 'Create a new automation with the step-by-step wizard';
-        btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Quick Wizard';
+        btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i>';
         btn.addEventListener('click', openWizard);
-        toolbar.appendChild(btn);
+        statesLink.insertAdjacentElement('afterend', btn);
     }
 
     /* ── Init ───────────────────────────────────────────────────────── */
@@ -964,7 +998,7 @@
 
         var mo = new MutationObserver(function (muts) {
             if (muts.some(function (m) { return m.addedNodes.length > 0; }) &&
-                document.querySelector('.events-editor__toolbar') &&
+                document.querySelector('nav.events-editor__file-list a[ng-click*="setActiveEventId(\'states\')"]') &&
                 !document.getElementById('ng-wizard-trigger')) {
                 setTimeout(addWizardButton, 250);
             }

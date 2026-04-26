@@ -1367,6 +1367,94 @@
         margin-bottom: 10px;
     }
 
+/* ── Searchable device picker ───────────────────────────────────── */
+.ng-wiz-dev-picker {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--dz-border);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--dz-bg);
+}
+
+.ng-wiz-dp-selected {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 10px;
+    background: rgba(var(--dz-accent-rgb), 0.05);
+    border-bottom: 1px solid var(--dz-border);
+    font-size: 12px;
+    color: var(--dz-text-faint);
+    min-height: 32px;
+}
+
+    .ng-wiz-dp-selected i { color: var(--dz-accent); font-size: 11px; opacity: 0.7; }
+
+    .ng-wiz-dp-has-sel .ng-wiz-dp-sel-name {
+        color: var(--dz-text);
+        font-weight: 500;
+    }
+
+.ng-wiz-dp-search {
+    width: 100%;
+    padding: 7px 10px !important;
+    border: none !important;
+    border-bottom: 1px solid var(--dz-border) !important;
+    border-radius: 0 !important;
+    background: var(--dz-surface) !important;
+    color: var(--dz-text) !important;
+    font-size: 12px !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+    .ng-wiz-dp-search:focus {
+        border-bottom-color: var(--dz-accent) !important;
+    }
+
+.ng-wiz-dp-list {
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.ng-wiz-dp-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.1s;
+}
+
+    .ng-wiz-dp-row:hover    { background: rgba(var(--dz-accent-rgb), 0.08); }
+    .ng-wiz-dp-row--sel     { background: rgba(var(--dz-accent-rgb), 0.15) !important; }
+
+.ng-wiz-dp-row-name {
+    color: var(--dz-text);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 65%;
+}
+
+.ng-wiz-dp-row-type {
+    color: var(--dz-text-faint);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.ng-wiz-dp-loading,
+.ng-wiz-dp-empty {
+    padding: 14px 12px;
+    color: var(--dz-text-faint);
+    font-size: 12px;
+    text-align: center;
+}
+
 /* ── Code preview (step 4) ───────────────────────────────────────── */
 .ng-wiz-review-layout {
     display: flex;
