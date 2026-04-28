@@ -563,8 +563,9 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
 .dz-range-bar {
     position: absolute;
     top: -3px;
-    left: 0;
-    right: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 98%;
     height: 3px;
     overflow: visible;
     z-index: 1;
