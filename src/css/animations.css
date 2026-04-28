@@ -563,11 +563,10 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
 .dz-range-bar {
     position: absolute;
     top: -3px;
-    left: -1px;
-    right: -1px;
+    left: 0;
+    right: 0;
     height: 3px;
     overflow: visible;
-    border-radius: inherit;
     z-index: 1;
     pointer-events: none;
 }
@@ -576,7 +575,8 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
     width: 100%;
     height: 100%;
     background: var(--dz-range-gradient);
-    border-radius: inherit;
+    border-top-left-radius: var(--dz-widget-border-radius, 12px);
+    border-top-right-radius: var(--dz-widget-border-radius, 12px);
     overflow: hidden;
 }
 
@@ -584,7 +584,7 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
 .dz-range-bar::after {
     content: '';
     position: absolute;
-    top: 50%;
+    top: 1.5px;
     left: var(--dz-range-val-pct, 50%);
     transform: translate(-50%, -50%);
     width: 7px;

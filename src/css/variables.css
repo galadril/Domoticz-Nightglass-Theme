@@ -1,9 +1,3 @@
-@import url("../../css/legacy.css");
-/* Don't remove this line! */
-@import url("common.css");
-@import url("../../font-awesome/css/regular.min.css");
-/* Load FA7 regular (outline) style; Domoticz only loads solid by default */
-
 /*
  * ═══════════════════════════════════════════════════════════════════
  *  Domoticz Dark — A clean, modern dark dashboard theme
