@@ -194,3 +194,79 @@
     }
 })();
 
+
+
+/* ── Automation Wizard — Ace editor on the review/code step ─────────
+   Replaces the plain .aw-code-review textarea with a full Ace editor
+   (Lua mode, user's saved theme) and keeps ng-model in sync.
+   ─────────────────────────────────────────────────────────────────── */
+(function () {
+    'use strict';
+
+    var ACE_THEME_KEY = 'dz-ace-theme';
+    var DEFAULT_THEME = 'ace/theme/tomorrow_night';
+
+    function resolvedTheme() {
+        var raw = localStorage.getItem(ACE_THEME_KEY) || ('string:' + DEFAULT_THEME);
+        return raw.replace(/^string:/, '');
+    }
+
+    function mountAce() {
+        var ta = document.querySelector('automation-wizard .aw-code-review');
+        if (!ta || ta._awAce || !window.ace) return;
+        ta._awAce = true;
+
+        // Build the Ace container, insert before the hidden textarea
+        var wrap = document.createElement('div');
+        wrap.className = 'aw-ace-wrap';
+        ta.parentNode.insertBefore(wrap, ta);
+        ta.style.display = 'none';
+
+        var editor = ace.edit(wrap);
+        editor.setTheme(resolvedTheme());
+        editor.session.setMode('ace/mode/lua');
+        editor.setOptions({
+            fontSize: '13px',
+            showPrintMargin: false,
+            tabSize: 4,
+            useSoftTabs: true,
+            wrap: false,
+            highlightActiveLine: true,
+        });
+        editor.setValue(ta.value, -1);
+
+        // Ace → Angular: trigger a native input event so ng-model picks up the change
+        editor.session.on('change', function () {
+            var val = editor.getValue();
+            if (ta.value === val) return;
+            ta.value = val;
+            ta.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+
+        // Angular → Ace: poll for external value changes (the "name change" hook
+        // in the wizard controller regenerates code while the editor is open)
+        var lastVal = ta.value;
+        (function poll() {
+            if (!document.body.contains(wrap)) return;
+            if (ta.value !== lastVal) {
+                lastVal = ta.value;
+                var pos = editor.getCursorPosition();
+                editor.setValue(ta.value, -1);
+                editor.moveCursorToPosition(pos);
+            }
+            setTimeout(poll, 250);
+        })();
+
+        // Resize Ace when the step panel is shown/hidden by ng-show
+        new MutationObserver(function () {
+            if (wrap.offsetParent !== null) editor.resize();
+        }).observe(wrap.parentElement, { attributes: true, attributeFilter: ['style', 'class'] });
+    }
+
+    // Watch for the textarea to be added to the DOM (Angular renders step 4 lazily)
+    new MutationObserver(function () {
+        var ta = document.querySelector('automation-wizard .aw-code-review');
+        if (ta && !ta._awAce) setTimeout(mountAce, 80);
+    }).observe(document.body, { childList: true, subtree: true });
+
+})();

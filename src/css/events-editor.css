@@ -1089,6 +1089,21 @@
     font-size: 12px !important;
 }
 
+/* ── Ace editor replacing .aw-code-review ───────────────────────── */
+.aw-ace-wrap {
+    height: 300px;          /* matches textarea rows="14" */
+    border: 1px solid var(--dz-border);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+}
+
+.aw-ace-wrap .ace_editor {
+    border-radius: 6px;
+    font-family: 'Consolas', 'Monaco', 'Fira Code', monospace !important;
+    font-size: 13px !important;
+}
+
 /* ── Footer ─────────────────────────────────────────────────────── */
 .aw-footer {
     background: var(--dz-modal-header-bg);
