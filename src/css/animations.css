@@ -564,10 +564,9 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
 .dz-temp-accent.dz-range-gradient::before {
     content: '';
     position: absolute;
-    /* Reach the outer edge of the card: padding + border */
     top: -12px;
-    left: -14px;
-    right: -14px;
+    left: -15px;
+    right: -15px;
     height: 3px;
     background: var(--dz-range-gradient);
     border-radius: var(--dz-widget-border-radius, 12px)
@@ -579,7 +578,7 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
 .dz-temp-accent.dz-range-gradient .dz-range-fade {
     position: absolute;
     top: -12px;
-    right: -14px;
+    right: -15px;
     width: calc(100% - var(--dz-range-pos, 50%));
     height: 3px;
     background: var(--dz-surface-2, #2a2b35);
@@ -594,7 +593,7 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
 .dz-temp-accent.dz-range-gradient .dz-range-needle {
     position: absolute;
     top: -12px;
-    left: calc(var(--dz-range-pos, 50%) - 14px);
+    left: calc(var(--dz-range-pos, 50%) - 15px);
     width: 5px;
     height: 5px;
     background: var(--dz-text, #e2e4ed);
