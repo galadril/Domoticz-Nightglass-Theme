@@ -565,7 +565,8 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
     top: -3px;
     left: -1px;
     right: -1px;
-    bottom: 0;
+    /* Height = border-radius + bar thickness: just enough to show the full corner arc */
+    height: calc(var(--dz-widget-border-radius, 12px) + 3px);
     overflow: hidden;
     border-radius: var(--dz-widget-border-radius, 12px);
     z-index: 1;
@@ -574,11 +575,15 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
 
 .dz-range-bar-inner {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: var(--dz-range-gradient);
+    inset: 0;
+    /* Three layers:
+       1. Horizontal gradient stripe (3px) across the top
+       2. Left arc band (3px wide) — clipped by parent border-radius into the left corner arc
+       3. Right arc band (3px wide) — clipped into the right corner arc */
+    background:
+        var(--dz-range-gradient)                                         top    / 100% 3px  no-repeat,
+        linear-gradient(var(--dz-range-arc-start, transparent), var(--dz-range-arc-start, transparent)) left   / 3px  100% no-repeat,
+        linear-gradient(var(--dz-range-arc-end,   transparent), var(--dz-range-arc-end,   transparent)) right  / 3px  100% no-repeat;
 }
 
 /* Dot needle at current value position */
