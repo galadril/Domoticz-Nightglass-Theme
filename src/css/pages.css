@@ -21,6 +21,10 @@
         color: var(--dz-text) !important;
     }
 
+.page-content-container {
+    margin-top: 0px !important;
+}
+
 .dd-widget-body {
     /*background: var(--dz-surface-2) !important;*/
     color: var(--dz-text) !important;
