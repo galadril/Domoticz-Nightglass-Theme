@@ -410,14 +410,14 @@ table tbody tr.even.row_selected td {
 
 div.log {
     border: 1px solid var(--dz-surface-3);
-    background: var(--dz-bg-alt);
+    background: var(--dz-surface-2);
     border-radius: 8px;
 }
 
 .log-console-container {
     border: 1px solid var(--dz-surface-3);
     border-radius: 10px;
-    background: var(--dz-bg);
+    background: var(--dz-surface);
 }
 
 .log-toolbar {
@@ -472,7 +472,7 @@ mark.log-highlight {
 /* All colors use CSS variables so custom presets are respected.   */
 
 body.dz-light .log-console-container {
-    background: var(--dz-bg);
+    background: var(--dz-surface);
 }
 
 body.dz-light .log-console {
