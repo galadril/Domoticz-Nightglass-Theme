@@ -92,7 +92,7 @@
 
     /* ── Setpoint state ────────────────────────────────────────────── */
 
-    var _spMin = -200, _spMax = 200, _spStep = 0.5;
+    var _spMin = -200, _spMax = 200, _spStep = 0.5, _spUnit = '°';
 
     function valToT(v)  { return Math.max(0, Math.min(1, (v - _spMin) / (_spMax - _spMin || 1))); }
     function tToVal(t)  {
@@ -165,9 +165,19 @@
 
         var readout = document.getElementById('ng-sp-display');
         if (readout) {
-            readout.textContent = (+val).toFixed(1) + '°';
+            readout.textContent = (+val).toFixed(1) + ' ' + _spUnit;
             readout.style.color = color;
         }
+    }
+
+    function applyUnit(unit) {
+        if (!unit) return;
+        _spUnit = unit;
+        var unitText = document.getElementById('ng-sp-unit-text');
+        if (unitText) unitText.textContent = _spUnit;
+        // Refresh readout to show new unit
+        var inp = document.getElementById('popup_setpoint');
+        if (inp) updateArc(parseFloat(inp.value) || 0);
     }
 
     function syncArcFromInput() {
@@ -175,6 +185,12 @@
             _spMin  = parseFloat(window.$.setmin)  !== undefined ? parseFloat(window.$.setmin)  : -200;
             _spMax  = parseFloat(window.$.setmax)  !== undefined ? parseFloat(window.$.setmax)  :  200;
             _spStep = parseFloat(window.$.setstep) || 0.5;
+            // Unit: Domoticz sets $.setunit when available; fall back to API fetch
+            if (window.$.setunit) {
+                applyUnit(window.$.setunit);
+            } else if (window.$.devIdx) {
+                fetchDeviceUnit(window.$.devIdx);
+            }
         }
         var input = document.getElementById('popup_setpoint');
         if (!input) return;
@@ -185,6 +201,17 @@
         if (actDisp && actual) {
             actDisp.textContent = actual.textContent || actual.innerHTML || '—';
         }
+    }
+
+    function fetchDeviceUnit(idx) {
+        if (!idx) return;
+        fetch('/json.htm?type=devices&rid=' + encodeURIComponent(idx))
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var item = data && data.result && data.result[0];
+                if (item && item.Unit) applyUnit(item.Unit);
+            })
+            .catch(function () {});
     }
 
     /* ── Global step handler (called from onclick) ─────────────────── */
@@ -940,10 +967,11 @@
     }
 
     // Public API — callable from demo pages and Domoticz hooks without knowledge of internals
-    window.ngShowSetpointArc = function (val, min, max, step, actualVal) {
+    window.ngShowSetpointArc = function (val, min, max, step, actualVal, unit) {
         if (min  !== undefined) _spMin  = +min;
         if (max  !== undefined) _spMax  = +max;
         if (step !== undefined) _spStep = +step || 0.5;
+        if (unit !== undefined) applyUnit(unit);
         var inp = document.getElementById('popup_setpoint');
         var act = document.getElementById('actual_value');
         var actDisp = document.getElementById('ng-sp-actual');
@@ -952,7 +980,7 @@
         if (actDisp) actDisp.textContent = (actualVal !== undefined ? actualVal : val);
         updateArc(+val);
         var disp = document.getElementById('ng-sp-display');
-        if (disp) { disp.textContent = (+val).toFixed(1) + '°'; disp.style.color = tempColor(valToT(+val)); }
+        if (disp) { disp.textContent = (+val).toFixed(1) + ' ' + _spUnit; disp.style.color = tempColor(valToT(+val)); }
     };
 
     if (document.readyState === 'loading') {

@@ -508,6 +508,155 @@ document.addEventListener('DOMContentLoaded', function () {
         return null;
     }
 
+    /* ── Bar-range accent: read configured ranges from Angular scope ── */
+
+    function hexToRgbArr(hex) {
+        if (!hex || hex[0] !== '#') return null;
+        var n = parseInt(hex.slice(1), 16);
+        if (isNaN(n)) return null;
+        return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    }
+
+    function rgbArrToHex(rgb) {
+        return '#' + ((1 << 24) | (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]).toString(16).slice(1);
+    }
+
+    function lerpColor(c1, c2, t) {
+        var a = hexToRgbArr(c1), b = hexToRgbArr(c2);
+        if (!a || !b) return c1;
+        return rgbArrToHex([
+            Math.round(a[0] + (b[0] - a[0]) * t),
+            Math.round(a[1] + (b[1] - a[1]) * t),
+            Math.round(a[2] + (b[2] - a[2]) * t)
+        ]);
+    }
+
+    function hexToRgba(hex, alpha) {
+        var rgb = hexToRgbArr(hex);
+        if (!rgb) return hex;
+        return 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + alpha + ')';
+    }
+
+    function resolveBarRangeGradient(card) {
+        if (!window.angular) return null;
+        var lastupdate = card.querySelector('td#lastupdate');
+        if (!lastupdate) return null;
+        var dzBarEl = lastupdate.querySelector('dz-bar');
+        if (!dzBarEl) return null;
+        try {
+            var scope = angular.element(dzBarEl).isolateScope();
+            if (!scope) return null;
+            var ranges = scope.ranges;
+            var val    = parseFloat(scope.value);
+            if (!Array.isArray(ranges) || !ranges.length || isNaN(val)) return null;
+
+            var sorted = ranges.map(function (r) {
+                return { from: parseFloat(r.from), to: parseFloat(r.to), color: r.color };
+            }).filter(function (r) { return !isNaN(r.from) && !isNaN(r.to) && r.color; });
+            if (!sorted.length) return null;
+
+            sorted.sort(function (a, b) { return Math.min(a.from, a.to) - Math.min(b.from, b.to); });
+
+            // Compute the full span across all ranges
+            var globalMin = Math.min(sorted[0].from, sorted[0].to);
+            var globalMax = Math.max(sorted[sorted.length - 1].from, sorted[sorted.length - 1].to);
+            var span = globalMax - globalMin;
+            if (span <= 0) return null;
+
+            // Build gradient stops: full opacity up to current value, low opacity beyond
+            var valPct = Math.max(0, Math.min(100, ((val - globalMin) / span) * 100));
+            var ACTIVE_ALPHA = 1;
+            var FADED_ALPHA  = 0.25;
+            var BLEND_HALF   = 2.0; // % on each side of a range boundary to blend across
+            var stops = [];
+            for (var i = 0; i < sorted.length; i++) {
+                var lo = Math.min(sorted[i].from, sorted[i].to);
+                var hi = Math.max(sorted[i].from, sorted[i].to);
+                var pctStart = ((lo - globalMin) / span) * 100;
+                var pctEnd   = ((hi - globalMin) / span) * 100;
+                var col = sorted[i].color;
+                // Shrink each range inward at boundaries shared with adjacent ranges so
+                // CSS interpolates across the gap — producing a smooth color blend.
+                var adjStart = pctStart + (i > 0 ? BLEND_HALF : 0);
+                var adjEnd   = pctEnd   - (i < sorted.length - 1 ? BLEND_HALF : 0);
+
+                if (pctEnd <= valPct) {
+                    stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + adjStart.toFixed(1) + '%');
+                    stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + adjEnd.toFixed(1) + '%');
+                } else if (pctStart >= valPct) {
+                    stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + adjStart.toFixed(1) + '%');
+                    stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + adjEnd.toFixed(1) + '%');
+                } else {
+                    var clampedStart = Math.min(adjStart, valPct);
+                    var clampedEnd   = Math.max(adjEnd,   valPct);
+                    stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + clampedStart.toFixed(1) + '%');
+                    stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + valPct.toFixed(1) + '%');
+                    stops.push(hexToRgba(col, FADED_ALPHA)  + ' ' + valPct.toFixed(1) + '%');
+                    stops.push(hexToRgba(col, FADED_ALPHA)  + ' ' + clampedEnd.toFixed(1) + '%');
+                }
+            }
+            var gradient = 'linear-gradient(to right, ' + stops.join(', ') + ')';
+
+            // Interpolated color at current value for the accent fallback
+            var color = sorted[0].color;
+            for (var j = 0; j < sorted.length; j++) {
+                var rLo = Math.min(sorted[j].from, sorted[j].to);
+                var rHi = Math.max(sorted[j].from, sorted[j].to);
+                if (val >= rLo && val <= rHi) {
+                    var t = (rHi - rLo) > 0 ? (val - rLo) / (rHi - rLo) : 0.5;
+                    var next = (j + 1 < sorted.length) ? sorted[j + 1].color : null;
+                    color = next ? lerpColor(sorted[j].color, next, t) : sorted[j].color;
+                    break;
+                }
+            }
+
+            return { gradient: gradient, color: color, valPct: valPct };
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function resolveBarRangeColor(card) {
+        if (!window.angular) return null;
+        var lastupdate = card.querySelector('td#lastupdate');
+        if (!lastupdate) return null;
+        var dzBarEl = lastupdate.querySelector('dz-bar');
+        if (!dzBarEl) return null;
+        try {
+            var scope = angular.element(dzBarEl).isolateScope();
+            if (!scope) return null;
+            var ranges = scope.ranges;
+            var val    = parseFloat(scope.value);
+            if (!Array.isArray(ranges) || !ranges.length || isNaN(val)) return null;
+
+            var sorted = ranges.map(function (r) {
+                return { from: parseFloat(r.from), to: parseFloat(r.to), color: r.color };
+            }).filter(function (r) { return !isNaN(r.from) && !isNaN(r.to) && r.color; });
+            if (!sorted.length) return null;
+
+            sorted.sort(function (a, b) { return Math.min(a.from, a.to) - Math.min(b.from, b.to); });
+
+            for (var i = 0; i < sorted.length; i++) {
+                var lo = Math.min(sorted[i].from, sorted[i].to);
+                var hi = Math.max(sorted[i].from, sorted[i].to);
+                if (val >= lo && val <= hi) {
+                    var t = (hi - lo) > 0 ? (val - lo) / (hi - lo) : 0.5;
+                    var next = (i + 1 < sorted.length) ? sorted[i + 1].color : null;
+                    var prev = (i - 1 >= 0) ? sorted[i - 1].color : null;
+                    if (next) return lerpColor(sorted[i].color, next, t);
+                    if (prev) return lerpColor(prev, sorted[i].color, t);
+                    return sorted[i].color;
+                }
+            }
+
+            var firstLo = Math.min(sorted[0].from, sorted[0].to);
+            if (val < firstLo) return sorted[0].color;
+            return sorted[sorted.length - 1].color;
+        } catch (e) {
+            return null;
+        }
+    }
+
     function resolveAccentColor(btText, iconCls) {
         // Temperature
         var c = parseCelsius(btText);
@@ -579,13 +728,37 @@ document.addEventListener('DOMContentLoaded', function () {
 
             var bigtext = card.querySelector('td#bigtext');
             if (bigtext) {
-                var btText = bigtext.textContent || '';
-                var accentIcon = card.querySelector('i.dz-fa-device');
-                var accentCls  = accentIcon ? (accentIcon.className || '') : '';
-                var accentColor = resolveAccentColor(btText, accentCls);
-                if (accentColor) {
-                    card.classList.add('dz-temp-accent');
-                    card.style.setProperty('--dz-temp-accent', accentColor);
+                // Bar ranges (user-configured) take priority; fall back to our sensor-based color
+                var rangeResult = resolveBarRangeGradient(card);
+                if (rangeResult) {
+                    card.classList.add('dz-temp-accent', 'dz-range-gradient');
+                    card.style.setProperty('--dz-range-gradient', rangeResult.gradient);
+                    card.style.setProperty('--dz-temp-accent', rangeResult.color);
+                    card.style.setProperty('--dz-range-val-pct', rangeResult.valPct.toFixed(1) + '%');
+
+                    // Inject gradient bar wrapper if not present
+                    var bar = card.querySelector('.dz-range-bar');
+                    if (!bar) {
+                        bar = document.createElement('div');
+                        bar.className = 'dz-range-bar';
+                        var inner = document.createElement('div');
+                        inner.className = 'dz-range-bar-inner';
+                        bar.appendChild(inner);
+                        card.insertBefore(bar, card.firstChild);
+                    }
+                } else {
+                    card.classList.remove('dz-range-gradient');
+                    var accentColor = resolveBarRangeColor(card);
+                    if (!accentColor) {
+                        var btText = bigtext.textContent || '';
+                        var accentIcon = card.querySelector('i.dz-fa-device');
+                        var accentCls  = accentIcon ? (accentIcon.className || '') : '';
+                        accentColor = resolveAccentColor(btText, accentCls);
+                    }
+                    if (accentColor) {
+                        card.classList.add('dz-temp-accent');
+                        card.style.setProperty('--dz-temp-accent', accentColor);
+                    }
                 }
             }
 

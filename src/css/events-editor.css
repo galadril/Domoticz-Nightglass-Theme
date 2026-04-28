@@ -905,3 +905,243 @@
 }
 
 
+
+
+/* ══════════════════════════════════════════════════════════════════
+   AUTOMATION WIZARD (native Domoticz <automation-wizard> component)
+   Domoticz's Events.css handles structural layout; we provide
+   Nightglass visual polish using our --dz-* token system.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Overlay ────────────────────────────────────────────────────── */
+.aw-overlay {
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+/* ── Modal shell ────────────────────────────────────────────────── */
+.aw-modal {
+    background: var(--dz-modal-bg);
+    color: var(--dz-modal-text);
+    border: 1px solid var(--dz-border);
+    border-radius: 10px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.55);
+}
+
+/* ── Header ─────────────────────────────────────────────────────── */
+.aw-header {
+    background: var(--dz-modal-header-bg);
+    border-bottom-color: var(--dz-border);
+    border-radius: 10px 10px 0 0;
+}
+
+.aw-title strong { color: var(--dz-text); }
+.aw-title small  { color: var(--dz-text-muted); opacity: 1; }
+
+.aw-close {
+    color: var(--dz-text-muted);
+}
+.aw-close:hover { color: var(--dz-text); opacity: 1; }
+
+/* ── Step indicator ─────────────────────────────────────────────── */
+.aw-step + .aw-step::before {
+    background: var(--dz-border);
+}
+
+.aw-step-active + .aw-step::before,
+.aw-step-done  + .aw-step::before {
+    background: var(--dz-accent);
+}
+
+.aw-step-circle {
+    background: var(--dz-surface-3);
+    color: var(--dz-text-muted);
+}
+
+.aw-step-active .aw-step-circle {
+    background: var(--dz-accent);
+    color: #fff;
+    box-shadow: 0 0 0 3px rgba(var(--dz-accent-rgb), 0.2);
+}
+
+.aw-step-done .aw-step-circle {
+    background: var(--dz-btn-success-bg, #4caf7d);
+    color: #fff;
+}
+
+.aw-step-label         { color: var(--dz-text-muted); opacity: 1; }
+.aw-step-active .aw-step-label { color: var(--dz-accent); font-weight: 600; }
+.aw-step-done .aw-step-label   { color: var(--dz-btn-success-bg, #4caf7d); }
+
+/* ── Body ───────────────────────────────────────────────────────── */
+.aw-body {
+    background: var(--dz-modal-bg);
+    color: var(--dz-text);
+    scrollbar-width: thin;
+    scrollbar-color: var(--dz-border) transparent;
+}
+.aw-body::-webkit-scrollbar       { width: 4px; }
+.aw-body::-webkit-scrollbar-thumb { background: var(--dz-border); border-radius: 2px; }
+.aw-body::-webkit-scrollbar-track { background: transparent; }
+
+.aw-step-heading h4 { color: var(--dz-text); }
+.aw-step-heading p  { color: var(--dz-text-muted); opacity: 1; }
+
+/* ── Trigger / action cards ─────────────────────────────────────── */
+.aw-card {
+    background: var(--dz-surface-2);
+    color: var(--dz-text);
+    border-color: var(--dz-border);
+    border-radius: 8px;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.aw-card:hover {
+    border-color: var(--dz-accent);
+    background: var(--dz-btn-hover-bg);
+    box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.12);
+}
+
+.aw-card-selected {
+    border-color: var(--dz-accent);
+    background: rgba(var(--dz-accent-rgb), 0.1);
+    box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.2);
+}
+
+.aw-card-icon                  { color: var(--dz-accent); }
+.aw-card-text strong           { color: var(--dz-text); }
+.aw-card-text span             { color: var(--dz-text-muted); opacity: 1; }
+
+/* ── Form fields ────────────────────────────────────────────────── */
+.aw-field label { color: var(--dz-text-soft); opacity: 1; font-size: 12px; }
+
+/* ── Device picker list ─────────────────────────────────────────── */
+.aw-device-list {
+    background: var(--dz-input-bg);
+    color: var(--dz-input-text);
+    border-color: var(--dz-border);
+    border-radius: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--dz-border) transparent;
+}
+.aw-device-list::-webkit-scrollbar       { width: 4px; }
+.aw-device-list::-webkit-scrollbar-thumb { background: var(--dz-border); border-radius: 2px; }
+
+.aw-device-loading { color: var(--dz-text-muted); opacity: 1; }
+
+.aw-device-row {
+    color: var(--dz-input-text);
+    border-bottom-color: rgba(var(--dz-border-rgb), 0.3);
+}
+
+.aw-device-row:hover,
+.aw-device-row-selected {
+    background: rgba(var(--dz-accent-rgb), 0.1);
+    color: var(--dz-text);
+}
+
+.aw-device-row-selected { background: rgba(var(--dz-accent-rgb), 0.15); }
+
+.aw-device-name  { color: var(--dz-text); }
+.aw-device-type  { color: var(--dz-text-muted); opacity: 1; }
+.aw-selected-value { color: var(--dz-btn-success-bg, #4caf7d); }
+
+/* ── Empty hint ─────────────────────────────────────────────────── */
+.aw-empty-hint {
+    color: var(--dz-text-muted);
+    opacity: 1;
+    border-color: var(--dz-border);
+    border-radius: 6px;
+}
+
+/* ── Actions list ───────────────────────────────────────────────── */
+.aw-action-item {
+    border-color: var(--dz-border);
+    border-radius: 6px;
+}
+
+.aw-action-header {
+    background: var(--dz-modal-header-bg);
+    color: var(--dz-text);
+}
+
+.aw-action-body { background: var(--dz-modal-bg); }
+
+/* ── Action type picker (nested overlay) ────────────────────────── */
+.aw-action-picker-modal {
+    background: var(--dz-modal-bg);
+    color: var(--dz-text);
+    border: 1px solid var(--dz-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.55);
+}
+
+.aw-action-picker-header strong { color: var(--dz-text); }
+
+/* ── Code textareas ─────────────────────────────────────────────── */
+.aw-code-input,
+.aw-code-review {
+    background: var(--dz-input-bg) !important;
+    color: var(--dz-input-text) !important;
+    border-color: var(--dz-border) !important;
+    border-radius: 6px !important;
+    font-family: 'Consolas', 'Monaco', 'Fira Code', monospace;
+    font-size: 12px !important;
+}
+
+/* ── Ace editor replacing .aw-code-review ───────────────────────── */
+.aw-ace-wrap {
+    height: 300px;          /* matches textarea rows="14" */
+    border: 1px solid var(--dz-border);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+}
+
+.aw-ace-wrap .ace_editor {
+    border-radius: 6px;
+    font-family: 'Consolas', 'Monaco', 'Fira Code', monospace !important;
+    font-size: 13px !important;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────── */
+.aw-footer {
+    background: var(--dz-modal-header-bg);
+    border-top-color: var(--dz-border);
+    border-radius: 0 0 10px 10px;
+}
+
+/* ── Wizard launcher button (in file-list nav) ──────────────────── */
+.events-editor__file-wizard {
+    background: linear-gradient(135deg, var(--dz-accent), rgba(var(--dz-accent-rgb), 0.75)) !important;
+    border-color: transparent !important;
+    border-radius: 5px !important;
+    color: #fff !important;
+    font-style: normal !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.02em;
+    opacity: 1 !important;
+    padding: 4px 10px !important;
+    box-shadow: 0 2px 6px rgba(var(--dz-accent-rgb), 0.35);
+    transition: box-shadow 0.15s, opacity 0.15s, transform 0.1s;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 5px;
+}
+
+.events-editor__file-wizard:hover {
+    background: linear-gradient(135deg, var(--dz-accent-light), var(--dz-accent)) !important;
+    box-shadow: 0 3px 10px rgba(var(--dz-accent-rgb), 0.5) !important;
+    transform: translateY(-1px);
+    color: #fff !important;
+}
+
+.events-editor__file-wizard:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(var(--dz-accent-rgb), 0.3) !important;
+}
+
+.events-editor__file-wizard .fa-wand-magic-sparkles {
+    font-size: 11px;
+    opacity: 0.9;
+}
