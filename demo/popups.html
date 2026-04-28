@@ -189,6 +189,87 @@
         </div>
       </div>
 
+      <!-- ── Bar Ranges Modal ── -->
+      <div class="ng-demo-divider">
+        <div class="ng-demo-divider-title"><i class="fa-solid fa-chart-bar"></i> Bar Ranges &mdash; Color Picker</div>
+        <p style="color:var(--dz-text-muted);font-size:.82rem;margin:0 0 16px">
+          Opened from the <i class="fa-solid fa-chart-bar" style="font-size:.8rem"></i> bar button on a setpoint edit dialog.
+          Click a color swatch to open the custom HSV picker.
+        </p>
+        <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;">
+
+          <!-- Static mock: bar ranges modal body -->
+          <div class="modal-content" style="width:400px;max-width:100%;">
+            <div class="modal-header">
+              <button type="button" class="close">&times;</button>
+              <h4 class="modal-title"><i class="fa-solid fa-chart-bar"></i> Bar Ranges &mdash; Thermostaat</h4>
+            </div>
+            <div class="modal-body">
+              <div class="dd-action-list-editor">
+                <div class="dd-al-items" id="demo-bar-ranges-rows">
+                  <div>
+                    <span style="flex:1;color:var(--dz-text-muted);font-size:0.78rem;">From</span>
+                    <strong style="min-width:36px;text-align:center;">0</strong>
+                    <span style="color:var(--dz-text-faint);">–</span>
+                    <strong style="min-width:36px;text-align:center;">15</strong>
+                    <input class="dd-range-color-picker" type="color" value="#29b6f6">
+                    <button class="btn btn-xs btn-danger" style="margin-left:auto;" onclick="demoLog('Delete range 0–15')"><i class="fa-solid fa-trash"></i></button>
+                  </div>
+                  <div>
+                    <span style="flex:1;color:var(--dz-text-muted);font-size:0.78rem;">From</span>
+                    <strong style="min-width:36px;text-align:center;">15</strong>
+                    <span style="color:var(--dz-text-faint);">–</span>
+                    <strong style="min-width:36px;text-align:center;">21</strong>
+                    <input class="dd-range-color-picker" type="color" value="#4caf7d">
+                    <button class="btn btn-xs btn-danger" style="margin-left:auto;" onclick="demoLog('Delete range 15–21')"><i class="fa-solid fa-trash"></i></button>
+                  </div>
+                  <div>
+                    <span style="flex:1;color:var(--dz-text-muted);font-size:0.78rem;">From</span>
+                    <strong style="min-width:36px;text-align:center;">21</strong>
+                    <span style="color:var(--dz-text-faint);">–</span>
+                    <strong style="min-width:36px;text-align:center;">28</strong>
+                    <input class="dd-range-color-picker" type="color" value="#f0a832">
+                    <button class="btn btn-xs btn-danger" style="margin-left:auto;" onclick="demoLog('Delete range 21–28')"><i class="fa-solid fa-trash"></i></button>
+                  </div>
+                  <div>
+                    <span style="flex:1;color:var(--dz-text-muted);font-size:0.78rem;">From</span>
+                    <strong style="min-width:36px;text-align:center;">28</strong>
+                    <span style="color:var(--dz-text-faint);">–</span>
+                    <strong style="min-width:36px;text-align:center;">40</strong>
+                    <input class="dd-range-color-picker" type="color" value="#e05555">
+                    <button class="btn btn-xs btn-danger" style="margin-left:auto;" onclick="demoLog('Delete range 28–40')"><i class="fa-solid fa-trash"></i></button>
+                  </div>
+                </div>
+                <div class="dd-al-add">
+                  <div class="dd-al-add-row">
+                    <input type="text" placeholder="From">
+                    <input type="text" placeholder="To">
+                    <input class="dd-range-color-picker" id="demo-rcp-input" type="color" value="#4e9af1">
+                    <button class="btn btn-sm btn-primary" onclick="demoLog('Add range')"><i class="fa-solid fa-plus"></i></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-danger pull-left" onclick="demoLog('Clear all')"><i class="fa-solid fa-trash"></i> Clear all</button>
+              <button class="btn btn-default pull-left" onclick="demoLog('Seed defaults')"><i class="fa-solid fa-wand-magic-sparkles"></i> Seed defaults</button>
+              <button class="btn btn-default" onclick="demoLog('Cancel')">Cancel</button>
+              <button class="btn btn-primary" onclick="demoLog('Save')">Save</button>
+            </div>
+          </div>
+
+          <!-- Info + result display -->
+          <div style="padding:4px 0;">
+            <p style="color:var(--dz-text-muted);font-size:.82rem;margin:0 0 8px;">
+              The color swatches above are injected by JS when the page loads.
+              Clicking one opens the HSV picker.
+            </p>
+            <p id="ng-rcp-demo-result" style="font-size:.82rem;color:var(--dz-text-muted);min-height:20px;"></p>
+          </div>
+
+        </div>
+      </div>
+
       <!-- ── Action log ── -->
       <div>
         <div class="ng-demo-divider-title" style="padding-top:8px"><i class="fa-solid fa-terminal"></i> Action Log</div>
@@ -213,10 +294,11 @@
   }
   window.demoLog = log;
 
-  window.$.setmin  = 5;
-  window.$.setmax  = 35;
-  window.$.setstep = 0.5;
-  window.$.devIdx  = 1;
+  window.$.setmin   = 5;
+  window.$.setmax   = 35;
+  window.$.setstep  = 0.5;
+  window.$.setunit  = '°C';
+  window.$.devIdx   = 1;
 
   /* Setpoint stubs */
   window.CloseSetpointPopup = function () { log('CloseSetpointPopup()'); };
@@ -413,8 +495,8 @@
   function tryInit() {
     if (!window.ngShowSetpointArc) { setTimeout(tryInit, 100); return; }
 
-    // Main interactive setpoint: cold preset
-    window.ngShowSetpointArc(8.0, 5, 35, 0.5, 8.0);
+    // Main interactive setpoint: cold preset (unit from $.setunit stub above)
+    window.ngShowSetpointArc(8.0, 5, 35, 0.5, 8.0, window.$.setunit || '°C');
 
     // Read-only preview clones
     buildPreview('ng-sp-preview-b', 21.0, 5, 35);
@@ -483,6 +565,16 @@
   }
 
   setTimeout(tryInit, 150);
+
+  // Show picked color in the result div whenever any dd-range-color-picker value changes
+  document.addEventListener('change', function (e) {
+    if (!e.target.classList.contains('dd-range-color-picker')) return;
+    var hex = e.target.value;
+    var el = document.getElementById('ng-rcp-demo-result');
+    if (el) el.innerHTML = 'Picked: <span style="display:inline-block;width:13px;height:13px;border-radius:50%;background:' + hex + ';vertical-align:middle;margin-right:4px;border:1px solid var(--dz-border)"></span><code>' + hex + '</code>';
+    log('Color picked → ' + hex);
+  });
+
 })();
 </script>
 
