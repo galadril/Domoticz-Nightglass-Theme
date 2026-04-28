@@ -562,42 +562,17 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
 
 .dz-range-bar {
     position: absolute;
-    top: -3px;
-    left: -1px;
-    right: -1px;
-    /* Height = border-radius + bar thickness: just enough to show the full corner arc */
-    height: calc(var(--dz-widget-border-radius, 12px) + 3px);
+    inset: 0;
     overflow: hidden;
-    border-radius: var(--dz-widget-border-radius, 12px);
+    border-radius: inherit;
     z-index: 1;
     pointer-events: none;
 }
 
 .dz-range-bar-inner {
-    position: absolute;
-    inset: 0;
-    /* Three layers:
-       1. Horizontal gradient stripe (3px) across the top
-       2. Left arc band (3px wide) — clipped by parent border-radius into the left corner arc
-       3. Right arc band (3px wide) — clipped into the right corner arc */
-    background:
-        var(--dz-range-gradient)                                         top    / 100% 3px  no-repeat,
-        linear-gradient(var(--dz-range-arc-start, transparent), var(--dz-range-arc-start, transparent)) left   / 3px  100% no-repeat,
-        linear-gradient(var(--dz-range-arc-end,   transparent), var(--dz-range-arc-end,   transparent)) right  / 3px  100% no-repeat;
-}
-
-/* Dot needle at current value position */
-.dz-range-bar::after {
-    content: '';
-    position: absolute;
-    top: 1.5px;
-    left: var(--dz-range-val-pct, 50%);
-    transform: translate(-50%, -50%);
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #fff;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    width: 100%;
+    height: 3px;
+    background: var(--dz-range-gradient);
 }
 
 

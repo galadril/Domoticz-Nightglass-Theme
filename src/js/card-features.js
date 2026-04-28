@@ -610,13 +610,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            // Edge colors for the side arc bands (replicates border-top corner curve)
-            var startAlpha = (valPct <= 0) ? FADED_ALPHA : ACTIVE_ALPHA;
-            var endAlpha   = (valPct >= 100) ? ACTIVE_ALPHA : FADED_ALPHA;
-            var arcStart = hexToRgba(sorted[0].color, startAlpha);
-            var arcEnd   = hexToRgba(sorted[sorted.length - 1].color, endAlpha);
-
-            return { gradient: gradient, color: color, valPct: valPct, arcStart: arcStart, arcEnd: arcEnd };
+            return { gradient: gradient, color: color, valPct: valPct };
         } catch (e) {
             return null;
         }
@@ -741,8 +735,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     card.style.setProperty('--dz-range-gradient', rangeResult.gradient);
                     card.style.setProperty('--dz-temp-accent', rangeResult.color);
                     card.style.setProperty('--dz-range-val-pct', rangeResult.valPct.toFixed(1) + '%');
-                    card.style.setProperty('--dz-range-arc-start', rangeResult.arcStart);
-                    card.style.setProperty('--dz-range-arc-end', rangeResult.arcEnd);
 
                     // Inject gradient bar wrapper if not present
                     var bar = card.querySelector('.dz-range-bar');
