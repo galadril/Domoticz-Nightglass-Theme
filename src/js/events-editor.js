@@ -131,6 +131,7 @@
         'icon-file':          'fa-code',
         'icon-th-large':      'fa-layer-group',
         'icon-cog':           'fa-gear',
+        'icon-certificate':   'fa-wand-magic-sparkles',
     };
 
     var iconClasses = Object.keys(ICON_CLASS_MAP);

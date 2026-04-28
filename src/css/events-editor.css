@@ -1096,14 +1096,37 @@
     border-radius: 0 0 10px 10px;
 }
 
-/* ── Wizard launcher tab (in file-list nav) ─────────────────────── */
+/* ── Wizard launcher button (in file-list nav) ──────────────────── */
 .events-editor__file-wizard {
-    border-color: rgba(var(--dz-accent-rgb), 0.5) !important;
-    color: var(--dz-accent) !important;
-    background: rgba(var(--dz-accent-rgb), 0.07) !important;
+    background: linear-gradient(135deg, var(--dz-accent), rgba(var(--dz-accent-rgb), 0.75)) !important;
+    border-color: transparent !important;
+    border-radius: 5px !important;
+    color: #fff !important;
+    font-style: normal !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.02em;
+    opacity: 1 !important;
+    padding: 4px 10px !important;
+    box-shadow: 0 2px 6px rgba(var(--dz-accent-rgb), 0.35);
+    transition: box-shadow 0.15s, opacity 0.15s, transform 0.1s;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 5px;
 }
 
 .events-editor__file-wizard:hover {
-    background: rgba(var(--dz-accent-rgb), 0.14) !important;
-    border-color: var(--dz-accent) !important;
+    background: linear-gradient(135deg, var(--dz-accent-light), var(--dz-accent)) !important;
+    box-shadow: 0 3px 10px rgba(var(--dz-accent-rgb), 0.5) !important;
+    transform: translateY(-1px);
+    color: #fff !important;
+}
+
+.events-editor__file-wizard:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(var(--dz-accent-rgb), 0.3) !important;
+}
+
+.events-editor__file-wizard .fa-wand-magic-sparkles {
+    font-size: 11px;
+    opacity: 0.9;
 }
