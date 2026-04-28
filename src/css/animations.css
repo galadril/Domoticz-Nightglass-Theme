@@ -651,10 +651,10 @@ div.item.itemBlock:hover .dz-sparkline-wrap,
 }
 
 #dz-search-box {
-    background: var(--dz-surface-2, #2a2b35);
-    border: 1px solid rgba(78,154,241,0.35);
-    border-radius: 16px;
-    box-shadow: 0 28px 90px rgba(0,0,0,0.65);
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-radius: 12px;
+    box-shadow: 0 24px 72px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(var(--dz-accent-rgb), 0.08);
     width: min(580px, 90vw);
     overflow: hidden;
 }
@@ -662,67 +662,69 @@ div.item.itemBlock:hover .dz-sparkline-wrap,
 #dz-search-input {
     display: block;
     width: 100%;
-    padding: 18px 22px;
-    font-size: 1.15rem;
+    padding: 16px 20px;
+    font-size: 1.1rem;
     background: transparent;
     border: none;
     outline: none;
-    color: var(--dz-text, #e2e4ed);
+    color: var(--dz-text);
     box-sizing: border-box;
-    caret-color: var(--dz-accent-color, #4e9af1);
+    caret-color: var(--dz-accent);
 }
 
     #dz-search-input::placeholder {
-        color: var(--dz-text-muted, #7c7f93);
+        color: var(--dz-text-muted);
     }
 
 #dz-search-results {
     max-height: 300px;
     overflow-y: auto;
-    border-top: 1px solid var(--dz-border, #2e3040);
+    border-top: 1px solid var(--dz-border);
     padding: 4px 0;
 }
 
 .dz-search-item {
-    padding: 10px 22px;
+    padding: 9px 20px;
     cursor: pointer;
     display: flex;
     align-items: center;
     gap: 12px;
-    color: var(--dz-text, #e2e4ed);
+    color: var(--dz-text);
     font-size: 0.95rem;
     transition: background 0.1s;
 }
 
     .dz-search-item:hover,
     .dz-search-item.dz-search-active {
-        background: var(--dz-surface-3, #33354a);
+        background: rgba(var(--dz-accent-rgb), 0.08);
+        color: var(--dz-text);
     }
 
     .dz-search-item i {
-        color: var(--dz-accent-color, #4e9af1);
+        color: var(--dz-accent);
         width: 20px;
         text-align: center;
         flex-shrink: 0;
     }
 
 .dz-search-hint {
-    padding: 8px 22px 10px;
+    padding: 8px 20px 10px;
     font-size: 0.75rem;
-    color: var(--dz-text-muted, #7c7f93);
-    border-top: 1px solid var(--dz-border, #2e3040);
+    color: var(--dz-text-muted);
+    border-top: 1px solid var(--dz-border);
     display: flex;
     flex-wrap: wrap;
     gap: 14px;
 }
 
     .dz-search-hint kbd {
-        background: var(--dz-surface-3, #33354a);
-        border: 1px solid var(--dz-border-b, #3a3b47);
+        background: var(--dz-surface-3);
+        border: 1px solid var(--dz-border-b);
         border-radius: 4px;
         padding: 1px 6px;
         font-family: inherit;
         font-size: 0.72rem;
+        color: var(--dz-text-soft);
     }
 
 
