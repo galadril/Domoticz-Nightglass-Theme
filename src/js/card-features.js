@@ -531,6 +531,17 @@ document.addEventListener('DOMContentLoaded', function () {
         ]);
     }
 
+    function desaturate(hex, amount) {
+        var rgb = hexToRgbArr(hex);
+        if (!rgb) return hex;
+        var gray = Math.round(rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114);
+        return rgbArrToHex([
+            Math.round(rgb[0] + (gray - rgb[0]) * amount),
+            Math.round(rgb[1] + (gray - rgb[1]) * amount),
+            Math.round(rgb[2] + (gray - rgb[2]) * amount)
+        ]);
+    }
+
     function resolveBarRangeGradient(card) {
         if (!window.angular) return null;
         var lastupdate = card.querySelector('td#lastupdate');
@@ -557,20 +568,39 @@ document.addEventListener('DOMContentLoaded', function () {
             var span = globalMax - globalMin;
             if (span <= 0) return null;
 
-            // Build gradient stops: each range occupies its proportional width
+            // Build gradient stops: vivid up to current value, faded beyond
+            var valPct = Math.max(0, Math.min(100, ((val - globalMin) / span) * 100));
             var stops = [];
+            var FADE = 0.75; // desaturation amount for inactive portion
             for (var i = 0; i < sorted.length; i++) {
                 var lo = Math.min(sorted[i].from, sorted[i].to);
                 var hi = Math.max(sorted[i].from, sorted[i].to);
                 var pctStart = ((lo - globalMin) / span) * 100;
                 var pctEnd   = ((hi - globalMin) / span) * 100;
-                stops.push(sorted[i].color + ' ' + pctStart.toFixed(1) + '%');
-                stops.push(sorted[i].color + ' ' + pctEnd.toFixed(1) + '%');
+                var col = sorted[i].color;
+
+                if (pctEnd <= valPct) {
+                    // Entire segment is before the value — vivid
+                    stops.push(col + ' ' + pctStart.toFixed(1) + '%');
+                    stops.push(col + ' ' + pctEnd.toFixed(1) + '%');
+                } else if (pctStart >= valPct) {
+                    // Entire segment is after the value — faded
+                    var faded = desaturate(col, FADE);
+                    stops.push(faded + ' ' + pctStart.toFixed(1) + '%');
+                    stops.push(faded + ' ' + pctEnd.toFixed(1) + '%');
+                } else {
+                    // The value falls within this segment — split it
+                    stops.push(col + ' ' + pctStart.toFixed(1) + '%');
+                    stops.push(col + ' ' + valPct.toFixed(1) + '%');
+                    var faded2 = desaturate(col, FADE);
+                    stops.push(faded2 + ' ' + valPct.toFixed(1) + '%');
+                    stops.push(faded2 + ' ' + pctEnd.toFixed(1) + '%');
+                }
             }
             var gradient = 'linear-gradient(to right, ' + stops.join(', ') + ')';
 
             // Current value position as percentage
-            var pos = Math.max(0, Math.min(100, ((val - globalMin) / span) * 100));
+            var pos = valPct;
 
             // Interpolated color at current value for the accent fallback
             var color = sorted[0].color;
