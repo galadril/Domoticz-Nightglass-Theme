@@ -727,6 +727,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     card.classList.add('dz-temp-accent', 'dz-range-gradient');
                     card.style.setProperty('--dz-range-gradient', rangeResult.gradient);
                     card.style.setProperty('--dz-temp-accent', rangeResult.color);
+
+                    // Inject gradient bar wrapper if not present
+                    var bar = card.querySelector('.dz-range-bar');
+                    if (!bar) {
+                        bar = document.createElement('div');
+                        bar.className = 'dz-range-bar';
+                        var inner = document.createElement('div');
+                        inner.className = 'dz-range-bar-inner';
+                        bar.appendChild(inner);
+                        card.insertBefore(bar, card.firstChild);
+                    }
                 } else {
                     card.classList.remove('dz-range-gradient');
                     var accentColor = resolveBarRangeColor(card);

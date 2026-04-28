@@ -555,12 +555,24 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
     transition: border-top-color 1.2s ease;
 }
 
-/* When bar ranges provide a gradient, paint it into the border-top area */
+/* When bar ranges provide a gradient, render via an inner wrapper that clips to border-radius */
 .dz-temp-accent.dz-range-gradient {
-    border-top: 3px solid transparent !important;
-    background-image: var(--dz-range-gradient), linear-gradient(var(--dz-surface-2, #2a2b35), var(--dz-surface-2, #2a2b35));
-    background-origin: border-box;
-    background-clip: border-box, padding-box;
+    border-top-color: transparent !important;
+}
+
+.dz-range-bar {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.dz-range-bar-inner {
+    width: 100%;
+    height: 3px;
+    background: var(--dz-range-gradient);
 }
 
 
