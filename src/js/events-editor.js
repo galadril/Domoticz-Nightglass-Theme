@@ -115,15 +115,37 @@
         'icon-trash':         'fa-trash',
         'icon-align-justify': 'fa-align-justify',
         'icon-question-sign': 'fa-circle-question',
+        'icon-asterisk':      'fa-asterisk',
+        'icon-ok':            'fa-check',
+        'icon-arrow-left':    'fa-arrow-left',
+        'icon-arrow-right':   'fa-arrow-right',
+        'icon-bell':          'fa-bell',
+        'icon-off':           'fa-power-off',
+        'icon-time':          'fa-clock',
+        'icon-star':          'fa-sun',
+        'icon-refresh':       'fa-rotate',
+        'icon-lock':          'fa-shield-halved',
+        'icon-list-alt':      'fa-list-check',
+        'icon-edit':          'fa-pen-to-square',
+        'icon-globe':         'fa-globe',
+        'icon-file':          'fa-code',
+        'icon-th-large':      'fa-layer-group',
+        'icon-cog':           'fa-gear',
     };
 
     var iconClasses = Object.keys(ICON_CLASS_MAP);
 
     function swapIcons() {
-        var container = document.querySelector('.events-editor');
-        if (!container) return;
+        if (!document.querySelector('.events-editor')) return;
+        // Swap within the editor AND in wizard overlays appended to body
+        var roots = [document.querySelector('.events-editor'), document.querySelector('automation-wizard')].filter(Boolean);
         var selector = iconClasses.map(function (c) { return '.' + c; }).join(',');
-        var els = container.querySelectorAll(selector);
+        var els = [];
+        roots.forEach(function (r) { els = els.concat(Array.prototype.slice.call(r.querySelectorAll(selector))); });
+        // Also swap the wizard trigger button itself
+        document.querySelectorAll('.events-editor__file-list ' + selector).forEach(function (el) {
+            if (els.indexOf(el) === -1) els.push(el);
+        });
         els.forEach(function (el) {
             iconClasses.forEach(function (src) {
                 if (!el.classList.contains(src)) return;

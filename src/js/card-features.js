@@ -167,7 +167,17 @@
 (function () {
     'use strict';
 
-    var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    /* Resolve locale: prefer Domoticz's own language setting ($.i18n from
+       i18next 1.8.0), fall back to the browser's navigator.language.
+       Domoticz uses plain ISO 639-1 codes ("nl", "de", "fr" …) which are
+       valid BCP 47 tags and work directly with Intl APIs.               */
+    function dzLocale() {
+        try {
+            var lng = $ && $.i18n && typeof $.i18n.lng === 'function' && $.i18n.lng();
+            if (lng && lng !== 'cimode') return lng;
+        } catch (e) { /* ignore */ }
+        return navigator.language || undefined;
+    }
 
     function formatTimestamp(raw) {
         var m = raw.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
@@ -179,15 +189,19 @@
         var yesterday = new Date(today.getTime() - 86400000);
         var cardDay   = new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
-        var h    = d.getHours();
-        var min  = ('0' + d.getMinutes()).slice(-2);
-        var ampm = h >= 12 ? 'pm' : 'am';
-        var h12  = h % 12 || 12;
-        var time = h12 + ':' + min + '\u202f' + ampm;
+        var locale = dzLocale();
+        var time   = d.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
+        var rtf    = window.Intl && Intl.RelativeTimeFormat
+                     ? new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
+                     : null;
 
-        if (cardDay.getTime() === today.getTime())     return 'today ' + time;
-        if (cardDay.getTime() === yesterday.getTime()) return 'yesterday ' + time;
-        return MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' + time;
+        if (cardDay.getTime() === today.getTime()) {
+            return (rtf ? rtf.format(0, 'day') : 'today') + ' ' + time;
+        }
+        if (cardDay.getTime() === yesterday.getTime()) {
+            return (rtf ? rtf.format(-1, 'day') : 'yesterday') + ' ' + time;
+        }
+        return d.toLocaleDateString(locale, { month: 'short', day: 'numeric' }) + ', ' + time;
     }
 
     /* Register with the icon-replacement burst so footer injection lands
@@ -225,6 +239,8 @@
             /* Update timestamp */
             if (lu) {
                 var raw = (lu.textContent || '').trim();
+                var tsM = raw.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
+                if (tsM) luSpan.dataset.ts = new Date(+tsM[1], +tsM[2]-1, +tsM[3], +tsM[4], +tsM[5]).getTime();
                 var formatted = formatTimestamp(raw) || raw;
                 if (luSpan.textContent !== formatted) luSpan.textContent = formatted;
             }
@@ -529,33 +545,17 @@ document.addEventListener('DOMContentLoaded', function () {
     /* ── Staleness Indicator (Feature 9) ─────────────────────────── */
     var STALE_MS = 24 * 60 * 60 * 1000; // 1 day
 
-    function parseFooterDate(text) {
-        var now = new Date();
-        var m;
-        m = text.match(/today\s+(\d+):(\d+)\s*(am|pm)/i);
-        if (m) {
-            var h = +m[1], min = +m[2], ap = m[3].toLowerCase();
-            if (ap === 'pm' && h !== 12) h += 12;
-            if (ap === 'am' && h === 12) h = 0;
-            return new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, min);
-        }
-        m = text.match(/yesterday\s+(\d+):(\d+)\s*(am|pm)/i);
-        if (m) {
-            var h = +m[1], min = +m[2], ap = m[3].toLowerCase();
-            if (ap === 'pm' && h !== 12) h += 12;
-            if (ap === 'am' && h === 12) h = 0;
-            var yd = new Date(now - 86400000);
-            return new Date(yd.getFullYear(), yd.getMonth(), yd.getDate(), h, min);
-        }
-        return null; // older than yesterday → stale
+    function parseFooterDate(span) {
+        /* Prefer the machine-readable epoch stored by processCards */
+        var ts = span && span.dataset && span.dataset.ts;
+        if (ts) return new Date(+ts);
+        return null; // no data-ts → stale
     }
 
     function updateStaleness(card) {
         var span = card.querySelector('.dz-time');
         if (!span) return;
-        var text = (span.textContent || '').trim();
-        if (!text) return;
-        var date = parseFooterDate(text);
+        var date = parseFooterDate(span);
         if (date && (Date.now() - date) < STALE_MS) {
             card.classList.remove('dz-stale');
         } else {
