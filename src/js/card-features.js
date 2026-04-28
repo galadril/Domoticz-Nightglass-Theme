@@ -508,6 +508,38 @@ document.addEventListener('DOMContentLoaded', function () {
         return null;
     }
 
+    /* ── Bar-range accent: read configured ranges from Angular scope ── */
+    function resolveBarRangeColor(card) {
+        if (!window.angular) return null;
+        var lastupdate = card.querySelector('td#lastupdate');
+        if (!lastupdate) return null;
+        // dz-bar may be direct or nested inside dz-temp-bar / dz-weather-bar
+        var dzBarEl = lastupdate.querySelector('dz-bar');
+        if (!dzBarEl) return null;
+        try {
+            var scope = angular.element(dzBarEl).isolateScope();
+            if (!scope) return null;
+            var ranges = scope.ranges;
+            var val    = parseFloat(scope.value);
+            if (!Array.isArray(ranges) || !ranges.length || isNaN(val)) return null;
+            // Find which configured range contains the current value
+            for (var i = 0; i < ranges.length; i++) {
+                var r    = ranges[i];
+                var from = parseFloat(r.from), to = parseFloat(r.to);
+                if (isNaN(from) || isNaN(to)) continue;
+                var lo = Math.min(from, to), hi = Math.max(from, to);
+                if (val >= lo && val <= hi) return r.color || null;
+            }
+            // Value outside all ranges → use nearest boundary range's color
+            var isRTL = parseFloat(ranges[0].from) > parseFloat(ranges[0].to);
+            return isRTL
+                ? (val > parseFloat(ranges[0].from) ? ranges[0].color : ranges[ranges.length - 1].color)
+                : (val < parseFloat(ranges[0].from) ? ranges[0].color : ranges[ranges.length - 1].color);
+        } catch (e) {
+            return null;
+        }
+    }
+
     function resolveAccentColor(btText, iconCls) {
         // Temperature
         var c = parseCelsius(btText);
@@ -579,10 +611,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
             var bigtext = card.querySelector('td#bigtext');
             if (bigtext) {
-                var btText = bigtext.textContent || '';
-                var accentIcon = card.querySelector('i.dz-fa-device');
-                var accentCls  = accentIcon ? (accentIcon.className || '') : '';
-                var accentColor = resolveAccentColor(btText, accentCls);
+                // Bar ranges (user-configured) take priority; fall back to our sensor-based color
+                var accentColor = resolveBarRangeColor(card);
+                if (!accentColor) {
+                    var btText = bigtext.textContent || '';
+                    var accentIcon = card.querySelector('i.dz-fa-device');
+                    var accentCls  = accentIcon ? (accentIcon.className || '') : '';
+                    accentColor = resolveAccentColor(btText, accentCls);
+                }
                 if (accentColor) {
                     card.classList.add('dz-temp-accent');
                     card.style.setProperty('--dz-temp-accent', accentColor);
