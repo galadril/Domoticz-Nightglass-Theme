@@ -947,7 +947,7 @@ i.dz-fa-nav {
 }
 
 .page-content-container {
-    background: rgba(var(--dz-surface-rgb), 0.5);
+    background: var(--dz-surface-2);
     border: 1px solid var(--dz-surface-3);
     border-radius: 10px;
 }
