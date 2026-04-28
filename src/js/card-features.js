@@ -531,6 +531,66 @@ document.addEventListener('DOMContentLoaded', function () {
         ]);
     }
 
+    function resolveBarRangeGradient(card) {
+        if (!window.angular) return null;
+        var lastupdate = card.querySelector('td#lastupdate');
+        if (!lastupdate) return null;
+        var dzBarEl = lastupdate.querySelector('dz-bar');
+        if (!dzBarEl) return null;
+        try {
+            var scope = angular.element(dzBarEl).isolateScope();
+            if (!scope) return null;
+            var ranges = scope.ranges;
+            var val    = parseFloat(scope.value);
+            if (!Array.isArray(ranges) || !ranges.length || isNaN(val)) return null;
+
+            var sorted = ranges.map(function (r) {
+                return { from: parseFloat(r.from), to: parseFloat(r.to), color: r.color };
+            }).filter(function (r) { return !isNaN(r.from) && !isNaN(r.to) && r.color; });
+            if (!sorted.length) return null;
+
+            sorted.sort(function (a, b) { return Math.min(a.from, a.to) - Math.min(b.from, b.to); });
+
+            // Compute the full span across all ranges
+            var globalMin = Math.min(sorted[0].from, sorted[0].to);
+            var globalMax = Math.max(sorted[sorted.length - 1].from, sorted[sorted.length - 1].to);
+            var span = globalMax - globalMin;
+            if (span <= 0) return null;
+
+            // Build gradient stops: each range occupies its proportional width
+            var stops = [];
+            for (var i = 0; i < sorted.length; i++) {
+                var lo = Math.min(sorted[i].from, sorted[i].to);
+                var hi = Math.max(sorted[i].from, sorted[i].to);
+                var pctStart = ((lo - globalMin) / span) * 100;
+                var pctEnd   = ((hi - globalMin) / span) * 100;
+                stops.push(sorted[i].color + ' ' + pctStart.toFixed(1) + '%');
+                stops.push(sorted[i].color + ' ' + pctEnd.toFixed(1) + '%');
+            }
+            var gradient = 'linear-gradient(to right, ' + stops.join(', ') + ')';
+
+            // Current value position as percentage
+            var pos = Math.max(0, Math.min(100, ((val - globalMin) / span) * 100));
+
+            // Interpolated color at current value for the accent fallback
+            var color = sorted[0].color;
+            for (var j = 0; j < sorted.length; j++) {
+                var rLo = Math.min(sorted[j].from, sorted[j].to);
+                var rHi = Math.max(sorted[j].from, sorted[j].to);
+                if (val >= rLo && val <= rHi) {
+                    var t = (rHi - rLo) > 0 ? (val - rLo) / (rHi - rLo) : 0.5;
+                    var next = (j + 1 < sorted.length) ? sorted[j + 1].color : null;
+                    color = next ? lerpColor(sorted[j].color, next, t) : sorted[j].color;
+                    break;
+                }
+            }
+
+            return { gradient: gradient, pos: pos, color: color };
+        } catch (e) {
+            return null;
+        }
+    }
+
     function resolveBarRangeColor(card) {
         if (!window.angular) return null;
         var lastupdate = card.querySelector('td#lastupdate');
@@ -544,7 +604,6 @@ document.addEventListener('DOMContentLoaded', function () {
             var val    = parseFloat(scope.value);
             if (!Array.isArray(ranges) || !ranges.length || isNaN(val)) return null;
 
-            // Build sorted list of range boundaries with colors
             var sorted = ranges.map(function (r) {
                 return { from: parseFloat(r.from), to: parseFloat(r.to), color: r.color };
             }).filter(function (r) { return !isNaN(r.from) && !isNaN(r.to) && r.color; });
@@ -552,25 +611,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
             sorted.sort(function (a, b) { return Math.min(a.from, a.to) - Math.min(b.from, b.to); });
 
-            // Find which range the value falls in
             for (var i = 0; i < sorted.length; i++) {
                 var lo = Math.min(sorted[i].from, sorted[i].to);
                 var hi = Math.max(sorted[i].from, sorted[i].to);
                 if (val >= lo && val <= hi) {
                     var t = (hi - lo) > 0 ? (val - lo) / (hi - lo) : 0.5;
-                    // Interpolate toward the next range's color if available
-                    var nextColor = (i + 1 < sorted.length) ? sorted[i + 1].color : null;
-                    var prevColor = (i - 1 >= 0) ? sorted[i - 1].color : null;
-                    if (nextColor) {
-                        return lerpColor(sorted[i].color, nextColor, t);
-                    } else if (prevColor) {
-                        return lerpColor(prevColor, sorted[i].color, t);
-                    }
+                    var next = (i + 1 < sorted.length) ? sorted[i + 1].color : null;
+                    var prev = (i - 1 >= 0) ? sorted[i - 1].color : null;
+                    if (next) return lerpColor(sorted[i].color, next, t);
+                    if (prev) return lerpColor(prev, sorted[i].color, t);
                     return sorted[i].color;
                 }
             }
 
-            // Value outside all ranges → use nearest boundary range's color
             var firstLo = Math.min(sorted[0].from, sorted[0].to);
             if (val < firstLo) return sorted[0].color;
             return sorted[sorted.length - 1].color;
@@ -651,16 +704,25 @@ document.addEventListener('DOMContentLoaded', function () {
             var bigtext = card.querySelector('td#bigtext');
             if (bigtext) {
                 // Bar ranges (user-configured) take priority; fall back to our sensor-based color
-                var accentColor = resolveBarRangeColor(card);
-                if (!accentColor) {
-                    var btText = bigtext.textContent || '';
-                    var accentIcon = card.querySelector('i.dz-fa-device');
-                    var accentCls  = accentIcon ? (accentIcon.className || '') : '';
-                    accentColor = resolveAccentColor(btText, accentCls);
-                }
-                if (accentColor) {
-                    card.classList.add('dz-temp-accent');
-                    card.style.setProperty('--dz-temp-accent', accentColor);
+                var rangeResult = resolveBarRangeGradient(card);
+                if (rangeResult) {
+                    card.classList.add('dz-temp-accent', 'dz-range-gradient');
+                    card.style.setProperty('--dz-range-gradient', rangeResult.gradient);
+                    card.style.setProperty('--dz-range-pos', rangeResult.pos + '%');
+                    card.style.setProperty('--dz-temp-accent', rangeResult.color);
+                } else {
+                    card.classList.remove('dz-range-gradient');
+                    var accentColor = resolveBarRangeColor(card);
+                    if (!accentColor) {
+                        var btText = bigtext.textContent || '';
+                        var accentIcon = card.querySelector('i.dz-fa-device');
+                        var accentCls  = accentIcon ? (accentIcon.className || '') : '';
+                        accentColor = resolveAccentColor(btText, accentCls);
+                    }
+                    if (accentColor) {
+                        card.classList.add('dz-temp-accent');
+                        card.style.setProperty('--dz-temp-accent', accentColor);
+                    }
                 }
             }
 

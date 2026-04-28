@@ -555,6 +555,42 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
     transition: border-top-color 1.2s ease;
 }
 
+/* When bar ranges provide a gradient, overlay a pseudo-element bar */
+.dz-temp-accent.dz-range-gradient {
+    border-top-color: transparent !important;
+    position: relative;
+}
+
+.dz-temp-accent.dz-range-gradient::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    height: 3px;
+    background: var(--dz-range-gradient);
+    border-top-left-radius: inherit;
+    border-top-right-radius: inherit;
+    z-index: 1;
+    transition: background 1.2s ease;
+}
+
+/* Needle showing current value position */
+.dz-temp-accent.dz-range-gradient::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: var(--dz-range-pos, 50%);
+    width: 5px;
+    height: 5px;
+    background: #fff;
+    border-radius: 50%;
+    transform: translateX(-50%);
+    box-shadow: 0 0 3px rgba(0,0,0,0.5);
+    z-index: 2;
+    transition: left 1.2s ease;
+}
+
 
 
 /* ══════════════════════════════════════════════════════════════════
