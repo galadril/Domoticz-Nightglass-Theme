@@ -139,40 +139,48 @@
     background-color: var(--dz-danger) !important;
     background-image: none !important;
     border-color: var(--dz-danger) !important;
+    color: #fff !important;
 }
 
     .btn-danger:hover {
         background-color: var(--dz-danger-hover) !important;
+        color: #fff !important;
     }
 
 .btn-success {
     background-color: var(--dz-success) !important;
     background-image: none !important;
     border-color: var(--dz-success) !important;
+    color: #fff !important;
 }
 
     .btn-success:hover {
         background-color: var(--dz-success-hover) !important;
+        color: #fff !important;
     }
 
 .btn-warning {
     background-color: var(--dz-warning) !important;
     background-image: none !important;
     border-color: var(--dz-warning) !important;
+    color: #1a1c24 !important;  /* dark text on amber — better contrast */
 }
 
     .btn-warning:hover {
         background-color: var(--dz-warning-hover) !important;
+        color: #1a1c24 !important;
     }
 
 .btn-info {
     background-color: var(--dz-accent) !important;
     background-image: none !important;
     border-color: var(--dz-accent) !important;
+    color: #fff !important;
 }
 
     .btn-info:hover {
         background-color: var(--dz-accent-hover) !important;
+        color: #fff !important;
     }
 
 /* Modern glass-style buttons */

@@ -151,12 +151,16 @@ table.dataTable tbody td {
         border-right: 2px solid var(--dz-border) !important;
     }
 
-/* Selected row */
+/* Selected row — covers both DataTables .selected and Domoticz's .row_selected */
 table.dataTable tbody tr.selected td,
 table.dataTable tbody tr.odd.selected td,
-table.dataTable tbody tr.even.selected td {
-    background-color: rgba(var(--dz-accent-rgb), 0.1) !important;
+table.dataTable tbody tr.even.selected td,
+table tbody tr.row_selected td,
+table tbody tr.odd.row_selected td,
+table tbody tr.even.row_selected td {
+    background-color: rgba(var(--dz-accent-rgb), 0.15) !important;
     color: var(--dz-text) !important;
+    border-color: rgba(var(--dz-accent-rgb), 0.25) !important;
 }
 
 /* ── Footer bar (info + pagination) ──────────────────────────── */
