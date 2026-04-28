@@ -509,11 +509,32 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /* ── Bar-range accent: read configured ranges from Angular scope ── */
+
+    function hexToRgbArr(hex) {
+        if (!hex || hex[0] !== '#') return null;
+        var n = parseInt(hex.slice(1), 16);
+        if (isNaN(n)) return null;
+        return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    }
+
+    function rgbArrToHex(rgb) {
+        return '#' + ((1 << 24) | (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]).toString(16).slice(1);
+    }
+
+    function lerpColor(c1, c2, t) {
+        var a = hexToRgbArr(c1), b = hexToRgbArr(c2);
+        if (!a || !b) return c1;
+        return rgbArrToHex([
+            Math.round(a[0] + (b[0] - a[0]) * t),
+            Math.round(a[1] + (b[1] - a[1]) * t),
+            Math.round(a[2] + (b[2] - a[2]) * t)
+        ]);
+    }
+
     function resolveBarRangeColor(card) {
         if (!window.angular) return null;
         var lastupdate = card.querySelector('td#lastupdate');
         if (!lastupdate) return null;
-        // dz-bar may be direct or nested inside dz-temp-bar / dz-weather-bar
         var dzBarEl = lastupdate.querySelector('dz-bar');
         if (!dzBarEl) return null;
         try {
@@ -522,19 +543,37 @@ document.addEventListener('DOMContentLoaded', function () {
             var ranges = scope.ranges;
             var val    = parseFloat(scope.value);
             if (!Array.isArray(ranges) || !ranges.length || isNaN(val)) return null;
-            // Find which configured range contains the current value
-            for (var i = 0; i < ranges.length; i++) {
-                var r    = ranges[i];
-                var from = parseFloat(r.from), to = parseFloat(r.to);
-                if (isNaN(from) || isNaN(to)) continue;
-                var lo = Math.min(from, to), hi = Math.max(from, to);
-                if (val >= lo && val <= hi) return r.color || null;
+
+            // Build sorted list of range boundaries with colors
+            var sorted = ranges.map(function (r) {
+                return { from: parseFloat(r.from), to: parseFloat(r.to), color: r.color };
+            }).filter(function (r) { return !isNaN(r.from) && !isNaN(r.to) && r.color; });
+            if (!sorted.length) return null;
+
+            sorted.sort(function (a, b) { return Math.min(a.from, a.to) - Math.min(b.from, b.to); });
+
+            // Find which range the value falls in
+            for (var i = 0; i < sorted.length; i++) {
+                var lo = Math.min(sorted[i].from, sorted[i].to);
+                var hi = Math.max(sorted[i].from, sorted[i].to);
+                if (val >= lo && val <= hi) {
+                    var t = (hi - lo) > 0 ? (val - lo) / (hi - lo) : 0.5;
+                    // Interpolate toward the next range's color if available
+                    var nextColor = (i + 1 < sorted.length) ? sorted[i + 1].color : null;
+                    var prevColor = (i - 1 >= 0) ? sorted[i - 1].color : null;
+                    if (nextColor) {
+                        return lerpColor(sorted[i].color, nextColor, t);
+                    } else if (prevColor) {
+                        return lerpColor(prevColor, sorted[i].color, t);
+                    }
+                    return sorted[i].color;
+                }
             }
+
             // Value outside all ranges → use nearest boundary range's color
-            var isRTL = parseFloat(ranges[0].from) > parseFloat(ranges[0].to);
-            return isRTL
-                ? (val > parseFloat(ranges[0].from) ? ranges[0].color : ranges[ranges.length - 1].color)
-                : (val < parseFloat(ranges[0].from) ? ranges[0].color : ranges[ranges.length - 1].color);
+            var firstLo = Math.min(sorted[0].from, sorted[0].to);
+            if (val < firstLo) return sorted[0].color;
+            return sorted[sorted.length - 1].color;
         } catch (e) {
             return null;
         }
