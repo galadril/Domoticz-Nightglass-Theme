@@ -68,7 +68,7 @@
 }
 
 .modal-footer {
-    background: var(--dz-bg-alt) !important;
+    background: var(--dz-surface-2) !important;
     border-top: 1px solid var(--dz-border) !important;
     border-radius: 0 0 14px 14px !important;
     padding: 12px 20px !important;

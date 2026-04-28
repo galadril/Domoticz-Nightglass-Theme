@@ -13,7 +13,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 24px 28px;
-    background: linear-gradient(135deg, rgba(var(--dz-accent-rgb), 0.12), rgba(var(--dz-accent-rgb), 0.04));
+    background: linear-gradient(135deg, rgba(var(--dz-accent-rgb), 0.12), rgba(var(--dz-accent-rgb), 0.04)), var(--dz-surface-2);
     border: 1px solid rgba(var(--dz-accent-rgb), 0.2);
     border-radius: 16px;
     margin-bottom: 24px;
@@ -818,7 +818,7 @@
 
 /* Hide the raw checkbox; drive visual state through the custom toggle */
 .ng-bl-cb {
-    display: none;
+    display: none !important;
 }
 
 .ng-bl-toggle-track {
