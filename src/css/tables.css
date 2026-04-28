@@ -24,7 +24,7 @@ tr.even td.sorting_1 {
 .dataTables_wrapper > .row:first-child,
 .dataTables_wrapper .top,
 .dataTables_wrapper .fg-toolbar.ui-corner-tl {
-    background: var(--dz-surface);
+    background: var(--dz-surface) !important;
     border: 1px solid var(--dz-border);
     border-bottom: none;
     border-radius: 8px 8px 0 0;
@@ -188,7 +188,7 @@ table tbody tr.even.row_selected td {
     flex-wrap: wrap;
     gap: 8px;
     padding: 8px 12px 6px;
-    background: var(--dz-surface);
+    background: var(--dz-surface) !important;
     border: 1px solid var(--dz-border);
     border-top: none;
     border-radius: 0 0 8px 8px;
