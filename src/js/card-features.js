@@ -603,7 +603,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            return { gradient: gradient, color: color };
+            return { gradient: gradient, color: color, valPct: valPct };
         } catch (e) {
             return null;
         }
@@ -727,6 +727,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     card.classList.add('dz-temp-accent', 'dz-range-gradient');
                     card.style.setProperty('--dz-range-gradient', rangeResult.gradient);
                     card.style.setProperty('--dz-temp-accent', rangeResult.color);
+                    card.style.setProperty('--dz-range-val-pct', rangeResult.valPct.toFixed(1) + '%');
 
                     // Inject gradient bar wrapper if not present
                     var bar = card.querySelector('.dz-range-bar');

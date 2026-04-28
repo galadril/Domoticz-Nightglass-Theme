@@ -562,8 +562,11 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
 
 .dz-range-bar {
     position: absolute;
-    inset: 0;
-    overflow: hidden;
+    top: -3px;
+    left: -1px;
+    right: -1px;
+    height: 3px;
+    overflow: visible;
     border-radius: inherit;
     z-index: 1;
     pointer-events: none;
@@ -571,8 +574,25 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
 
 .dz-range-bar-inner {
     width: 100%;
-    height: 3px;
+    height: 100%;
     background: var(--dz-range-gradient);
+    border-radius: inherit;
+    overflow: hidden;
+}
+
+/* Dot needle at current value position */
+.dz-range-bar::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: var(--dz-range-val-pct, 50%);
+    transform: translate(-50%, -50%);
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    z-index: 2;
 }
 
 
