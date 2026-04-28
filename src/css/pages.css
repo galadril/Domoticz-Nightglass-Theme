@@ -73,6 +73,26 @@
         color: var(--dz-text) !important;
     }
 
+    /* Moon Phase widget — responsive FA icon replacing the default img.
+       container-type: size lets cqh/cqw units scale with the widget height. */
+    .dd-moon-image {
+        container-type: size;
+    }
+    .dd-moon-image .dz-moon-fa {
+        font-size: min(4.5rem, 70px, 70cqh, 70cqw);
+        line-height: 1;
+        color: var(--dz-widget-moon-color);
+    }
+    /* Waxing phases: flip horizontally so the RIGHT outer edge is lit (NH convention) */
+    .dz-moon-waxing {
+        transform: scaleX(-1);
+        display: inline-block;
+    }
+    /* New moon: barely visible circle */
+    .dz-moon-new {
+        opacity: 0.25;
+    }
+
     .dd-sun-moon-times {
         color: var(--dz-text-soft) !important;
     }

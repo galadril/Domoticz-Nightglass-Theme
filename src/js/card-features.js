@@ -328,16 +328,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
 (function () {
     'use strict';
-    // Map moon phase keywords to FA icons (adjust as needed for your FA version)
+    /* Map moon phase slugs → FA icon + optional extra CSS class.
+       Northern-hemisphere convention:
+         waxing = right outer edge lit  → fa-moon flipped via dz-moon-waxing
+         waning = left outer edge lit   → fa-moon as-is
+       fa-circle-half-stroke shows the RIGHT half solid; flip it for last quarter. */
     var moonPhaseMap = {
-        'new': 'fa-moon',
-        'waxing-crescent': 'fa-moon',
-        'first-quarter': 'fa-moon-first-quarter',
-        'waxing-gibbous': 'fa-moon',
-        'full': 'fa-moon',
-        'waning-gibbous': 'fa-moon',
-        'last-quarter': 'fa-moon-last-quarter',
-        'waning-crescent': 'fa-moon',
+        'new':             { icon: 'fa-circle',             cls: 'dz-moon-new'    },
+        'waxing-crescent': { icon: 'fa-moon',               cls: 'dz-moon-waxing' },
+        'first-quarter':   { icon: 'fa-circle-half-stroke', cls: ''               },
+        'waxing-gibbous':  { icon: 'fa-moon',               cls: 'dz-moon-waxing' },
+        'full':            { icon: 'fa-circle',             cls: ''               },
+        'waning-gibbous':  { icon: 'fa-moon',               cls: ''               },
+        'last-quarter':    { icon: 'fa-circle-half-stroke', cls: 'dz-moon-waxing' },
+        'waning-crescent': { icon: 'fa-moon',               cls: ''               },
     };
 
     function replaceMoonImages() {
@@ -347,12 +351,12 @@ document.addEventListener('DOMContentLoaded', function () {
             var src = img.getAttribute('src') || '';
             var alt = (img.getAttribute('alt') || '').toLowerCase();
             var phase = null;
-            var match = src.match(/moon-([a-z-]+)\\.png/i);
+            var match = src.match(/moon-([a-z-]+)\.png/i);
             if (match) phase = match[1];
             else if (alt) phase = alt.replace(/ /g, '-');
-            var faClass = moonPhaseMap[phase] || 'fa-moon';
+            var entry = moonPhaseMap[phase] || { icon: 'fa-moon', cls: '' };
             var i = document.createElement('i');
-            i.className = 'fa-solid ' + faClass + ' fa-3x dz-moon-fa';
+            i.className = 'fa-solid ' + entry.icon + ' dz-moon-fa' + (entry.cls ? ' ' + entry.cls : '');
             i.title = img.alt || phase || 'Moon';
             img.style.display = 'none';
             img.classList.add('dz-moon-replaced');
