@@ -199,14 +199,14 @@
     }
 
 .btn-modern-warning {
-    background: rgba(240, 168, 50, 0.12) !important;
-    border-color: rgba(240, 168, 50, 0.35) !important;
+    background: rgba(var(--dz-warning-rgb), 0.12) !important;
+    border-color: rgba(var(--dz-warning-rgb), 0.35) !important;
 }
 
     .btn-modern-warning:hover:not(:disabled) {
-        background: rgba(240, 168, 50, 0.25) !important;
-        border-color: rgba(240, 168, 50, 0.6) !important;
-        box-shadow: 0 8px 24px rgba(240, 168, 50, 0.2) !important;
+        background: rgba(var(--dz-warning-rgb), 0.25) !important;
+        border-color: rgba(var(--dz-warning-rgb), 0.6) !important;
+        box-shadow: 0 8px 24px rgba(var(--dz-warning-rgb), 0.2) !important;
     }
 
 

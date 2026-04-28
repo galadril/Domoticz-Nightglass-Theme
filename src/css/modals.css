@@ -1192,8 +1192,8 @@ body.dz-light .ng-sp-track {
 }
 
 .ng-rgbw-preset--off {
-    border-color: rgba(220, 53, 69, 0.35) !important;
-    color: #dc3545 !important;
+    border-color: rgba(var(--dz-danger-rgb), 0.35) !important;
+    color: var(--dz-danger) !important;
 }
 
 .ng-rgbw-preset--off:hover {

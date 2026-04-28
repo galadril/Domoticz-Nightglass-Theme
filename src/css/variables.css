@@ -145,6 +145,14 @@
     --dz-warning-hover: #d99528;
     --dz-success: #4caf7d;
     --dz-success-hover: #3d9e6c;
+    /* Light variants — brighter tones used for icon/action hover highlights */
+    --dz-danger-light: #ff6b6b;
+    --dz-warning-light: #ffc04d;
+    --dz-success-light: #66d9a0;
+    /* RGB channel variants for danger/warning/success (for rgba() compositing) */
+    --dz-danger-rgb: 224, 85, 85;
+    --dz-warning-rgb: 240, 168, 50;
+    --dz-success-rgb: 76, 175, 125;
     /* Text color ON colored buttons — white works for all saturated colors
        except warning (amber), which needs dark text for contrast.
        Custom presets can override these two variables if they pick
@@ -252,5 +260,11 @@ body.dz-light {
     --dz-widget-weather-storm: #d63b3b;
     --dz-warning-hover: #a86614;
     --dz-success-hover: #247048;
+    --dz-danger-light: #e05555;
+    --dz-warning-light: #e09828;
+    --dz-success-light: #4caf7d;
+    --dz-danger-rgb: 214, 59, 59;
+    --dz-warning-rgb: 192, 120, 24;
+    --dz-success-rgb: 46, 140, 88;
 }
 

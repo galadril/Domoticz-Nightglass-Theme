@@ -248,7 +248,7 @@ i.dz-fa-fav {
     }
 
         i.dz-fa-fav.dz-fav-on:hover {
-            color: #e09828;
+            color: var(--dz-warning-light);
             transform: scale(1.15);
         }
 
@@ -382,7 +382,7 @@ i.dz-fa-action {
     }
 
         i.dz-fa-action.fa-trash-can:hover {
-            color: #ff6b6b;
+            color: var(--dz-danger-light);
             transform: scale(1.1);
         }
 
@@ -400,7 +400,7 @@ i.dz-fa-action {
     }
 
         i.dz-fa-action.fa-plus:hover {
-            color: #66d9a0;
+            color: var(--dz-success-light);
             transform: scale(1.1);
         }
 
@@ -409,7 +409,7 @@ i.dz-fa-action {
     }
 
         i.dz-fa-action.fa-sliders:hover {
-            color: #ffc04d;
+            color: var(--dz-warning-light);
             transform: scale(1.1);
         }
 
@@ -418,7 +418,7 @@ i.dz-fa-action {
     }
 
         i.dz-fa-action.fa-circle-minus:hover {
-            color: #ff6b6b;
+            color: var(--dz-danger-light);
             transform: scale(1.1);
         }
 
@@ -516,7 +516,7 @@ i.dz-fa-nav {
 }
 
     .navbar .nav .current_page_item > a:hover {
-        color: #fff !important;
+        color: var(--dz-text) !important;
     }
 
 /* ── Sliding indicator pill ──────────────────────────────── */
@@ -723,7 +723,7 @@ i.dz-fa-nav {
     .navbar .nav .dropdown-menu li:has(> a > i.fa-power-off) > a:hover,
     .navbar .nav .dropdown-menu li:has(> a > i.fa-rotate-right) > a:hover,
     .navbar .nav .dropdown-menu li:has(> a > i.fa-right-from-bracket) > a:hover {
-        background: rgba(224, 85, 85, 0.08) !important;
+        background: rgba(var(--dz-danger-rgb), 0.08) !important;
         color: var(--dz-danger) !important;
         border-left-color: var(--dz-danger) !important;
     }

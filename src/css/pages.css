@@ -612,7 +612,7 @@
 #settingscontent .btn-info {
     background: var(--dz-accent) !important;
     border-color: var(--dz-accent) !important;
-    color: #fff !important;
+    color: var(--dz-btn-on-color) !important;
     border-radius: 8px !important;
     padding: 5px 16px !important;
     font-size: 0.82rem !important;
@@ -627,7 +627,7 @@
 #settingscontent .btn-danger {
     background: var(--dz-danger) !important;
     border-color: var(--dz-danger) !important;
-    color: #fff !important;
+    color: var(--dz-btn-on-color) !important;
     border-radius: 8px !important;
     padding: 5px 16px !important;
     font-size: 0.82rem !important;
@@ -1231,7 +1231,7 @@
     .js-device-notifications .fg-button:hover {
         background: rgba(var(--dz-accent-rgb), 0.12) !important;
         border-color: var(--dz-accent) !important;
-        color: #fff !important;
+        color: var(--dz-accent) !important;
     }
 
     .js-device-logs .fg-button.ui-state-disabled,

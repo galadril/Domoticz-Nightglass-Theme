@@ -804,8 +804,8 @@ div.item.itemBlock:hover .dz-sparkline-wrap,
     font-weight: 500;
     padding: 6px 14px;
     border-radius: 8px;
-    background: rgba(240, 168, 50, 0.08);
-    border: 1px solid rgba(240, 168, 50, 0.18);
+    background: rgba(var(--dz-warning-rgb), 0.08);
+    border: 1px solid rgba(var(--dz-warning-rgb), 0.18);
 }
 
     .update-warning i {

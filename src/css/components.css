@@ -315,7 +315,7 @@
         }
 
     #dashcontent > #emain .ecircle-solar {
-        fill: rgba(240, 168, 50, 0.10) !important;
+        fill: rgba(var(--dz-warning-rgb), 0.10) !important;
         stroke: var(--dz-warning) !important;
     }
 
@@ -330,7 +330,7 @@
     }
 
     #dashcontent > #emain .ecircle-batt {
-        fill: rgba(76, 175, 125, 0.10) !important;
+        fill: rgba(var(--dz-success-rgb), 0.10) !important;
         stroke: var(--dz-success) !important;
     }
 
@@ -352,7 +352,7 @@
     #dashcontent > #emain #SolarToBatt,
     #dashcontent > #emain #SolarToHome,
     #dashcontent > #emain #SolarToGrid {
-        stroke: rgba(240, 168, 50, 0.65) !important;
+        stroke: rgba(var(--dz-warning-rgb), 0.65) !important;
     }
 
     #dashcontent > #emain #GridToHome,
@@ -363,7 +363,7 @@
 
     #dashcontent > #emain #BattNet,
     #dashcontent > #emain #BattHome {
-        stroke: rgba(76, 175, 125, 0.65) !important;
+        stroke: rgba(var(--dz-success-rgb), 0.65) !important;
     }
 
     #dashcontent > #emain [id$='-flow'] {
@@ -422,7 +422,7 @@ body.dz-light #dashcontent {
 
     /* Circle styles for light mode — softer fills, darker strokes */
     body.dz-light #dashcontent .ecircle-solar {
-        fill: rgba(240, 168, 50, 0.08) !important;
+        fill: rgba(var(--dz-warning-rgb), 0.08) !important;
         stroke: var(--dz-warning) !important;
     }
 
@@ -437,7 +437,7 @@ body.dz-light #dashcontent {
     }
 
     body.dz-light #dashcontent .ecircle-batt {
-        fill: rgba(76, 175, 125, 0.06) !important;
+        fill: rgba(var(--dz-success-rgb), 0.06) !important;
         stroke: var(--dz-success) !important;
     }
 
