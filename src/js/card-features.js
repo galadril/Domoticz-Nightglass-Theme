@@ -567,6 +567,7 @@ document.addEventListener('DOMContentLoaded', function () {
             var valPct = Math.max(0, Math.min(100, ((val - globalMin) / span) * 100));
             var ACTIVE_ALPHA = 1;
             var FADED_ALPHA  = 0.25;
+            var BLEND_HALF   = 2.0; // % on each side of a range boundary to blend across
             var stops = [];
             for (var i = 0; i < sorted.length; i++) {
                 var lo = Math.min(sorted[i].from, sorted[i].to);
@@ -574,18 +575,24 @@ document.addEventListener('DOMContentLoaded', function () {
                 var pctStart = ((lo - globalMin) / span) * 100;
                 var pctEnd   = ((hi - globalMin) / span) * 100;
                 var col = sorted[i].color;
+                // Shrink each range inward at boundaries shared with adjacent ranges so
+                // CSS interpolates across the gap — producing a smooth color blend.
+                var adjStart = pctStart + (i > 0 ? BLEND_HALF : 0);
+                var adjEnd   = pctEnd   - (i < sorted.length - 1 ? BLEND_HALF : 0);
 
                 if (pctEnd <= valPct) {
-                    stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + pctStart.toFixed(1) + '%');
-                    stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + pctEnd.toFixed(1) + '%');
+                    stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + adjStart.toFixed(1) + '%');
+                    stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + adjEnd.toFixed(1) + '%');
                 } else if (pctStart >= valPct) {
-                    stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + pctStart.toFixed(1) + '%');
-                    stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + pctEnd.toFixed(1) + '%');
+                    stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + adjStart.toFixed(1) + '%');
+                    stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + adjEnd.toFixed(1) + '%');
                 } else {
-                    stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + pctStart.toFixed(1) + '%');
+                    var clampedStart = Math.min(adjStart, valPct);
+                    var clampedEnd   = Math.max(adjEnd,   valPct);
+                    stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + clampedStart.toFixed(1) + '%');
                     stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + valPct.toFixed(1) + '%');
-                    stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + valPct.toFixed(1) + '%');
-                    stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + pctEnd.toFixed(1) + '%');
+                    stops.push(hexToRgba(col, FADED_ALPHA)  + ' ' + valPct.toFixed(1) + '%');
+                    stops.push(hexToRgba(col, FADED_ALPHA)  + ' ' + clampedEnd.toFixed(1) + '%');
                 }
             }
             var gradient = 'linear-gradient(to right, ' + stops.join(', ') + ')';
