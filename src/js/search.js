@@ -748,7 +748,7 @@
             '  --dz-bg-alt: ' + lightenHex(pbg, 5) + ';\n' +
             '  --dz-nav-bg: ' + bg + ';\n' +
             '  --dz-table-odd-bg: ' + bg + ';\n' +
-            '  --dz-table-even-bg: ' + pbg + ';\n' +
+            '  --dz-table-even-bg: ' + darkenHex(bg, 8) + ';\n' +
             '  --dz-table-odd-text: ' + tx + ';\n' +
             '  --dz-table-even-text: ' + tx + ';\n' +
             '  --dz-panel-bg: ' + bg + ';\n' +

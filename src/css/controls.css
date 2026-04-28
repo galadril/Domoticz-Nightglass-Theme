@@ -117,6 +117,9 @@
 
 .btnstyle3:disabled,
 .btnstyle3-dis {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     background: var(--dz-bg-alt) !important;
     background-image: none !important;
     color: var(--dz-text-muted) !important;

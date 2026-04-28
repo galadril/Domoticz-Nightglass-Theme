@@ -4,7 +4,7 @@
 
 /* ── Outer shell ───────────────────────────────────────────────── */
 .events-editor {
-    background: var(--dz-bg);
+    background: var(--dz-surface);
     border: 1px solid var(--dz-border);
     border-radius: 10px;
     /* overflow must stay visible so dropdown menus can escape the container */
@@ -36,7 +36,7 @@
 }
 
 .events-editor__search {
-    background: var(--dz-bg) !important;
+    background: var(--dz-surface-2) !important;
     color: var(--dz-text) !important;
     border: 1px solid var(--dz-border) !important;
     border-radius: 6px !important;
@@ -56,7 +56,7 @@
     }
 
 .events-editor__toolbar-btn {
-    background: var(--dz-bg) !important;
+    background: var(--dz-surface-2) !important;
     border: 1px solid var(--dz-border) !important;
     border-radius: 5px !important;
     color: var(--dz-text-muted) !important;
@@ -76,7 +76,7 @@
 
 /* ── Script tree ───────────────────────────────────────────────── */
 .events-editor-tree {
-    background: var(--dz-bg) !important;
+    background: var(--dz-surface) !important;
     border: none !important;
     border-radius: 0 !important;
     padding: 4px 0;
@@ -306,7 +306,7 @@
 
 /* ── Right editor pane ─────────────────────────────────────────── */
 .events-editor__editor {
-    background: var(--dz-bg) !important;
+    background: var(--dz-surface) !important;
     display: flex;
     flex-direction: column;
 }
@@ -348,15 +348,15 @@
 
 /* Active tab — visually "lifts" into the editor background */
 .events-editor__file_active {
-    background: var(--dz-bg) !important;
+    background: var(--dz-surface) !important;
     border-color: var(--dz-border) !important;
-    border-bottom-color: var(--dz-bg) !important;
+    border-bottom-color: var(--dz-surface) !important;
     color: var(--dz-text) !important;
     font-weight: 500;
 }
 
     .events-editor__file_active:hover {
-        background: var(--dz-bg) !important;
+        background: var(--dz-surface) !important;
         color: var(--dz-text) !important;
     }
 
@@ -412,7 +412,7 @@
     }
 
 .events-editor-file__name {
-    background: var(--dz-bg) !important;
+    background: var(--dz-surface-2) !important;
     color: var(--dz-text) !important;
     border: 1px solid var(--dz-border) !important;
     border-radius: 6px !important;
@@ -481,7 +481,7 @@
 
     .events-editor-file__type > select,
     .events-editor-file__type select {
-        background: var(--dz-bg) !important;
+        background: var(--dz-surface-2) !important;
         color: var(--dz-text) !important;
         border: 1px solid var(--dz-border-b) !important;
         border-radius: 0 6px 6px 0 !important;
@@ -499,7 +499,7 @@
 }
 
 .ace-settings__theme {
-    background: var(--dz-bg) !important;
+    background: var(--dz-surface-2) !important;
     color: var(--dz-text) !important;
     border: 1px solid var(--dz-border-b) !important;
     border-radius: 6px !important;
@@ -517,7 +517,7 @@
 
 /* Ace font-size buttons */
 .ace-settings .btn-xs {
-    background: var(--dz-bg) !important;
+    background: var(--dz-surface-2) !important;
     border: 1px solid var(--dz-border) !important;
     color: var(--dz-text-soft) !important;
     border-radius: 5px !important;
@@ -542,7 +542,7 @@
     font-size: 11px !important;
     padding: 4px 10px !important;
     border-radius: 6px !important;
-    background: var(--dz-bg) !important;
+    background: var(--dz-surface-2) !important;
     border-color: var(--dz-border) !important;
     color: var(--dz-text-soft) !important;
 }
@@ -583,7 +583,7 @@
 
 /* ── Device states table ───────────────────────────────────────── */
 .events-editor-file__content-table {
-    background: var(--dz-bg) !important;
+    background: var(--dz-surface) !important;
     color: var(--dz-text) !important;
 }
 

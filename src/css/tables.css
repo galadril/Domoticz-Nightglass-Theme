@@ -19,6 +19,18 @@ tr.even td.sorting_1 {
     font-size: 0.85rem;
 }
 
+/* ── Top controls row (length + filter) ──────────────────────── */
+/* Domoticz uses .fg-toolbar.ui-corner-tl for the top bar        */
+.dataTables_wrapper > .row:first-child,
+.dataTables_wrapper .top,
+.dataTables_wrapper .fg-toolbar.ui-corner-tl {
+    background: var(--dz-surface) !important;
+    border: 1px solid var(--dz-border);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    padding: 6px 12px;
+}
+
     /* ── Controls bar (length + filter) ──────────────────────────── */
     .dataTables_wrapper .dataTables_length,
     .dataTables_wrapper .dataTables_filter {
@@ -166,16 +178,21 @@ table tbody tr.even.row_selected td {
 /* ── Footer bar (info + pagination) ──────────────────────────── */
 /* Make the Bootstrap row that contains info + paginate flex so  */
 /* both halves are vertically centred.                           */
+/* Domoticz uses .fg-toolbar.ui-corner-bl for the bottom bar     */
 .dataTables_wrapper > .row:last-child,
-.dataTables_wrapper .bottom {
+.dataTables_wrapper .bottom,
+.dataTables_wrapper .fg-toolbar.ui-corner-bl {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
     flex-wrap: wrap;
     gap: 8px;
-    padding: 10px 0 4px;
-    border-top: 1px solid var(--dz-border);
-    margin-top: 4px;
+    padding: 8px 12px 6px;
+    background: var(--dz-surface) !important;
+    border: 1px solid var(--dz-border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    margin-top: 0;
 }
 
     .dataTables_wrapper > .row:last-child > [class*="col-"],
@@ -393,14 +410,14 @@ table tbody tr.even.row_selected td {
 
 div.log {
     border: 1px solid var(--dz-surface-3);
-    background: var(--dz-bg-alt);
+    background: var(--dz-surface-2);
     border-radius: 8px;
 }
 
 .log-console-container {
     border: 1px solid var(--dz-surface-3);
     border-radius: 10px;
-    background: var(--dz-bg);
+    background: var(--dz-surface);
 }
 
 .log-toolbar {
@@ -455,7 +472,7 @@ mark.log-highlight {
 /* All colors use CSS variables so custom presets are respected.   */
 
 body.dz-light .log-console-container {
-    background: var(--dz-bg);
+    background: var(--dz-surface);
 }
 
 body.dz-light .log-console {

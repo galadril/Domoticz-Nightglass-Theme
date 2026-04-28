@@ -152,6 +152,14 @@
     .dd-widget.dd-edit-mode {
         border-color: rgba(var(--dz-accent-rgb), 0.4) !important;
     }
+
+/* ── Temperature/stat trend cards (ng-repeat="card in vm.cards") ─ */
+/* These have a hardcoded inline rgba(255,255,255,0.05) background  */
+/* which becomes invisible on custom page background colors.        */
+[ng-repeat="card in vm.cards"] {
+    background: var(--dz-surface-2) !important;
+    border: 1px solid var(--dz-border) !important;
+}
     /* Widget loading/error states */
     .dd-widget-loading,
     .dd-widget-error {
@@ -369,7 +377,7 @@
         gap: 10px;
         margin: 0;
         padding: 20px 24px 16px;
-        background: linear-gradient(135deg, rgba(var(--dz-accent-rgb), 0.10), rgba(var(--dz-accent-rgb), 0.03));
+        background: linear-gradient(135deg, rgba(var(--dz-accent-rgb), 0.10), rgba(var(--dz-accent-rgb), 0.03)), var(--dz-surface-2);
         border: 1px solid rgba(var(--dz-accent-rgb), 0.18);
         border-radius: 14px;
     }
@@ -926,7 +934,7 @@
         gap: 10px;
         margin: 0;
         padding: 20px 24px 16px;
-        background: linear-gradient(135deg, rgba(var(--dz-accent-rgb), 0.10), rgba(var(--dz-accent-rgb), 0.03));
+        background: linear-gradient(135deg, rgba(var(--dz-accent-rgb), 0.10), rgba(var(--dz-accent-rgb), 0.03)), var(--dz-surface-2);
         border: 1px solid rgba(var(--dz-accent-rgb), 0.18);
         border-radius: 14px;
         width: 100%;
@@ -1276,7 +1284,7 @@ a[back-button].btnstyle3 {
         font-weight: 700 !important;
         color: var(--dz-text) !important;
         padding: 20px 24px 16px;
-        background: linear-gradient(135deg, rgba(var(--dz-accent-rgb), 0.10), rgba(var(--dz-accent-rgb), 0.03));
+        background: linear-gradient(135deg, rgba(var(--dz-accent-rgb), 0.10), rgba(var(--dz-accent-rgb), 0.03)), var(--dz-surface-2);
         border: 1px solid rgba(var(--dz-accent-rgb), 0.18);
         border-radius: 14px;
         margin: 0;
@@ -1953,7 +1961,27 @@ body.dz-light #dz-cmd-box {
     padding: 0 !important;
 }
 
-/* Ctrl+K badge shown via CSS — always correct, no JS timing */
+/* Keyboard shortcut badges shown via CSS — always correct, no JS timing */
+/* "/" badge: quick card search on the current page */
+#tbFiltSearch::before {
+    content: "/";
+    display: inline-block !important;
+    background: var(--dz-surface-2) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-bottom-width: 2px !important;
+    border-radius: 4px !important;
+    padding: 1px 6px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    color: var(--dz-text-muted) !important;
+    font-family: monospace, inherit !important;
+    pointer-events: none !important;
+    white-space: nowrap !important;
+    line-height: 1.4 !important;
+    order: -1 !important;
+}
+
+/* Ctrl+K badge: command palette */
 #tbFiltSearch::after {
     content: "Ctrl\00a0K";
     display: inline-block !important;

@@ -13,7 +13,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 24px 28px;
-    background: linear-gradient(135deg, rgba(var(--dz-accent-rgb), 0.12), rgba(var(--dz-accent-rgb), 0.04));
+    background: linear-gradient(135deg, rgba(var(--dz-accent-rgb), 0.12), rgba(var(--dz-accent-rgb), 0.04)), var(--dz-surface-2);
     border: 1px solid rgba(var(--dz-accent-rgb), 0.2);
     border-radius: 16px;
     margin-bottom: 24px;
@@ -818,7 +818,7 @@
 
 /* Hide the raw checkbox; drive visual state through the custom toggle */
 .ng-bl-cb {
-    display: none;
+    display: none !important;
 }
 
 .ng-bl-toggle-track {
@@ -1289,15 +1289,17 @@ body.dz-light .ng-toast {
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.14), 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
-/* Mobile: full-width toasts */
-@media (max-width: 480px) {
+/* Mobile portrait: always center toasts regardless of position setting */
+@media (max-width: 480px) and (orientation: portrait) {
     #ng-toast-stack {
         width: calc(100vw - 24px);
         max-width: calc(100vw - 24px);
-        right: 12px;
-        bottom: 12px;
-        left: auto;
-        transform: none !important;
+        left: 50% !important;
+        right: auto !important;
+        top: auto !important;
+        bottom: 12px !important;
+        transform: translateX(-50%) !important;
+        align-items: center !important;
     }
 }
 
