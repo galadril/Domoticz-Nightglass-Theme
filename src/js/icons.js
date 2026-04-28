@@ -227,7 +227,7 @@
         'pir':             { icon: 'fa-solid fa-person-running',       on: '#e05555', off: '#555770' },
 
         /* Misc */
-        'text':            { icon: 'fa-solid fa-font',                on: '#b0b3c6', off: null },
+        'text':            { icon: 'fa-solid fa-align-left',          on: '#b0b3c6', off: null },
         'alert':           { icon: 'fa-solid fa-circle-exclamation',  on: '#e05555', off: null },
         'clock':           { icon: 'fa-solid fa-clock',               on: '#4e9af1', off: '#555770' },
         'mode':            { icon: 'fa-solid fa-sliders',             on: '#4e9af1', off: null },

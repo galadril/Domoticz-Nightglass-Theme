@@ -21,6 +21,10 @@
         color: var(--dz-text) !important;
     }
 
+.page-content-container {
+    margin-top: 0px !important;
+}
+
 .dd-widget-body {
     /*background: var(--dz-surface-2) !important;*/
     color: var(--dz-text) !important;
@@ -71,6 +75,26 @@
     /* Sun/Moon widget */
     .dd-sun-moon {
         color: var(--dz-text) !important;
+    }
+
+    /* Moon Phase widget — responsive FA icon replacing the default img.
+       container-type: size lets cqh/cqw units scale with the widget height. */
+    .dd-moon-image {
+        container-type: size;
+    }
+    .dd-moon-image .dz-moon-fa {
+        font-size: min(4.5rem, 70px, 70cqh, 70cqw);
+        line-height: 1;
+        color: var(--dz-widget-moon-color);
+    }
+    /* Waxing phases: flip horizontally so the RIGHT outer edge is lit (NH convention) */
+    .dz-moon-waxing {
+        transform: scaleX(-1);
+        display: inline-block;
+    }
+    /* New moon: barely visible circle */
+    .dz-moon-new {
+        opacity: 0.25;
     }
 
     .dd-sun-moon-times {
@@ -588,7 +612,7 @@
 #settingscontent .btn-info {
     background: var(--dz-accent) !important;
     border-color: var(--dz-accent) !important;
-    color: #fff !important;
+    color: var(--dz-btn-on-color) !important;
     border-radius: 8px !important;
     padding: 5px 16px !important;
     font-size: 0.82rem !important;
@@ -603,7 +627,7 @@
 #settingscontent .btn-danger {
     background: var(--dz-danger) !important;
     border-color: var(--dz-danger) !important;
-    color: #fff !important;
+    color: var(--dz-btn-on-color) !important;
     border-radius: 8px !important;
     padding: 5px 16px !important;
     font-size: 0.82rem !important;
@@ -1207,7 +1231,7 @@
     .js-device-notifications .fg-button:hover {
         background: rgba(var(--dz-accent-rgb), 0.12) !important;
         border-color: var(--dz-accent) !important;
-        color: #fff !important;
+        color: var(--dz-accent) !important;
     }
 
     .js-device-logs .fg-button.ui-state-disabled,

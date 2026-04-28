@@ -178,13 +178,13 @@ div.item.statusProtected td#name {
 }
 
 div.item.statusTimeout td#name {
-    background-color: rgba(224, 85, 85, 0.15) !important;
-    color: #f08080 !important;
+    background-color: rgba(var(--dz-danger-rgb), 0.15) !important;
+    color: var(--dz-danger-light) !important;
 }
 
 div.item.statusLowBattery td#name {
-    background-color: rgba(240, 168, 50, 0.15) !important;
-    color: #f0c060 !important;
+    background-color: rgba(var(--dz-warning-rgb), 0.15) !important;
+    color: var(--dz-warning-light) !important;
 }
 
 div.item.statusDisabled td#name {
@@ -826,6 +826,17 @@ body table[id^="itemtable"] tr td.options {
         cursor: default;
     }
 
+
+/* ── 6l-fix. Scene tab: prevent description-row nth-child collision ─
+   td.options in itemtablenostatus is the 7th td, which accidentally
+   matches the "description row" nth-child rule (specificity 0,2,8).
+   Reset the cosmetic bleed-through here with equal or higher specificity. */
+body table#itemtablenostatus tr td.options {
+    color: var(--dz-text-soft) !important;
+    font-size: inherit !important;
+    padding-top: 8px !important;
+    margin-bottom: 0 !important;
+}
 
 /* ── 6m. Text device cards (.dz-text-device) ──────────────────── */
 /*    "General, Text" devices contain long messages that don't fit   */

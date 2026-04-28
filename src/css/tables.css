@@ -151,12 +151,16 @@ table.dataTable tbody td {
         border-right: 2px solid var(--dz-border) !important;
     }
 
-/* Selected row */
+/* Selected row — covers both DataTables .selected and Domoticz's .row_selected */
 table.dataTable tbody tr.selected td,
 table.dataTable tbody tr.odd.selected td,
-table.dataTable tbody tr.even.selected td {
-    background-color: rgba(var(--dz-accent-rgb), 0.1) !important;
+table.dataTable tbody tr.even.selected td,
+table tbody tr.row_selected td,
+table tbody tr.odd.row_selected td,
+table tbody tr.even.row_selected td {
+    background-color: rgba(var(--dz-accent-rgb), 0.15) !important;
     color: var(--dz-text) !important;
+    border-color: rgba(var(--dz-accent-rgb), 0.25) !important;
 }
 
 /* ── Footer bar (info + pagination) ──────────────────────────── */
@@ -231,7 +235,7 @@ table.dataTable tbody tr.even.selected td {
     .dataTables_paginate .paginate_button.current:hover {
         background: var(--dz-accent) !important;
         border-color: var(--dz-accent) !important;
-        color: #ffffff !important;
+        color: var(--dz-btn-on-color) !important;
         font-weight: 600;
         box-shadow: 0 2px 8px rgba(var(--dz-accent-rgb), 0.3) !important;
     }
@@ -316,7 +320,7 @@ table.dataTable tbody tr.even.selected td {
         background: var(--dz-danger) !important;
         border: 1px solid var(--dz-danger) !important;
         border-radius: 6px !important;
-        color: #fff !important;
+        color: var(--dz-btn-on-color) !important;
         font-weight: 600;
     }
 
@@ -326,8 +330,8 @@ table.dataTable tbody tr.even.selected td {
         }
 
 .sub-tabs-apply,
-.btn-succes {
-    color: #fff !important;
+.btn-success {
+    color: var(--dz-btn-on-color) !important;
     text-shadow: none !important;
 }
 
@@ -434,7 +438,7 @@ div.log {
 
 mark.log-highlight {
     background: rgba(var(--dz-accent-rgb), 0.25);
-    color: #fff;
+    color: var(--dz-btn-on-color);
     border-radius: 3px;
 }
 
@@ -448,6 +452,7 @@ mark.log-highlight {
     }
 
 /* ── Light mode log console overrides ────────────────────────── */
+/* All colors use CSS variables so custom presets are respected.   */
 
 body.dz-light .log-console-container {
     background: var(--dz-bg);
@@ -459,19 +464,19 @@ body.dz-light .log-console {
 }
 
 body.dz-light .log-line {
-    color: #1a1c24 !important;
+    color: var(--dz-text) !important;
 }
 
 body.dz-light .log-level-norm {
-    color: #2a2d3e !important;
+    color: var(--dz-text-soft) !important;
 }
 
 body.dz-light .log-level-status {
-    color: #1d6bc8 !important;
+    color: var(--dz-accent-hover) !important;
 }
 
 body.dz-light .log-level-error {
-    color: #b32e2e !important;
+    color: var(--dz-danger-hover) !important;
 }
 
 body.dz-light .log-show-older {
@@ -485,24 +490,24 @@ body.dz-light .log-toolbar {
 
 body.dz-light .log-statusbar {
     background: var(--dz-surface);
-    color: #4a4d5e;
+    color: var(--dz-text-soft);
 }
 
 body.dz-light .log-filter-btn {
-    color: #1a1c24 !important;
+    color: var(--dz-text) !important;
 }
 
 body.dz-light .log-level-toggles .log-toggle-count {
-    color: #4a4d5e;
+    color: var(--dz-text-soft);
 }
 
 body.dz-light mark.log-highlight {
-    background: rgba(42, 125, 225, 0.2);
-    color: #1a1c24;
+    background: rgba(var(--dz-accent-rgb), 0.2);
+    color: var(--dz-text);
 }
 
 body.dz-light .log-search-count {
-    color: #4a4d5e;
+    color: var(--dz-text-soft);
 }
 
 body.dz-light .log-scroll-indicator {

@@ -139,40 +139,48 @@
     background-color: var(--dz-danger) !important;
     background-image: none !important;
     border-color: var(--dz-danger) !important;
+    color: var(--dz-btn-on-color) !important;
 }
 
     .btn-danger:hover {
         background-color: var(--dz-danger-hover) !important;
+        color: var(--dz-btn-on-color) !important;
     }
 
 .btn-success {
     background-color: var(--dz-success) !important;
     background-image: none !important;
     border-color: var(--dz-success) !important;
+    color: var(--dz-btn-on-color) !important;
 }
 
     .btn-success:hover {
         background-color: var(--dz-success-hover) !important;
+        color: var(--dz-btn-on-color) !important;
     }
 
 .btn-warning {
     background-color: var(--dz-warning) !important;
     background-image: none !important;
     border-color: var(--dz-warning) !important;
+    color: var(--dz-btn-on-warning) !important;
 }
 
     .btn-warning:hover {
         background-color: var(--dz-warning-hover) !important;
+        color: var(--dz-btn-on-warning) !important;
     }
 
 .btn-info {
     background-color: var(--dz-accent) !important;
     background-image: none !important;
     border-color: var(--dz-accent) !important;
+    color: var(--dz-btn-on-color) !important;
 }
 
     .btn-info:hover {
         background-color: var(--dz-accent-hover) !important;
+        color: var(--dz-btn-on-color) !important;
     }
 
 /* Modern glass-style buttons */
@@ -191,14 +199,14 @@
     }
 
 .btn-modern-warning {
-    background: rgba(240, 168, 50, 0.12) !important;
-    border-color: rgba(240, 168, 50, 0.35) !important;
+    background: rgba(var(--dz-warning-rgb), 0.12) !important;
+    border-color: rgba(var(--dz-warning-rgb), 0.35) !important;
 }
 
     .btn-modern-warning:hover:not(:disabled) {
-        background: rgba(240, 168, 50, 0.25) !important;
-        border-color: rgba(240, 168, 50, 0.6) !important;
-        box-shadow: 0 8px 24px rgba(240, 168, 50, 0.2) !important;
+        background: rgba(var(--dz-warning-rgb), 0.25) !important;
+        border-color: rgba(var(--dz-warning-rgb), 0.6) !important;
+        box-shadow: 0 8px 24px rgba(var(--dz-warning-rgb), 0.2) !important;
     }
 
 
