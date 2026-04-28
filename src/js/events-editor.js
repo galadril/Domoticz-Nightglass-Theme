@@ -318,10 +318,10 @@
 
     var WHEEL_SIZE = 200;
 
-    function drawWheel(canvas, brightness) {
-        var ctx = canvas.getContext('2d');
+    function buildWheelImage(canvas, brightness) {
         var w = canvas.width, h = canvas.height;
         var cx = w / 2, cy = h / 2, r = Math.min(cx, cy) - 1;
+        var ctx = canvas.getContext('2d');
         var img = ctx.createImageData(w, h);
         var d = img.data;
         for (var y = 0; y < h; y++) {
@@ -336,7 +336,7 @@
                 d[i] = rgb[0]; d[i+1] = rgb[1]; d[i+2] = rgb[2]; d[i+3] = 255;
             }
         }
-        ctx.putImageData(img, 0, 0);
+        return img;
     }
 
     function drawCursor(canvas, cx, cy) {
@@ -350,7 +350,13 @@
     }
 
     function redraw() {
-        drawWheel(_canvas, _v);
+        if (!_canvas) return;
+        var ctx = _canvas.getContext('2d');
+        if (_wheelCacheV !== _v || !_wheelCache) {
+            _wheelCache = buildWheelImage(_canvas, _v);
+            _wheelCacheV = _v;
+        }
+        ctx.putImageData(_wheelCache, 0, 0);
         drawCursor(_canvas, _curX, _curY);
     }
 
@@ -359,6 +365,7 @@
     var _overlay = null, _canvas = null, _swatch = null, _hexInput = null, _slider = null;
     var _h = 210, _s = 0.6, _v = 1.0, _curX = 0, _curY = 0;
     var _target = null, _dragging = false;
+    var _wheelCache = null, _wheelCacheV = -1;
 
     // ── overlay DOM (built once) ──────────────────────────────────────────
 
@@ -437,16 +444,30 @@
         _overlay.addEventListener('click', function (e) { if (e.target === _overlay) closeOverlay(); });
 
         // canvas interaction
+        var _pickRaf = 0;
         _canvas.addEventListener('mousedown', function (e) { _dragging = true; pick(e); });
         document.addEventListener('mouseup',  function ()  { _dragging = false; });
-        _canvas.addEventListener('mousemove', function (e) { if (_dragging) pick(e); });
+        _canvas.addEventListener('mousemove', function (e) {
+            if (!_dragging) return;
+            var ev = e;
+            if (!_pickRaf) _pickRaf = requestAnimationFrame(function () { _pickRaf = 0; pick(ev); });
+        });
         _canvas.addEventListener('touchstart', function (e) { e.preventDefault(); pick(e.touches[0]); }, { passive: false });
-        _canvas.addEventListener('touchmove',  function (e) { e.preventDefault(); pick(e.touches[0]); }, { passive: false });
+        _canvas.addEventListener('touchmove',  function (e) {
+            e.preventDefault();
+            var touch = e.touches[0];
+            if (!_pickRaf) _pickRaf = requestAnimationFrame(function () { _pickRaf = 0; pick(touch); });
+        }, { passive: false });
 
         // brightness slider
+        var _sliderRaf = 0;
         _slider.addEventListener('input', function () {
-            _v = parseInt(this.value) / 100;
-            redraw(); syncFromHsv();
+            var self = this;
+            if (!_sliderRaf) _sliderRaf = requestAnimationFrame(function () {
+                _sliderRaf = 0;
+                _v = parseInt(self.value) / 100;
+                redraw(); syncFromHsv();
+            });
         });
 
         // hex input
