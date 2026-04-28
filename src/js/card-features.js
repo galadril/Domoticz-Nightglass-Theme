@@ -531,6 +531,12 @@ document.addEventListener('DOMContentLoaded', function () {
         ]);
     }
 
+    function hexToRgba(hex, alpha) {
+        var rgb = hexToRgbArr(hex);
+        if (!rgb) return hex;
+        return 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + alpha + ')';
+    }
+
     function resolveBarRangeGradient(card) {
         if (!window.angular) return null;
         var lastupdate = card.querySelector('td#lastupdate');
@@ -557,21 +563,32 @@ document.addEventListener('DOMContentLoaded', function () {
             var span = globalMax - globalMin;
             if (span <= 0) return null;
 
-            // Build gradient stops with full vivid colors; fading is handled by a DOM overlay
+            // Build gradient stops: full opacity up to current value, low opacity beyond
             var valPct = Math.max(0, Math.min(100, ((val - globalMin) / span) * 100));
+            var ACTIVE_ALPHA = 1;
+            var FADED_ALPHA  = 0.25;
             var stops = [];
             for (var i = 0; i < sorted.length; i++) {
                 var lo = Math.min(sorted[i].from, sorted[i].to);
                 var hi = Math.max(sorted[i].from, sorted[i].to);
                 var pctStart = ((lo - globalMin) / span) * 100;
                 var pctEnd   = ((hi - globalMin) / span) * 100;
-                stops.push(sorted[i].color + ' ' + pctStart.toFixed(1) + '%');
-                stops.push(sorted[i].color + ' ' + pctEnd.toFixed(1) + '%');
+                var col = sorted[i].color;
+
+                if (pctEnd <= valPct) {
+                    stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + pctStart.toFixed(1) + '%');
+                    stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + pctEnd.toFixed(1) + '%');
+                } else if (pctStart >= valPct) {
+                    stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + pctStart.toFixed(1) + '%');
+                    stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + pctEnd.toFixed(1) + '%');
+                } else {
+                    stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + pctStart.toFixed(1) + '%');
+                    stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + valPct.toFixed(1) + '%');
+                    stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + valPct.toFixed(1) + '%');
+                    stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + pctEnd.toFixed(1) + '%');
+                }
             }
             var gradient = 'linear-gradient(to right, ' + stops.join(', ') + ')';
-
-            // Current value position as percentage
-            var pos = valPct;
 
             // Interpolated color at current value for the accent fallback
             var color = sorted[0].color;
@@ -586,7 +603,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            return { gradient: gradient, pos: pos, color: color };
+            return { gradient: gradient, color: color };
         } catch (e) {
             return null;
         }
@@ -709,20 +726,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (rangeResult) {
                     card.classList.add('dz-temp-accent', 'dz-range-gradient');
                     card.style.setProperty('--dz-range-gradient', rangeResult.gradient);
-                    card.style.setProperty('--dz-range-pos', rangeResult.pos + '%');
                     card.style.setProperty('--dz-temp-accent', rangeResult.color);
-
-                    // Inject fade overlay + needle if not already present
-                    if (!card.querySelector('.dz-range-fade')) {
-                        var fade = document.createElement('div');
-                        fade.className = 'dz-range-fade';
-                        card.appendChild(fade);
-                    }
-                    if (!card.querySelector('.dz-range-needle')) {
-                        var needle = document.createElement('div');
-                        needle.className = 'dz-range-needle';
-                        card.appendChild(needle);
-                    }
                 } else {
                     card.classList.remove('dz-range-gradient');
                     var accentColor = resolveBarRangeColor(card);
