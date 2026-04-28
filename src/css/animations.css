@@ -564,23 +564,37 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
 .dz-temp-accent.dz-range-gradient::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
+    /* Reach the outer edge of the card: padding + border */
+    top: -12px;
+    left: -14px;
+    right: -14px;
     height: 3px;
     background: var(--dz-range-gradient);
-    border-radius: calc(var(--dz-widget-border-radius, 12px) - 1px)
-                   calc(var(--dz-widget-border-radius, 12px) - 1px) 0 0;
+    border-radius: var(--dz-widget-border-radius, 12px)
+                   var(--dz-widget-border-radius, 12px) 0 0;
     z-index: 1;
-    transition: background 1.2s ease;
+}
+
+/* Faded overlay for the inactive portion past the current value */
+.dz-temp-accent.dz-range-gradient .dz-range-fade {
+    position: absolute;
+    top: -12px;
+    right: -14px;
+    width: calc(100% - var(--dz-range-pos, 50%));
+    height: 3px;
+    background: var(--dz-surface-2, #2a2b35);
+    opacity: 0.7;
+    border-radius: 0 var(--dz-widget-border-radius, 12px) 0 0;
+    z-index: 1;
+    transition: width 1.2s ease;
+    pointer-events: none;
 }
 
 /* Needle showing current value position */
-.dz-temp-accent.dz-range-gradient::after {
-    content: '';
+.dz-temp-accent.dz-range-gradient .dz-range-needle {
     position: absolute;
-    top: 0;
-    left: var(--dz-range-pos, 50%);
+    top: -12px;
+    left: calc(var(--dz-range-pos, 50%) - 14px);
     width: 5px;
     height: 5px;
     background: var(--dz-text, #e2e4ed);
@@ -589,6 +603,7 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
     box-shadow: 0 0 0 1px var(--dz-surface, #23252f), 0 0 3px rgba(0,0,0,0.4);
     z-index: 2;
     transition: left 1.2s ease;
+    pointer-events: none;
 }
 
 
