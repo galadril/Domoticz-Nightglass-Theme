@@ -145,6 +145,12 @@
     --dz-warning-hover: #d99528;
     --dz-success: #4caf7d;
     --dz-success-hover: #3d9e6c;
+    /* Text color ON colored buttons — white works for all saturated colors
+       except warning (amber), which needs dark text for contrast.
+       Custom presets can override these two variables if they pick
+       light hues for any semantic color.                            */
+    --dz-btn-on-color: #fff;
+    --dz-btn-on-warning: #1a1c24;
     /* RGB channel variants for rgba() compositing */
     --dz-accent-rgb: 78, 154, 241;
     --dz-surface-rgb: 35, 37, 47;
