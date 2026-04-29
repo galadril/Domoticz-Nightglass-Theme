@@ -731,9 +731,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Bar ranges (user-configured) take priority; fall back to our sensor-based color
                 var rangeResult = resolveBarRangeGradient(card);
                 if (rangeResult) {
-                    card.classList.add('dz-temp-accent');
+                    card.classList.add('dz-temp-accent', 'dz-range-gradient');
+                    card.style.setProperty('--dz-range-gradient', rangeResult.gradient);
                     card.style.setProperty('--dz-temp-accent', rangeResult.color);
+                    card.style.setProperty('--dz-range-val-pct', rangeResult.valPct.toFixed(1) + '%');
                 } else {
+                    card.classList.remove('dz-range-gradient');
                     var accentColor = resolveBarRangeColor(card);
                     if (!accentColor) {
                         var btText = bigtext.textContent || '';
