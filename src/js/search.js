@@ -283,7 +283,9 @@
         liveToastFilter:    'meaningful',
         liveToastDuration:  '4',
         liveToastPosition:  'bottom-right',
-        toastBlacklist:     '[]'
+        toastBlacklist:     '[]',
+
+        deviceIconOverrides: '{}'
     };
 
     var _settings      = null;
@@ -1020,6 +1022,17 @@
 
         // Update toast stack position if the system is already running
         if (window.ngUpdateToastPosition) window.ngUpdateToastPosition();
+
+        // Push device icon overrides to the icon replacement module
+        if (typeof window._dzSetDeviceIconOverrides === 'function') {
+            try {
+                var raw = _settings.deviceIconOverrides || '{}';
+                var overrides = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                window._dzSetDeviceIconOverrides(overrides);
+            } catch (e) {
+                window._dzSetDeviceIconOverrides({});
+            }
+        }
     }
 
     /* ── Build the settings panel HTML ─────────────────────────── */
@@ -1187,6 +1200,26 @@
             '    <i class="fa-solid fa-filter-circle-xmark"></i> Manage</button>' +
             '</div>' +
             '</div>' +
+
+            (function () {
+                var ovRaw = (s.deviceIconOverrides || '{}');
+                var ovCount = 0;
+                try { ovCount = Object.keys(typeof ovRaw === 'string' ? JSON.parse(ovRaw) : ovRaw).length; } catch (e) {}
+                var badge = ovCount > 0
+                    ? ' <span class="ng-override-badge">' + ovCount + '</span>'
+                    : '';
+                return '<div class="ng-settings-section">' +
+                    '<div class="ng-section-header"><i class="fa-solid fa-icons"></i> Device Icon Overrides</div>' +
+                    '<div class="ng-setting-row ng-setting-row--action">' +
+                    '  <div class="ng-setting-info">' +
+                    '    <span class="ng-setting-label">Per-Device Icons' + badge + '</span>' +
+                    '    <span class="ng-setting-desc">Assign any Font Awesome icon &amp; custom on/off colors to individual devices</span>' +
+                    '  </div>' +
+                    '  <button class="ng-action-chip" id="ng-override-manage-btn">' +
+                    '    <i class="fa-solid fa-wand-magic-sparkles"></i> Manage</button>' +
+                    '</div>' +
+                    '</div>';
+            })() +
 
             /* Right column: Color panels (together) */
             '<div class="ng-settings-section ng-settings-section--colors">' +
@@ -1626,6 +1659,716 @@
             });
     }
 
+    /* ── Device Icon Override Dialog ──────────────────────────────── */
+
+    function openDeviceIconOverrideDialog() {
+        var existing = document.getElementById('ng-ov-overlay');
+        if (existing) existing.remove();
+
+        // Parse current overrides
+        var currentOv = {};
+        try {
+            var raw = (window.dzNightglassSettings && window.dzNightglassSettings.get('deviceIconOverrides')) || '{}';
+            currentOv = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
+        } catch (e) {}
+
+        // Popular quick-override suggestions
+        var POPULAR_OVERRIDES = [
+            { label: 'WiFi Router',     icon: 'fa-solid fa-wifi',              on: '#4caf7d', off: '#555770' },
+            { label: 'Network Switch',  icon: 'fa-solid fa-network-wired',     on: '#4e9af1', off: '#555770' },
+            { label: 'Car',             icon: 'fa-solid fa-car',               on: '#4e9af1', off: '#555770' },
+            { label: 'EV Charger',      icon: 'fa-solid fa-charging-station',  on: '#4caf7d', off: '#555770' },
+            { label: 'Baby Monitor',    icon: 'fa-solid fa-baby',              on: '#c8a0ff', off: '#555770' },
+            { label: 'Camera',          icon: 'fa-solid fa-camera',            on: '#4e9af1', off: '#555770' },
+            { label: 'Doorbell',        icon: 'fa-solid fa-bell-concierge',    on: '#f0a832', off: '#555770' },
+            { label: 'Freezer',         icon: 'fa-solid fa-temperature-low',   on: '#29b6f6', off: '#555770' },
+            { label: 'Washing Machine', icon: 'fa-solid fa-shirt',             on: '#4e9af1', off: '#555770' },
+            { label: 'Dishwasher',      icon: 'fa-solid fa-sink',              on: '#4e9af1', off: '#555770' },
+            { label: 'Solar Panel',     icon: 'fa-solid fa-solar-panel',       on: '#f0a832', off: '#555770' },
+            { label: 'Battery/UPS',     icon: 'fa-solid fa-car-battery',       on: '#4caf7d', off: '#555770' },
+            { label: 'Server',          icon: 'fa-solid fa-server',            on: '#4e9af1', off: '#555770' },
+            { label: 'Smart Plug',      icon: 'fa-solid fa-plug',              on: '#4caf7d', off: '#555770' },
+            { label: 'Boiler',          icon: 'fa-solid fa-fire-flame-curved', on: '#ff7043', off: '#555770' },
+            { label: 'Ventilation',     icon: 'fa-solid fa-fan',               on: '#29b6f6', off: '#555770' },
+            { label: 'Garage Door',     icon: 'fa-solid fa-warehouse',         on: '#f0a832', off: '#4caf7d' },
+            { label: 'Pet Feeder',      icon: 'fa-solid fa-paw',               on: '#f0a832', off: '#555770' },
+            { label: 'NAS / Disk',      icon: 'fa-solid fa-hard-drive',        on: '#4e9af1', off: '#555770' },
+            { label: 'Vacuum Robot',    icon: 'fa-solid fa-robot',             on: '#4e9af1', off: '#555770' }
+        ];
+
+        // FA 6 Free Solid icon set for picker
+        var FA_ICONS = [
+            'fa-solid fa-wifi',              'fa-solid fa-network-wired',     'fa-solid fa-router',
+            'fa-solid fa-satellite-dish',    'fa-solid fa-tower-broadcast',   'fa-solid fa-signal',
+            'fa-solid fa-house',             'fa-solid fa-house-chimney',     'fa-solid fa-door-closed',
+            'fa-solid fa-door-open',         'fa-solid fa-window-maximize',   'fa-solid fa-warehouse',
+            'fa-solid fa-building',          'fa-solid fa-couch',             'fa-solid fa-bed',
+            'fa-solid fa-bath',              'fa-solid fa-sink',              'fa-solid fa-toilet',
+            'fa-solid fa-stairs',            'fa-solid fa-table',             'fa-solid fa-chair',
+            'fa-solid fa-lightbulb',         'fa-solid fa-circle-half-stroke','fa-solid fa-sun',
+            'fa-solid fa-moon',              'fa-solid fa-star',              'fa-solid fa-lamp',
+            'fa-solid fa-tv',                'fa-solid fa-display',           'fa-solid fa-computer',
+            'fa-solid fa-server',            'fa-solid fa-hard-drive',        'fa-solid fa-print',
+            'fa-solid fa-phone',             'fa-solid fa-mobile-screen',     'fa-solid fa-tablet',
+            'fa-solid fa-headphones',        'fa-solid fa-volume-high',       'fa-solid fa-music',
+            'fa-solid fa-gamepad',           'fa-solid fa-camera',            'fa-solid fa-video',
+            'fa-solid fa-blender',           'fa-solid fa-mug-hot',           'fa-solid fa-utensils',
+            'fa-solid fa-shirt',             'fa-solid fa-broom',             'fa-solid fa-baby',
+            'fa-solid fa-baby-carriage',     'fa-solid fa-robot',
+            'fa-solid fa-bolt',              'fa-solid fa-plug',              'fa-solid fa-charging-station',
+            'fa-solid fa-solar-panel',       'fa-solid fa-car-battery',       'fa-solid fa-battery-full',
+            'fa-solid fa-fire',              'fa-solid fa-fire-flame-curved', 'fa-solid fa-gauge',
+            'fa-solid fa-temperature-half',  'fa-solid fa-thermometer',       'fa-solid fa-snowflake',
+            'fa-solid fa-fan',               'fa-solid fa-wind',              'fa-solid fa-cloud',
+            'fa-solid fa-cloud-rain',        'fa-solid fa-umbrella',          'fa-solid fa-droplet',
+            'fa-solid fa-temperature-low',   'fa-solid fa-temperature-high',  'fa-solid fa-smog',
+            'fa-solid fa-seedling',          'fa-solid fa-leaf',              'fa-solid fa-tree',
+            'fa-solid fa-lock',              'fa-solid fa-lock-open',         'fa-solid fa-shield-halved',
+            'fa-solid fa-bell',              'fa-solid fa-bell-concierge',    'fa-solid fa-triangle-exclamation',
+            'fa-solid fa-circle-exclamation','fa-solid fa-eye',               'fa-solid fa-person-running',
+            'fa-solid fa-dog',               'fa-solid fa-paw',               'fa-solid fa-cat',
+            'fa-solid fa-car',               'fa-solid fa-car-side',          'fa-solid fa-truck',
+            'fa-solid fa-motorcycle',        'fa-solid fa-bicycle',           'fa-solid fa-plane',
+            'fa-solid fa-tractor',           'fa-solid fa-bus',
+            'fa-solid fa-water-ladder',      'fa-solid fa-hand-holding-droplet','fa-solid fa-faucet',
+            'fa-solid fa-pump-soap',         'fa-solid fa-spray-can',         'fa-solid fa-shovel',
+            'fa-solid fa-heart-pulse',       'fa-solid fa-weight-scale',      'fa-solid fa-lungs',
+            'fa-solid fa-syringe',           'fa-solid fa-pills',             'fa-solid fa-bed-pulse',
+            'fa-solid fa-gear',              'fa-solid fa-wrench',            'fa-solid fa-screwdriver',
+            'fa-solid fa-toolbox',           'fa-solid fa-box',               'fa-solid fa-bookmark',
+            'fa-solid fa-flag',              'fa-solid fa-circle-dot',        'fa-solid fa-power-off',
+            'fa-solid fa-toggle-on',         'fa-solid fa-sliders',           'fa-solid fa-clock',
+            'fa-solid fa-calendar',          'fa-solid fa-location-dot',      'fa-solid fa-map-location-dot',
+            'fa-solid fa-microchip',         'fa-solid fa-cpu',               'fa-solid fa-memory'
+        ];
+
+        // Mutable copy of current overrides
+        var pending = {};
+        Object.keys(currentOv).forEach(function (k) {
+            pending[k] = { icon: currentOv[k].icon, on: currentOv[k].on, off: currentOv[k].off, name: currentOv[k].name || '' };
+        });
+
+        var overlay = document.createElement('div');
+        overlay.id = 'ng-ov-overlay';
+        overlay.className = 'ng-bl-overlay';
+        overlay.innerHTML =
+            '<div class="ng-bl-dialog ng-ov-dialog" role="dialog" aria-label="Device Icon Overrides">' +
+            '  <div class="ng-bl-header">' +
+            '    <div class="ng-bl-title">' +
+            '      <i class="fa-solid fa-icons"></i>' +
+            '      <span>Device Icon Overrides</span>' +
+            '    </div>' +
+            '    <button class="ng-bl-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>' +
+            '  </div>' +
+            '  <div class="ng-ov-body">' +
+            '    <div class="ng-ov-main">' +
+            '      <div class="ng-ov-popular">' +
+            '        <div class="ng-ov-popular-label"><i class="fa-solid fa-wand-magic-sparkles"></i> Quick Presets — click to assign to a device</div>' +
+            '        <div class="ng-ov-chips" id="ng-ov-chips"></div>' +
+            '      </div>' +
+            '      <div class="ng-bl-search-wrap">' +
+            '        <i class="fa-solid fa-magnifying-glass ng-bl-search-icon"></i>' +
+            '        <input class="ng-bl-search" id="ng-ov-search" placeholder="Search devices…" autocomplete="off">' +
+            '      </div>' +
+            '      <div class="ng-bl-list ng-ov-list" id="ng-ov-list">' +
+            '        <div class="ng-bl-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading devices…</div>' +
+            '      </div>' +
+            '    </div>' +
+            '    <div class="ng-ov-sidebar" id="ng-ov-sidebar">' +
+            '      <div class="ng-ov-sidebar-header">' +
+            '        <i class="fa-solid fa-list-check"></i> Active' +
+            '        <span class="ng-ov-sidebar-count" id="ng-ov-sidebar-count">0</span>' +
+            '      </div>' +
+            '      <div class="ng-ov-sidebar-list" id="ng-ov-sidebar-list">' +
+            '        <div class="ng-ov-sidebar-empty">No overrides yet</div>' +
+            '      </div>' +
+            '    </div>' +
+            '  </div>' +
+            '  <div class="ng-bl-footer">' +
+            '    <span class="ng-bl-count" id="ng-ov-count"></span>' +
+            '    <div class="ng-bl-footer-btns">' +
+            '      <button class="ng-bl-btn ng-bl-btn--cancel">Cancel</button>' +
+            '      <button class="ng-bl-btn ng-bl-btn--save">Save Overrides</button>' +
+            '    </div>' +
+            '  </div>' +
+            '</div>';
+
+        document.body.appendChild(overlay);
+        requestAnimationFrame(function () { overlay.classList.add('ng-bl-overlay--open'); });
+
+        var listEl         = overlay.querySelector('#ng-ov-list');
+        var searchEl       = overlay.querySelector('#ng-ov-search');
+        var countEl        = overlay.querySelector('#ng-ov-count');
+        var chipsEl        = overlay.querySelector('#ng-ov-chips');
+        var sidebarListEl  = overlay.querySelector('#ng-ov-sidebar-list');
+        var sidebarCountEl = overlay.querySelector('#ng-ov-sidebar-count');
+
+        function close() {
+            overlay.classList.remove('ng-bl-overlay--open');
+            setTimeout(function () { overlay.remove(); }, 260);
+        }
+
+        function renderSidebar() {
+            var keys = Object.keys(pending);
+            if (sidebarCountEl) sidebarCountEl.textContent = keys.length;
+            if (!sidebarListEl) return;
+            if (!keys.length) {
+                sidebarListEl.innerHTML = '<div class="ng-ov-sidebar-empty">No overrides yet</div>';
+                return;
+            }
+            sidebarListEl.innerHTML = '';
+            keys.forEach(function (idxStr) {
+                var ov   = pending[idxStr];
+                var name = ov.name || ('IDX ' + idxStr);
+                var on   = ov.on  || '#4e9af1';
+                var off  = ov.off || '#555770';
+
+                var item = document.createElement('div');
+                item.className = 'ng-ov-si';
+                item.dataset.idx = idxStr;
+                item.title = 'Jump to ' + name;
+
+                var icon = document.createElement('i');
+                icon.className = ov.icon + ' ng-ov-si-icon';
+                icon.style.color = on;
+
+                var info = document.createElement('div');
+                info.className = 'ng-ov-si-info';
+
+                var nameEl = document.createElement('span');
+                nameEl.className = 'ng-ov-si-name';
+                nameEl.textContent = name;
+
+                var dots = document.createElement('span');
+                dots.className = 'ng-ov-si-dots';
+                dots.innerHTML =
+                    '<span class="ng-ov-si-dot" style="background:' + on  + '" title="On: ' + on + '"></span>' +
+                    '<span class="ng-ov-si-dot" style="background:' + off + '" title="Off: ' + off + '"></span>';
+
+                info.appendChild(nameEl);
+                info.appendChild(dots);
+
+                var removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'ng-ov-si-remove';
+                removeBtn.title = 'Remove override';
+                removeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+                removeBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    delete pending[idxStr];
+                    /* Reset the corresponding device row if visible */
+                    var row = listEl.querySelector('[data-idx="' + idxStr + '"]');
+                    if (row) {
+                        row.classList.remove('ng-ov-row--active');
+                        var rowFa   = row.querySelector('.ng-ov-row-fa');
+                        var editBtn = row.querySelector('.ng-ov-edit-btn');
+                        var editor  = row.querySelector('.ng-ov-editor');
+                        if (rowFa)   { rowFa.className = 'fa-solid fa-circle-question ng-ov-row-fa'; rowFa.style.color = '#555770'; rowFa.style.opacity = '.45'; }
+                        if (editBtn) { editBtn.innerHTML = '<i class="fa-solid fa-plus"></i>'; }
+                        if (editor)  { editor.style.display = 'none'; }
+                    }
+                    updateCount();
+                });
+
+                item.appendChild(icon);
+                item.appendChild(info);
+                item.appendChild(removeBtn);
+
+                /* Click to jump to + briefly highlight the device row */
+                item.addEventListener('click', function () {
+                    var target = listEl.querySelector('[data-idx="' + idxStr + '"]');
+                    if (!target) return;
+                    /* Clear search so the row is visible */
+                    if (searchEl && searchEl.value) { searchEl.value = ''; filterList(''); }
+                    target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                    target.classList.add('ng-ov-row--flash');
+                    setTimeout(function () { target.classList.remove('ng-ov-row--flash'); }, 900);
+                });
+
+                sidebarListEl.appendChild(item);
+            });
+        }
+
+        function updateCount() {
+            if (countEl) {
+                var n = Object.keys(pending).length;
+                countEl.textContent = n === 0 ? 'No overrides set' : n + ' override' + (n === 1 ? '' : 's');
+            }
+            renderSidebar();
+        }
+
+        /* Populate sidebar immediately for any pre-existing overrides */
+        renderSidebar();
+
+        function filterList(q) {
+            q = (q || '').toLowerCase();
+            listEl.querySelectorAll('.ng-ov-row').forEach(function (r) {
+                r.style.display = (!q || (r.dataset.name || '').toLowerCase().indexOf(q) !== -1) ? '' : 'none';
+            });
+        }
+
+        /* Build an inline FA icon picker, calls onSelect(cls) on pick */
+        function buildIconPicker(initialCls, onSelect) {
+            var wrap = document.createElement('div');
+            wrap.className = 'ng-ov-picker';
+
+            var si = document.createElement('input');
+            si.type = 'text';
+            si.className = 'ng-ov-picker-search';
+            si.placeholder = 'Search icons… (wifi, fan, bolt, car…)';
+            si.autocomplete = 'off';
+            wrap.appendChild(si);
+
+            var grid = document.createElement('div');
+            grid.className = 'ng-ov-icon-grid';
+            wrap.appendChild(grid);
+
+            var activeCls = initialCls;
+
+            function renderGrid(q) {
+                q = (q || '').toLowerCase().replace(/^fa-solid\s+fa-/, '').trim();
+                var hits = q
+                    ? FA_ICONS.filter(function (c) { return c.replace('fa-solid fa-', '').replace(/-/g, ' ').indexOf(q) !== -1; })
+                    : FA_ICONS;
+                grid.innerHTML = '';
+                hits.forEach(function (cls) {
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'ng-ov-icon-btn' + (cls === activeCls ? ' ng-ov-icon-btn--active' : '');
+                    btn.title = cls.replace('fa-solid fa-', '').replace(/-/g, ' ');
+                    btn.setAttribute('data-icon', cls);
+                    var ic = document.createElement('i');
+                    ic.className = cls;
+                    btn.appendChild(ic);
+                    grid.appendChild(btn);
+                });
+            }
+
+            renderGrid('');
+
+            si.addEventListener('input', function () { renderGrid(this.value); });
+
+            grid.addEventListener('click', function (e) {
+                var btn = e.target.closest('.ng-ov-icon-btn');
+                if (!btn) return;
+                activeCls = btn.getAttribute('data-icon');
+                grid.querySelectorAll('.ng-ov-icon-btn').forEach(function (b) {
+                    b.classList.toggle('ng-ov-icon-btn--active', b === btn);
+                });
+                onSelect(activeCls);
+            });
+
+            return wrap;
+        }
+
+        /* Render one device row with its inline editor */
+        function renderRow(d) {
+            var idxStr   = String(d.idx);
+            var ov       = pending[idxStr];
+            var hasOv    = !!(ov && ov.icon);
+            var curIcon  = hasOv ? ov.icon  : 'fa-solid fa-gear';
+            var curOn    = hasOv ? (ov.on  || '#4e9af1') : '#4e9af1';
+            var curOff   = hasOv ? (ov.off || '#555770') : '#555770';
+
+            var row = document.createElement('div');
+            row.className = 'ng-ov-row' + (hasOv ? ' ng-ov-row--active' : '');
+            row.dataset.idx  = idxStr;
+            row.dataset.name = d.Name || '';
+
+            /* Row summary line */
+            var summary = document.createElement('div');
+            summary.className = 'ng-ov-row-summary';
+            summary.innerHTML =
+                '<span class="ng-ov-row-icon">' +
+                '  <i class="' + (hasOv ? curIcon : 'fa-solid fa-circle-question') + ' ng-ov-row-fa"' +
+                '     style="color:' + (hasOv ? curOn : '#555770') + ';' + (hasOv ? '' : 'opacity:.45') + '"></i>' +
+                '</span>' +
+                '<span class="ng-bl-row-info">' +
+                '  <span class="ng-bl-row-name">' + (d.Name || 'Device ' + d.idx) + '</span>' +
+                '  <span class="ng-bl-row-type">IDX&nbsp;' + d.idx + (d.Type ? ' &middot; ' + d.Type : '') + (d.HardwareName ? ' &middot; ' + d.HardwareName : '') + '</span>' +
+                '</span>' +
+                '<button class="ng-ov-edit-btn" type="button" title="' + (hasOv ? 'Edit override' : 'Add override') + '">' +
+                '  <i class="fa-solid ' + (hasOv ? 'fa-pen-to-square' : 'fa-plus') + '"></i>' +
+                '</button>';
+            row.appendChild(summary);
+
+            /* Inline editor */
+            var editor = document.createElement('div');
+            editor.className = 'ng-ov-editor';
+            editor.style.display = 'none';
+
+            /* Preview */
+            var preview = document.createElement('div');
+            preview.className = 'ng-ov-preview';
+            var previewI = document.createElement('i');
+            previewI.className = curIcon + ' ng-ov-preview-icon';
+            previewI.style.color = curOn;
+            var previewName = document.createElement('span');
+            previewName.className = 'ng-ov-preview-name';
+            previewName.textContent = d.Name || 'Device';
+            preview.appendChild(previewI);
+            preview.appendChild(previewName);
+            editor.appendChild(preview);
+
+            /* Icon picker */
+            var picker = buildIconPicker(curIcon, function (cls) {
+                curIcon = cls;
+                previewI.className = cls + ' ng-ov-preview-icon';
+                previewI.style.color = curOn;
+                var rowFa = summary.querySelector('.ng-ov-row-fa');
+                if (rowFa) { rowFa.className = cls + ' ng-ov-row-fa'; rowFa.style.color = curOn; rowFa.style.opacity = ''; }
+                commitOverride();
+            });
+            editor.appendChild(picker);
+
+            /* Color pickers — reuse the settings-panel HSV canvas picker */
+            var colorRow = document.createElement('div');
+            colorRow.className = 'ng-ov-color-row';
+
+            var OV_COLOR_PRESETS = [
+                '#4e9af1','#29b6f6','#4caf7d','#66bb6a',
+                '#f0a832','#ffa726','#ff7043','#e05555',
+                '#c8a0ff','#ab47bc','#78909c','#555770'
+            ];
+
+            function makeOvColorPicker(labelText, initialColor, onChange) {
+                var wrap = document.createElement('div');
+                wrap.className = 'ng-ov-color-label';
+
+                var span = document.createElement('span');
+                span.textContent = labelText;
+                wrap.appendChild(span);
+
+                var pickerWrap = document.createElement('div');
+                pickerWrap.className = 'ng-color-wrap';
+
+                var swatch = document.createElement('button');
+                swatch.type = 'button';
+                swatch.className = 'ng-cp-swatch';
+                swatch.style.background = initialColor;
+
+                var hexInput = document.createElement('input');
+                hexInput.type = 'text';
+                hexInput.className = 'ng-cp-hex';
+                hexInput.value = initialColor;
+                hexInput.maxLength = 7;
+                hexInput.spellcheck = false;
+
+                var popover = document.createElement('div');
+                popover.className = 'ng-cp-popover';
+                popover.style.display = 'none';
+
+                var svCanvas = document.createElement('canvas');
+                svCanvas.className = 'ng-cp-sv';
+                svCanvas.width = 232;
+                svCanvas.height = 148;
+
+                var hueCanvas = document.createElement('canvas');
+                hueCanvas.className = 'ng-cp-hue';
+                hueCanvas.width = 232;
+                hueCanvas.height = 14;
+
+                var presetsEl = document.createElement('div');
+                presetsEl.className = 'ng-cp-presets';
+                OV_COLOR_PRESETS.forEach(function (c) {
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'ng-cp-preset' + (c.toLowerCase() === initialColor.toLowerCase() ? ' ng-cp-preset--active' : '');
+                    btn.setAttribute('data-color', c);
+                    btn.style.background = c;
+                    btn.title = c;
+                    presetsEl.appendChild(btn);
+                });
+
+                popover.appendChild(svCanvas);
+                popover.appendChild(hueCanvas);
+                popover.appendChild(presetsEl);
+                pickerWrap.appendChild(swatch);
+                pickerWrap.appendChild(hexInput);
+                pickerWrap.appendChild(popover);
+                wrap.appendChild(pickerWrap);
+
+                var hsv = hexToHsv(initialColor);
+                drawSV(svCanvas, hsv.h);
+                drawHueBar(hueCanvas);
+
+                function updateFromHsv() {
+                    var hex = hsvToHex(hsv.h, hsv.s, hsv.v);
+                    swatch.style.background = hex;
+                    hexInput.value = hex;
+                    drawSV(svCanvas, hsv.h);
+                    presetsEl.querySelectorAll('.ng-cp-preset').forEach(function (b) {
+                        b.classList.toggle('ng-cp-preset--active',
+                            b.getAttribute('data-color').toLowerCase() === hex.toLowerCase());
+                    });
+                    onChange(hex);
+                }
+
+                function closeOtherPopovers() {
+                    var dialog = wrap.closest('.ng-ov-dialog') || document.body;
+                    dialog.querySelectorAll('.ng-color-wrap .ng-cp-popover').forEach(function (p) {
+                        if (p !== popover) p.style.display = 'none';
+                    });
+                }
+
+                swatch.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    var open = popover.style.display === 'block';
+                    closeOtherPopovers();
+                    if (!open) {
+                        popover.style.display = 'block';
+                        var rect = swatch.getBoundingClientRect();
+                        var popW = 260;
+                        var left = rect.right - popW;
+                        var top  = rect.bottom + 8;
+                        if (left < 8) left = 8;
+                        if (top + 300 > window.innerHeight) top = rect.top - 308;
+                        popover.style.left = left + 'px';
+                        popover.style.top  = top  + 'px';
+                        drawSV(svCanvas, hsv.h);
+                        drawHueBar(hueCanvas);
+                    }
+                });
+
+                function handleSV(e) {
+                    var rect = svCanvas.getBoundingClientRect();
+                    hsv.s = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                    hsv.v = 1 - Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+                    updateFromHsv();
+                }
+                var svDragging = false;
+                svCanvas.addEventListener('pointerdown', function (e) {
+                    svDragging = true; svCanvas.setPointerCapture(e.pointerId); handleSV(e);
+                });
+                svCanvas.addEventListener('pointermove', function (e) { if (svDragging) handleSV(e); });
+                svCanvas.addEventListener('pointerup',   function ()  { svDragging = false; });
+
+                function handleHue(e) {
+                    var rect = hueCanvas.getBoundingClientRect();
+                    hsv.h = Math.max(0, Math.min(0.9999, (e.clientX - rect.left) / rect.width));
+                    updateFromHsv();
+                }
+                var hueDragging = false;
+                hueCanvas.addEventListener('pointerdown', function (e) {
+                    hueDragging = true; hueCanvas.setPointerCapture(e.pointerId); handleHue(e);
+                });
+                hueCanvas.addEventListener('pointermove', function (e) { if (hueDragging) handleHue(e); });
+                hueCanvas.addEventListener('pointerup',   function ()  { hueDragging = false; });
+
+                hexInput.addEventListener('input', function () {
+                    var v = this.value.trim();
+                    if (/^#[0-9a-fA-F]{6}$/.test(v)) { hsv = hexToHsv(v); updateFromHsv(); }
+                });
+                hexInput.addEventListener('blur', function () {
+                    if (!/^#[0-9a-fA-F]{6}$/.test(this.value)) {
+                        this.value = hsvToHex(hsv.h, hsv.s, hsv.v);
+                    }
+                });
+                hexInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') this.blur();
+                });
+
+                presetsEl.querySelectorAll('.ng-cp-preset').forEach(function (btn) {
+                    btn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        hsv = hexToHsv(this.getAttribute('data-color'));
+                        updateFromHsv();
+                    });
+                });
+
+                return wrap;
+            }
+
+            var onField  = makeOvColorPicker('On color',  curOn,  function (v) { curOn  = v; previewI.style.color = v; var fa = summary.querySelector('.ng-ov-row-fa'); if (fa) fa.style.color = v; commitOverride(); });
+            var offField = makeOvColorPicker('Off color', curOff, function (v) { curOff = v; commitOverride(); });
+
+            var removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'ng-ov-remove-btn';
+            removeBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Remove';
+            removeBtn.addEventListener('click', function () {
+                delete pending[idxStr];
+                row.classList.remove('ng-ov-row--active');
+                var editBtn = summary.querySelector('.ng-ov-edit-btn');
+                if (editBtn) editBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
+                var rowFa = summary.querySelector('.ng-ov-row-fa');
+                if (rowFa) { rowFa.className = 'fa-solid fa-circle-question ng-ov-row-fa'; rowFa.style.color = '#555770'; rowFa.style.opacity = '.45'; }
+                editor.style.display = 'none';
+                updateCount();
+            });
+
+            colorRow.appendChild(onField);
+            colorRow.appendChild(offField);
+            colorRow.appendChild(removeBtn);
+            editor.appendChild(colorRow);
+
+            function commitOverride() {
+                if (!curIcon) return;
+                pending[idxStr] = { icon: curIcon, on: curOn, off: curOff, name: d.Name || '' };
+                row.classList.add('ng-ov-row--active');
+                var editBtn = summary.querySelector('.ng-ov-edit-btn');
+                if (editBtn) editBtn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
+                updateCount();
+            }
+
+            /* Row click: apply preset (select mode) or open editor (normal mode) */
+            summary.addEventListener('click', function (e) {
+                if (_pendingPreset) {
+                    applyPresetToRow(idxStr);
+                    return;
+                }
+                /* Normal: only toggle editor when the edit button itself was clicked */
+                if (!e.target.closest('.ng-ov-edit-btn')) return;
+                var open = editor.style.display !== 'none';
+                listEl.querySelectorAll('.ng-ov-editor').forEach(function (ed) { ed.style.display = 'none'; });
+                editor.style.display = open ? 'none' : '';
+            });
+
+            row.appendChild(editor);
+            return row;
+        }
+
+        function renderDevices(devices) {
+            if (!devices || !devices.length) {
+                listEl.innerHTML = '<div class="ng-bl-empty">No devices found.</div>';
+                return;
+            }
+            listEl.innerHTML = '';
+
+            // Sort: devices with existing overrides first
+            var sorted = devices.slice().sort(function (a, b) {
+                var aHas = !!(pending[String(a.idx)]);
+                var bHas = !!(pending[String(b.idx)]);
+                if (aHas && !bHas) return -1;
+                if (!aHas && bHas) return 1;
+                return (a.Name || '').localeCompare(b.Name || '');
+            });
+
+            sorted.forEach(function (d) { listEl.appendChild(renderRow(d)); });
+            updateCount();
+        }
+
+        /* Selection mode — used when a preset chip is active */
+        var _pendingPreset = null;
+        var _pendingChip   = null;
+
+        /* Banner shown above the list when a preset is pending */
+        var banner = document.createElement('div');
+        banner.className = 'ng-ov-select-banner';
+        banner.style.display = 'none';
+        listEl.parentNode.insertBefore(banner, listEl);
+
+        function enterSelectMode(preset, chip) {
+            _pendingPreset = preset;
+            if (_pendingChip) _pendingChip.classList.remove('ng-ov-chip--active');
+            _pendingChip = chip;
+            chip.classList.add('ng-ov-chip--active');
+
+            banner.innerHTML =
+                '<span class="ng-ov-banner-icon"><i class="' + preset.icon + '" style="color:' + preset.on + '"></i></span>' +
+                '<span class="ng-ov-banner-text">Click any device to apply <strong>' + preset.label + '</strong></span>' +
+                '<button class="ng-ov-banner-cancel" type="button"><i class="fa-solid fa-xmark"></i> Cancel</button>';
+            banner.style.display = '';
+            listEl.classList.add('ng-ov-list--select-mode');
+
+            banner.querySelector('.ng-ov-banner-cancel').addEventListener('click', exitSelectMode);
+        }
+
+        function exitSelectMode() {
+            _pendingPreset = null;
+            if (_pendingChip) _pendingChip.classList.remove('ng-ov-chip--active');
+            _pendingChip = null;
+            banner.style.display = 'none';
+            listEl.classList.remove('ng-ov-list--select-mode');
+        }
+
+        /* Apply the pending preset to a device row */
+        function applyPresetToRow(idxStr) {
+            var pp = _pendingPreset;
+            pending[idxStr] = { icon: pp.icon, on: pp.on, off: pp.off, name: pending[idxStr] && pending[idxStr].name || pp.label };
+            var row = listEl.querySelector('[data-idx="' + idxStr + '"]');
+            if (row) {
+                row.classList.add('ng-ov-row--active');
+                var rowFa  = row.querySelector('.ng-ov-row-fa');
+                var editBtn = row.querySelector('.ng-ov-edit-btn');
+                if (rowFa)   { rowFa.className = pp.icon + ' ng-ov-row-fa'; rowFa.style.color = pp.on; rowFa.style.opacity = ''; }
+                if (editBtn) { editBtn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>'; }
+            }
+            updateCount();
+            exitSelectMode();
+        }
+
+        /* Popular preset chips */
+        POPULAR_OVERRIDES.forEach(function (p) {
+            var chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'ng-ov-chip';
+            chip.title = p.icon.replace('fa-solid fa-', '').replace(/-/g, ' ');
+            chip.innerHTML = '<i class="' + p.icon + '"></i> ' + p.label;
+
+            chip.addEventListener('click', function () {
+                /* Toggle: clicking the already-active chip exits select mode */
+                if (_pendingPreset === p) { exitSelectMode(); return; }
+                exitSelectMode();
+                enterSelectMode(p, chip);
+            });
+            chipsEl.appendChild(chip);
+        });
+
+        /* Close + Search + Save */
+        overlay.querySelector('.ng-bl-close').addEventListener('click', close);
+        overlay.querySelector('.ng-bl-btn--cancel').addEventListener('click', close);
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) { close(); return; }
+            /* Close any open HSV color-picker popovers when clicking outside them */
+            if (!e.target.closest('.ng-color-wrap')) {
+                overlay.querySelectorAll('.ng-cp-popover').forEach(function (p) { p.style.display = 'none'; });
+            }
+        });
+        overlay.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') { if (_pendingPreset) { exitSelectMode(); e.stopPropagation(); } else { close(); } }
+        });
+        if (searchEl) searchEl.addEventListener('input', function () { filterList(this.value); });
+
+        overlay.querySelector('.ng-bl-btn--save').addEventListener('click', function () {
+            if (window.dzNightglassSettings) {
+                window.dzNightglassSettings.set('deviceIconOverrides', JSON.stringify(pending));
+            }
+            close();
+            // Refresh settings panel badge
+            var wrap = document.getElementById('ng-theme-settings-wrap');
+            if (wrap) {
+                var presetsBody = wrap.querySelector('#ngPresetsBody');
+                var presetsOpen = presetsBody && presetsBody.style.display !== 'none';
+                wrap.innerHTML = buildPanel({ presetsOpen: presetsOpen });
+                bindEvents(wrap);
+                loadPresets(wrap);
+            }
+        });
+
+        /* Fetch devices — window.__ngDemoDevices can be set by demo pages as a fallback */
+        fetch('/json.htm?type=command&param=getdevices&filter=all&used=true&order=Name', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) { renderDevices(data.result || []); })
+            .catch(function () {
+                if (Array.isArray(window.__ngDemoDevices)) {
+                    renderDevices(window.__ngDemoDevices);
+                    listEl.insertAdjacentHTML('afterbegin',
+                        '<div class="ng-ov-demo-notice">' +
+                        '<i class="fa-solid fa-circle-info"></i> ' +
+                        'Demo mode \u2014 showing example devices.' +
+                        '</div>');
+                    return;
+                }
+                listEl.innerHTML =
+                    '<div class="ng-bl-empty">' +
+                    '  <i class="fa-solid fa-triangle-exclamation"></i>' +
+                    '  Could not load devices. Use Quick Presets above and enter a device IDX.' +
+                    '</div>';
+                updateCount();
+            });
+    }
+
     function bindEvents(container) {
         // Presets panel collapse/expand
         var presetsToggle = container.querySelector('#ngPresetsToggle');
@@ -1698,6 +2441,12 @@
         var blBtn = container.querySelector('#ng-bl-manage-btn');
         if (blBtn) {
             blBtn.addEventListener('click', openBlacklistDialog);
+        }
+
+        // Device icon override manage button
+        var ovBtn = container.querySelector('#ng-override-manage-btn');
+        if (ovBtn) {
+            ovBtn.addEventListener('click', openDeviceIconOverrideDialog);
         }
 
         // Export button

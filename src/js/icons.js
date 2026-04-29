@@ -642,6 +642,39 @@
     /* WeakMap so entries are GC'd automatically when the img is gone */
     var iconMap = new WeakMap();
 
+    /* ── Per-device icon overrides ─────────────────────────────────
+       Keyed by device IDX string → { icon, on, off }.
+       Populated by the settings module via window._dzSetDeviceIconOverrides. */
+    var DEVICE_ICON_OVERRIDES = {};
+
+    /* Returns an overridden resolved spec for a given device IDX + src,
+       or null when no override is configured for that device.             */
+    function applyDeviceOverride(devIdx, src, fallbackResolved) {
+        if (!devIdx || !DEVICE_ICON_OVERRIDES[devIdx]) return null;
+        var ov = DEVICE_ICON_OVERRIDES[devIdx];
+        if (!ov.icon) return null;
+        var parsedSrc = parseDeviceSrc(src);
+        var isOn  = !parsedSrc || parsedSrc.state !== 'off';
+        var fbOn  = (fallbackResolved && fallbackResolved.colorOn)  || '#4e9af1';
+        var fbOff = (fallbackResolved && fallbackResolved.colorOff) || '#555770';
+        var ovOn  = ov.on  || fbOn;
+        var ovOff = ov.off || fbOff;
+        return {
+            type:     'device',
+            cls:      ov.icon + ' dz-fa-device',
+            color:    isOn ? ovOn : ovOff,
+            colorOn:  ovOn,
+            colorOff: ovOff
+        };
+    }
+
+    /* Called by the settings module when the override map changes.
+       Schedules a replacement burst so already-rendered icons update. */
+    window._dzSetDeviceIconOverrides = function (overrides) {
+        DEVICE_ICON_OVERRIDES = overrides || {};
+        if (typeof window._dzScheduleBurst === 'function') window._dzScheduleBurst();
+    };
+
     /* -- Process a single <img> into an FA <i> -------------------- */
     /* Returns true if the image was processed, false if skipped.      */
 
@@ -670,6 +703,19 @@
         if (!resolved) {
             img.classList.add('dz-icon-skipped');
             return false;
+        }
+
+        /* Per-device icon override — only for 48px device state icons */
+        if (resolved.type === 'device') {
+            var angDev = getDeviceFromIcon(img);
+            if (angDev) {
+                var devIdx = String(angDev.idx || angDev.IDX || '');
+                var ovSpec = devIdx ? applyDeviceOverride(devIdx, src, resolved) : null;
+                if (ovSpec) {
+                    resolved = ovSpec;
+                    img.setAttribute('data-dz-dev-idx', devIdx);
+                }
+            }
         }
 
         var icon = document.createElement('i');
@@ -790,7 +836,24 @@
         if (!curSrc || curSrc === prevSrc || curSrc.indexOf('{{') !== -1) return;
         if (shouldSkip(curSrc)) return;
 
+        /* Resolve icon first so colors are available as fallback for overrides */
         var resolved = resolveIcon(curSrc);
+
+        /* Per-device icon override — check stored IDX on the img element */
+        var devIdx = img.getAttribute('data-dz-dev-idx');
+        if (devIdx) {
+            var ovSpec = applyDeviceOverride(devIdx, curSrc, resolved);
+            if (ovSpec) {
+                icon.className = ovSpec.cls;
+                icon.style.color = ovSpec.color || '';
+                icon.setAttribute('data-dz-color-on',  ovSpec.colorOn);
+                icon.setAttribute('data-dz-color-off', ovSpec.colorOff);
+                icon.setAttribute('data-dz-state', ovSpec.color === ovSpec.colorOn ? 'on' : 'off');
+                img.setAttribute('data-dz-src', curSrc);
+                return;
+            }
+        }
+
         if (!resolved) return;
 
         if (resolved.type === 'fav') {
@@ -903,11 +966,15 @@
                 var rot = WIND_ROTATION[newResolved.dir];
                 prevIcon.style.transform = rot !== null ? 'rotate(' + rot + 'deg)' : '';
             } else if (newResolved.type === 'device') {
-                prevIcon.className = newResolved.cls;
-                prevIcon.style.color = newResolved.color || '';
-                if (newResolved.colorOn)  prevIcon.setAttribute('data-dz-color-on',  newResolved.colorOn);
-                if (newResolved.colorOff) prevIcon.setAttribute('data-dz-color-off', newResolved.colorOff);
-                prevIcon.setAttribute('data-dz-state', newResolved.color === newResolved.colorOn ? 'on' : 'off');
+                /* Prefer per-device override if one is configured */
+                var p2DevIdx = rImg.getAttribute('data-dz-dev-idx');
+                var p2Spec   = p2DevIdx ? applyDeviceOverride(p2DevIdx, curSrc, newResolved) : null;
+                var p2Final  = p2Spec || newResolved;
+                prevIcon.className = p2Final.cls;
+                prevIcon.style.color = p2Final.color || '';
+                if (p2Final.colorOn)  prevIcon.setAttribute('data-dz-color-on',  p2Final.colorOn);
+                if (p2Final.colorOff) prevIcon.setAttribute('data-dz-color-off', p2Final.colorOff);
+                prevIcon.setAttribute('data-dz-state', p2Final.color === p2Final.colorOn ? 'on' : 'off');
             }
 
             rImg.setAttribute('data-dz-src', curSrc);
