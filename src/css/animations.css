@@ -555,43 +555,6 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
     transition: border-top-color 1.2s ease;
 }
 
-/* When bar ranges provide a gradient, render via an inner wrapper that clips to border-radius */
-.dz-temp-accent.dz-range-gradient {
-    border-top-color: transparent !important;
-}
-
-.dz-range-bar {
-    position: absolute;
-    inset: 0;
-    overflow: visible;
-    border-radius: inherit;
-    z-index: 1;
-    pointer-events: none;
-}
-
-.dz-range-bar-inner {
-    width: 100%;
-    height: 3px;
-    background: var(--dz-range-gradient);
-    border-radius: inherit;
-    overflow: hidden;
-}
-
-/* Value needle dot */
-.dz-range-bar::after {
-    content: '';
-    position: absolute;
-    top: 1.5px;
-    left: var(--dz-range-val-pct, 50%);
-    transform: translate(-50%, -50%);
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #fff;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.5);
-}
-
-
 
 /* ══════════════════════════════════════════════════════════════════
    30. DEAD DEVICE STALENESS INDICATOR
