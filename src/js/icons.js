@@ -233,7 +233,11 @@
         'mode':            { icon: 'fa-solid fa-sliders',             on: '#4e9af1', off: null },
         'doorbell':        { icon: 'fa-solid fa-bell',                on: '#f0a832', off: null },
         'adjust':          { icon: 'fa-solid fa-sliders',             on: '#4e9af1', off: null },
-        'custom':          { icon: 'fa-solid fa-gear',                on: '#b0b3c6', off: '#555770' }
+        'custom':          { icon: 'fa-solid fa-gear',                on: '#b0b3c6', off: '#555770' },
+
+        /* Scenes & groups */
+        'scene':           { icon: 'fa-solid fa-layer-group',        on: '#4caf7d', off: '#555770' },
+        'group':           { icon: 'fa-solid fa-layer-group',        on: '#4caf7d', off: '#555770' }
     };
 
     /* -- Favorite star icons -------------------------------------- */
@@ -1344,6 +1348,12 @@
             var ctImg = image || (sw === 'Door Contact' ? 'Door' : 'Contact');
             if (device.CustomImage == 0) ctImg = ctImg.charAt(0).toUpperCase() + ctImg.slice(1);
             src = 'images/' + ctImg + '48_On.png';
+        } else if (type === 'Scene') {
+            var scSpec = DEVICE_MAP['scene'];
+            return scSpec ? { icon: scSpec.icon, color: scSpec.on } : null;
+        } else if (type === 'Group') {
+            var grpSpec = DEVICE_MAP['group'];
+            return grpSpec ? { icon: grpSpec.icon, color: grpSpec.on } : null;
         } else if (!sw && typeImg) {
             /* Sensor/meter (no SwitchType): look up TypeImg with alias normalisation */
             var normKey = ALIASES[typeImg] || typeImg;

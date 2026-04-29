@@ -1981,6 +1981,27 @@
     cursor: pointer;
 }
 
+/* Device group tag (Temperature, Weather, Utility, etc.) */
+.ng-ov-group-tag {
+    display: inline-block;
+    padding: 1px 5px;
+    margin-left: 4px;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    background: rgba(176, 179, 198, 0.1);
+    color: var(--dz-text-muted);
+    border-radius: 4px;
+    vertical-align: middle;
+}
+
+.ng-ov-group-tag--temp     { background: rgba(224, 85, 85, 0.1);   color: #e05555; }
+.ng-ov-group-tag--weather  { background: rgba(41, 182, 246, 0.12); color: #29b6f6; }
+.ng-ov-group-tag--security { background: rgba(224, 85, 85, 0.1);   color: #e05555; }
+.ng-ov-group-tag--utility  { background: rgba(200, 160, 255, 0.1); color: #c8a0ff; }
+.ng-ov-group-tag--scene    { background: rgba(76, 175, 125, 0.12); color: #4caf7d; }
+
 /* Device-model badge shown in the row type line */
 .ng-ov-model-badge {
     display: inline-block;

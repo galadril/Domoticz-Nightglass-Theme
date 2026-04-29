@@ -1717,6 +1717,27 @@
         return 'binary';
     }
 
+    /* Returns a human-readable group label for a device (shown as a tag in the dialog).
+       Groups mirror the Domoticz dashboard tabs. */
+    function getDeviceGroup(d) {
+        var type = d.Type || '';
+        var sw   = d.SwitchType || '';
+        if (['Temp','Temp+Hum','Temp+Hum+Baro','Humidity',
+             'Soil Temperature'].indexOf(type) >= 0) return 'Temperature';
+        if (['Rain','Wind','UV','Visibility','Barometric Pressure',
+             'Solar Radiation'].indexOf(type) >= 0) return 'Weather';
+        if (type === 'Security') return 'Security';
+        if (type === 'Scene') return 'Scene';
+        if (type === 'Group' || sw === 'Group') return 'Group';
+        if (['General','P1 Smart Meter','RFXMeter','YouLess Meter',
+             'Lux','Air Quality','Current','Current/Energy',
+             'Weight','Counter Incremental'].indexOf(type) >= 0) return 'Utility';
+        if (['Light/Switch','Lighting 1','Lighting 2','Lighting 3',
+             'Lighting 4','Lighting 5','Lighting 6','Fan','Chime',
+             'Color Switch'].indexOf(type) >= 0) return 'Light & Switch';
+        return null;
+    }
+
     function openDeviceIconOverrideDialog() {
         var existing = document.getElementById('ng-ov-overlay');
         if (existing) existing.remove();
@@ -2077,13 +2098,21 @@
                            : model === 'blinds-3' ? ' <span class="ng-ov-model-badge">3-icon</span>'
                            : model === 'sensor'   ? ' <span class="ng-ov-model-badge ng-ov-model-badge--sensor">sensor</span>'
                            : '';
+            var groupLabel = getDeviceGroup(d);
+            var groupTagCls = !groupLabel ? '' :
+                groupLabel === 'Temperature' ? ' ng-ov-group-tag--temp' :
+                groupLabel === 'Weather'     ? ' ng-ov-group-tag--weather' :
+                groupLabel === 'Security'    ? ' ng-ov-group-tag--security' :
+                groupLabel === 'Utility'     ? ' ng-ov-group-tag--utility' :
+                (groupLabel === 'Scene' || groupLabel === 'Group') ? ' ng-ov-group-tag--scene' : '';
+            var groupTag = groupLabel ? ' <span class="ng-ov-group-tag' + groupTagCls + '">' + groupLabel + '</span>' : '';
             var swLabel = (d.SwitchType && d.SwitchType !== d.Type) ? ' &middot; ' + d.SwitchType : '';
             summary.innerHTML =
                 iconHtml +
                 '<span class="ng-bl-row-info">' +
                 '  <span class="ng-bl-row-name">' + (d.Name || 'Device ' + d.idx) + '</span>' +
                 '  <span class="ng-bl-row-type">IDX&nbsp;' + d.idx +
-                    (d.Type ? ' &middot; ' + d.Type : '') + swLabel + modelBadge +
+                    (d.Type ? ' &middot; ' + d.Type : '') + swLabel + modelBadge + groupTag +
                 '  </span>' +
                 '</span>' +
                 '<button class="ng-ov-edit-btn" type="button" title="' + (hasOv ? 'Edit override' : 'Add override') + '">' +
