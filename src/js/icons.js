@@ -1293,24 +1293,82 @@
        observers in the processCards block) can trigger a replacement pass. */
     window._dzScheduleBurst = scheduleBurst;
 
-    /* Expose a device-icon lookup for other modules (e.g. command palette).
-       Given a Domoticz device object with TypeImg + Status fields, returns
-       { icon: 'fa-solid fa-...', color: '#rrggbb' } or null.               */
+    /* Expose a device-icon lookup for other modules (e.g. settings dialog).
+       Given a Domoticz device object, returns { icon, color } replicating
+       the logic of dzLightWidget.js::getDeviceIcon() so the dialog shows
+       the same icon that Domoticz actually renders.                        */
     window._dzIconForDevice = function (device) {
-        var typeImg = device.TypeImg || '';
-        // Build a synthetic image path that parseDeviceSrc / resolveIcon can parse
-        var on   = !!(device.Status && (
-            ['On','Group On','Chime','Panic','Mixed'].indexOf(device.Status) >= 0 ||
-            device.Status.indexOf('Set ') === 0));
-        var suffix = on ? '_On' : '_Off';
-        var src = 'images/' + typeImg + '48' + suffix + '.png';
+        var sw      = device.SwitchType || '';
+        var type    = device.Type       || '';
+        var subType = device.SubType    || '';
+        var typeImg = (device.TypeImg   || '').toLowerCase();
+        var image   = device.Image      || '';
+        /* TypeImg values that differ from DEVICE_MAP keys */
+        var ALIASES = { 'hum': 'humidity', 'temphum': 'temp', 'temphumbaroew': 'temp',
+                        'zwavemelding': 'alarm', 'elec': 'electricityusage' };
+        var src;
+
+        /* Mirror getDeviceIcon() special cases */
+        if (sw === 'Doorbell') {
+            src = 'images/doorbell48.png';
+        } else if (sw.indexOf('Blind') >= 0 || sw.indexOf('Venetian') >= 0) {
+            /* Show open state so the dialog preview uses the open-arrow icon */
+            src = 'images/' + (device.TypeImg || 'blinds') + 'open48sel.png';
+        } else if (sw === 'Smoke Detector') {
+            src = 'images/smoke48on.png';
+        } else if (sw === 'Motion Sensor') {
+            src = 'images/motion48-on.png';
+        } else if (sw === 'Dusk Sensor') {
+            /* uvdark/uvsunny are in the skip list — return lux spec directly */
+            var luxSpec = DEVICE_MAP['lux'];
+            return luxSpec ? { icon: luxSpec.icon, color: luxSpec.on } : null;
+        } else if (subType === 'Security Panel') {
+            src = 'images/security48.png';
+        } else if (sw === 'X10 Siren') {
+            /* siren-on/off are in skip list — use alarm */
+            var almSpec = DEVICE_MAP['alarm'];
+            return almSpec ? { icon: almSpec.icon, color: almSpec.on } : null;
+        } else if (sw === 'TPI') {
+            src = 'images/Fireplace48_On.png';
+        } else if (subType && (subType.indexOf('Itho') === 0 || subType.indexOf('Orcon') === 0 ||
+                   subType.indexOf('Lucci') === 0 || subType.indexOf('Falmec') === 0 ||
+                   subType.indexOf('Westinghouse') === 0)) {
+            src = 'images/Fan48_On.png';
+        } else if (type === 'Security') {
+            src = 'images/security48.png';
+        } else if (sw === 'Door Lock' || sw === 'Door Lock Inverted') {
+            var lockImg = image || 'Light';
+            if (device.CustomImage == 0) lockImg = lockImg.charAt(0).toUpperCase() + lockImg.slice(1);
+            src = 'images/' + lockImg + '48_On.png';
+        } else if (sw === 'Contact' || sw === 'Door Contact') {
+            var ctImg = image || (sw === 'Door Contact' ? 'Door' : 'Contact');
+            if (device.CustomImage == 0) ctImg = ctImg.charAt(0).toUpperCase() + ctImg.slice(1);
+            src = 'images/' + ctImg + '48_On.png';
+        } else if (!sw && typeImg) {
+            /* Sensor/meter (no SwitchType): look up TypeImg with alias normalisation */
+            var normKey = ALIASES[typeImg] || typeImg;
+            if (DEVICE_MAP[normKey]) {
+                var sSpec = DEVICE_MAP[normKey];
+                return { icon: sSpec.icon, color: sSpec.on || '#4e9af1' };
+            }
+            src = 'images/' + typeImg + '48.png';
+        } else {
+            /* Standard switch: getDeviceIcon() uses device.Image, not TypeImg */
+            var imgBase = image || 'Light';
+            if (device.CustomImage == 0) imgBase = imgBase.charAt(0).toUpperCase() + imgBase.slice(1);
+            src = 'images/' + imgBase + '48_On.png';
+        }
+
         var r = resolveIcon(src);
         if (r && r.cls) {
-            // strip dz-fa-device / dz-wind helper classes — just the FA classes
-            var fa = r.cls.split(' ').filter(function (c) {
-                return c.indexOf('fa-') === 0 || c === 'fa-solid' || c === 'fa-regular';
-            }).join(' ');
+            var fa = r.cls.split(' ').filter(function (c) { return c.indexOf('fa-') === 0; }).join(' ');
             return { icon: fa || r.cls, color: r.color };
+        }
+        /* Final fallback: typeImg alias lookup in DEVICE_MAP */
+        var fbKey = ALIASES[typeImg] || typeImg;
+        if (fbKey && DEVICE_MAP[fbKey]) {
+            var fbSpec = DEVICE_MAP[fbKey];
+            return { icon: fbSpec.icon, color: fbSpec.on || '#4e9af1' };
         }
         return null;
     };

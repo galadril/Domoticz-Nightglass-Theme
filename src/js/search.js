@@ -2049,7 +2049,7 @@
             var curIconStop  = hasOv ? (ov.iconStop  || 'fa-solid fa-stop')                   : 'fa-solid fa-stop';
             var curOn        = hasOv ? (ov.on  || defColorOn)  : defColorOn;
             var curOff       = hasOv ? (ov.off || defColorOff) : defColorOff;
-            var keepColor    = !!(ov && ov.keepColor);
+            var keepColor    = ov ? !!(ov.keepColor) : (model === 'sensor');
 
             /* ── Row element ──────────────────────────────────────────────── */
             var row = document.createElement('div');
@@ -2451,7 +2451,7 @@
                     commitOverride();
                 }));
                 colorRow.appendChild(buildRemoveBtn(function () {
-                    curIconOn = defIconOn; curOn = defColorOn; keepColor = false;
+                    curIconOn = defIconOn; curOn = defColorOn; keepColor = true;
                     var fa = summary.querySelector('.ng-ov-row-fa');
                     if (fa) { fa.className = defIconOn + ' ng-ov-row-fa'; fa.style.color = defColorOn; fa.style.opacity = '.55'; }
                 }));
@@ -2530,7 +2530,27 @@
 
             /* ── Click to toggle editor ───────────────────────────────────── */
             summary.addEventListener('click', function (e) {
-                if (_pendingPreset) { applyPresetToRow(idxStr); return; }
+                if (_pendingPreset) {
+                    /* In select mode: show per-row confirm instead of applying immediately */
+                    var existing = row.querySelector('.ng-ov-confirm-bar');
+                    if (existing) { existing.remove(); return; }
+                    listEl.querySelectorAll('.ng-ov-confirm-bar').forEach(function (b) { b.remove(); });
+                    var pp  = _pendingPreset;
+                    var bar = document.createElement('div');
+                    bar.className = 'ng-ov-confirm-bar';
+                    bar.innerHTML =
+                        '<span class="ng-ov-confirm-text">Apply <i class="' + pp.icon + '" style="color:' + pp.on + ';margin:0 3px"></i><strong>' + pp.label + '</strong>?</span>' +
+                        '<button class="ng-ov-confirm-apply" type="button">Apply</button>' +
+                        '<button class="ng-ov-confirm-skip" type="button"><i class="fa-solid fa-xmark"></i> Skip</button>';
+                    bar.querySelector('.ng-ov-confirm-apply').addEventListener('click', function (ev) {
+                        ev.stopPropagation(); applyPresetToRow(idxStr);
+                    });
+                    bar.querySelector('.ng-ov-confirm-skip').addEventListener('click', function (ev) {
+                        ev.stopPropagation(); bar.remove();
+                    });
+                    row.appendChild(bar);
+                    return;
+                }
                 if (!e.target.closest('.ng-ov-edit-btn')) return;
                 var open = editor.style.display !== 'none';
                 listEl.querySelectorAll('.ng-ov-editor').forEach(function (ed) { ed.style.display = 'none'; });
@@ -2593,6 +2613,7 @@
             _pendingChip = null;
             banner.style.display = 'none';
             listEl.classList.remove('ng-ov-list--select-mode');
+            listEl.querySelectorAll('.ng-ov-confirm-bar').forEach(function (b) { b.remove(); });
         }
 
         /* Apply the pending preset to a device row */

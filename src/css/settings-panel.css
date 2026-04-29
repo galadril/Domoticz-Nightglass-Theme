@@ -1858,6 +1858,53 @@
     background: rgba(var(--dz-accent-rgb), 0.1);
 }
 
+/* Per-device preset confirmation bar */
+.ng-ov-confirm-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: rgba(var(--dz-accent-rgb), 0.07);
+    border-top: 1px solid rgba(var(--dz-accent-rgb), 0.18);
+    font-size: 0.82rem;
+    color: var(--dz-text-muted);
+}
+
+.ng-ov-confirm-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.ng-ov-confirm-apply {
+    padding: 3px 10px;
+    border-radius: 4px;
+    border: none;
+    background: var(--dz-accent);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.ng-ov-confirm-apply:hover { opacity: 0.88; }
+
+.ng-ov-confirm-skip {
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--dz-border);
+    background: transparent;
+    color: var(--dz-text-muted);
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.ng-ov-confirm-skip:hover {
+    background: var(--dz-surface-3);
+    color: var(--dz-text);
+}
+
 /* In select mode the edit button becomes the "apply" indicator */
 .ng-ov-list--select-mode .ng-ov-edit-btn {
     pointer-events: none;
