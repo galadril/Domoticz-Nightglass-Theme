@@ -555,42 +555,39 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
     transition: border-top-color 1.2s ease;
 }
 
-/* When bar ranges provide a gradient, render via an inner wrapper that clips to border-radius */
-.dz-temp-accent.dz-range-gradient {
+/* Range-gradient variant: render the gradient IN the border curve via background-clip */
+div.item.itemBlock.dz-temp-accent.dz-range-gradient,
+.itemBlock > div.item.dz-temp-accent.dz-range-gradient {
     border-top-color: transparent !important;
+    background:
+        linear-gradient(var(--dz-surface-2), var(--dz-surface-2)) padding-box,
+        var(--dz-range-gradient) border-box !important;
+    position: relative;
 }
 
-.dz-range-bar {
-    position: absolute;
-    inset: 0;
-    overflow: visible;
-    border-radius: inherit;
-    z-index: 1;
-    pointer-events: none;
+div.item.itemBlock.dz-temp-accent.dz-range-gradient:hover,
+.itemBlock:hover > div.item.dz-temp-accent.dz-range-gradient {
+    background:
+        linear-gradient(var(--dz-surface-3), var(--dz-surface-3)) padding-box,
+        var(--dz-range-gradient) border-box !important;
 }
 
-.dz-range-bar-inner {
-    width: 100%;
-    height: 3px;
-    background: var(--dz-range-gradient);
-    border-radius: inherit;
-    overflow: hidden;
-}
-
-/* Value needle dot */
-.dz-range-bar::after {
+/* Value indicator caret — tip touches the gradient bar from below */
+.dz-temp-accent.dz-range-gradient::after {
     content: '';
     position: absolute;
-    top: 1.5px;
+    top: 0;
     left: var(--dz-range-val-pct, 50%);
-    transform: translate(-50%, -50%);
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #fff;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 6px solid var(--dz-text-soft);
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.3));
+    z-index: 2;
+    pointer-events: none;
 }
-
 
 
 /* ══════════════════════════════════════════════════════════════════
