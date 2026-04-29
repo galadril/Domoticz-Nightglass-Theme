@@ -1661,6 +1661,62 @@
 
     /* ── Device Icon Override Dialog ──────────────────────────────── */
 
+    /* Classify a device into an icon/color model for the override editor.
+       Returns one of:
+         'binary'    standard switch — 1 icon, on/off colors
+         'selector'  selector switch — 1 icon, active/inactive colors
+         'lock'      door lock — 2 icons (unlocked + locked) + 2 colors
+         'contact'   contact/door sensor — 2 icons (open + closed) + 2 colors
+         'blinds-2'  directional blinds, no stop — Open + Close icons
+         'blinds-3'  directional blinds with stop — Open + Stop + Close icons
+         'sensor'    value-driven sensors (temp/humidity/etc.) — 1 icon + keepColor toggle */
+    function getDeviceColorModel(d) {
+        var sw      = d.SwitchType || '';
+        var type    = d.Type       || '';
+        var typeImg = (d.TypeImg   || '').toLowerCase();
+        var subType = d.SubType    || '';
+
+        /* Blinds — directional multi-icon cards */
+        if (sw.indexOf('Blinds') >= 0 || sw === 'Venetian Blinds US' || sw === 'Venetian Blinds EU') {
+            var hasStop = (
+                subType === 'RAEX'               || subType === 'Harrison'              ||
+                subType.indexOf('A-OK')       === 0 || subType.indexOf('Hasta')       >= 0 ||
+                subType.indexOf('Media Mount')=== 0 || subType.indexOf('Forest')      === 0 ||
+                subType.indexOf('Chamberlain')=== 0 || subType.indexOf('Sunpery')     === 0 ||
+                subType.indexOf('Dolat')      === 0 || subType.indexOf('ASP')         === 0 ||
+                subType.indexOf('RFY')        === 0 || subType.indexOf('ASA')         === 0 ||
+                subType.indexOf('DC106')      === 0 || subType.indexOf('Confexx')     === 0 ||
+                sw.indexOf('Venetian Blinds') === 0 || sw.indexOf('Stop')             >= 0
+            );
+            return hasStop ? 'blinds-3' : 'blinds-2';
+        }
+
+        /* Sensors — value-driven, dynamic color, no binary on/off */
+        var sensorTypes = ['Temp', 'Temp+Hum', 'Temp+Hum+Baro', 'Humidity', 'Rain', 'UV',
+                           'Wind', 'Lux', 'Air Quality', 'Soil Moisture', 'Leaf Wetness',
+                           'Visibility', 'Barometric Pressure', 'Current', 'Current/Energy', 'Weight'];
+        if (sensorTypes.indexOf(type) >= 0 || /^temp|^humid|^rain|^uv|^wind|^alert/i.test(typeImg)) {
+            return 'sensor';
+        }
+        if (type === 'General') {
+            var sensorSubs = ['Voltage', 'Current', 'Pressure', 'Sound Level', 'Solar Radiation',
+                              'Visibility', 'Distance', 'Soil Moisture', 'Leaf Wetness',
+                              'Waterflow', 'Lux', 'Percentage', 'Managed Counter', 'Counter Incremental'];
+            if (sensorSubs.indexOf(subType) >= 0) return 'sensor';
+        }
+
+        /* Door locks — benefit from different icons per state */
+        if (sw === 'Door Lock' || sw === 'Door Lock Inverted') return 'lock';
+
+        /* Contact sensors */
+        if (sw === 'Contact' || sw === 'Door Contact') return 'contact';
+
+        /* Selector switches */
+        if (sw === 'Selector') return 'selector';
+
+        return 'binary';
+    }
+
     function openDeviceIconOverrideDialog() {
         var existing = document.getElementById('ng-ov-overlay');
         if (existing) existing.remove();
@@ -1829,7 +1885,7 @@
                 item.title = 'Jump to ' + name;
 
                 var icon = document.createElement('i');
-                icon.className = ov.icon + ' ng-ov-si-icon';
+                icon.className = (ov.iconOn || ov.iconOpen || ov.icon || 'fa-solid fa-circle-question') + ' ng-ov-si-icon';
                 icon.style.color = on;
 
                 var info = document.createElement('div');
@@ -1863,7 +1919,7 @@
                         var rowFa   = row.querySelector('.ng-ov-row-fa');
                         var editBtn = row.querySelector('.ng-ov-edit-btn');
                         var editor  = row.querySelector('.ng-ov-editor');
-                        if (rowFa)   { rowFa.className = 'fa-solid fa-circle-question ng-ov-row-fa'; rowFa.style.color = '#555770'; rowFa.style.opacity = '.45'; }
+                        if (rowFa)   { rowFa.className = (row.dataset.defIcon || 'fa-solid fa-circle-question') + ' ng-ov-row-fa'; rowFa.style.color = row.dataset.defColor || '#555770'; rowFa.style.opacity = '.55'; }
                         if (editBtn) { editBtn.innerHTML = '<i class="fa-solid fa-plus"></i>'; }
                         if (editor)  { editor.style.display = 'none'; }
                     }
@@ -1963,65 +2019,84 @@
 
         /* Render one device row with its inline editor */
         function renderRow(d) {
-            var idxStr   = String(d.idx);
-            var ov       = pending[idxStr];
-            var hasOv    = !!(ov && ov.icon);
-            var curIcon  = hasOv ? ov.icon  : 'fa-solid fa-gear';
-            var curOn    = hasOv ? (ov.on  || '#4e9af1') : '#4e9af1';
-            var curOff   = hasOv ? (ov.off || '#555770') : '#555770';
+            var idxStr = String(d.idx);
+            var ov     = pending[idxStr];
+            var model  = getDeviceColorModel(d);
+            var hasOv  = !!(ov && (ov.iconOn || ov.iconOpen || ov.icon));
 
+            /* ── Resolve defaults via the icon replacement module ─────────── */
+            var dzIcon     = typeof window._dzIconForDevice === 'function' ? window._dzIconForDevice : null;
+            var defSpecOn  = dzIcon ? dzIcon(d) : null;
+            var defIconOn  = (defSpecOn && defSpecOn.icon)  || 'fa-solid fa-circle-question';
+            var defColorOn = (defSpecOn && defSpecOn.color) || '#4e9af1';
+            var defColorOff = '#555770';
+            var defIconOpen  = defIconOn;
+            var defIconClose = defIconOn;
+
+            if (model === 'blinds-2' || model === 'blinds-3') {
+                var sOp = dzIcon ? dzIcon({ TypeImg: (d.TypeImg || '') + 'open', Status: 'On'  }) : null;
+                var sCl = dzIcon ? dzIcon({ TypeImg:  d.TypeImg  || 'blinds',   Status: 'Off' }) : null;
+                defIconOpen  = (sOp && sOp.icon)  || 'fa-solid fa-chevron-up';
+                defIconClose = (sCl && sCl.icon)  || 'fa-solid fa-chevron-down';
+                defColorOn   = (sOp && sOp.color) || defColorOn;
+            }
+
+            /* ── Current values: override or defaults ─────────────────────── */
+            var curIconOn    = hasOv ? (ov.iconOn    || ov.icon || defIconOn)                 : defIconOn;
+            var curIconOff   = hasOv ? (ov.iconOff   || ov.iconOn || ov.icon || defIconOn)    : defIconOn;
+            var curIconOpen  = hasOv ? (ov.iconOpen  || ov.iconOn || ov.icon || defIconOpen)  : defIconOpen;
+            var curIconClose = hasOv ? (ov.iconClose || ov.iconOn || ov.icon || defIconClose) : defIconClose;
+            var curIconStop  = hasOv ? (ov.iconStop  || 'fa-solid fa-stop')                   : 'fa-solid fa-stop';
+            var curOn        = hasOv ? (ov.on  || defColorOn)  : defColorOn;
+            var curOff       = hasOv ? (ov.off || defColorOff) : defColorOff;
+            var keepColor    = !!(ov && ov.keepColor);
+
+            /* ── Row element ──────────────────────────────────────────────── */
             var row = document.createElement('div');
-            row.className = 'ng-ov-row' + (hasOv ? ' ng-ov-row--active' : '');
-            row.dataset.idx  = idxStr;
-            row.dataset.name = d.Name || '';
+            row.className        = 'ng-ov-row' + (hasOv ? ' ng-ov-row--active' : '');
+            row.dataset.idx      = idxStr;
+            row.dataset.name     = d.Name || '';
+            row.dataset.defIcon  = defIconOn;
+            row.dataset.defColor = defColorOn;
 
-            /* Row summary line */
+            /* ── Summary line ─────────────────────────────────────────────── */
             var summary = document.createElement('div');
             summary.className = 'ng-ov-row-summary';
+            var isBlinds = (model === 'blinds-2' || model === 'blinds-3');
+
+            var iconHtml = isBlinds
+                ? '<span class="ng-ov-row-icon ng-ov-row-icon--multi">' +
+                  '<i class="' + curIconOpen  + ' ng-ov-row-fa ng-ov-row-fa--open"  style="color:' + curOn  + ';' + (hasOv ? '' : 'opacity:.55') + '"></i>' +
+                  '<i class="' + curIconClose + ' ng-ov-row-fa ng-ov-row-fa--close" style="color:' + curOff + ';' + (hasOv ? '' : 'opacity:.55') + '"></i>' +
+                  '</span>'
+                : '<span class="ng-ov-row-icon">' +
+                  '<i class="' + curIconOn + ' ng-ov-row-fa" style="color:' + curOn + ';' + (hasOv ? '' : 'opacity:.55') + '"></i>' +
+                  '</span>';
+
+            var modelBadge = model === 'blinds-2' ? ' <span class="ng-ov-model-badge">2-icon</span>'
+                           : model === 'blinds-3' ? ' <span class="ng-ov-model-badge">3-icon</span>'
+                           : model === 'sensor'   ? ' <span class="ng-ov-model-badge ng-ov-model-badge--sensor">sensor</span>'
+                           : '';
+            var swLabel = (d.SwitchType && d.SwitchType !== d.Type) ? ' &middot; ' + d.SwitchType : '';
             summary.innerHTML =
-                '<span class="ng-ov-row-icon">' +
-                '  <i class="' + (hasOv ? curIcon : 'fa-solid fa-circle-question') + ' ng-ov-row-fa"' +
-                '     style="color:' + (hasOv ? curOn : '#555770') + ';' + (hasOv ? '' : 'opacity:.45') + '"></i>' +
-                '</span>' +
+                iconHtml +
                 '<span class="ng-bl-row-info">' +
                 '  <span class="ng-bl-row-name">' + (d.Name || 'Device ' + d.idx) + '</span>' +
-                '  <span class="ng-bl-row-type">IDX&nbsp;' + d.idx + (d.Type ? ' &middot; ' + d.Type : '') + (d.HardwareName ? ' &middot; ' + d.HardwareName : '') + '</span>' +
+                '  <span class="ng-bl-row-type">IDX&nbsp;' + d.idx +
+                    (d.Type ? ' &middot; ' + d.Type : '') + swLabel + modelBadge +
+                '  </span>' +
                 '</span>' +
                 '<button class="ng-ov-edit-btn" type="button" title="' + (hasOv ? 'Edit override' : 'Add override') + '">' +
                 '  <i class="fa-solid ' + (hasOv ? 'fa-pen-to-square' : 'fa-plus') + '"></i>' +
                 '</button>';
             row.appendChild(summary);
 
-            /* Inline editor */
+            /* ── Inline editor ────────────────────────────────────────────── */
             var editor = document.createElement('div');
-            editor.className = 'ng-ov-editor';
+            editor.className   = 'ng-ov-editor';
             editor.style.display = 'none';
 
-            /* Preview */
-            var preview = document.createElement('div');
-            preview.className = 'ng-ov-preview';
-            var previewI = document.createElement('i');
-            previewI.className = curIcon + ' ng-ov-preview-icon';
-            previewI.style.color = curOn;
-            var previewName = document.createElement('span');
-            previewName.className = 'ng-ov-preview-name';
-            previewName.textContent = d.Name || 'Device';
-            preview.appendChild(previewI);
-            preview.appendChild(previewName);
-            editor.appendChild(preview);
-
-            /* Icon picker */
-            var picker = buildIconPicker(curIcon, function (cls) {
-                curIcon = cls;
-                previewI.className = cls + ' ng-ov-preview-icon';
-                previewI.style.color = curOn;
-                var rowFa = summary.querySelector('.ng-ov-row-fa');
-                if (rowFa) { rowFa.className = cls + ' ng-ov-row-fa'; rowFa.style.color = curOn; rowFa.style.opacity = ''; }
-                commitOverride();
-            });
-            editor.appendChild(picker);
-
-            /* Color pickers — reuse the settings-panel HSV canvas picker */
+            /* colorRow is shared across all models; built and populated per-model below */
             var colorRow = document.createElement('div');
             colorRow.className = 'ng-ov-color-row';
 
@@ -2031,6 +2106,7 @@
                 '#c8a0ff','#ab47bc','#78909c','#555770'
             ];
 
+            /* HSV color picker (unchanged) */
             function makeOvColorPicker(labelText, initialColor, onChange) {
                 var wrap = document.createElement('div');
                 wrap.className = 'ng-ov-color-label';
@@ -2179,45 +2255,282 @@
                 return wrap;
             }
 
-            var onField  = makeOvColorPicker('On color',  curOn,  function (v) { curOn  = v; previewI.style.color = v; var fa = summary.querySelector('.ng-ov-row-fa'); if (fa) fa.style.color = v; commitOverride(); });
-            var offField = makeOvColorPicker('Off color', curOff, function (v) { curOff = v; commitOverride(); });
+            /* ── Editor helpers ───────────────────────────────────────────── */
 
-            var removeBtn = document.createElement('button');
-            removeBtn.type = 'button';
-            removeBtn.className = 'ng-ov-remove-btn';
-            removeBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Remove';
-            removeBtn.addEventListener('click', function () {
-                delete pending[idxStr];
-                row.classList.remove('ng-ov-row--active');
-                var editBtn = summary.querySelector('.ng-ov-edit-btn');
-                if (editBtn) editBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
-                var rowFa = summary.querySelector('.ng-ov-row-fa');
-                if (rowFa) { rowFa.className = 'fa-solid fa-circle-question ng-ov-row-fa'; rowFa.style.color = '#555770'; rowFa.style.opacity = '.45'; }
-                editor.style.display = 'none';
-                updateCount();
-            });
+            /* One preview slot: icon + optional label underneath */
+            function makePreviewSlot(iconCls, color, labelText) {
+                var slot = document.createElement('div');
+                slot.className = 'ng-ov-preview-slot';
+                var ic = document.createElement('i');
+                ic.className   = iconCls + ' ng-ov-preview-icon';
+                ic.style.color = color;
+                slot.appendChild(ic);
+                if (labelText) {
+                    var lbl = document.createElement('span');
+                    lbl.className   = 'ng-ov-preview-label';
+                    lbl.textContent = labelText;
+                    slot.appendChild(lbl);
+                }
+                return slot;
+            }
 
-            colorRow.appendChild(onField);
-            colorRow.appendChild(offField);
-            colorRow.appendChild(removeBtn);
-            editor.appendChild(colorRow);
+            function updateSlotIcon(slot, iconCls, color) {
+                var ic = slot && slot.querySelector('.ng-ov-preview-icon');
+                if (ic) { ic.className = iconCls + ' ng-ov-preview-icon'; ic.style.color = color; }
+            }
 
+            /* Labeled wrapper around an icon picker grid */
+            function makePickerSection(labelText, noteText, initialCls, onSelectFn) {
+                var wrap = document.createElement('div');
+                wrap.className = 'ng-ov-picker-section';
+                if (labelText) {
+                    var lbl = document.createElement('div');
+                    lbl.className   = 'ng-ov-picker-label';
+                    lbl.textContent = labelText;
+                    wrap.appendChild(lbl);
+                }
+                if (noteText) {
+                    var note = document.createElement('div');
+                    note.className   = 'ng-ov-picker-note';
+                    note.textContent = noteText;
+                    wrap.appendChild(note);
+                }
+                wrap.appendChild(buildIconPicker(initialCls, onSelectFn));
+                return wrap;
+            }
+
+            /* Sync the summary's single primary icon */
+            function updateSummaryPrimary() {
+                var fa = summary.querySelector('.ng-ov-row-fa');
+                if (fa) { fa.className = curIconOn + ' ng-ov-row-fa'; fa.style.color = curOn; fa.style.opacity = ''; }
+            }
+
+            /* Sync the summary's blinds open + close icons */
+            function updateSummaryBlinds() {
+                var fo = summary.querySelector('.ng-ov-row-fa--open');
+                var fc = summary.querySelector('.ng-ov-row-fa--close');
+                if (fo) { fo.className = curIconOpen  + ' ng-ov-row-fa ng-ov-row-fa--open';  fo.style.color = curOn;  fo.style.opacity = ''; }
+                if (fc) { fc.className = curIconClose + ' ng-ov-row-fa ng-ov-row-fa--close'; fc.style.color = curOff; fc.style.opacity = ''; }
+            }
+
+            /* Remove button with model-aware reset callback */
+            function buildRemoveBtn(onRemove) {
+                var btn = document.createElement('button');
+                btn.type      = 'button';
+                btn.className = 'ng-ov-remove-btn';
+                btn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Remove';
+                btn.addEventListener('click', function () {
+                    delete pending[idxStr];
+                    row.classList.remove('ng-ov-row--active');
+                    var eb = summary.querySelector('.ng-ov-edit-btn');
+                    if (eb) eb.innerHTML = '<i class="fa-solid fa-plus"></i>';
+                    editor.style.display = 'none';
+                    onRemove();
+                    updateCount();
+                });
+                return btn;
+            }
+
+            /* Persist pending entry + mark row active */
             function commitOverride() {
-                if (!curIcon) return;
-                pending[idxStr] = { icon: curIcon, on: curOn, off: curOff, name: d.Name || '' };
+                var obj = { name: d.Name || '', on: curOn, off: curOff };
+                if (model === 'blinds-2' || model === 'blinds-3') {
+                    obj.iconOpen  = curIconOpen;
+                    obj.iconClose = curIconClose;
+                    obj.iconOn    = curIconOpen;   /* sidebar display fallback */
+                    if (model === 'blinds-3') obj.iconStop = curIconStop;
+                } else if (model === 'lock' || model === 'contact') {
+                    obj.iconOn  = curIconOn;
+                    obj.iconOff = curIconOff;
+                } else if (model === 'sensor') {
+                    obj.iconOn    = curIconOn;
+                    obj.keepColor = keepColor;
+                } else {
+                    obj.iconOn = curIconOn;
+                }
+                pending[idxStr] = obj;
                 row.classList.add('ng-ov-row--active');
-                var editBtn = summary.querySelector('.ng-ov-edit-btn');
-                if (editBtn) editBtn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
+                var eb = summary.querySelector('.ng-ov-edit-btn');
+                if (eb) eb.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
                 updateCount();
             }
 
-            /* Row click: apply preset (select mode) or open editor (normal mode) */
-            summary.addEventListener('click', function (e) {
-                if (_pendingPreset) {
-                    applyPresetToRow(idxStr);
-                    return;
+            /* ── Build editor body per model ──────────────────────────────── */
+
+            if (model === 'blinds-2' || model === 'blinds-3') {
+                var preview   = document.createElement('div');
+                preview.className = 'ng-ov-preview ng-ov-preview--multi';
+                var slotOpen  = makePreviewSlot(curIconOpen,  curOn,     'Open');
+                var slotStop  = model === 'blinds-3' ? makePreviewSlot(curIconStop, '#b0b3c6', 'Stop') : null;
+                var slotClose = makePreviewSlot(curIconClose, curOff,    'Close');
+                preview.appendChild(slotOpen);
+                if (slotStop) preview.appendChild(slotStop);
+                preview.appendChild(slotClose);
+                editor.appendChild(preview);
+
+                editor.appendChild(makePickerSection('Open button icon',
+                    'First icon — highlights when blind is open', curIconOpen, function (cls) {
+                        curIconOpen = cls;
+                        updateSlotIcon(slotOpen, curIconOpen, curOn);
+                        updateSummaryBlinds();
+                        commitOverride();
+                    }));
+                if (model === 'blinds-3') {
+                    editor.appendChild(makePickerSection('Stop button icon',
+                        'Middle icon — click to stop movement', curIconStop, function (cls) {
+                            curIconStop = cls;
+                            updateSlotIcon(slotStop, curIconStop, '#b0b3c6');
+                            commitOverride();
+                        }));
                 }
-                /* Normal: only toggle editor when the edit button itself was clicked */
+                editor.appendChild(makePickerSection('Close button icon',
+                    'Last icon — highlights when blind is closed', curIconClose, function (cls) {
+                        curIconClose = cls;
+                        updateSlotIcon(slotClose, curIconClose, curOff);
+                        updateSummaryBlinds();
+                        commitOverride();
+                    }));
+
+                colorRow.appendChild(makeOvColorPicker('Open color', curOn, function (v) {
+                    curOn = v; updateSlotIcon(slotOpen, curIconOpen, curOn); updateSummaryBlinds(); commitOverride();
+                }));
+                colorRow.appendChild(makeOvColorPicker('Close color', curOff, function (v) {
+                    curOff = v; updateSlotIcon(slotClose, curIconClose, curOff); updateSummaryBlinds(); commitOverride();
+                }));
+                colorRow.appendChild(buildRemoveBtn(function () {
+                    curIconOpen = defIconOpen; curIconClose = defIconClose; curIconStop = 'fa-solid fa-stop';
+                    curOn = defColorOn; curOff = defColorOff;
+                    updateSummaryBlinds();
+                    var fo = summary.querySelector('.ng-ov-row-fa--open');
+                    var fc = summary.querySelector('.ng-ov-row-fa--close');
+                    if (fo) fo.style.opacity = '.55';
+                    if (fc) fc.style.opacity = '.55';
+                }));
+                editor.appendChild(colorRow);
+
+            } else if (model === 'sensor') {
+                var preview    = document.createElement('div');
+                preview.className = 'ng-ov-preview';
+                var slotSensor = makePreviewSlot(curIconOn, keepColor ? defColorOn : curOn, null);
+                var nameSpan   = document.createElement('span');
+                nameSpan.className   = 'ng-ov-preview-name';
+                nameSpan.textContent = d.Name || 'Device';
+                preview.appendChild(slotSensor);
+                preview.appendChild(nameSpan);
+                editor.appendChild(preview);
+
+                editor.appendChild(makePickerSection('Icon',
+                    'Replaces the dynamic sensor range icon (temperature, humidity, etc.)', curIconOn, function (cls) {
+                        curIconOn = cls;
+                        updateSlotIcon(slotSensor, curIconOn, keepColor ? defColorOn : curOn);
+                        updateSummaryPrimary();
+                        commitOverride();
+                    }));
+
+                var keepWrap = document.createElement('div');
+                keepWrap.className = 'ng-ov-keepcolor-wrap';
+                var keepCb  = document.createElement('input');
+                keepCb.type    = 'checkbox';
+                keepCb.id      = 'ng-ov-kc-' + idxStr;
+                keepCb.checked = keepColor;
+                var keepLbl = document.createElement('label');
+                keepLbl.setAttribute('for', 'ng-ov-kc-' + idxStr);
+                keepLbl.textContent = 'Keep dynamic color (temperature range, alert levels, etc.)';
+                keepWrap.appendChild(keepCb);
+                keepWrap.appendChild(keepLbl);
+                keepCb.addEventListener('change', function () {
+                    keepColor = this.checked;
+                    updateSlotIcon(slotSensor, curIconOn, keepColor ? defColorOn : curOn);
+                    commitOverride();
+                });
+                editor.appendChild(keepWrap);
+
+                colorRow.appendChild(makeOvColorPicker('Accent color', curOn, function (v) {
+                    curOn = v;
+                    if (!keepColor) updateSlotIcon(slotSensor, curIconOn, v);
+                    commitOverride();
+                }));
+                colorRow.appendChild(buildRemoveBtn(function () {
+                    curIconOn = defIconOn; curOn = defColorOn; keepColor = false;
+                    var fa = summary.querySelector('.ng-ov-row-fa');
+                    if (fa) { fa.className = defIconOn + ' ng-ov-row-fa'; fa.style.color = defColorOn; fa.style.opacity = '.55'; }
+                }));
+                editor.appendChild(colorRow);
+
+            } else if (model === 'lock' || model === 'contact') {
+                var activeLabel   = model === 'lock' ? 'Unlocked' : 'Open';
+                var inactiveLabel = model === 'lock' ? 'Locked'   : 'Closed';
+                var preview      = document.createElement('div');
+                preview.className = 'ng-ov-preview ng-ov-preview--multi';
+                var slotActive   = makePreviewSlot(curIconOn,  curOn,  activeLabel);
+                var slotInactive = makePreviewSlot(curIconOff, curOff, inactiveLabel);
+                preview.appendChild(slotActive);
+                preview.appendChild(slotInactive);
+                editor.appendChild(preview);
+
+                editor.appendChild(makePickerSection(activeLabel + ' icon', null, curIconOn, function (cls) {
+                    curIconOn = cls;
+                    updateSlotIcon(slotActive, curIconOn, curOn);
+                    updateSummaryPrimary();
+                    commitOverride();
+                }));
+                editor.appendChild(makePickerSection(inactiveLabel + ' icon', null, curIconOff, function (cls) {
+                    curIconOff = cls;
+                    updateSlotIcon(slotInactive, curIconOff, curOff);
+                    commitOverride();
+                }));
+
+                colorRow.appendChild(makeOvColorPicker(activeLabel + ' color', curOn, function (v) {
+                    curOn = v; updateSlotIcon(slotActive, curIconOn, curOn); updateSummaryPrimary(); commitOverride();
+                }));
+                colorRow.appendChild(makeOvColorPicker(inactiveLabel + ' color', curOff, function (v) {
+                    curOff = v; updateSlotIcon(slotInactive, curIconOff, curOff); commitOverride();
+                }));
+                colorRow.appendChild(buildRemoveBtn(function () {
+                    curIconOn = defIconOn; curIconOff = defIconOn; curOn = defColorOn; curOff = defColorOff;
+                    var fa = summary.querySelector('.ng-ov-row-fa');
+                    if (fa) { fa.className = defIconOn + ' ng-ov-row-fa'; fa.style.color = defColorOn; fa.style.opacity = '.55'; }
+                }));
+                editor.appendChild(colorRow);
+
+            } else {
+                /* binary / selector / media: single icon, 2 colors */
+                var labelOn  = model === 'selector' ? 'Active color'   : 'On color';
+                var labelOff = model === 'selector' ? 'Inactive color' : 'Off color';
+                var preview  = document.createElement('div');
+                preview.className = 'ng-ov-preview';
+                var slotMain = makePreviewSlot(curIconOn, curOn, null);
+                var nameSpan = document.createElement('span');
+                nameSpan.className   = 'ng-ov-preview-name';
+                nameSpan.textContent = d.Name || 'Device';
+                preview.appendChild(slotMain);
+                preview.appendChild(nameSpan);
+                editor.appendChild(preview);
+
+                editor.appendChild(makePickerSection(null, null, curIconOn, function (cls) {
+                    curIconOn = cls;
+                    updateSlotIcon(slotMain, curIconOn, curOn);
+                    updateSummaryPrimary();
+                    commitOverride();
+                }));
+
+                colorRow.appendChild(makeOvColorPicker(labelOn, curOn, function (v) {
+                    curOn = v; updateSlotIcon(slotMain, curIconOn, v); updateSummaryPrimary(); commitOverride();
+                }));
+                colorRow.appendChild(makeOvColorPicker(labelOff, curOff, function (v) {
+                    curOff = v; commitOverride();
+                }));
+                colorRow.appendChild(buildRemoveBtn(function () {
+                    curIconOn = defIconOn; curOn = defColorOn; curOff = defColorOff;
+                    var fa = summary.querySelector('.ng-ov-row-fa');
+                    if (fa) { fa.className = defIconOn + ' ng-ov-row-fa'; fa.style.color = defColorOn; fa.style.opacity = '.55'; }
+                }));
+                editor.appendChild(colorRow);
+            }
+
+            /* ── Click to toggle editor ───────────────────────────────────── */
+            summary.addEventListener('click', function (e) {
+                if (_pendingPreset) { applyPresetToRow(idxStr); return; }
                 if (!e.target.closest('.ng-ov-edit-btn')) return;
                 var open = editor.style.display !== 'none';
                 listEl.querySelectorAll('.ng-ov-editor').forEach(function (ed) { ed.style.display = 'none'; });
@@ -2285,7 +2598,7 @@
         /* Apply the pending preset to a device row */
         function applyPresetToRow(idxStr) {
             var pp = _pendingPreset;
-            pending[idxStr] = { icon: pp.icon, on: pp.on, off: pp.off, name: pending[idxStr] && pending[idxStr].name || pp.label };
+            pending[idxStr] = { iconOn: pp.icon, on: pp.on, off: pp.off, name: pending[idxStr] && pending[idxStr].name || pp.label };
             var row = listEl.querySelector('[data-idx="' + idxStr + '"]');
             if (row) {
                 row.classList.add('ng-ov-row--active');

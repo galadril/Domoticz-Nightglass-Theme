@@ -643,7 +643,10 @@
     var iconMap = new WeakMap();
 
     /* ── Per-device icon overrides ─────────────────────────────────
-       Keyed by device IDX string → { icon, on, off }.
+       Keyed by device IDX string.
+       Schema: { iconOn, iconOff?, iconOpen?, iconClose?, iconStop?,
+                 on, off, keepColor?, name }
+       Legacy field 'icon' is treated as iconOn for backward compat.
        Populated by the settings module via window._dzSetDeviceIconOverrides. */
     var DEVICE_ICON_OVERRIDES = {};
 
@@ -652,16 +655,54 @@
     function applyDeviceOverride(devIdx, src, fallbackResolved) {
         if (!devIdx || !DEVICE_ICON_OVERRIDES[devIdx]) return null;
         var ov = DEVICE_ICON_OVERRIDES[devIdx];
-        if (!ov.icon) return null;
+        if (!ov.iconOn && !ov.iconOpen && !ov.icon) return null;
+
         var parsedSrc = parseDeviceSrc(src);
-        var isOn  = !parsedSrc || parsedSrc.state !== 'off';
+        var base      = parsedSrc ? parsedSrc.base : null;
+
+        /* Blinds: 'sel'→'on' is the only active state; null/no suffix = inactive.
+           Replicate the same special-case used in resolveIcon().              */
+        var isOn;
+        if (base === 'blinds' || base === 'blindsopen') {
+            isOn = !!(parsedSrc && parsedSrc.state === 'on');
+        } else {
+            isOn = !parsedSrc || parsedSrc.state !== 'off';
+        }
+
+        /* Select icon by image slot:
+           blindsopen* → Open button, blinds* → Close button, all else → on/off */
+        var iconCls;
+        if (base === 'blindsopen') {
+            iconCls = ov.iconOpen  || ov.iconOn || ov.icon;
+        } else if (base === 'blinds') {
+            iconCls = ov.iconClose || ov.iconOn || ov.icon;
+        } else {
+            iconCls = isOn
+                ? (ov.iconOn  || ov.icon)
+                : (ov.iconOff || ov.iconOn || ov.icon);
+        }
+        if (!iconCls) return null;
+
         var fbOn  = (fallbackResolved && fallbackResolved.colorOn)  || '#4e9af1';
         var fbOff = (fallbackResolved && fallbackResolved.colorOff) || '#555770';
         var ovOn  = ov.on  || fbOn;
         var ovOff = ov.off || fbOff;
+
+        /* keepColor: override only the icon shape; pass through the resolver's
+           dynamic color (temperature range, alert level, wind, etc.)          */
+        if (ov.keepColor && fallbackResolved) {
+            return {
+                type:     'device',
+                cls:      iconCls + ' dz-fa-device',
+                color:    fallbackResolved.color,
+                colorOn:  fallbackResolved.colorOn  || ovOn,
+                colorOff: fallbackResolved.colorOff || ovOff
+            };
+        }
+
         return {
             type:     'device',
-            cls:      ov.icon + ' dz-fa-device',
+            cls:      iconCls + ' dz-fa-device',
             color:    isOn ? ovOn : ovOff,
             colorOn:  ovOn,
             colorOff: ovOff
