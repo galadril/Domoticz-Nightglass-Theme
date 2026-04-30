@@ -1356,10 +1356,12 @@
             if (device.CustomImage == 0) ctImg = ctImg.charAt(0).toUpperCase() + ctImg.slice(1);
             src = 'images/' + ctImg + '48_On.png';
         } else if (type === 'Scene') {
-            var scSpec = DEVICE_MAP['scene'];
+            /* scene_widget.html hardcodes images/Push48_On.png → base='push' → fa-circle-dot */
+            var scSpec = DEVICE_MAP['push'];
             return scSpec ? { icon: scSpec.icon, color: scSpec.on } : null;
         } else if (type === 'Group') {
-            var grpSpec = DEVICE_MAP['group'];
+            /* scene_widget.html hardcodes images/Push48_On/Off.png → base='push' → fa-circle-dot */
+            var grpSpec = DEVICE_MAP['push'];
             return grpSpec ? { icon: grpSpec.icon, color: grpSpec.on } : null;
         } else if (type === 'Humidity') {
             /* dzUtilityWidget renders gauge48.png for Humidity, not humidity48.png.
@@ -1374,6 +1376,13 @@
                 return { icon: sSpec.icon, color: sSpec.on || '#4e9af1' };
             }
             src = 'images/' + typeImg + '48.png';
+        } else if (device.CustomImage == 0 && subType &&
+                   (subType.indexOf('RGB') >= 0 || subType.indexOf('WW') >= 0)) {
+            /* RGB/RGBW/CCT dimmers: dzLightWidget returns images/RGB48_On.png
+               → resolveIcon → DEVICE_MAP['rgb'] = fa-palette.
+               Must be checked before the generic image fallback below. */
+            var rgbSpec = DEVICE_MAP['rgb'];
+            return rgbSpec ? { icon: rgbSpec.icon, color: rgbSpec.on } : null;
         } else {
             /* Standard switch: getDeviceIcon() uses device.Image, not TypeImg */
             var imgBase = image || 'Light';

@@ -1774,8 +1774,9 @@
         ];
 
         // FA 6 Free Solid icon set for picker
+        // Only FA 6 Free Solid icons — no Pro-only entries, no renamed/removed icons.
         var FA_ICONS = [
-            'fa-solid fa-wifi',              'fa-solid fa-network-wired',     'fa-solid fa-router',
+            'fa-solid fa-wifi',              'fa-solid fa-network-wired',     'fa-solid fa-ethernet',
             'fa-solid fa-satellite-dish',    'fa-solid fa-tower-broadcast',   'fa-solid fa-signal',
             'fa-solid fa-house',             'fa-solid fa-house-chimney',     'fa-solid fa-door-closed',
             'fa-solid fa-door-open',         'fa-solid fa-window-maximize',   'fa-solid fa-warehouse',
@@ -1783,19 +1784,19 @@
             'fa-solid fa-bath',              'fa-solid fa-sink',              'fa-solid fa-toilet',
             'fa-solid fa-stairs',            'fa-solid fa-table',             'fa-solid fa-chair',
             'fa-solid fa-lightbulb',         'fa-solid fa-circle-half-stroke','fa-solid fa-sun',
-            'fa-solid fa-moon',              'fa-solid fa-star',              'fa-solid fa-lamp',
+            'fa-solid fa-moon',              'fa-solid fa-star',              'fa-solid fa-house-signal',
             'fa-solid fa-tv',                'fa-solid fa-display',           'fa-solid fa-computer',
             'fa-solid fa-server',            'fa-solid fa-hard-drive',        'fa-solid fa-print',
-            'fa-solid fa-phone',             'fa-solid fa-mobile-screen',     'fa-solid fa-tablet',
+            'fa-solid fa-phone',             'fa-solid fa-mobile-screen',     'fa-solid fa-tablet-screen-button',
             'fa-solid fa-headphones',        'fa-solid fa-volume-high',       'fa-solid fa-music',
             'fa-solid fa-gamepad',           'fa-solid fa-camera',            'fa-solid fa-video',
             'fa-solid fa-blender',           'fa-solid fa-mug-hot',           'fa-solid fa-utensils',
             'fa-solid fa-shirt',             'fa-solid fa-broom',             'fa-solid fa-baby',
-            'fa-solid fa-baby-carriage',     'fa-solid fa-robot',
+            'fa-solid fa-carriage-baby',     'fa-solid fa-robot',
             'fa-solid fa-bolt',              'fa-solid fa-plug',              'fa-solid fa-charging-station',
             'fa-solid fa-solar-panel',       'fa-solid fa-car-battery',       'fa-solid fa-battery-full',
             'fa-solid fa-fire',              'fa-solid fa-fire-flame-curved', 'fa-solid fa-gauge',
-            'fa-solid fa-temperature-half',  'fa-solid fa-thermometer',       'fa-solid fa-snowflake',
+            'fa-solid fa-temperature-half',  'fa-solid fa-temperature-full',  'fa-solid fa-snowflake',
             'fa-solid fa-fan',               'fa-solid fa-wind',              'fa-solid fa-cloud',
             'fa-solid fa-cloud-rain',        'fa-solid fa-umbrella',          'fa-solid fa-droplet',
             'fa-solid fa-temperature-low',   'fa-solid fa-temperature-high',  'fa-solid fa-smog',
@@ -1810,19 +1811,32 @@
             'fa-solid fa-water-ladder',      'fa-solid fa-hand-holding-droplet','fa-solid fa-faucet',
             'fa-solid fa-pump-soap',         'fa-solid fa-spray-can',         'fa-solid fa-shovel',
             'fa-solid fa-heart-pulse',       'fa-solid fa-weight-scale',      'fa-solid fa-lungs',
-            'fa-solid fa-syringe',           'fa-solid fa-pills',             'fa-solid fa-bed-pulse',
+            'fa-solid fa-syringe',           'fa-solid fa-pills',             'fa-solid fa-hospital',
             'fa-solid fa-gear',              'fa-solid fa-wrench',            'fa-solid fa-screwdriver',
             'fa-solid fa-toolbox',           'fa-solid fa-box',               'fa-solid fa-bookmark',
             'fa-solid fa-flag',              'fa-solid fa-circle-dot',        'fa-solid fa-power-off',
             'fa-solid fa-toggle-on',         'fa-solid fa-sliders',           'fa-solid fa-clock',
             'fa-solid fa-calendar',          'fa-solid fa-location-dot',      'fa-solid fa-map-location-dot',
-            'fa-solid fa-microchip',         'fa-solid fa-cpu',               'fa-solid fa-memory'
+            'fa-solid fa-microchip',         'fa-solid fa-database',          'fa-solid fa-bars-progress'
         ];
 
-        // Mutable copy of current overrides
+        // Mutable copy of current overrides — copy every stored field so the
+        // sidebar and row editors reflect the saved state when the dialog reopens.
         var pending = {};
         Object.keys(currentOv).forEach(function (k) {
-            pending[k] = { icon: currentOv[k].icon, on: currentOv[k].on, off: currentOv[k].off, name: currentOv[k].name || '' };
+            var s = currentOv[k];
+            pending[k] = {
+                icon:      s.icon,
+                iconOn:    s.iconOn,
+                iconOff:   s.iconOff,
+                iconOpen:  s.iconOpen,
+                iconClose: s.iconClose,
+                iconStop:  s.iconStop,
+                keepColor: s.keepColor,
+                on:        s.on,
+                off:       s.off,
+                name:      s.name || ''
+            };
         });
 
         var overlay = document.createElement('div');
