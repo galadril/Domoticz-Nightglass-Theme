@@ -1368,6 +1368,12 @@
                TypeImg 'hum' would alias to 'humidity' (droplet) which is wrong. */
             var humSpec = DEVICE_MAP['gauge'];
             return humSpec ? { icon: humSpec.icon, color: humSpec.on } : null;
+        } else if (typeof device.Temp !== 'undefined' || typeof device.Chill !== 'undefined') {
+            /* Temperature / weather combo devices (Temp, Temp+Hum, Temp+Hum+Baro, Wind…):
+               dzUtilityWidget uses GetTemp48Item(device.Temp) which returns range images.
+               In the dialog we show the fixed temp icon — we can't vary by live value. */
+            var tempSpec = DEVICE_MAP['temp'];
+            return tempSpec ? { icon: tempSpec.icon, color: tempSpec.on } : null;
         } else if (!sw && typeImg) {
             /* Sensor/meter (no SwitchType): look up TypeImg with alias normalisation */
             var normKey = ALIASES[typeImg] || typeImg;
