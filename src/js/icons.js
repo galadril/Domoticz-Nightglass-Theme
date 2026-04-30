@@ -674,12 +674,15 @@
         }
 
         /* Select icon by image slot:
-           blindsopen* → Open button, blinds* → Close button, all else → on/off */
+           blindsopen* → Open button, blinds* → Close button,
+           blindsstop  → Stop button, all else → on/off        */
         var iconCls;
         if (base === 'blindsopen') {
             iconCls = ov.iconOpen  || ov.iconOn || ov.icon;
         } else if (base === 'blinds') {
             iconCls = ov.iconClose || ov.iconOn || ov.icon;
+        } else if (base === 'blindsstop') {
+            iconCls = ov.iconStop;
         } else {
             iconCls = isOn
                 ? (ov.iconOn  || ov.icon)
@@ -750,8 +753,10 @@
             return false;
         }
 
-        /* Per-device icon override — only for 48px device state icons */
-        if (resolved.type === 'device') {
+        /* Per-device icon override — for 48px device state icons and the blinds stop button.
+           blindsstop.png matches ICON_MAP (type='icon') so we check it explicitly here so
+           that iconStop overrides are applied even though it is not a 48px device icon. */
+        if (resolved.type === 'device' || src.indexOf('blindsstop') !== -1) {
             var angDev = getDeviceFromIcon(img);
             if (angDev) {
                 var devIdx = String(angDev.idx || angDev.IDX || '');
@@ -1299,8 +1304,9 @@
 
     /* Expose a device-icon lookup for other modules (e.g. settings dialog).
        Given a Domoticz device object, returns { icon, color } replicating
-       the logic of dzLightWidget.js::getDeviceIcon() so the dialog shows
-       the same icon that Domoticz actually renders.                        */
+       the logic of dzLightWidget.js::getDeviceIcon() and
+       dzUtilityWidget.js::getDeviceIcon() so the dialog shows the same icon
+       that Domoticz actually renders.                                       */
     window._dzIconForDevice = function (device) {
         var sw      = device.SwitchType || '';
         var type    = device.Type       || '';
@@ -1316,8 +1322,9 @@
         if (sw === 'Doorbell') {
             src = 'images/doorbell48.png';
         } else if (sw.indexOf('Blind') >= 0 || sw.indexOf('Venetian') >= 0) {
-            /* Show open state so the dialog preview uses the open-arrow icon */
-            src = 'images/' + (device.TypeImg || 'blinds') + 'open48sel.png';
+            /* Show open state so the dialog preview uses the open-arrow icon.
+               dzLightWidget always uses blindsopen48sel.png regardless of TypeImg. */
+            src = 'images/blindsopen48sel.png';
         } else if (sw === 'Smoke Detector') {
             src = 'images/smoke48on.png';
         } else if (sw === 'Motion Sensor') {
@@ -1354,6 +1361,11 @@
         } else if (type === 'Group') {
             var grpSpec = DEVICE_MAP['group'];
             return grpSpec ? { icon: grpSpec.icon, color: grpSpec.on } : null;
+        } else if (type === 'Humidity') {
+            /* dzUtilityWidget renders gauge48.png for Humidity, not humidity48.png.
+               TypeImg 'hum' would alias to 'humidity' (droplet) which is wrong. */
+            var humSpec = DEVICE_MAP['gauge'];
+            return humSpec ? { icon: humSpec.icon, color: humSpec.on } : null;
         } else if (!sw && typeImg) {
             /* Sensor/meter (no SwitchType): look up TypeImg with alias normalisation */
             var normKey = ALIASES[typeImg] || typeImg;

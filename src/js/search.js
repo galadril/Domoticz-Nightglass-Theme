@@ -2652,10 +2652,17 @@
             var row = listEl.querySelector('[data-idx="' + idxStr + '"]');
             if (row) {
                 row.classList.add('ng-ov-row--active');
-                var rowFa  = row.querySelector('.ng-ov-row-fa');
+                /* Update all FA icons in the summary — blinds rows have open + close icons,
+                   so querySelectorAll is needed instead of just querySelector for the first. */
+                row.querySelectorAll('.ng-ov-row-fa').forEach(function (fa) {
+                    var keepCls = fa.classList.contains('ng-ov-row-fa--open')  ? ' ng-ov-row-fa--open'  :
+                                  fa.classList.contains('ng-ov-row-fa--close') ? ' ng-ov-row-fa--close' : '';
+                    fa.className   = pp.icon + ' ng-ov-row-fa' + keepCls;
+                    fa.style.color   = fa.classList.contains('ng-ov-row-fa--close') ? pp.off : pp.on;
+                    fa.style.opacity = '';
+                });
                 var editBtn = row.querySelector('.ng-ov-edit-btn');
-                if (rowFa)   { rowFa.className = pp.icon + ' ng-ov-row-fa'; rowFa.style.color = pp.on; rowFa.style.opacity = ''; }
-                if (editBtn) { editBtn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>'; }
+                if (editBtn) editBtn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
             }
             updateCount();
             exitSelectMode();
