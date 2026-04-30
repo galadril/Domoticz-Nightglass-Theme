@@ -233,7 +233,11 @@
         'mode':            { icon: 'fa-solid fa-sliders',             on: '#4e9af1', off: null },
         'doorbell':        { icon: 'fa-solid fa-bell',                on: '#f0a832', off: null },
         'adjust':          { icon: 'fa-solid fa-sliders',             on: '#4e9af1', off: null },
-        'custom':          { icon: 'fa-solid fa-gear',                on: '#b0b3c6', off: '#555770' }
+        'custom':          { icon: 'fa-solid fa-gear',                on: '#b0b3c6', off: '#555770' },
+
+        /* Scenes & groups */
+        'scene':           { icon: 'fa-solid fa-layer-group',        on: '#4caf7d', off: '#555770' },
+        'group':           { icon: 'fa-solid fa-layer-group',        on: '#4caf7d', off: '#555770' }
     };
 
     /* -- Favorite star icons -------------------------------------- */
@@ -642,6 +646,83 @@
     /* WeakMap so entries are GC'd automatically when the img is gone */
     var iconMap = new WeakMap();
 
+    /* ── Per-device icon overrides ─────────────────────────────────
+       Keyed by device IDX string.
+       Schema: { iconOn, iconOff?, iconOpen?, iconClose?, iconStop?,
+                 on, off, keepColor?, name }
+       Legacy field 'icon' is treated as iconOn for backward compat.
+       Populated by the settings module via window._dzSetDeviceIconOverrides. */
+    var DEVICE_ICON_OVERRIDES = {};
+
+    /* Returns an overridden resolved spec for a given device IDX + src,
+       or null when no override is configured for that device.             */
+    function applyDeviceOverride(devIdx, src, fallbackResolved) {
+        if (!devIdx || !DEVICE_ICON_OVERRIDES[devIdx]) return null;
+        var ov = DEVICE_ICON_OVERRIDES[devIdx];
+        if (!ov.iconOn && !ov.iconOpen && !ov.icon) return null;
+
+        var parsedSrc = parseDeviceSrc(src);
+        var base      = parsedSrc ? parsedSrc.base : null;
+
+        /* Blinds: 'sel'→'on' is the only active state; null/no suffix = inactive.
+           Replicate the same special-case used in resolveIcon().              */
+        var isOn;
+        if (base === 'blinds' || base === 'blindsopen') {
+            isOn = !!(parsedSrc && parsedSrc.state === 'on');
+        } else {
+            isOn = !parsedSrc || parsedSrc.state !== 'off';
+        }
+
+        /* Select icon by image slot:
+           blindsopen* → Open button, blinds* → Close button,
+           blindsstop  → Stop button, all else → on/off        */
+        var iconCls;
+        if (base === 'blindsopen') {
+            iconCls = ov.iconOpen  || ov.iconOn || ov.icon;
+        } else if (base === 'blinds') {
+            iconCls = ov.iconClose || ov.iconOn || ov.icon;
+        } else if (base === 'blindsstop') {
+            iconCls = ov.iconStop;
+        } else {
+            iconCls = isOn
+                ? (ov.iconOn  || ov.icon)
+                : (ov.iconOff || ov.iconOn || ov.icon);
+        }
+        if (!iconCls) return null;
+
+        var fbOn  = (fallbackResolved && fallbackResolved.colorOn)  || '#4e9af1';
+        var fbOff = (fallbackResolved && fallbackResolved.colorOff) || '#555770';
+        var ovOn  = ov.on  || fbOn;
+        var ovOff = ov.off || fbOff;
+
+        /* keepColor: override only the icon shape; pass through the resolver's
+           dynamic color (temperature range, alert level, wind, etc.)          */
+        if (ov.keepColor && fallbackResolved) {
+            return {
+                type:     'device',
+                cls:      iconCls + ' dz-fa-device',
+                color:    fallbackResolved.color,
+                colorOn:  fallbackResolved.colorOn  || ovOn,
+                colorOff: fallbackResolved.colorOff || ovOff
+            };
+        }
+
+        return {
+            type:     'device',
+            cls:      iconCls + ' dz-fa-device',
+            color:    isOn ? ovOn : ovOff,
+            colorOn:  ovOn,
+            colorOff: ovOff
+        };
+    }
+
+    /* Called by the settings module when the override map changes.
+       Schedules a replacement burst so already-rendered icons update. */
+    window._dzSetDeviceIconOverrides = function (overrides) {
+        DEVICE_ICON_OVERRIDES = overrides || {};
+        if (typeof window._dzScheduleBurst === 'function') window._dzScheduleBurst();
+    };
+
     /* -- Process a single <img> into an FA <i> -------------------- */
     /* Returns true if the image was processed, false if skipped.      */
 
@@ -670,6 +751,21 @@
         if (!resolved) {
             img.classList.add('dz-icon-skipped');
             return false;
+        }
+
+        /* Per-device icon override — for 48px device state icons and the blinds stop button.
+           blindsstop.png matches ICON_MAP (type='icon') so we check it explicitly here so
+           that iconStop overrides are applied even though it is not a 48px device icon. */
+        if (resolved.type === 'device' || src.indexOf('blindsstop') !== -1) {
+            var angDev = getDeviceFromIcon(img);
+            if (angDev) {
+                var devIdx = String(angDev.idx || angDev.IDX || '');
+                var ovSpec = devIdx ? applyDeviceOverride(devIdx, src, resolved) : null;
+                if (ovSpec) {
+                    resolved = ovSpec;
+                    img.setAttribute('data-dz-dev-idx', devIdx);
+                }
+            }
         }
 
         var icon = document.createElement('i');
@@ -790,7 +886,24 @@
         if (!curSrc || curSrc === prevSrc || curSrc.indexOf('{{') !== -1) return;
         if (shouldSkip(curSrc)) return;
 
+        /* Resolve icon first so colors are available as fallback for overrides */
         var resolved = resolveIcon(curSrc);
+
+        /* Per-device icon override — check stored IDX on the img element */
+        var devIdx = img.getAttribute('data-dz-dev-idx');
+        if (devIdx) {
+            var ovSpec = applyDeviceOverride(devIdx, curSrc, resolved);
+            if (ovSpec) {
+                icon.className = ovSpec.cls;
+                icon.style.color = ovSpec.color || '';
+                icon.setAttribute('data-dz-color-on',  ovSpec.colorOn);
+                icon.setAttribute('data-dz-color-off', ovSpec.colorOff);
+                icon.setAttribute('data-dz-state', ovSpec.color === ovSpec.colorOn ? 'on' : 'off');
+                img.setAttribute('data-dz-src', curSrc);
+                return;
+            }
+        }
+
         if (!resolved) return;
 
         if (resolved.type === 'fav') {
@@ -903,11 +1016,15 @@
                 var rot = WIND_ROTATION[newResolved.dir];
                 prevIcon.style.transform = rot !== null ? 'rotate(' + rot + 'deg)' : '';
             } else if (newResolved.type === 'device') {
-                prevIcon.className = newResolved.cls;
-                prevIcon.style.color = newResolved.color || '';
-                if (newResolved.colorOn)  prevIcon.setAttribute('data-dz-color-on',  newResolved.colorOn);
-                if (newResolved.colorOff) prevIcon.setAttribute('data-dz-color-off', newResolved.colorOff);
-                prevIcon.setAttribute('data-dz-state', newResolved.color === newResolved.colorOn ? 'on' : 'off');
+                /* Prefer per-device override if one is configured */
+                var p2DevIdx = rImg.getAttribute('data-dz-dev-idx');
+                var p2Spec   = p2DevIdx ? applyDeviceOverride(p2DevIdx, curSrc, newResolved) : null;
+                var p2Final  = p2Spec || newResolved;
+                prevIcon.className = p2Final.cls;
+                prevIcon.style.color = p2Final.color || '';
+                if (p2Final.colorOn)  prevIcon.setAttribute('data-dz-color-on',  p2Final.colorOn);
+                if (p2Final.colorOff) prevIcon.setAttribute('data-dz-color-off', p2Final.colorOff);
+                prevIcon.setAttribute('data-dz-state', p2Final.color === p2Final.colorOn ? 'on' : 'off');
             }
 
             rImg.setAttribute('data-dz-src', curSrc);
@@ -1185,24 +1302,110 @@
        observers in the processCards block) can trigger a replacement pass. */
     window._dzScheduleBurst = scheduleBurst;
 
-    /* Expose a device-icon lookup for other modules (e.g. command palette).
-       Given a Domoticz device object with TypeImg + Status fields, returns
-       { icon: 'fa-solid fa-...', color: '#rrggbb' } or null.               */
+    /* Expose a device-icon lookup for other modules (e.g. settings dialog).
+       Given a Domoticz device object, returns { icon, color } replicating
+       the logic of dzLightWidget.js::getDeviceIcon() and
+       dzUtilityWidget.js::getDeviceIcon() so the dialog shows the same icon
+       that Domoticz actually renders.                                       */
     window._dzIconForDevice = function (device) {
-        var typeImg = device.TypeImg || '';
-        // Build a synthetic image path that parseDeviceSrc / resolveIcon can parse
-        var on   = !!(device.Status && (
-            ['On','Group On','Chime','Panic','Mixed'].indexOf(device.Status) >= 0 ||
-            device.Status.indexOf('Set ') === 0));
-        var suffix = on ? '_On' : '_Off';
-        var src = 'images/' + typeImg + '48' + suffix + '.png';
+        var sw      = device.SwitchType || '';
+        var type    = device.Type       || '';
+        var subType = device.SubType    || '';
+        var typeImg = (device.TypeImg   || '').toLowerCase();
+        var image   = device.Image      || '';
+        /* TypeImg values that differ from DEVICE_MAP keys */
+        var ALIASES = { 'hum': 'humidity', 'temphum': 'temp', 'temphumbaroew': 'temp',
+                        'zwavemelding': 'alarm', 'elec': 'electricityusage' };
+        var src;
+
+        /* Mirror getDeviceIcon() special cases */
+        if (sw === 'Doorbell') {
+            src = 'images/doorbell48.png';
+        } else if (sw.indexOf('Blind') >= 0 || sw.indexOf('Venetian') >= 0) {
+            /* Show open state so the dialog preview uses the open-arrow icon.
+               dzLightWidget always uses blindsopen48sel.png regardless of TypeImg. */
+            src = 'images/blindsopen48sel.png';
+        } else if (sw === 'Smoke Detector') {
+            src = 'images/smoke48on.png';
+        } else if (sw === 'Motion Sensor') {
+            src = 'images/motion48-on.png';
+        } else if (sw === 'Dusk Sensor') {
+            /* uvdark/uvsunny are in the skip list — return lux spec directly */
+            var luxSpec = DEVICE_MAP['lux'];
+            return luxSpec ? { icon: luxSpec.icon, color: luxSpec.on } : null;
+        } else if (subType === 'Security Panel') {
+            src = 'images/security48.png';
+        } else if (sw === 'X10 Siren') {
+            /* siren-on/off are in skip list — use alarm */
+            var almSpec = DEVICE_MAP['alarm'];
+            return almSpec ? { icon: almSpec.icon, color: almSpec.on } : null;
+        } else if (sw === 'TPI') {
+            src = 'images/Fireplace48_On.png';
+        } else if (subType && (subType.indexOf('Itho') === 0 || subType.indexOf('Orcon') === 0 ||
+                   subType.indexOf('Lucci') === 0 || subType.indexOf('Falmec') === 0 ||
+                   subType.indexOf('Westinghouse') === 0)) {
+            src = 'images/Fan48_On.png';
+        } else if (type === 'Security') {
+            src = 'images/security48.png';
+        } else if (sw === 'Door Lock' || sw === 'Door Lock Inverted') {
+            var lockImg = image || 'Light';
+            if (device.CustomImage == 0) lockImg = lockImg.charAt(0).toUpperCase() + lockImg.slice(1);
+            src = 'images/' + lockImg + '48_On.png';
+        } else if (sw === 'Contact' || sw === 'Door Contact') {
+            var ctImg = image || (sw === 'Door Contact' ? 'Door' : 'Contact');
+            if (device.CustomImage == 0) ctImg = ctImg.charAt(0).toUpperCase() + ctImg.slice(1);
+            src = 'images/' + ctImg + '48_On.png';
+        } else if (type === 'Scene') {
+            /* scene_widget.html hardcodes images/Push48_On.png → base='push' → fa-circle-dot */
+            var scSpec = DEVICE_MAP['push'];
+            return scSpec ? { icon: scSpec.icon, color: scSpec.on } : null;
+        } else if (type === 'Group') {
+            /* scene_widget.html hardcodes images/Push48_On/Off.png → base='push' → fa-circle-dot */
+            var grpSpec = DEVICE_MAP['push'];
+            return grpSpec ? { icon: grpSpec.icon, color: grpSpec.on } : null;
+        } else if (type === 'Humidity') {
+            /* dzUtilityWidget renders gauge48.png for Humidity, not humidity48.png.
+               TypeImg 'hum' would alias to 'humidity' (droplet) which is wrong. */
+            var humSpec = DEVICE_MAP['gauge'];
+            return humSpec ? { icon: humSpec.icon, color: humSpec.on } : null;
+        } else if (typeof device.Temp !== 'undefined' || typeof device.Chill !== 'undefined') {
+            /* Temperature / weather combo devices (Temp, Temp+Hum, Temp+Hum+Baro, Wind…):
+               dzUtilityWidget uses GetTemp48Item(device.Temp) which returns range images.
+               In the dialog we show the fixed temp icon — we can't vary by live value. */
+            var tempSpec = DEVICE_MAP['temp'];
+            return tempSpec ? { icon: tempSpec.icon, color: tempSpec.on } : null;
+        } else if (!sw && typeImg) {
+            /* Sensor/meter (no SwitchType): look up TypeImg with alias normalisation */
+            var normKey = ALIASES[typeImg] || typeImg;
+            if (DEVICE_MAP[normKey]) {
+                var sSpec = DEVICE_MAP[normKey];
+                return { icon: sSpec.icon, color: sSpec.on || '#4e9af1' };
+            }
+            src = 'images/' + typeImg + '48.png';
+        } else if (device.CustomImage == 0 && subType &&
+                   (subType.indexOf('RGB') >= 0 || subType.indexOf('WW') >= 0)) {
+            /* RGB/RGBW/CCT dimmers: dzLightWidget returns images/RGB48_On.png
+               → resolveIcon → DEVICE_MAP['rgb'] = fa-palette.
+               Must be checked before the generic image fallback below. */
+            var rgbSpec = DEVICE_MAP['rgb'];
+            return rgbSpec ? { icon: rgbSpec.icon, color: rgbSpec.on } : null;
+        } else {
+            /* Standard switch: getDeviceIcon() uses device.Image, not TypeImg */
+            var imgBase = image || 'Light';
+            if (device.CustomImage == 0) imgBase = imgBase.charAt(0).toUpperCase() + imgBase.slice(1);
+            src = 'images/' + imgBase + '48_On.png';
+        }
+
         var r = resolveIcon(src);
         if (r && r.cls) {
-            // strip dz-fa-device / dz-wind helper classes — just the FA classes
-            var fa = r.cls.split(' ').filter(function (c) {
-                return c.indexOf('fa-') === 0 || c === 'fa-solid' || c === 'fa-regular';
-            }).join(' ');
+            var fa = r.cls.split(' ').filter(function (c) { return c.indexOf('fa-') === 0; }).join(' ');
             return { icon: fa || r.cls, color: r.color };
+        }
+        /* Final fallback: typeImg alias lookup in DEVICE_MAP */
+        var fbKey = ALIASES[typeImg] || typeImg;
+        if (fbKey && DEVICE_MAP[fbKey]) {
+            var fbSpec = DEVICE_MAP[fbKey];
+            return { icon: fbSpec.icon, color: fbSpec.on || '#4e9af1' };
         }
         return null;
     };

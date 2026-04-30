@@ -283,7 +283,9 @@
         liveToastFilter:    'meaningful',
         liveToastDuration:  '4',
         liveToastPosition:  'bottom-right',
-        toastBlacklist:     '[]'
+        toastBlacklist:     '[]',
+
+        deviceIconOverrides: '{}'
     };
 
     var _settings      = null;
@@ -1020,6 +1022,17 @@
 
         // Update toast stack position if the system is already running
         if (window.ngUpdateToastPosition) window.ngUpdateToastPosition();
+
+        // Push device icon overrides to the icon replacement module
+        if (typeof window._dzSetDeviceIconOverrides === 'function') {
+            try {
+                var raw = _settings.deviceIconOverrides || '{}';
+                var overrides = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                window._dzSetDeviceIconOverrides(overrides);
+            } catch (e) {
+                window._dzSetDeviceIconOverrides({});
+            }
+        }
     }
 
     /* ── Build the settings panel HTML ─────────────────────────── */
@@ -1187,6 +1200,26 @@
             '    <i class="fa-solid fa-filter-circle-xmark"></i> Manage</button>' +
             '</div>' +
             '</div>' +
+
+            (function () {
+                var ovRaw = (s.deviceIconOverrides || '{}');
+                var ovCount = 0;
+                try { ovCount = Object.keys(typeof ovRaw === 'string' ? JSON.parse(ovRaw) : ovRaw).length; } catch (e) {}
+                var badge = ovCount > 0
+                    ? ' <span class="ng-override-badge">' + ovCount + '</span>'
+                    : '';
+                return '<div class="ng-settings-section">' +
+                    '<div class="ng-section-header"><i class="fa-solid fa-icons"></i> Device Icon Overrides</div>' +
+                    '<div class="ng-setting-row ng-setting-row--action">' +
+                    '  <div class="ng-setting-info">' +
+                    '    <span class="ng-setting-label">Per-Device Icons' + badge + '</span>' +
+                    '    <span class="ng-setting-desc">Assign any Font Awesome icon &amp; custom on/off colors to individual devices</span>' +
+                    '  </div>' +
+                    '  <button class="ng-action-chip" id="ng-override-manage-btn">' +
+                    '    <i class="fa-solid fa-wand-magic-sparkles"></i> Manage</button>' +
+                    '</div>' +
+                    '</div>';
+            })() +
 
             /* Right column: Color panels (together) */
             '<div class="ng-settings-section ng-settings-section--colors">' +
@@ -1626,6 +1659,1243 @@
             });
     }
 
+    /* ── Device Icon Override Dialog ──────────────────────────────── */
+
+    /* Classify a device into an icon/color model for the override editor.
+       Returns one of:
+         'binary'    standard switch — 1 icon, on/off colors
+         'selector'  selector switch — 1 icon, active/inactive colors
+         'lock'      door lock — 2 icons (unlocked + locked) + 2 colors
+         'contact'   contact/door sensor — 2 icons (open + closed) + 2 colors
+         'blinds-2'  directional blinds, no stop — Open + Close icons
+         'blinds-3'  directional blinds with stop — Open + Stop + Close icons
+         'sensor'    value-driven sensors (temp/humidity/etc.) — 1 icon + keepColor toggle */
+    function getDeviceColorModel(d) {
+        var sw      = d.SwitchType || '';
+        var type    = d.Type       || '';
+        var typeImg = (d.TypeImg   || '').toLowerCase();
+        var subType = d.SubType    || '';
+
+        /* Blinds — directional multi-icon cards */
+        if (sw.indexOf('Blinds') >= 0 || sw === 'Venetian Blinds US' || sw === 'Venetian Blinds EU') {
+            var hasStop = (
+                subType === 'RAEX'               || subType === 'Harrison'              ||
+                subType.indexOf('A-OK')       === 0 || subType.indexOf('Hasta')       >= 0 ||
+                subType.indexOf('Media Mount')=== 0 || subType.indexOf('Forest')      === 0 ||
+                subType.indexOf('Chamberlain')=== 0 || subType.indexOf('Sunpery')     === 0 ||
+                subType.indexOf('Dolat')      === 0 || subType.indexOf('ASP')         === 0 ||
+                subType.indexOf('RFY')        === 0 || subType.indexOf('ASA')         === 0 ||
+                subType.indexOf('DC106')      === 0 || subType.indexOf('Confexx')     === 0 ||
+                sw.indexOf('Venetian Blinds') === 0 || sw.indexOf('Stop')             >= 0
+            );
+            return hasStop ? 'blinds-3' : 'blinds-2';
+        }
+
+        /* Sensors — value-driven, dynamic color, no binary on/off */
+        var sensorTypes = ['Temp', 'Temp+Hum', 'Temp+Hum+Baro', 'Humidity', 'Rain', 'UV',
+                           'Wind', 'Lux', 'Air Quality', 'Soil Moisture', 'Leaf Wetness',
+                           'Visibility', 'Barometric Pressure', 'Current', 'Current/Energy', 'Weight'];
+        if (sensorTypes.indexOf(type) >= 0 || /^temp|^humid|^rain|^uv|^wind|^alert/i.test(typeImg)) {
+            return 'sensor';
+        }
+        if (type === 'General') {
+            var sensorSubs = ['Voltage', 'Current', 'Pressure', 'Sound Level', 'Solar Radiation',
+                              'Visibility', 'Distance', 'Soil Moisture', 'Leaf Wetness',
+                              'Waterflow', 'Lux', 'Percentage', 'Managed Counter', 'Counter Incremental'];
+            if (sensorSubs.indexOf(subType) >= 0) return 'sensor';
+        }
+
+        /* Door locks — benefit from different icons per state */
+        if (sw === 'Door Lock' || sw === 'Door Lock Inverted') return 'lock';
+
+        /* Contact sensors */
+        if (sw === 'Contact' || sw === 'Door Contact') return 'contact';
+
+        /* Selector switches */
+        if (sw === 'Selector') return 'selector';
+
+        return 'binary';
+    }
+
+    /* Returns a human-readable group label for a device (shown as a tag in the dialog).
+       Groups mirror the Domoticz dashboard tabs. */
+    function getDeviceGroup(d) {
+        var type = d.Type || '';
+        var sw   = d.SwitchType || '';
+        if (['Temp','Temp+Hum','Temp+Hum+Baro','Humidity',
+             'Soil Temperature'].indexOf(type) >= 0) return 'Temperature';
+        if (['Rain','Wind','UV','Visibility','Barometric Pressure',
+             'Solar Radiation'].indexOf(type) >= 0) return 'Weather';
+        if (type === 'Security') return 'Security';
+        if (type === 'Scene') return 'Scene';
+        if (type === 'Group' || sw === 'Group') return 'Group';
+        if (['General','P1 Smart Meter','RFXMeter','YouLess Meter',
+             'Lux','Air Quality','Current','Current/Energy',
+             'Weight','Counter Incremental'].indexOf(type) >= 0) return 'Utility';
+        if (['Light/Switch','Lighting 1','Lighting 2','Lighting 3',
+             'Lighting 4','Lighting 5','Lighting 6','Fan','Chime',
+             'Color Switch'].indexOf(type) >= 0) return 'Light & Switch';
+        return null;
+    }
+
+    function openDeviceIconOverrideDialog() {
+        var existing = document.getElementById('ng-ov-overlay');
+        if (existing) existing.remove();
+
+        // Parse current overrides
+        var currentOv = {};
+        try {
+            var raw = (window.dzNightglassSettings && window.dzNightglassSettings.get('deviceIconOverrides')) || '{}';
+            currentOv = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
+        } catch (e) {}
+
+        // Popular quick-override suggestions
+        var POPULAR_OVERRIDES = [
+            { label: 'WiFi Router',     icon: 'fa-solid fa-wifi',              on: '#4caf7d', off: '#555770' },
+            { label: 'Network Switch',  icon: 'fa-solid fa-network-wired',     on: '#4e9af1', off: '#555770' },
+            { label: 'Car',             icon: 'fa-solid fa-car',               on: '#4e9af1', off: '#555770' },
+            { label: 'EV Charger',      icon: 'fa-solid fa-charging-station',  on: '#4caf7d', off: '#555770' },
+            { label: 'Baby Monitor',    icon: 'fa-solid fa-baby',              on: '#c8a0ff', off: '#555770' },
+            { label: 'Camera',          icon: 'fa-solid fa-camera',            on: '#4e9af1', off: '#555770' },
+            { label: 'Doorbell',        icon: 'fa-solid fa-bell-concierge',    on: '#f0a832', off: '#555770' },
+            { label: 'Freezer',         icon: 'fa-solid fa-temperature-low',   on: '#29b6f6', off: '#555770' },
+            { label: 'Washing Machine', icon: 'fa-solid fa-shirt',             on: '#4e9af1', off: '#555770' },
+            { label: 'Dishwasher',      icon: 'fa-solid fa-sink',              on: '#4e9af1', off: '#555770' },
+            { label: 'Solar Panel',     icon: 'fa-solid fa-solar-panel',       on: '#f0a832', off: '#555770' },
+            { label: 'Battery/UPS',     icon: 'fa-solid fa-car-battery',       on: '#4caf7d', off: '#555770' },
+            { label: 'Server',          icon: 'fa-solid fa-server',            on: '#4e9af1', off: '#555770' },
+            { label: 'Smart Plug',      icon: 'fa-solid fa-plug',              on: '#4caf7d', off: '#555770' },
+            { label: 'Boiler',          icon: 'fa-solid fa-fire-flame-curved', on: '#ff7043', off: '#555770' },
+            { label: 'Ventilation',     icon: 'fa-solid fa-fan',               on: '#29b6f6', off: '#555770' },
+            { label: 'Garage Door',     icon: 'fa-solid fa-warehouse',         on: '#f0a832', off: '#4caf7d' },
+            { label: 'Pet Feeder',      icon: 'fa-solid fa-paw',               on: '#f0a832', off: '#555770' },
+            { label: 'NAS / Disk',      icon: 'fa-solid fa-hard-drive',        on: '#4e9af1', off: '#555770' },
+            { label: 'Vacuum Robot',    icon: 'fa-solid fa-robot',             on: '#4e9af1', off: '#555770' }
+        ];
+
+        // FA 7 Free icon picker sets.
+        // FA_ICONS_PRESET — shown by default (curated home-automation icons).
+        // FA_ICONS_ALL    — searched when the user types in the picker search box.
+        var FA_ICONS_PRESET = [
+            // Networking
+            'fa-solid fa-wifi',              'fa-solid fa-network-wired',     'fa-solid fa-ethernet',
+            'fa-solid fa-satellite-dish',    'fa-solid fa-tower-broadcast',   'fa-solid fa-signal',
+            // House & Rooms
+            'fa-solid fa-house',             'fa-solid fa-house-chimney',     'fa-solid fa-house-signal',
+            'fa-solid fa-door-closed',       'fa-solid fa-door-open',         'fa-solid fa-window-maximize',
+            'fa-solid fa-warehouse',         'fa-solid fa-building',          'fa-solid fa-couch',
+            'fa-solid fa-bed',               'fa-solid fa-bath',              'fa-solid fa-sink',
+            'fa-solid fa-toilet',            'fa-solid fa-stairs',            'fa-solid fa-table',
+            'fa-solid fa-chair',             'fa-solid fa-shower',
+            // Lighting
+            'fa-solid fa-lightbulb',         'fa-solid fa-circle-half-stroke','fa-solid fa-sun',
+            'fa-solid fa-moon',              'fa-solid fa-star',              'fa-solid fa-wand-magic-sparkles',
+            // Tech & AV
+            'fa-solid fa-tv',                'fa-solid fa-display',           'fa-solid fa-computer',
+            'fa-solid fa-server',            'fa-solid fa-hard-drive',        'fa-solid fa-print',
+            'fa-solid fa-phone',             'fa-solid fa-mobile-screen',     'fa-solid fa-tablet-screen-button',
+            'fa-solid fa-headphones',        'fa-solid fa-volume-high',       'fa-solid fa-music',
+            'fa-solid fa-gamepad',           'fa-solid fa-camera',            'fa-solid fa-video',
+            // Appliances
+            'fa-solid fa-blender',           'fa-solid fa-mug-hot',           'fa-solid fa-utensils',
+            'fa-solid fa-shirt',             'fa-solid fa-broom',             'fa-solid fa-baby',
+            'fa-solid fa-carriage-baby',     'fa-solid fa-robot',
+            // Energy & Power
+            'fa-solid fa-bolt',              'fa-solid fa-plug',              'fa-solid fa-charging-station',
+            'fa-solid fa-solar-panel',       'fa-solid fa-car-battery',       'fa-solid fa-battery-full',
+            'fa-solid fa-power-off',         'fa-solid fa-toggle-on',
+            // Climate & Sensors
+            'fa-solid fa-fire',              'fa-solid fa-fire-flame-curved', 'fa-solid fa-gauge',
+            'fa-solid fa-temperature-half',  'fa-solid fa-temperature-full',  'fa-solid fa-snowflake',
+            'fa-solid fa-fan',               'fa-solid fa-wind',              'fa-solid fa-cloud',
+            'fa-solid fa-cloud-rain',        'fa-solid fa-umbrella',          'fa-solid fa-droplet',
+            'fa-solid fa-temperature-low',   'fa-solid fa-temperature-high',  'fa-solid fa-smog',
+            // Garden & Nature
+            'fa-solid fa-seedling',          'fa-solid fa-leaf',              'fa-solid fa-tree',
+            'fa-solid fa-trowel',            'fa-solid fa-water-ladder',
+            // Security
+            'fa-solid fa-lock',              'fa-solid fa-lock-open',         'fa-solid fa-shield-halved',
+            'fa-solid fa-bell',              'fa-solid fa-bell-concierge',    'fa-solid fa-triangle-exclamation',
+            'fa-solid fa-circle-exclamation','fa-solid fa-eye',               'fa-solid fa-person-running',
+            // Pets & Animals
+            'fa-solid fa-dog',               'fa-solid fa-paw',               'fa-solid fa-cat',
+            // Transport
+            'fa-solid fa-car',               'fa-solid fa-car-side',          'fa-solid fa-truck',
+            'fa-solid fa-motorcycle',        'fa-solid fa-bicycle',           'fa-solid fa-plane',
+            'fa-solid fa-tractor',           'fa-solid fa-bus',
+            // Water & Plumbing
+            'fa-solid fa-hand-holding-droplet','fa-solid fa-faucet',          'fa-solid fa-pump-soap',
+            'fa-solid fa-spray-can',
+            // Health
+            'fa-solid fa-heart-pulse',       'fa-solid fa-weight-scale',      'fa-solid fa-lungs',
+            'fa-solid fa-syringe',           'fa-solid fa-pills',             'fa-solid fa-hospital',
+            // Tools
+            'fa-solid fa-gear',              'fa-solid fa-wrench',            'fa-solid fa-screwdriver',
+            'fa-solid fa-toolbox',
+            // Controls & Misc
+            'fa-solid fa-box',               'fa-solid fa-bookmark',          'fa-solid fa-flag',
+            'fa-solid fa-circle-dot',        'fa-solid fa-sliders',           'fa-solid fa-clock',
+            'fa-solid fa-calendar',          'fa-solid fa-location-dot',      'fa-solid fa-map-location-dot',
+            'fa-solid fa-microchip',         'fa-solid fa-database',          'fa-solid fa-bars-progress'
+        ];
+
+        // All searchable icons — FA 7 Free Solid, verified against the Domoticz bundle.
+        // Shown only when the user types a search query in the icon picker.
+        var FA_ICONS_ALL = [
+            // Networking
+            'fa-solid fa-wifi',              'fa-solid fa-network-wired',     'fa-solid fa-ethernet',
+            'fa-solid fa-satellite-dish',    'fa-solid fa-satellite',         'fa-solid fa-tower-broadcast',
+            'fa-solid fa-tower-cell',        'fa-solid fa-signal',            'fa-solid fa-globe',
+            'fa-solid fa-server',            'fa-solid fa-database',          'fa-solid fa-microchip',
+            'fa-solid fa-hard-drive',        'fa-solid fa-radio',             'fa-solid fa-walkie-talkie',
+            // House & Rooms
+            'fa-solid fa-house',             'fa-solid fa-house-chimney',     'fa-solid fa-house-signal',
+            'fa-solid fa-house-lock',        'fa-solid fa-house-fire',        'fa-solid fa-house-flood-water',
+            'fa-solid fa-house-laptop',      'fa-solid fa-house-user',        'fa-solid fa-house-chimney-window',
+            'fa-solid fa-house-medical',     'fa-solid fa-house-chimney-crack','fa-solid fa-building',
+            'fa-solid fa-building-columns',  'fa-solid fa-building-lock',     'fa-solid fa-warehouse',
+            'fa-solid fa-igloo',             'fa-solid fa-door-closed',       'fa-solid fa-door-open',
+            'fa-solid fa-window-maximize',   'fa-solid fa-window-restore',    'fa-solid fa-window-minimize',
+            'fa-solid fa-couch',             'fa-solid fa-bed',               'fa-solid fa-chair',
+            'fa-solid fa-table',             'fa-solid fa-bath',              'fa-solid fa-sink',
+            'fa-solid fa-toilet',            'fa-solid fa-toilet-paper',      'fa-solid fa-shower',
+            'fa-solid fa-stairs',            'fa-solid fa-archway',
+            // Lighting
+            'fa-solid fa-lightbulb',         'fa-solid fa-circle-half-stroke','fa-solid fa-sun',
+            'fa-solid fa-moon',              'fa-solid fa-star',              'fa-solid fa-wand-magic-sparkles',
+            'fa-solid fa-wand-magic',        'fa-solid fa-wand-sparkles',
+            // Tech & AV
+            'fa-solid fa-tv',                'fa-solid fa-display',           'fa-solid fa-computer',
+            'fa-solid fa-computer-mouse',    'fa-solid fa-keyboard',          'fa-solid fa-print',
+            'fa-solid fa-phone',             'fa-solid fa-mobile-screen',     'fa-solid fa-mobile-screen-button',
+            'fa-solid fa-tablet-screen-button','fa-solid fa-headphones',      'fa-solid fa-volume-high',
+            'fa-solid fa-volume-low',        'fa-solid fa-volume-off',        'fa-solid fa-volume-xmark',
+            'fa-solid fa-microphone',        'fa-solid fa-camera',            'fa-solid fa-video',
+            'fa-solid fa-music',             'fa-solid fa-gamepad',           'fa-solid fa-record-vinyl',
+            'fa-solid fa-fax',
+            // Appliances & Home
+            'fa-solid fa-blender',           'fa-solid fa-mug-hot',           'fa-solid fa-mug-saucer',
+            'fa-solid fa-utensils',          'fa-solid fa-pizza-slice',       'fa-solid fa-broom',
+            'fa-solid fa-shirt',             'fa-solid fa-soap',              'fa-solid fa-spray-can',
+            'fa-solid fa-spray-can-sparkles','fa-solid fa-baby',              'fa-solid fa-carriage-baby',
+            'fa-solid fa-robot',
+            // Energy & Power
+            'fa-solid fa-bolt',              'fa-solid fa-bolt-lightning',    'fa-solid fa-plug',
+            'fa-solid fa-plug-circle-bolt',  'fa-solid fa-plug-circle-check', 'fa-solid fa-plug-circle-exclamation',
+            'fa-solid fa-charging-station',  'fa-solid fa-solar-panel',       'fa-solid fa-car-battery',
+            'fa-solid fa-battery-full',      'fa-solid fa-battery-three-quarters','fa-solid fa-battery-half',
+            'fa-solid fa-battery-quarter',   'fa-solid fa-battery-empty',     'fa-solid fa-power-off',
+            'fa-solid fa-toggle-on',         'fa-solid fa-toggle-off',
+            // Climate & Weather sensors
+            'fa-solid fa-temperature-half',  'fa-solid fa-temperature-full',  'fa-solid fa-temperature-empty',
+            'fa-solid fa-temperature-quarter','fa-solid fa-temperature-three-quarters','fa-solid fa-temperature-high',
+            'fa-solid fa-temperature-low',   'fa-solid fa-temperature-up',    'fa-solid fa-temperature-down',
+            'fa-solid fa-thermometer',       'fa-solid fa-thermometer-half',  'fa-solid fa-thermometer-full',
+            'fa-solid fa-snowflake',         'fa-solid fa-fan',               'fa-solid fa-wind',
+            'fa-solid fa-cloud',             'fa-solid fa-cloud-sun',         'fa-solid fa-cloud-rain',
+            'fa-solid fa-cloud-bolt',        'fa-solid fa-cloud-showers-heavy','fa-solid fa-cloud-showers-water',
+            'fa-solid fa-umbrella',          'fa-solid fa-droplet',           'fa-solid fa-smog',
+            'fa-solid fa-gauge',             'fa-solid fa-gauge-high',        'fa-solid fa-tornado',
+            'fa-solid fa-hurricane',         'fa-solid fa-sun-plant-wilt',    'fa-solid fa-rainbow',
+            // Fire & Safety
+            'fa-solid fa-fire',              'fa-solid fa-fire-flame-curved', 'fa-solid fa-fire-flame-simple',
+            'fa-solid fa-fire-extinguisher', 'fa-solid fa-bell',              'fa-solid fa-bell-slash',
+            'fa-solid fa-bell-concierge',    'fa-solid fa-radiation',
+            // Security
+            'fa-solid fa-lock',              'fa-solid fa-lock-open',         'fa-solid fa-unlock',
+            'fa-solid fa-unlock-keyhole',    'fa-solid fa-shield',            'fa-solid fa-shield-halved',
+            'fa-solid fa-shield-heart',      'fa-solid fa-eye',               'fa-solid fa-eye-slash',
+            'fa-solid fa-person-running',    'fa-solid fa-triangle-exclamation','fa-solid fa-circle-exclamation',
+            // Garden & Nature
+            'fa-solid fa-seedling',          'fa-solid fa-leaf',              'fa-solid fa-tree',
+            'fa-solid fa-tree-city',         'fa-solid fa-spa',               'fa-solid fa-water',
+            'fa-solid fa-water-ladder',      'fa-solid fa-hand-holding-droplet','fa-solid fa-hand-holding-water',
+            'fa-solid fa-faucet',            'fa-solid fa-faucet-drip',       'fa-solid fa-tractor',
+            'fa-solid fa-trowel',            'fa-solid fa-trowel-bricks',     'fa-solid fa-recycle',
+            // Transport
+            'fa-solid fa-car',               'fa-solid fa-car-side',          'fa-solid fa-car-battery',
+            'fa-solid fa-truck',             'fa-solid fa-truck-fast',        'fa-solid fa-van-shuttle',
+            'fa-solid fa-bus',               'fa-solid fa-motorcycle',        'fa-solid fa-bicycle',
+            'fa-solid fa-plane',             'fa-solid fa-train',             'fa-solid fa-train-subway',
+            'fa-solid fa-helicopter',        'fa-solid fa-route',             'fa-solid fa-traffic-light',
+            // Health & Wellness
+            'fa-solid fa-heart-pulse',       'fa-solid fa-weight-scale',      'fa-solid fa-lungs',
+            'fa-solid fa-syringe',           'fa-solid fa-pills',             'fa-solid fa-hospital',
+            'fa-solid fa-stethoscope',       'fa-solid fa-wheelchair',        'fa-solid fa-dumbbell',
+            'fa-solid fa-tooth',             'fa-solid fa-pump-medical',
+            // Water & Plumbing
+            'fa-solid fa-pump-soap',         'fa-solid fa-spray-can',         'fa-solid fa-glass-water',
+            // Tools & Work
+            'fa-solid fa-gear',              'fa-solid fa-gears',             'fa-solid fa-wrench',
+            'fa-solid fa-screwdriver',       'fa-solid fa-screwdriver-wrench','fa-solid fa-toolbox',
+            'fa-solid fa-ruler',             'fa-solid fa-ruler-combined',    'fa-solid fa-paintbrush',
+            'fa-solid fa-hammer',
+            // Animals & Pets
+            'fa-solid fa-dog',               'fa-solid fa-paw',               'fa-solid fa-cat',
+            'fa-solid fa-fish',              'fa-solid fa-kiwi-bird',         'fa-solid fa-hippo',
+            'fa-solid fa-frog',
+            // People
+            'fa-solid fa-baby',              'fa-solid fa-carriage-baby',     'fa-solid fa-person',
+            'fa-solid fa-user',              'fa-solid fa-users',             'fa-solid fa-person-walking',
+            'fa-solid fa-person-running',    'fa-solid fa-person-hiking',     'fa-solid fa-person-biking',
+            'fa-solid fa-person-swimming',   'fa-solid fa-person-pregnant',   'fa-solid fa-child',
+            'fa-solid fa-wheelchair',
+            // Controls & Status
+            'fa-solid fa-sliders',           'fa-solid fa-power-off',         'fa-solid fa-toggle-on',
+            'fa-solid fa-toggle-off',        'fa-solid fa-circle-dot',        'fa-solid fa-layer-group',
+            'fa-solid fa-palette',           'fa-solid fa-arrows-rotate',     'fa-solid fa-rotate',
+            'fa-solid fa-expand',            'fa-solid fa-compress',          'fa-solid fa-check',
+            'fa-solid fa-check-double',      'fa-solid fa-list-check',        'fa-solid fa-bars-progress',
+            // Time & Location
+            'fa-solid fa-clock',             'fa-solid fa-calendar',          'fa-solid fa-stopwatch',
+            'fa-solid fa-hourglass-half',    'fa-solid fa-location-dot',      'fa-solid fa-map-location-dot',
+            'fa-solid fa-map',               'fa-solid fa-map-pin',           'fa-solid fa-compass',
+            // Misc Utility
+            'fa-solid fa-box',               'fa-solid fa-bookmark',          'fa-solid fa-flag',
+            'fa-solid fa-tag',               'fa-solid fa-tags',              'fa-solid fa-barcode',
+            'fa-solid fa-qrcode',            'fa-solid fa-clipboard',         'fa-solid fa-microchip',
+            'fa-solid fa-database',          'fa-solid fa-server',            'fa-solid fa-graduation-cap',
+            'fa-solid fa-trophy',            'fa-solid fa-medal',             'fa-solid fa-crown',
+            'fa-solid fa-piggy-bank',        'fa-solid fa-coins',             'fa-solid fa-gift',
+            'fa-solid fa-cart-shopping',     'fa-solid fa-scissors',          'fa-solid fa-anchor',
+            'fa-solid fa-dice',              'fa-solid fa-handshake',         'fa-solid fa-heart',
+            'fa-solid fa-infinity',          'fa-solid fa-rocket',            'fa-solid fa-spinner',
+            'fa-solid fa-hourglass'
+        ];
+
+        // Mutable copy of current overrides — copy every stored field so the
+        // sidebar and row editors reflect the saved state when the dialog reopens.
+        var pending = {};
+        Object.keys(currentOv).forEach(function (k) {
+            var s = currentOv[k];
+            pending[k] = {
+                icon:      s.icon,
+                iconOn:    s.iconOn,
+                iconOff:   s.iconOff,
+                iconOpen:  s.iconOpen,
+                iconClose: s.iconClose,
+                iconStop:  s.iconStop,
+                keepColor: s.keepColor,
+                on:        s.on,
+                off:       s.off,
+                name:      s.name || ''
+            };
+        });
+
+        var overlay = document.createElement('div');
+        overlay.id = 'ng-ov-overlay';
+        overlay.className = 'ng-bl-overlay';
+        overlay.innerHTML =
+            '<div class="ng-bl-dialog ng-ov-dialog" role="dialog" aria-label="Device Icon Overrides">' +
+            '  <div class="ng-bl-header">' +
+            '    <div class="ng-bl-title">' +
+            '      <i class="fa-solid fa-icons"></i>' +
+            '      <span>Device Icon Overrides</span>' +
+            '    </div>' +
+            '    <button class="ng-bl-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>' +
+            '  </div>' +
+            '  <div class="ng-ov-body">' +
+            '    <div class="ng-ov-main">' +
+            '      <div class="ng-ov-popular">' +
+            '        <div class="ng-ov-popular-label"><i class="fa-solid fa-wand-magic-sparkles"></i> Quick Presets — click to assign to a device</div>' +
+            '        <div class="ng-ov-chips" id="ng-ov-chips"></div>' +
+            '      </div>' +
+            '      <div class="ng-bl-search-wrap">' +
+            '        <i class="fa-solid fa-magnifying-glass ng-bl-search-icon"></i>' +
+            '        <input class="ng-bl-search" id="ng-ov-search" placeholder="Search devices…" autocomplete="off">' +
+            '      </div>' +
+            '      <div class="ng-bl-list ng-ov-list" id="ng-ov-list">' +
+            '        <div class="ng-bl-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading devices…</div>' +
+            '      </div>' +
+            '    </div>' +
+            '    <div class="ng-ov-sidebar" id="ng-ov-sidebar">' +
+            '      <div class="ng-ov-sidebar-header">' +
+            '        <i class="fa-solid fa-list-check"></i> Active' +
+            '        <span class="ng-ov-sidebar-count" id="ng-ov-sidebar-count">0</span>' +
+            '      </div>' +
+            '      <div class="ng-ov-sidebar-list" id="ng-ov-sidebar-list">' +
+            '        <div class="ng-ov-sidebar-empty">No overrides yet</div>' +
+            '      </div>' +
+            '    </div>' +
+            '  </div>' +
+            '  <div class="ng-bl-footer">' +
+            '    <span class="ng-bl-count" id="ng-ov-count"></span>' +
+            '    <div class="ng-bl-footer-btns">' +
+            '      <button class="ng-bl-btn ng-bl-btn--cancel">Cancel</button>' +
+            '      <button class="ng-bl-btn ng-bl-btn--save">Save Overrides</button>' +
+            '    </div>' +
+            '  </div>' +
+            '</div>';
+
+        document.body.appendChild(overlay);
+        requestAnimationFrame(function () { overlay.classList.add('ng-bl-overlay--open'); });
+
+        var listEl         = overlay.querySelector('#ng-ov-list');
+        var searchEl       = overlay.querySelector('#ng-ov-search');
+        var countEl        = overlay.querySelector('#ng-ov-count');
+        var chipsEl        = overlay.querySelector('#ng-ov-chips');
+        var sidebarListEl  = overlay.querySelector('#ng-ov-sidebar-list');
+        var sidebarCountEl = overlay.querySelector('#ng-ov-sidebar-count');
+
+        function close() {
+            overlay.classList.remove('ng-bl-overlay--open');
+            setTimeout(function () { overlay.remove(); }, 260);
+        }
+
+        function renderSidebar() {
+            var keys = Object.keys(pending);
+            if (sidebarCountEl) sidebarCountEl.textContent = keys.length;
+            if (!sidebarListEl) return;
+            if (!keys.length) {
+                sidebarListEl.innerHTML = '<div class="ng-ov-sidebar-empty">No overrides yet</div>';
+                return;
+            }
+            sidebarListEl.innerHTML = '';
+            keys.forEach(function (idxStr) {
+                var ov   = pending[idxStr];
+                var name = ov.name || ('IDX ' + idxStr);
+                var on   = ov.on  || '#4e9af1';
+                var off  = ov.off || '#555770';
+
+                var item = document.createElement('div');
+                item.className = 'ng-ov-si';
+                item.dataset.idx = idxStr;
+                item.title = 'Jump to ' + name;
+
+                var icon = document.createElement('i');
+                icon.className = (ov.iconOn || ov.iconOpen || ov.icon || 'fa-solid fa-circle-question') + ' ng-ov-si-icon';
+                icon.style.color = on;
+
+                var info = document.createElement('div');
+                info.className = 'ng-ov-si-info';
+
+                var nameEl = document.createElement('span');
+                nameEl.className = 'ng-ov-si-name';
+                nameEl.textContent = name;
+
+                var dots = document.createElement('span');
+                dots.className = 'ng-ov-si-dots';
+                dots.innerHTML =
+                    '<span class="ng-ov-si-dot" style="background:' + on  + '" title="On: ' + on + '"></span>' +
+                    '<span class="ng-ov-si-dot" style="background:' + off + '" title="Off: ' + off + '"></span>';
+
+                info.appendChild(nameEl);
+                info.appendChild(dots);
+
+                var removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'ng-ov-si-remove';
+                removeBtn.title = 'Remove override';
+                removeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+                removeBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    delete pending[idxStr];
+                    /* Reset the corresponding device row if visible */
+                    var row = listEl.querySelector('[data-idx="' + idxStr + '"]');
+                    if (row) {
+                        row.classList.remove('ng-ov-row--active');
+                        var rowFa   = row.querySelector('.ng-ov-row-fa');
+                        var editBtn = row.querySelector('.ng-ov-edit-btn');
+                        var editor  = row.querySelector('.ng-ov-editor');
+                        if (rowFa)   { rowFa.className = (row.dataset.defIcon || 'fa-solid fa-circle-question') + ' ng-ov-row-fa'; rowFa.style.color = row.dataset.defColor || '#555770'; rowFa.style.opacity = '.55'; }
+                        if (editBtn) { editBtn.innerHTML = '<i class="fa-solid fa-plus"></i>'; }
+                        if (editor)  { editor.style.display = 'none'; }
+                    }
+                    updateCount();
+                });
+
+                item.appendChild(icon);
+                item.appendChild(info);
+                item.appendChild(removeBtn);
+
+                /* Click to jump to + briefly highlight the device row */
+                item.addEventListener('click', function () {
+                    var target = listEl.querySelector('[data-idx="' + idxStr + '"]');
+                    if (!target) return;
+                    /* Clear search so the row is visible */
+                    if (searchEl && searchEl.value) { searchEl.value = ''; filterList(''); }
+                    target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                    target.classList.add('ng-ov-row--flash');
+                    setTimeout(function () { target.classList.remove('ng-ov-row--flash'); }, 900);
+                });
+
+                sidebarListEl.appendChild(item);
+            });
+        }
+
+        function updateCount() {
+            if (countEl) {
+                var n = Object.keys(pending).length;
+                countEl.textContent = n === 0 ? 'No overrides set' : n + ' override' + (n === 1 ? '' : 's');
+            }
+            renderSidebar();
+        }
+
+        /* Populate sidebar immediately for any pre-existing overrides */
+        renderSidebar();
+
+        function filterList(q) {
+            q = (q || '').toLowerCase();
+            listEl.querySelectorAll('.ng-ov-row').forEach(function (r) {
+                r.style.display = (!q || (r.dataset.name || '').toLowerCase().indexOf(q) !== -1) ? '' : 'none';
+            });
+        }
+
+        /* Build an inline FA icon picker, calls onSelect(cls) on pick */
+        function buildIconPicker(initialCls, onSelect) {
+            var wrap = document.createElement('div');
+            wrap.className = 'ng-ov-picker';
+
+            var si = document.createElement('input');
+            si.type = 'text';
+            si.className = 'ng-ov-picker-search';
+            si.placeholder = 'Search icons… (wifi, fan, bolt, car…)';
+            si.autocomplete = 'off';
+            wrap.appendChild(si);
+
+            var grid = document.createElement('div');
+            grid.className = 'ng-ov-icon-grid';
+            wrap.appendChild(grid);
+
+            var activeCls = initialCls;
+
+            function renderGrid(q) {
+                q = (q || '').toLowerCase().replace(/^fa-solid\s+fa-/, '').trim();
+                var hits = q
+                    ? FA_ICONS_ALL.filter(function (c) { return c.replace('fa-solid fa-', '').replace(/-/g, ' ').indexOf(q) !== -1; })
+                    : FA_ICONS_PRESET;
+                grid.innerHTML = '';
+                hits.forEach(function (cls) {
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'ng-ov-icon-btn' + (cls === activeCls ? ' ng-ov-icon-btn--active' : '');
+                    btn.title = cls.replace('fa-solid fa-', '').replace(/-/g, ' ');
+                    btn.setAttribute('data-icon', cls);
+                    var ic = document.createElement('i');
+                    ic.className = cls;
+                    btn.appendChild(ic);
+                    grid.appendChild(btn);
+                });
+            }
+
+            renderGrid('');
+
+            si.addEventListener('input', function () { renderGrid(this.value); });
+
+            grid.addEventListener('click', function (e) {
+                var btn = e.target.closest('.ng-ov-icon-btn');
+                if (!btn) return;
+                activeCls = btn.getAttribute('data-icon');
+                grid.querySelectorAll('.ng-ov-icon-btn').forEach(function (b) {
+                    b.classList.toggle('ng-ov-icon-btn--active', b === btn);
+                });
+                onSelect(activeCls);
+            });
+
+            return wrap;
+        }
+
+        /* Render one device row with its inline editor */
+        function renderRow(d) {
+            var idxStr = String(d.idx);
+            var ov     = pending[idxStr];
+            var model  = getDeviceColorModel(d);
+            var hasOv  = !!(ov && (ov.iconOn || ov.iconOpen || ov.icon));
+
+            /* ── Resolve defaults via the icon replacement module ─────────── */
+            var dzIcon     = typeof window._dzIconForDevice === 'function' ? window._dzIconForDevice : null;
+            var defSpecOn  = dzIcon ? dzIcon(d) : null;
+            var defIconOn  = (defSpecOn && defSpecOn.icon)  || 'fa-solid fa-circle-question';
+            var defColorOn = (defSpecOn && defSpecOn.color) || '#4e9af1';
+            var defColorOff = '#555770';
+            var defIconOpen  = defIconOn;
+            var defIconClose = defIconOn;
+
+            if (model === 'blinds-2' || model === 'blinds-3') {
+                var sOp = dzIcon ? dzIcon({ TypeImg: (d.TypeImg || '') + 'open', Status: 'On'  }) : null;
+                var sCl = dzIcon ? dzIcon({ TypeImg:  d.TypeImg  || 'blinds',   Status: 'Off' }) : null;
+                defIconOpen  = (sOp && sOp.icon)  || 'fa-solid fa-chevron-up';
+                defIconClose = (sCl && sCl.icon)  || 'fa-solid fa-chevron-down';
+                defColorOn   = (sOp && sOp.color) || defColorOn;
+            }
+
+            /* ── Current values: override or defaults ─────────────────────── */
+            var curIconOn    = hasOv ? (ov.iconOn    || ov.icon || defIconOn)                 : defIconOn;
+            var curIconOff   = hasOv ? (ov.iconOff   || ov.iconOn || ov.icon || defIconOn)    : defIconOn;
+            var curIconOpen  = hasOv ? (ov.iconOpen  || ov.iconOn || ov.icon || defIconOpen)  : defIconOpen;
+            var curIconClose = hasOv ? (ov.iconClose || ov.iconOn || ov.icon || defIconClose) : defIconClose;
+            var curIconStop  = hasOv ? (ov.iconStop  || 'fa-solid fa-stop')                   : 'fa-solid fa-stop';
+            var curOn        = hasOv ? (ov.on  || defColorOn)  : defColorOn;
+            var curOff       = hasOv ? (ov.off || defColorOff) : defColorOff;
+            var keepColor    = ov ? !!(ov.keepColor) : (model === 'sensor');
+
+            /* ── Row element ──────────────────────────────────────────────── */
+            var row = document.createElement('div');
+            row.className        = 'ng-ov-row' + (hasOv ? ' ng-ov-row--active' : '');
+            row.dataset.idx      = idxStr;
+            row.dataset.name     = d.Name || '';
+            row.dataset.defIcon  = defIconOn;
+            row.dataset.defColor = defColorOn;
+
+            /* ── Summary line ─────────────────────────────────────────────── */
+            var summary = document.createElement('div');
+            summary.className = 'ng-ov-row-summary';
+            var isBlinds = (model === 'blinds-2' || model === 'blinds-3');
+
+            var iconHtml = isBlinds
+                ? '<span class="ng-ov-row-icon ng-ov-row-icon--multi">' +
+                  '<i class="' + curIconOpen  + ' ng-ov-row-fa ng-ov-row-fa--open"  style="color:' + curOn  + ';' + (hasOv ? '' : 'opacity:.55') + '"></i>' +
+                  '<i class="' + curIconClose + ' ng-ov-row-fa ng-ov-row-fa--close" style="color:' + curOff + ';' + (hasOv ? '' : 'opacity:.55') + '"></i>' +
+                  '</span>'
+                : '<span class="ng-ov-row-icon">' +
+                  '<i class="' + curIconOn + ' ng-ov-row-fa" style="color:' + curOn + ';' + (hasOv ? '' : 'opacity:.55') + '"></i>' +
+                  '</span>';
+
+            var modelBadge = model === 'blinds-2' ? ' <span class="ng-ov-model-badge">2-icon</span>'
+                           : model === 'blinds-3' ? ' <span class="ng-ov-model-badge">3-icon</span>'
+                           : model === 'sensor'   ? ' <span class="ng-ov-model-badge ng-ov-model-badge--sensor">sensor</span>'
+                           : '';
+            var groupLabel = getDeviceGroup(d);
+            var groupTagCls = !groupLabel ? '' :
+                groupLabel === 'Temperature' ? ' ng-ov-group-tag--temp' :
+                groupLabel === 'Weather'     ? ' ng-ov-group-tag--weather' :
+                groupLabel === 'Security'    ? ' ng-ov-group-tag--security' :
+                groupLabel === 'Utility'     ? ' ng-ov-group-tag--utility' :
+                (groupLabel === 'Scene' || groupLabel === 'Group') ? ' ng-ov-group-tag--scene' : '';
+            var groupTag = groupLabel ? ' <span class="ng-ov-group-tag' + groupTagCls + '">' + groupLabel + '</span>' : '';
+            var swLabel = (d.SwitchType && d.SwitchType !== d.Type) ? ' &middot; ' + d.SwitchType : '';
+            summary.innerHTML =
+                iconHtml +
+                '<span class="ng-bl-row-info">' +
+                '  <span class="ng-bl-row-name">' + (d.Name || 'Device ' + d.idx) + '</span>' +
+                '  <span class="ng-bl-row-type">IDX&nbsp;' + d.idx +
+                    (d.Type ? ' &middot; ' + d.Type : '') + swLabel + modelBadge + groupTag +
+                '  </span>' +
+                '</span>' +
+                '<button class="ng-ov-edit-btn" type="button" title="' + (hasOv ? 'Edit override' : 'Add override') + '">' +
+                '  <i class="fa-solid ' + (hasOv ? 'fa-pen-to-square' : 'fa-plus') + '"></i>' +
+                '</button>';
+            row.appendChild(summary);
+
+            /* ── Inline editor ────────────────────────────────────────────── */
+            var editor = document.createElement('div');
+            editor.className   = 'ng-ov-editor';
+            editor.style.display = 'none';
+
+            /* colorRow is shared across all models; built and populated per-model below */
+            var colorRow = document.createElement('div');
+            colorRow.className = 'ng-ov-color-row';
+
+            var OV_COLOR_PRESETS = [
+                '#4e9af1','#29b6f6','#4caf7d','#66bb6a',
+                '#f0a832','#ffa726','#ff7043','#e05555',
+                '#c8a0ff','#ab47bc','#78909c','#555770'
+            ];
+
+            /* HSV color picker (unchanged) */
+            function makeOvColorPicker(labelText, initialColor, onChange) {
+                var wrap = document.createElement('div');
+                wrap.className = 'ng-ov-color-label';
+
+                var span = document.createElement('span');
+                span.textContent = labelText;
+                wrap.appendChild(span);
+
+                var pickerWrap = document.createElement('div');
+                pickerWrap.className = 'ng-color-wrap';
+
+                var swatch = document.createElement('button');
+                swatch.type = 'button';
+                swatch.className = 'ng-cp-swatch';
+                swatch.style.background = initialColor;
+
+                var hexInput = document.createElement('input');
+                hexInput.type = 'text';
+                hexInput.className = 'ng-cp-hex';
+                hexInput.value = initialColor;
+                hexInput.maxLength = 7;
+                hexInput.spellcheck = false;
+
+                var popover = document.createElement('div');
+                popover.className = 'ng-cp-popover';
+                popover.style.display = 'none';
+
+                var svCanvas = document.createElement('canvas');
+                svCanvas.className = 'ng-cp-sv';
+                svCanvas.width = 232;
+                svCanvas.height = 148;
+
+                var hueCanvas = document.createElement('canvas');
+                hueCanvas.className = 'ng-cp-hue';
+                hueCanvas.width = 232;
+                hueCanvas.height = 14;
+
+                var presetsEl = document.createElement('div');
+                presetsEl.className = 'ng-cp-presets';
+                OV_COLOR_PRESETS.forEach(function (c) {
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'ng-cp-preset' + (c.toLowerCase() === initialColor.toLowerCase() ? ' ng-cp-preset--active' : '');
+                    btn.setAttribute('data-color', c);
+                    btn.style.background = c;
+                    btn.title = c;
+                    presetsEl.appendChild(btn);
+                });
+
+                popover.appendChild(svCanvas);
+                popover.appendChild(hueCanvas);
+                popover.appendChild(presetsEl);
+                pickerWrap.appendChild(swatch);
+                pickerWrap.appendChild(hexInput);
+                pickerWrap.appendChild(popover);
+                wrap.appendChild(pickerWrap);
+
+                var hsv = hexToHsv(initialColor);
+                drawSV(svCanvas, hsv.h);
+                drawHueBar(hueCanvas);
+
+                function updateFromHsv() {
+                    var hex = hsvToHex(hsv.h, hsv.s, hsv.v);
+                    swatch.style.background = hex;
+                    hexInput.value = hex;
+                    drawSV(svCanvas, hsv.h);
+                    presetsEl.querySelectorAll('.ng-cp-preset').forEach(function (b) {
+                        b.classList.toggle('ng-cp-preset--active',
+                            b.getAttribute('data-color').toLowerCase() === hex.toLowerCase());
+                    });
+                    onChange(hex);
+                }
+
+                function closeOtherPopovers() {
+                    var dialog = wrap.closest('.ng-ov-dialog') || document.body;
+                    dialog.querySelectorAll('.ng-color-wrap .ng-cp-popover').forEach(function (p) {
+                        if (p !== popover) p.style.display = 'none';
+                    });
+                }
+
+                swatch.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    var open = popover.style.display === 'block';
+                    closeOtherPopovers();
+                    if (!open) {
+                        popover.style.display = 'block';
+                        var rect = swatch.getBoundingClientRect();
+                        var popW = 260;
+                        var left = rect.right - popW;
+                        var top  = rect.bottom + 8;
+                        if (left < 8) left = 8;
+                        if (top + 300 > window.innerHeight) top = rect.top - 308;
+                        popover.style.left = left + 'px';
+                        popover.style.top  = top  + 'px';
+                        drawSV(svCanvas, hsv.h);
+                        drawHueBar(hueCanvas);
+                    }
+                });
+
+                function handleSV(e) {
+                    var rect = svCanvas.getBoundingClientRect();
+                    hsv.s = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                    hsv.v = 1 - Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+                    updateFromHsv();
+                }
+                var svDragging = false;
+                svCanvas.addEventListener('pointerdown', function (e) {
+                    svDragging = true; svCanvas.setPointerCapture(e.pointerId); handleSV(e);
+                });
+                svCanvas.addEventListener('pointermove', function (e) { if (svDragging) handleSV(e); });
+                svCanvas.addEventListener('pointerup',   function ()  { svDragging = false; });
+
+                function handleHue(e) {
+                    var rect = hueCanvas.getBoundingClientRect();
+                    hsv.h = Math.max(0, Math.min(0.9999, (e.clientX - rect.left) / rect.width));
+                    updateFromHsv();
+                }
+                var hueDragging = false;
+                hueCanvas.addEventListener('pointerdown', function (e) {
+                    hueDragging = true; hueCanvas.setPointerCapture(e.pointerId); handleHue(e);
+                });
+                hueCanvas.addEventListener('pointermove', function (e) { if (hueDragging) handleHue(e); });
+                hueCanvas.addEventListener('pointerup',   function ()  { hueDragging = false; });
+
+                hexInput.addEventListener('input', function () {
+                    var v = this.value.trim();
+                    if (/^#[0-9a-fA-F]{6}$/.test(v)) { hsv = hexToHsv(v); updateFromHsv(); }
+                });
+                hexInput.addEventListener('blur', function () {
+                    if (!/^#[0-9a-fA-F]{6}$/.test(this.value)) {
+                        this.value = hsvToHex(hsv.h, hsv.s, hsv.v);
+                    }
+                });
+                hexInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') this.blur();
+                });
+
+                presetsEl.querySelectorAll('.ng-cp-preset').forEach(function (btn) {
+                    btn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        hsv = hexToHsv(this.getAttribute('data-color'));
+                        updateFromHsv();
+                    });
+                });
+
+                return wrap;
+            }
+
+            /* ── Editor helpers ───────────────────────────────────────────── */
+
+            /* One preview slot: icon + optional label underneath */
+            function makePreviewSlot(iconCls, color, labelText) {
+                var slot = document.createElement('div');
+                slot.className = 'ng-ov-preview-slot';
+                var ic = document.createElement('i');
+                ic.className   = iconCls + ' ng-ov-preview-icon';
+                ic.style.color = color;
+                slot.appendChild(ic);
+                if (labelText) {
+                    var lbl = document.createElement('span');
+                    lbl.className   = 'ng-ov-preview-label';
+                    lbl.textContent = labelText;
+                    slot.appendChild(lbl);
+                }
+                return slot;
+            }
+
+            function updateSlotIcon(slot, iconCls, color) {
+                var ic = slot && slot.querySelector('.ng-ov-preview-icon');
+                if (ic) { ic.className = iconCls + ' ng-ov-preview-icon'; ic.style.color = color; }
+            }
+
+            /* Labeled wrapper around an icon picker grid */
+            function makePickerSection(labelText, noteText, initialCls, onSelectFn) {
+                var wrap = document.createElement('div');
+                wrap.className = 'ng-ov-picker-section';
+                if (labelText) {
+                    var lbl = document.createElement('div');
+                    lbl.className   = 'ng-ov-picker-label';
+                    lbl.textContent = labelText;
+                    wrap.appendChild(lbl);
+                }
+                if (noteText) {
+                    var note = document.createElement('div');
+                    note.className   = 'ng-ov-picker-note';
+                    note.textContent = noteText;
+                    wrap.appendChild(note);
+                }
+                wrap.appendChild(buildIconPicker(initialCls, onSelectFn));
+                return wrap;
+            }
+
+            /* Sync the summary's single primary icon */
+            function updateSummaryPrimary() {
+                var fa = summary.querySelector('.ng-ov-row-fa');
+                if (fa) { fa.className = curIconOn + ' ng-ov-row-fa'; fa.style.color = curOn; fa.style.opacity = ''; }
+            }
+
+            /* Sync the summary's blinds open + close icons */
+            function updateSummaryBlinds() {
+                var fo = summary.querySelector('.ng-ov-row-fa--open');
+                var fc = summary.querySelector('.ng-ov-row-fa--close');
+                if (fo) { fo.className = curIconOpen  + ' ng-ov-row-fa ng-ov-row-fa--open';  fo.style.color = curOn;  fo.style.opacity = ''; }
+                if (fc) { fc.className = curIconClose + ' ng-ov-row-fa ng-ov-row-fa--close'; fc.style.color = curOff; fc.style.opacity = ''; }
+            }
+
+            /* Remove button with model-aware reset callback */
+            function buildRemoveBtn(onRemove) {
+                var btn = document.createElement('button');
+                btn.type      = 'button';
+                btn.className = 'ng-ov-remove-btn';
+                btn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Remove';
+                btn.addEventListener('click', function () {
+                    delete pending[idxStr];
+                    row.classList.remove('ng-ov-row--active');
+                    var eb = summary.querySelector('.ng-ov-edit-btn');
+                    if (eb) eb.innerHTML = '<i class="fa-solid fa-plus"></i>';
+                    editor.style.display = 'none';
+                    onRemove();
+                    updateCount();
+                });
+                return btn;
+            }
+
+            /* Persist pending entry + mark row active */
+            function commitOverride() {
+                var obj = { name: d.Name || '', on: curOn, off: curOff };
+                if (model === 'blinds-2' || model === 'blinds-3') {
+                    obj.iconOpen  = curIconOpen;
+                    obj.iconClose = curIconClose;
+                    obj.iconOn    = curIconOpen;   /* sidebar display fallback */
+                    if (model === 'blinds-3') obj.iconStop = curIconStop;
+                } else if (model === 'lock' || model === 'contact') {
+                    obj.iconOn  = curIconOn;
+                    obj.iconOff = curIconOff;
+                } else if (model === 'sensor') {
+                    obj.iconOn    = curIconOn;
+                    obj.keepColor = keepColor;
+                } else {
+                    obj.iconOn = curIconOn;
+                }
+                pending[idxStr] = obj;
+                row.classList.add('ng-ov-row--active');
+                var eb = summary.querySelector('.ng-ov-edit-btn');
+                if (eb) eb.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
+                updateCount();
+            }
+
+            /* ── Build editor body per model ──────────────────────────────── */
+
+            if (model === 'blinds-2' || model === 'blinds-3') {
+                var preview   = document.createElement('div');
+                preview.className = 'ng-ov-preview ng-ov-preview--multi';
+                var slotOpen  = makePreviewSlot(curIconOpen,  curOn,     'Open');
+                var slotStop  = model === 'blinds-3' ? makePreviewSlot(curIconStop, '#b0b3c6', 'Stop') : null;
+                var slotClose = makePreviewSlot(curIconClose, curOff,    'Close');
+                preview.appendChild(slotOpen);
+                if (slotStop) preview.appendChild(slotStop);
+                preview.appendChild(slotClose);
+                editor.appendChild(preview);
+
+                editor.appendChild(makePickerSection('Open button icon',
+                    'First icon — highlights when blind is open', curIconOpen, function (cls) {
+                        curIconOpen = cls;
+                        updateSlotIcon(slotOpen, curIconOpen, curOn);
+                        updateSummaryBlinds();
+                        commitOverride();
+                    }));
+                if (model === 'blinds-3') {
+                    editor.appendChild(makePickerSection('Stop button icon',
+                        'Middle icon — click to stop movement', curIconStop, function (cls) {
+                            curIconStop = cls;
+                            updateSlotIcon(slotStop, curIconStop, '#b0b3c6');
+                            commitOverride();
+                        }));
+                }
+                editor.appendChild(makePickerSection('Close button icon',
+                    'Last icon — highlights when blind is closed', curIconClose, function (cls) {
+                        curIconClose = cls;
+                        updateSlotIcon(slotClose, curIconClose, curOff);
+                        updateSummaryBlinds();
+                        commitOverride();
+                    }));
+
+                colorRow.appendChild(makeOvColorPicker('Open color', curOn, function (v) {
+                    curOn = v; updateSlotIcon(slotOpen, curIconOpen, curOn); updateSummaryBlinds(); commitOverride();
+                }));
+                colorRow.appendChild(makeOvColorPicker('Close color', curOff, function (v) {
+                    curOff = v; updateSlotIcon(slotClose, curIconClose, curOff); updateSummaryBlinds(); commitOverride();
+                }));
+                colorRow.appendChild(buildRemoveBtn(function () {
+                    curIconOpen = defIconOpen; curIconClose = defIconClose; curIconStop = 'fa-solid fa-stop';
+                    curOn = defColorOn; curOff = defColorOff;
+                    updateSummaryBlinds();
+                    var fo = summary.querySelector('.ng-ov-row-fa--open');
+                    var fc = summary.querySelector('.ng-ov-row-fa--close');
+                    if (fo) fo.style.opacity = '.55';
+                    if (fc) fc.style.opacity = '.55';
+                }));
+                editor.appendChild(colorRow);
+
+            } else if (model === 'sensor') {
+                var preview    = document.createElement('div');
+                preview.className = 'ng-ov-preview';
+                var slotSensor = makePreviewSlot(curIconOn, keepColor ? defColorOn : curOn, null);
+                var nameSpan   = document.createElement('span');
+                nameSpan.className   = 'ng-ov-preview-name';
+                nameSpan.textContent = d.Name || 'Device';
+                preview.appendChild(slotSensor);
+                preview.appendChild(nameSpan);
+                editor.appendChild(preview);
+
+                editor.appendChild(makePickerSection('Icon',
+                    'Replaces the dynamic sensor range icon (temperature, humidity, etc.)', curIconOn, function (cls) {
+                        curIconOn = cls;
+                        updateSlotIcon(slotSensor, curIconOn, keepColor ? defColorOn : curOn);
+                        updateSummaryPrimary();
+                        commitOverride();
+                    }));
+
+                var keepWrap = document.createElement('div');
+                keepWrap.className = 'ng-ov-keepcolor-wrap';
+                var keepCb  = document.createElement('input');
+                keepCb.type    = 'checkbox';
+                keepCb.id      = 'ng-ov-kc-' + idxStr;
+                keepCb.checked = keepColor;
+                var keepLbl = document.createElement('label');
+                keepLbl.setAttribute('for', 'ng-ov-kc-' + idxStr);
+                keepLbl.textContent = 'Keep dynamic color (temperature range, alert levels, etc.)';
+                keepWrap.appendChild(keepCb);
+                keepWrap.appendChild(keepLbl);
+                keepCb.addEventListener('change', function () {
+                    keepColor = this.checked;
+                    updateSlotIcon(slotSensor, curIconOn, keepColor ? defColorOn : curOn);
+                    commitOverride();
+                });
+                editor.appendChild(keepWrap);
+
+                colorRow.appendChild(makeOvColorPicker('Accent color', curOn, function (v) {
+                    curOn = v;
+                    if (!keepColor) updateSlotIcon(slotSensor, curIconOn, v);
+                    commitOverride();
+                }));
+                colorRow.appendChild(buildRemoveBtn(function () {
+                    curIconOn = defIconOn; curOn = defColorOn; keepColor = true;
+                    var fa = summary.querySelector('.ng-ov-row-fa');
+                    if (fa) { fa.className = defIconOn + ' ng-ov-row-fa'; fa.style.color = defColorOn; fa.style.opacity = '.55'; }
+                }));
+                editor.appendChild(colorRow);
+
+            } else if (model === 'lock' || model === 'contact') {
+                var activeLabel   = model === 'lock' ? 'Unlocked' : 'Open';
+                var inactiveLabel = model === 'lock' ? 'Locked'   : 'Closed';
+                var preview      = document.createElement('div');
+                preview.className = 'ng-ov-preview ng-ov-preview--multi';
+                var slotActive   = makePreviewSlot(curIconOn,  curOn,  activeLabel);
+                var slotInactive = makePreviewSlot(curIconOff, curOff, inactiveLabel);
+                preview.appendChild(slotActive);
+                preview.appendChild(slotInactive);
+                editor.appendChild(preview);
+
+                editor.appendChild(makePickerSection(activeLabel + ' icon', null, curIconOn, function (cls) {
+                    curIconOn = cls;
+                    updateSlotIcon(slotActive, curIconOn, curOn);
+                    updateSummaryPrimary();
+                    commitOverride();
+                }));
+                editor.appendChild(makePickerSection(inactiveLabel + ' icon', null, curIconOff, function (cls) {
+                    curIconOff = cls;
+                    updateSlotIcon(slotInactive, curIconOff, curOff);
+                    commitOverride();
+                }));
+
+                colorRow.appendChild(makeOvColorPicker(activeLabel + ' color', curOn, function (v) {
+                    curOn = v; updateSlotIcon(slotActive, curIconOn, curOn); updateSummaryPrimary(); commitOverride();
+                }));
+                colorRow.appendChild(makeOvColorPicker(inactiveLabel + ' color', curOff, function (v) {
+                    curOff = v; updateSlotIcon(slotInactive, curIconOff, curOff); commitOverride();
+                }));
+                colorRow.appendChild(buildRemoveBtn(function () {
+                    curIconOn = defIconOn; curIconOff = defIconOn; curOn = defColorOn; curOff = defColorOff;
+                    var fa = summary.querySelector('.ng-ov-row-fa');
+                    if (fa) { fa.className = defIconOn + ' ng-ov-row-fa'; fa.style.color = defColorOn; fa.style.opacity = '.55'; }
+                }));
+                editor.appendChild(colorRow);
+
+            } else {
+                /* binary / selector / media: single icon, 2 colors */
+                var labelOn  = model === 'selector' ? 'Active color'   : 'On color';
+                var labelOff = model === 'selector' ? 'Inactive color' : 'Off color';
+                var preview  = document.createElement('div');
+                preview.className = 'ng-ov-preview';
+                var slotMain = makePreviewSlot(curIconOn, curOn, null);
+                var nameSpan = document.createElement('span');
+                nameSpan.className   = 'ng-ov-preview-name';
+                nameSpan.textContent = d.Name || 'Device';
+                preview.appendChild(slotMain);
+                preview.appendChild(nameSpan);
+                editor.appendChild(preview);
+
+                editor.appendChild(makePickerSection(null, null, curIconOn, function (cls) {
+                    curIconOn = cls;
+                    updateSlotIcon(slotMain, curIconOn, curOn);
+                    updateSummaryPrimary();
+                    commitOverride();
+                }));
+
+                colorRow.appendChild(makeOvColorPicker(labelOn, curOn, function (v) {
+                    curOn = v; updateSlotIcon(slotMain, curIconOn, v); updateSummaryPrimary(); commitOverride();
+                }));
+                colorRow.appendChild(makeOvColorPicker(labelOff, curOff, function (v) {
+                    curOff = v; commitOverride();
+                }));
+                colorRow.appendChild(buildRemoveBtn(function () {
+                    curIconOn = defIconOn; curOn = defColorOn; curOff = defColorOff;
+                    var fa = summary.querySelector('.ng-ov-row-fa');
+                    if (fa) { fa.className = defIconOn + ' ng-ov-row-fa'; fa.style.color = defColorOn; fa.style.opacity = '.55'; }
+                }));
+                editor.appendChild(colorRow);
+            }
+
+            /* ── Click to toggle editor ───────────────────────────────────── */
+            summary.addEventListener('click', function (e) {
+                if (_pendingPreset) {
+                    /* In select mode: show per-row confirm instead of applying immediately */
+                    var existing = row.querySelector('.ng-ov-confirm-bar');
+                    if (existing) { existing.remove(); return; }
+                    listEl.querySelectorAll('.ng-ov-confirm-bar').forEach(function (b) { b.remove(); });
+                    var pp  = _pendingPreset;
+                    var bar = document.createElement('div');
+                    bar.className = 'ng-ov-confirm-bar';
+                    bar.innerHTML =
+                        '<span class="ng-ov-confirm-text">Apply <i class="' + pp.icon + '" style="color:' + pp.on + ';margin:0 3px"></i><strong>' + pp.label + '</strong>?</span>' +
+                        '<button class="ng-ov-confirm-apply" type="button">Apply</button>' +
+                        '<button class="ng-ov-confirm-skip" type="button"><i class="fa-solid fa-xmark"></i> Skip</button>';
+                    bar.querySelector('.ng-ov-confirm-apply').addEventListener('click', function (ev) {
+                        ev.stopPropagation(); applyPresetToRow(idxStr);
+                    });
+                    bar.querySelector('.ng-ov-confirm-skip').addEventListener('click', function (ev) {
+                        ev.stopPropagation(); bar.remove();
+                    });
+                    row.appendChild(bar);
+                    return;
+                }
+                if (!e.target.closest('.ng-ov-edit-btn')) return;
+                var open = editor.style.display !== 'none';
+                listEl.querySelectorAll('.ng-ov-editor').forEach(function (ed) { ed.style.display = 'none'; });
+                editor.style.display = open ? 'none' : '';
+            });
+
+            row.appendChild(editor);
+            return row;
+        }
+
+        function renderDevices(devices) {
+            if (!devices || !devices.length) {
+                listEl.innerHTML = '<div class="ng-bl-empty">No devices found.</div>';
+                return;
+            }
+            listEl.innerHTML = '';
+
+            // Sort: devices with existing overrides first
+            var sorted = devices.slice().sort(function (a, b) {
+                var aHas = !!(pending[String(a.idx)]);
+                var bHas = !!(pending[String(b.idx)]);
+                if (aHas && !bHas) return -1;
+                if (!aHas && bHas) return 1;
+                return (a.Name || '').localeCompare(b.Name || '');
+            });
+
+            sorted.forEach(function (d) { listEl.appendChild(renderRow(d)); });
+            updateCount();
+        }
+
+        /* Selection mode — used when a preset chip is active */
+        var _pendingPreset = null;
+        var _pendingChip   = null;
+
+        /* Banner shown above the list when a preset is pending */
+        var banner = document.createElement('div');
+        banner.className = 'ng-ov-select-banner';
+        banner.style.display = 'none';
+        listEl.parentNode.insertBefore(banner, listEl);
+
+        function enterSelectMode(preset, chip) {
+            _pendingPreset = preset;
+            if (_pendingChip) _pendingChip.classList.remove('ng-ov-chip--active');
+            _pendingChip = chip;
+            chip.classList.add('ng-ov-chip--active');
+
+            banner.innerHTML =
+                '<span class="ng-ov-banner-icon"><i class="' + preset.icon + '" style="color:' + preset.on + '"></i></span>' +
+                '<span class="ng-ov-banner-text">Click any device to apply <strong>' + preset.label + '</strong></span>' +
+                '<button class="ng-ov-banner-cancel" type="button"><i class="fa-solid fa-xmark"></i> Cancel</button>';
+            banner.style.display = '';
+            listEl.classList.add('ng-ov-list--select-mode');
+
+            banner.querySelector('.ng-ov-banner-cancel').addEventListener('click', exitSelectMode);
+        }
+
+        function exitSelectMode() {
+            _pendingPreset = null;
+            if (_pendingChip) _pendingChip.classList.remove('ng-ov-chip--active');
+            _pendingChip = null;
+            banner.style.display = 'none';
+            listEl.classList.remove('ng-ov-list--select-mode');
+            listEl.querySelectorAll('.ng-ov-confirm-bar').forEach(function (b) { b.remove(); });
+        }
+
+        /* Apply the pending preset to a device row */
+        function applyPresetToRow(idxStr) {
+            var pp = _pendingPreset;
+            pending[idxStr] = { iconOn: pp.icon, on: pp.on, off: pp.off, name: pending[idxStr] && pending[idxStr].name || pp.label };
+            var row = listEl.querySelector('[data-idx="' + idxStr + '"]');
+            if (row) {
+                row.classList.add('ng-ov-row--active');
+                /* Update all FA icons in the summary — blinds rows have open + close icons,
+                   so querySelectorAll is needed instead of just querySelector for the first. */
+                row.querySelectorAll('.ng-ov-row-fa').forEach(function (fa) {
+                    var keepCls = fa.classList.contains('ng-ov-row-fa--open')  ? ' ng-ov-row-fa--open'  :
+                                  fa.classList.contains('ng-ov-row-fa--close') ? ' ng-ov-row-fa--close' : '';
+                    fa.className   = pp.icon + ' ng-ov-row-fa' + keepCls;
+                    fa.style.color   = fa.classList.contains('ng-ov-row-fa--close') ? pp.off : pp.on;
+                    fa.style.opacity = '';
+                });
+                var editBtn = row.querySelector('.ng-ov-edit-btn');
+                if (editBtn) editBtn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
+            }
+            updateCount();
+            exitSelectMode();
+        }
+
+        /* Popular preset chips */
+        POPULAR_OVERRIDES.forEach(function (p) {
+            var chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'ng-ov-chip';
+            chip.title = p.icon.replace('fa-solid fa-', '').replace(/-/g, ' ');
+            chip.innerHTML = '<i class="' + p.icon + '"></i> ' + p.label;
+
+            chip.addEventListener('click', function () {
+                /* Toggle: clicking the already-active chip exits select mode */
+                if (_pendingPreset === p) { exitSelectMode(); return; }
+                exitSelectMode();
+                enterSelectMode(p, chip);
+            });
+            chipsEl.appendChild(chip);
+        });
+
+        /* Close + Search + Save */
+        overlay.querySelector('.ng-bl-close').addEventListener('click', close);
+        overlay.querySelector('.ng-bl-btn--cancel').addEventListener('click', close);
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) { close(); return; }
+            /* Close any open HSV color-picker popovers when clicking outside them */
+            if (!e.target.closest('.ng-color-wrap')) {
+                overlay.querySelectorAll('.ng-cp-popover').forEach(function (p) { p.style.display = 'none'; });
+            }
+        });
+        overlay.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') { if (_pendingPreset) { exitSelectMode(); e.stopPropagation(); } else { close(); } }
+        });
+        if (searchEl) searchEl.addEventListener('input', function () { filterList(this.value); });
+
+        overlay.querySelector('.ng-bl-btn--save').addEventListener('click', function () {
+            if (window.dzNightglassSettings) {
+                window.dzNightglassSettings.set('deviceIconOverrides', JSON.stringify(pending));
+            }
+            close();
+            // Refresh settings panel badge
+            var wrap = document.getElementById('ng-theme-settings-wrap');
+            if (wrap) {
+                var presetsBody = wrap.querySelector('#ngPresetsBody');
+                var presetsOpen = presetsBody && presetsBody.style.display !== 'none';
+                wrap.innerHTML = buildPanel({ presetsOpen: presetsOpen });
+                bindEvents(wrap);
+                loadPresets(wrap);
+            }
+        });
+
+        /* Fetch devices — window.__ngDemoDevices can be set by demo pages as a fallback */
+        fetch('/json.htm?type=command&param=getdevices&filter=all&used=true&order=Name', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) { renderDevices(data.result || []); })
+            .catch(function () {
+                if (Array.isArray(window.__ngDemoDevices)) {
+                    renderDevices(window.__ngDemoDevices);
+                    listEl.insertAdjacentHTML('afterbegin',
+                        '<div class="ng-ov-demo-notice">' +
+                        '<i class="fa-solid fa-circle-info"></i> ' +
+                        'Demo mode \u2014 showing example devices.' +
+                        '</div>');
+                    return;
+                }
+                listEl.innerHTML =
+                    '<div class="ng-bl-empty">' +
+                    '  <i class="fa-solid fa-triangle-exclamation"></i>' +
+                    '  Could not load devices. Use Quick Presets above and enter a device IDX.' +
+                    '</div>';
+                updateCount();
+            });
+    }
+
     function bindEvents(container) {
         // Presets panel collapse/expand
         var presetsToggle = container.querySelector('#ngPresetsToggle');
@@ -1698,6 +2968,12 @@
         var blBtn = container.querySelector('#ng-bl-manage-btn');
         if (blBtn) {
             blBtn.addEventListener('click', openBlacklistDialog);
+        }
+
+        // Device icon override manage button
+        var ovBtn = container.querySelector('#ng-override-manage-btn');
+        if (ovBtn) {
+            ovBtn.addEventListener('click', openDeviceIconOverrideDialog);
         }
 
         // Export button
