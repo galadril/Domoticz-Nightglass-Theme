@@ -1,0 +1,26 @@
+{
+  "name": "Solarized",
+  "description": "Ethan Schoonover's classic Solarized palette — warm and precise",
+  "icon": "fa-solid fa-sun",
+  "preview": { "bg": "#002028", "surface": "#002b36", "accent": "#268bd2", "text": "#93a1a1" },
+  "colors": {
+    "accentColor": "#268bd2",
+    "dangerColor": "#dc322f",
+    "warningColor": "#b58900",
+    "successColor": "#859900",
+    "accentColorLight": "#268bd2",
+    "dangerColorLight": "#dc322f",
+    "warningColorLight": "#b58900",
+    "successColorLight": "#859900",
+    "bgColor": "#002b36",
+    "surfaceColor": "#073642",
+    "borderColor": "#1a4a56",
+    "textColor": "#93a1a1",
+    "bgColorLight": "#fdf6e3",
+    "surfaceColorLight": "#eee8d5",
+    "borderColorLight": "#d0c8a8",
+    "textColorLight": "#586e75",
+    "pageBgColor": "#002028",
+    "pageBgColorLight": "#fdf6e3"
+  }
+}

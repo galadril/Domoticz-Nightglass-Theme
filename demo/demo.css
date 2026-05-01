@@ -63,7 +63,7 @@ body table#itemtabletrippleicon tr td:first-child + td + td + td + td, body tabl
     top: 0;
     left: 0;
     right: 0;
-    z-index: 1030;
+    z-index: 10000;
     overflow: visible;
 }
 
@@ -76,10 +76,13 @@ body table#itemtabletrippleicon tr td:first-child + td + td + td + td, body tabl
 /* Brand — grid layout: icon | stacked text (logo name + version).
    custom.css uses a Bootstrap 2 float+negative-margin trick that requires
    Bootstrap's full baseline; we reproduce the same visual with CSS grid
-   so the demo renders correctly without the full Bootstrap stack. */
-.navbar .brand {
+   so the demo renders correctly without the full Bootstrap stack.
+   The high-specificity selector ensures the grid survives the responsive
+   override in custom.css that counteracts Bootstrap's hidden-phone. */
+.navbar-inverse .navbar-inner .brand,
+.navbar-inverse .navbar-inner .brand.hidden-phone {
     float: left;
-    display: grid;
+    display: grid !important;
     grid-template-columns: 38px 1fr;
     grid-template-rows: auto auto;
     align-content: center;
@@ -152,7 +155,7 @@ body table#itemtabletrippleicon tr td:first-child + td + td + td + td, body tabl
     padding: 0;
     margin: 0;
     min-width: 200px;
-    z-index: 1031;
+    z-index: 10001;
 }
 
 .dropdown:hover .dropdown-menu {
@@ -309,3 +312,18 @@ body table[id^="itemtable"] tbody {
 .page-bottom {
     height: 48px;
 }
+
+/* ── Update page (bannercontent wrapper) ─────────────────────────────────── */
+.bannercontent {
+    padding-top: 54px;
+}
+
+/* ── Settings page demo content ──────────────────────────────────────────── */
+#settingscontent {
+    padding-top: 10px;
+}
+
+    #settingscontent > table tr:hover td {
+        background: rgba(var(--dz-overlay-rgb, 255, 255, 255), 0.02);
+        border-radius: 6px;
+    }

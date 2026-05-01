@@ -1,0 +1,26 @@
+{
+  "name": "Crimson Ember",
+  "description": "Bold reds on dark charcoal — intense, dramatic, and powerful",
+  "icon": "fa-solid fa-fire",
+  "preview": { "bg": "#1a1517", "surface": "#251c1f", "accent": "#e05555", "text": "#f0e0e2" },
+  "colors": {
+    "accentColor": "#e05555",
+    "dangerColor": "#ff7043",
+    "warningColor": "#f0a832",
+    "successColor": "#4caf7d",
+    "accentColorLight": "#c62828",
+    "dangerColorLight": "#e05535",
+    "warningColorLight": "#c07818",
+    "successColorLight": "#2e7d32",
+    "bgColor": "#251c1f",
+    "surfaceColor": "#302428",
+    "borderColor": "#4a3035",
+    "textColor": "#f0e0e2",
+    "bgColorLight": "#fdf5f5",
+    "surfaceColorLight": "#faeaeb",
+    "borderColorLight": "#e0b8bc",
+    "textColorLight": "#2a1518",
+    "pageBgColor": "#1a1517",
+    "pageBgColorLight": "#f8f0f0"
+  }
+}

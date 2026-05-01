@@ -1,0 +1,26 @@
+{
+  "name": "Nightglass",
+  "description": "The original dark theme — deep navy surfaces with cool blue accents",
+  "icon": "fa-solid fa-moon",
+  "preview": { "bg": "#1b1d25", "surface": "#23252f", "accent": "#4e9af1", "text": "#e2e4ed" },
+  "colors": {
+    "accentColor": "#4e9af1",
+    "dangerColor": "#e05555",
+    "warningColor": "#f0a832",
+    "successColor": "#4caf7d",
+    "accentColorLight": "#2a7de1",
+    "dangerColorLight": "#d63b3b",
+    "warningColorLight": "#c07818",
+    "successColorLight": "#2e8c58",
+    "bgColor": "#23252f",
+    "surfaceColor": "#2a2b35",
+    "borderColor": "#33354a",
+    "textColor": "#e2e4ed",
+    "bgColorLight": "#ffffff",
+    "surfaceColorLight": "#f5f6fa",
+    "borderColorLight": "#d0d3dc",
+    "textColorLight": "#1a1c24",
+    "pageBgColor": "#1b1d25",
+    "pageBgColorLight": "#f0f2f5"
+  }
+}

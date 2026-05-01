@@ -1,0 +1,1147 @@
+/* ══════════════════════════════════════════════════════════════════
+   EVENT AUTOMATION EDITOR
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Outer shell ───────────────────────────────────────────────── */
+.events-editor {
+    background: var(--dz-surface);
+    border: 1px solid var(--dz-border);
+    border-radius: 10px;
+    /* overflow must stay visible so dropdown menus can escape the container */
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    margin-top: 20px;
+}
+
+/* ── Left panel ────────────────────────────────────────────────── */
+.events-editor__tree {
+    background: var(--dz-surface);
+    border-right: 1px solid var(--dz-border);
+}
+
+.events-editor__tree h2 {
+    color: var(--dz-text);
+    margin: 0 0 8px 0;
+    padding: 12px 12px 0;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dz-text-muted);
+}
+
+/* Search + toolbar row */
+.events-editor__toolbar {
+    padding: 0 8px 8px;
+    gap: 4px;
+}
+
+.events-editor__search {
+    background: var(--dz-surface-2) !important;
+    color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 6px !important;
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+    transition: border-color 0.15s;
+}
+
+    .events-editor__search::placeholder {
+        color: var(--dz-text-faint) !important;
+    }
+
+    .events-editor__search:focus {
+        border-color: var(--dz-accent) !important;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.15);
+    }
+
+.events-editor__toolbar-btn {
+    background: var(--dz-surface-2) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 5px !important;
+    color: var(--dz-text-muted) !important;
+    width: 26px;
+    height: 26px;
+    padding: 0 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+}
+
+    .events-editor__toolbar-btn:hover {
+        background: var(--dz-border) !important;
+        color: var(--dz-text) !important;
+    }
+
+/* ── Script tree ───────────────────────────────────────────────── */
+.events-editor-tree {
+    background: var(--dz-surface) !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 4px 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--dz-border) transparent;
+}
+
+    .events-editor-tree::-webkit-scrollbar { width: 4px; }
+    .events-editor-tree::-webkit-scrollbar-thumb { background: var(--dz-border); border-radius: 2px; }
+    .events-editor-tree::-webkit-scrollbar-track { background: transparent; }
+
+/* ── Folder headers ────────────────────────────────────────────── */
+.events-editor-folder-list {
+    padding: 0 4px;
+}
+
+.events-editor-folder__header,
+.events-editor-folder__header:link,
+.events-editor-folder__header:visited {
+    display: flex !important;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px !important;
+    border-radius: 6px;
+    color: var(--dz-text-soft) !important;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    transition: background 0.12s, color 0.12s;
+    text-decoration: none !important;
+}
+
+    .events-editor-folder__header i {
+        color: var(--dz-accent);
+        opacity: 0.7;
+        width: 14px;
+        text-align: center;
+        flex-shrink: 0;
+        transition: opacity 0.12s;
+    }
+
+    .events-editor-folder__header:hover,
+    .events-editor-folder__header:active {
+        background: rgba(var(--dz-accent-rgb), 0.07) !important;
+        color: var(--dz-text) !important;
+        text-decoration: none !important;
+    }
+
+        .events-editor-folder__header:hover i {
+            opacity: 1;
+        }
+
+.events-editor-folder__count {
+    margin-left: auto;
+    background: var(--dz-surface-3) !important;
+    color: var(--dz-text-muted) !important;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 1px 6px;
+    min-width: 18px;
+    text-align: center;
+}
+
+.events-editor-folder__children {
+    padding-left: 20px !important;
+    margin: 0;
+}
+
+/* ── Tree items ────────────────────────────────────────────────── */
+.events-editor-tree-item {
+    padding: 1px 4px !important;
+    position: relative;
+}
+
+.events-editor-tree-item__file,
+.events-editor-tree-item__file:link,
+.events-editor-tree-item__file:visited {
+    display: flex !important;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px !important;
+    padding-left: 10px !important;
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--dz-text-soft) !important;
+    text-decoration: none !important;
+    transition: background 0.12s, color 0.12s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    position: relative;
+}
+
+    /* Replace script.png with a clean FA-icon-style dot via ::before */
+    .events-editor-tree-item__file::before {
+        content: "";
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--dz-border-b);
+        flex-shrink: 0;
+        background-image: none !important;
+        position: static !important;
+        left: auto !important;
+        transition: background 0.12s;
+    }
+
+    .events-editor-tree-item__file:hover,
+    .events-editor-tree-item__file:active {
+        background: rgba(var(--dz-accent-rgb), 0.08) !important;
+        color: var(--dz-text) !important;
+        text-decoration: none !important;
+    }
+
+        .events-editor-tree-item__file:hover::before {
+            background: var(--dz-accent);
+        }
+
+/* Active item — accent left bar + highlight */
+.events-editor-tree-item_active {
+    position: relative;
+}
+
+    .events-editor-tree-item_active::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 4px;
+        bottom: 4px;
+        width: 2px;
+        border-radius: 2px;
+        background: var(--dz-accent);
+    }
+
+    .events-editor-tree-item_active .events-editor-tree-item__file,
+    .events-editor-tree-item_active .events-editor-tree-item__file:link {
+        background: rgba(var(--dz-accent-rgb), 0.12) !important;
+        color: var(--dz-accent) !important;
+        font-weight: 500;
+    }
+
+        .events-editor-tree-item_active .events-editor-tree-item__file::before {
+            background: var(--dz-accent);
+            box-shadow: 0 0 6px rgba(var(--dz-accent-rgb), 0.6);
+        }
+
+/* Disabled item */
+.events-editor-tree-item_disabled .events-editor-tree-item__file,
+.events-editor-tree-item_disabled .events-editor-tree-item__file:link {
+    color: var(--dz-text-faint) !important;
+    opacity: 0.7;
+}
+
+    .events-editor-tree-item_disabled .events-editor-tree-item__file::before {
+        background: var(--dz-surface-3);
+    }
+
+/* Selected (multi-select) */
+.events-editor-tree-item_selected {
+    background: rgba(var(--dz-accent-rgb), 0.1) !important;
+    border-radius: 6px;
+}
+
+/* Status labels inside tree items */
+.events-editor-tree-item__file .label-important {
+    font-size: 9px !important;
+    padding: 1px 5px !important;
+    border-radius: 4px !important;
+    background: rgba(var(--dz-accent-rgb), 0.15) !important;
+    color: var(--dz-text-muted) !important;
+    border: 1px solid var(--dz-border) !important;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    vertical-align: middle;
+}
+
+.events-editor-tree-item__file .label-warning {
+    font-size: 9px !important;
+    padding: 1px 5px !important;
+    border-radius: 4px !important;
+    background: rgba(var(--dz-danger-rgb), 0.12) !important;
+    color: var(--dz-danger) !important;
+    border: 1px solid rgba(var(--dz-danger-rgb), 0.3) !important;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    vertical-align: middle;
+}
+
+/* Drag */
+.events-editor-tree-item[draggable="true"] { cursor: grab; }
+.events-editor-tree-item[draggable="true"]:active { cursor: grabbing; }
+
+/* Drag-over folder highlight */
+.events-editor-folder.drag-over {
+    background: rgba(var(--dz-accent-rgb), 0.08) !important;
+    border-radius: 6px;
+}
+
+    .events-editor-folder.drag-over > .events-editor-folder__header {
+        color: var(--dz-accent) !important;
+    }
+
+/* ── Splitter ──────────────────────────────────────────────────── */
+.events-editor__splitter {
+    width: 18px !important;
+    margin: 28px 6px 0 !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 6px !important;
+    background: var(--dz-surface) !important;
+    color: var(--dz-text-faint) !important;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 8px !important;
+}
+
+    .events-editor__splitter:hover {
+        background: rgba(var(--dz-accent-rgb), 0.12) !important;
+        border-color: var(--dz-accent) !important;
+        color: var(--dz-accent) !important;
+    }
+
+/* ── Right editor pane ─────────────────────────────────────────── */
+.events-editor__editor {
+    background: var(--dz-surface) !important;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Tab bar ───────────────────────────────────────────────────── */
+.events-editor__file-list {
+    background: var(--dz-surface) !important;
+    border-bottom: 1px solid var(--dz-border) !important;
+    padding: 6px 12px 0 !important;
+    display: flex;
+    flex-wrap: nowrap;
+    /* overflow must stay visible so the "add script" dropdown can escape */
+    gap: 2px;
+}
+
+.events-editor__file {
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    border-bottom: none !important;
+    border-radius: 6px 6px 0 0 !important;
+    color: var(--dz-text-muted) !important;
+    padding: 5px 10px !important;
+    font-size: 12px;
+    white-space: nowrap;
+    transition: background 0.12s, color 0.12s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: default;
+    text-decoration: none !important;
+    position: relative;
+}
+
+    .events-editor__file:hover {
+        background: rgba(var(--dz-accent-rgb), 0.06) !important;
+        color: var(--dz-text-soft) !important;
+        text-decoration: none !important;
+    }
+
+/* Active tab — visually "lifts" into the editor background */
+.events-editor__file_active {
+    background: var(--dz-surface) !important;
+    border-color: var(--dz-border) !important;
+    border-bottom-color: var(--dz-surface) !important;
+    color: var(--dz-text) !important;
+    font-weight: 500;
+}
+
+    .events-editor__file_active:hover {
+        background: var(--dz-surface) !important;
+        color: var(--dz-text) !important;
+    }
+
+/* Close button — visible on hover only */
+.events-editor__file-close {
+    background: none !important;
+    border: none !important;
+    color: transparent !important;
+    font-size: 13px !important;
+    padding: 0 !important;
+    margin-left: 2px !important;
+    margin-top: 0 !important;
+    line-height: 1;
+    border-radius: 3px;
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.12s, color 0.12s;
+    flex-shrink: 0;
+}
+
+    .events-editor__file:hover .events-editor__file-close,
+    .events-editor__file_active .events-editor__file-close {
+        color: var(--dz-text-muted) !important;
+    }
+
+    .events-editor__file-close:hover {
+        background: rgba(var(--dz-danger-rgb), 0.15) !important;
+        color: var(--dz-danger) !important;
+    }
+
+/* ── File header (name, state toggle, controls) ────────────────── */
+.events-editor-file__header {
+    background: var(--dz-surface) !important;
+    border-bottom: 1px solid var(--dz-border) !important;
+    padding: 8px 12px !important;
+    min-height: unset !important;
+    height: auto !important;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+    .events-editor-file__header .form-inline {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
+        width: 100%;
+    }
+
+.events-editor-file__name {
+    background: var(--dz-surface-2) !important;
+    color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 6px !important;
+    padding: 4px 10px !important;
+    font-size: 13px !important;
+    font-weight: 500;
+    transition: border-color 0.15s;
+    min-width: 160px;
+}
+
+    .events-editor-file__name:focus {
+        border-color: var(--dz-accent) !important;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.15);
+    }
+
+/* Enabled/Disabled toggle */
+.events-editor-file__header .btn-group .btn {
+    font-size: 11px !important;
+    padding: 3px 10px !important;
+    border-radius: 0 !important;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    transition: background 0.12s, color 0.12s;
+}
+
+    .events-editor-file__header .btn-group .btn:first-child {
+        border-radius: 6px 0 0 6px !important;
+    }
+
+    .events-editor-file__header .btn-group .btn:last-child {
+        border-radius: 0 6px 6px 0 !important;
+    }
+
+    /* "Enabled" active state — subtle green tint */
+    .events-editor-file__header .btn-group .btn.active:last-child {
+        background: rgba(var(--dz-success-rgb), 0.18) !important;
+        color: var(--dz-success) !important;
+        border-color: rgba(var(--dz-success-rgb), 0.35) !important;
+    }
+
+    /* "Disabled" active state — muted */
+    .events-editor-file__header .btn-group .btn.active:first-child {
+        background: rgba(var(--dz-overlay-rgb), 0.06) !important;
+        color: var(--dz-text-muted) !important;
+    }
+
+/* Trigger select */
+.events-editor-file__type {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 0;
+}
+
+    .events-editor-file__type .add-on {
+        background: var(--dz-surface-2) !important;
+        border: 1px solid var(--dz-border-b) !important;
+        border-right: none !important;
+        border-radius: 6px 0 0 6px !important;
+        color: var(--dz-text-muted) !important;
+        font-size: 11px !important;
+        padding: 4px 8px !important;
+        height: auto !important;
+        white-space: nowrap;
+    }
+
+    .events-editor-file__type > select,
+    .events-editor-file__type select {
+        background: var(--dz-surface-2) !important;
+        color: var(--dz-text) !important;
+        border: 1px solid var(--dz-border-b) !important;
+        border-radius: 0 6px 6px 0 !important;
+        padding: 4px 8px !important;
+        font-size: 12px !important;
+        height: auto !important;
+    }
+
+/* ── ACE settings bar ──────────────────────────────────────────── */
+.ace-settings {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    vertical-align: middle;
+}
+
+.ace-settings__theme {
+    background: var(--dz-surface-2) !important;
+    color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 6px !important;
+    padding: 3px 6px !important;
+    font-size: 11px !important;
+    height: auto !important;
+}
+
+.ace-settings__font-size {
+    color: var(--dz-text-soft) !important;
+    font-size: 12px;
+    min-width: 18px;
+    text-align: center;
+}
+
+/* Ace font-size buttons */
+.ace-settings .btn-xs {
+    background: var(--dz-surface-2) !important;
+    border: 1px solid var(--dz-border) !important;
+    color: var(--dz-text-soft) !important;
+    border-radius: 5px !important;
+    padding: 2px 6px !important;
+    font-size: 11px !important;
+    transition: background 0.12s;
+}
+
+    .ace-settings .btn-xs:hover {
+        background: var(--dz-border) !important;
+        color: var(--dz-text) !important;
+    }
+
+    .ace-settings .btn-xs.active {
+        background: rgba(var(--dz-accent-rgb), 0.15) !important;
+        border-color: var(--dz-accent) !important;
+        color: var(--dz-accent) !important;
+    }
+
+/* Help link (dzVents docs) */
+.events-editor-file__header .pull-right > a.btn {
+    font-size: 11px !important;
+    padding: 4px 10px !important;
+    border-radius: 6px !important;
+    background: var(--dz-surface-2) !important;
+    border-color: var(--dz-border) !important;
+    color: var(--dz-text-soft) !important;
+}
+
+    .events-editor-file__header .pull-right > a.btn:hover {
+        color: var(--dz-accent) !important;
+        border-color: var(--dz-accent) !important;
+    }
+
+/* Save / Delete button group */
+.events-editor-file__header .pull-right .btn-group .btn-primary {
+    font-size: 12px !important;
+    padding: 4px 14px !important;
+    font-weight: 600;
+    border-radius: 6px 0 0 6px !important;
+}
+
+.events-editor-file__header .pull-right .btn-group .btn-danger {
+    font-size: 12px !important;
+    padding: 4px 10px !important;
+    border-radius: 0 6px 6px 0 !important;
+}
+
+/* ── ACE status bar ────────────────────────────────────────────── */
+.ace-statusbar {
+    background: var(--dz-surface) !important;
+    border-top: 1px solid var(--dz-border) !important;
+    color: var(--dz-text-muted) !important;
+    font-size: 11px !important;
+    padding: 0 12px !important;
+    height: 22px !important;
+    line-height: 22px !important;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    justify-content: flex-end;
+}
+
+/* ── Device states table ───────────────────────────────────────── */
+.events-editor-file__content-table {
+    background: var(--dz-surface) !important;
+    color: var(--dz-text) !important;
+}
+
+    .events-editor-file__content-table th {
+        background: var(--dz-surface) !important;
+        color: var(--dz-text-soft) !important;
+        border-color: var(--dz-border) !important;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .events-editor-file__content-table td {
+        border-color: var(--dz-border) !important;
+        color: var(--dz-text) !important;
+        font-size: 12px;
+    }
+
+    .events-editor-file__content-table tr:hover td {
+        background: var(--dz-surface) !important;
+    }
+
+/* ── Context menu ──────────────────────────────────────────────── */
+.events-context-menu .dropdown-menu {
+    background: var(--dz-surface) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    padding: 4px !important;
+    overflow: hidden;
+    min-width: 160px;
+}
+
+    .events-context-menu .dropdown-menu li a {
+        color: var(--dz-text-soft) !important;
+        border-radius: 5px !important;
+        padding: 6px 10px !important;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background 0.1s, color 0.1s;
+    }
+
+        .events-context-menu .dropdown-menu li a:hover {
+            background: rgba(var(--dz-accent-rgb), 0.1) !important;
+            color: var(--dz-text) !important;
+        }
+
+        .events-context-menu .dropdown-menu li a i {
+            width: 14px;
+            text-align: center;
+            color: var(--dz-text-muted);
+        }
+
+/* ── Create / tab dropdown menus ───────────────────────────────── */
+.events-editor__menu {
+    background: var(--dz-surface) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    padding: 4px !important;
+    min-width: 160px;
+}
+
+    .events-editor__menu li a,
+    .events-editor__menu-item {
+        color: var(--dz-text-soft) !important;
+        border-radius: 5px !important;
+        padding: 6px 10px !important;
+        font-size: 12px !important;
+        display: block;
+        transition: background 0.1s, color 0.1s;
+        text-decoration: none !important;
+    }
+
+    .events-editor__menu li a:hover,
+    .events-editor__menu li a:focus {
+        background: rgba(var(--dz-accent-rgb), 0.1) !important;
+        color: var(--dz-text) !important;
+    }
+
+/* Submenu arrow */
+.events-editor__menu .dropdown-submenu > a::after {
+    border-left-color: var(--dz-text-muted) !important;
+}
+
+/* ── Language-type accent colors (added by JS via ng-lang-* classes) ─ */
+/* dzVents */
+.events-editor-tree-item.ng-lang-dzvents .events-editor-tree-item__file::before { background: #4e9af1; }
+.events-editor-tree-item_active.ng-lang-dzvents::before                          { background: #4e9af1; }
+/* Lua */
+.events-editor-tree-item.ng-lang-lua .events-editor-tree-item__file::before      { background: #f0a832; }
+.events-editor-tree-item_active.ng-lang-lua::before                               { background: #f0a832; }
+.events-editor-tree-item_active.ng-lang-lua .events-editor-tree-item__file        { color: #f0a832 !important; }
+/* Python */
+.events-editor-tree-item.ng-lang-python .events-editor-tree-item__file::before   { background: #4caf7d; }
+.events-editor-tree-item_active.ng-lang-python::before                            { background: #4caf7d; }
+.events-editor-tree-item_active.ng-lang-python .events-editor-tree-item__file     { color: #4caf7d !important; }
+/* Blockly */
+.events-editor-tree-item.ng-lang-blockly .events-editor-tree-item__file::before  { background: #c8a0ff; }
+.events-editor-tree-item_active.ng-lang-blockly::before                           { background: #c8a0ff; }
+.events-editor-tree-item_active.ng-lang-blockly .events-editor-tree-item__file    { color: #c8a0ff !important; }
+
+/* ── Bootstrap 2 icon-* glyphs — hide sprite before JS swaps class ── */
+/* JS (Feature 12) replaces icon-* with fa-solid fa-* classes.         */
+/* This rule hides the sprite background to prevent flicker.           */
+.events-editor i[class^="icon-"],
+.events-editor i[class*=" icon-"] {
+    background-image: none !important;
+    background-position: 0 0 !important;
+    width: auto !important;
+    height: auto !important;
+}
+
+/* Colour overrides applied after JS stamps fa-* classes */
+.events-editor .fa-folder-open { color: var(--dz-accent); opacity: 0.85; }
+.events-editor .fa-folder      { color: var(--dz-text-muted); }
+
+/* ── Blockly toolbox ───────────────────────────────────────────── */
+.blocklyToolboxDiv {
+    background: var(--dz-surface) !important;
+    border-right: 1px solid var(--dz-border) !important;
+}
+
+.blocklyTreeLabel {
+    color: var(--dz-text-soft) !important;
+    font-size: 12px;
+}
+
+.blocklyTreeRow {
+    border-radius: 5px !important;
+    transition: background 0.1s;
+}
+
+    .blocklyTreeRow:hover {
+        background: rgba(var(--dz-accent-rgb), 0.08) !important;
+    }
+
+    .blocklyTreeRow:hover .blocklyTreeLabel {
+        color: var(--dz-text) !important;
+    }
+
+.blocklyTreeSelected {
+    background: rgba(var(--dz-accent-rgb), 0.18) !important;
+}
+
+    .blocklyTreeSelected .blocklyTreeLabel {
+        color: var(--dz-accent) !important;
+    }
+
+/* Icon lists (custom icons page) */
+.iconlist .iconlistitem {
+    background: var(--dz-surface-2);
+    border-radius: 8px;
+}
+
+    .iconlist .iconlistitem:hover {
+        background: var(--dz-border);
+    }
+
+.iconlist .iconlistitemselected {
+    background: rgba(var(--dz-accent-rgb), 0.15);
+}
+
+.iconlist .iconlistitem h3 {
+    color: var(--dz-text);
+}
+
+.iconlist .iconlistitem p {
+    color: var(--dz-text-muted);
+}
+
+/* jQuery UI popup / listview */
+.ui-body-b {
+    background-color: var(--dz-surface);
+    border-color: var(--dz-border);
+    color: var(--dz-text);
+    text-shadow: none;
+}
+
+.ui-bar-b {
+    background-color: var(--dz-surface-2);
+    border-color: var(--dz-border);
+    color: var(--dz-text);
+    text-shadow: none;
+}
+
+.ui-bar-a {
+    background-color: var(--dz-surface-2);
+    border-color: var(--dz-border);
+    color: var(--dz-text);
+    text-shadow: none;
+}
+
+.ui-page-theme-b .ui-btn {
+    background-color: var(--dz-surface-2);
+    border-color: var(--dz-border-b);
+    color: var(--dz-text);
+    text-shadow: none;
+}
+
+.ui-page-theme-a .ui-btn {
+    background-color: var(--dz-surface-2);
+    border-color: var(--dz-border-b);
+    color: var(--dz-text);
+    text-shadow: none;
+}
+
+/* jQuery UI multiselect */
+.ui-multiselect {
+    background: var(--dz-surface-2) !important;
+    color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border-b) !important;
+}
+
+.ui-multiselect-menu {
+    background: var(--dz-surface) !important;
+    border: 1px solid var(--dz-border) !important;
+}
+
+/* Floorplan */
+#floorplancontent {
+    background: transparent;
+}
+
+/* Floorplan status indicator text — improve contrast on dark backgrounds.
+   Domoticz renders device tiles as SVG <g class="DeviceTile"> groups with
+   <text> elements that default to fill:black — invisible on dark themes.
+   The header <rect> uses var(--dz-status-normal) which is also dark.       */
+
+/* SVG text inside device tiles: force light fill color */
+#floorplancontent .DeviceTile text,
+#floorplancontent g[class*="Tile"] text {
+    fill: var(--dz-text) !important;
+}
+
+/* Header rect background — make it semi-transparent so the text pops */
+#floorplancontent .DeviceTile rect.header,
+#floorplancontent g[class*="Tile"] rect.header {
+    fill: var(--dz-surface) !important;
+    opacity: 0.85;
+}
+
+/* Shadow rect behind the header — darken for depth */
+#floorplancontent .DeviceTile > rect:first-child,
+#floorplancontent g[class*="Tile"] > rect:first-child {
+    fill: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* HTML-based overlays (non-SVG floorplan elements) */
+#floorplancontent .floorplan-text,
+#floorplancontent div[style*="color"],
+#floorplancontent span[style*="color"],
+#floorplanedit .floorplan-text {
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8), 0 0 6px rgba(0, 0, 0, 0.5) !important;
+}
+
+#floorplancontent .DeviceStatus,
+#floorplancontent .DeviceName {
+    color: var(--dz-text) !important;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8), 0 0 6px rgba(0, 0, 0, 0.5) !important;
+    font-weight: 600;
+}
+
+/* ── Floorplan hover popup theming ──────────────────────────────────
+   The popup is rendered as a pure SVG <g class="DeviceDetails"> group.
+   Presentation attributes have lower specificity than CSS, so we can
+   override fill/stroke here without !important for most elements.      */
+
+/* Popup card background — uses --dz-surface-2 (the card surface token)
+   which is defined for both dark and light mode.  The SVG gradient is
+   also updated dynamically in JS via applyPopupGradient().             */
+.DeviceDetails rect.popup {
+    fill: var(--dz-surface-2);
+    stroke: var(--dz-border);
+    stroke-width: 0.5;
+}
+
+/* Drop-shadow rect: subtle depth cue */
+.DeviceDetails rect#shadow {
+    fill: rgba(0, 0, 0, 0.25);
+}
+
+/* All text inside the popup → themed text color
+   (SVG default is black — invisible on dark backgrounds)               */
+.DeviceDetails text,
+.DeviceDetails tspan {
+    fill: var(--dz-text);
+}
+
+/* Button label texts have fill="white" as a presentation attribute.
+   Re-pin them to white so they stay readable on the accent buttons.
+   Attribute selectors have higher specificity than the general rule.   */
+.DeviceDetails text[fill="white"],
+.DeviceDetails tspan[fill="white"] {
+    fill: #ffffff;
+}
+
+/* Action button rects: replace the photo-texture pattern fill with a
+   flat accent-coloured pill matching the rest of the Nightglass UI.    */
+.DeviceDetails rect[id="Log"],
+.DeviceDetails rect[id="Edit"],
+.DeviceDetails rect[id="Timers"],
+.DeviceDetails rect[id="Notifications"],
+.DeviceDetails rect[id="Forecast"] {
+    fill: var(--dz-accent);
+}
+
+/* foreignObject status divs (HTML text sensors) → inherit theme text */
+.DeviceDetails foreignObject div {
+    color: var(--dz-text) !important;
+}
+
+/* Font Awesome icon wrappers injected by Nightglass inside the popup */
+.DeviceDetails .dz-fp-icon-wrap {
+    overflow: visible;
+}
+
+
+
+
+/* ══════════════════════════════════════════════════════════════════
+   AUTOMATION WIZARD (native Domoticz <automation-wizard> component)
+   Domoticz's Events.css handles structural layout; we provide
+   Nightglass visual polish using our --dz-* token system.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Overlay ────────────────────────────────────────────────────── */
+.aw-overlay {
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+/* ── Modal shell ────────────────────────────────────────────────── */
+.aw-modal {
+    background: var(--dz-modal-bg);
+    color: var(--dz-modal-text);
+    border: 1px solid var(--dz-border);
+    border-radius: 10px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.55);
+}
+
+/* ── Header ─────────────────────────────────────────────────────── */
+.aw-header {
+    background: var(--dz-modal-header-bg);
+    border-bottom-color: var(--dz-border);
+    border-radius: 10px 10px 0 0;
+}
+
+.aw-title strong { color: var(--dz-text); }
+.aw-title small  { color: var(--dz-text-muted); opacity: 1; }
+
+.aw-close {
+    color: var(--dz-text-muted);
+}
+.aw-close:hover { color: var(--dz-text); opacity: 1; }
+
+/* ── Step indicator ─────────────────────────────────────────────── */
+.aw-step + .aw-step::before {
+    background: var(--dz-border);
+}
+
+.aw-step-active + .aw-step::before,
+.aw-step-done  + .aw-step::before {
+    background: var(--dz-accent);
+}
+
+.aw-step-circle {
+    background: var(--dz-surface-3);
+    color: var(--dz-text-muted);
+}
+
+.aw-step-active .aw-step-circle {
+    background: var(--dz-accent);
+    color: #fff;
+    box-shadow: 0 0 0 3px rgba(var(--dz-accent-rgb), 0.2);
+}
+
+.aw-step-done .aw-step-circle {
+    background: var(--dz-btn-success-bg, #4caf7d);
+    color: #fff;
+}
+
+.aw-step-label         { color: var(--dz-text-muted); opacity: 1; }
+.aw-step-active .aw-step-label { color: var(--dz-accent); font-weight: 600; }
+.aw-step-done .aw-step-label   { color: var(--dz-btn-success-bg, #4caf7d); }
+
+/* ── Body ───────────────────────────────────────────────────────── */
+.aw-body {
+    background: var(--dz-modal-bg);
+    color: var(--dz-text);
+    scrollbar-width: thin;
+    scrollbar-color: var(--dz-border) transparent;
+}
+.aw-body::-webkit-scrollbar       { width: 4px; }
+.aw-body::-webkit-scrollbar-thumb { background: var(--dz-border); border-radius: 2px; }
+.aw-body::-webkit-scrollbar-track { background: transparent; }
+
+.aw-step-heading h4 { color: var(--dz-text); }
+.aw-step-heading p  { color: var(--dz-text-muted); opacity: 1; }
+
+/* ── Trigger / action cards ─────────────────────────────────────── */
+.aw-card {
+    background: var(--dz-surface-2);
+    color: var(--dz-text);
+    border-color: var(--dz-border);
+    border-radius: 8px;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.aw-card:hover {
+    border-color: var(--dz-accent);
+    background: var(--dz-btn-hover-bg);
+    box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.12);
+}
+
+.aw-card-selected {
+    border-color: var(--dz-accent);
+    background: rgba(var(--dz-accent-rgb), 0.1);
+    box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.2);
+}
+
+.aw-card-icon                  { color: var(--dz-accent); }
+.aw-card-text strong           { color: var(--dz-text); }
+.aw-card-text span             { color: var(--dz-text-muted); opacity: 1; }
+
+/* ── Form fields ────────────────────────────────────────────────── */
+.aw-field label { color: var(--dz-text-soft); opacity: 1; font-size: 12px; }
+
+/* ── Device picker list ─────────────────────────────────────────── */
+.aw-device-list {
+    background: var(--dz-input-bg);
+    color: var(--dz-input-text);
+    border-color: var(--dz-border);
+    border-radius: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--dz-border) transparent;
+}
+.aw-device-list::-webkit-scrollbar       { width: 4px; }
+.aw-device-list::-webkit-scrollbar-thumb { background: var(--dz-border); border-radius: 2px; }
+
+.aw-device-loading { color: var(--dz-text-muted); opacity: 1; }
+
+.aw-device-row {
+    color: var(--dz-input-text);
+    border-bottom-color: rgba(var(--dz-border-rgb), 0.3);
+}
+
+.aw-device-row:hover,
+.aw-device-row-selected {
+    background: rgba(var(--dz-accent-rgb), 0.1);
+    color: var(--dz-text);
+}
+
+.aw-device-row-selected { background: rgba(var(--dz-accent-rgb), 0.15); }
+
+.aw-device-name  { color: var(--dz-text); }
+.aw-device-type  { color: var(--dz-text-muted); opacity: 1; }
+.aw-selected-value { color: var(--dz-btn-success-bg, #4caf7d); }
+
+/* ── Empty hint ─────────────────────────────────────────────────── */
+.aw-empty-hint {
+    color: var(--dz-text-muted);
+    opacity: 1;
+    border-color: var(--dz-border);
+    border-radius: 6px;
+}
+
+/* ── Actions list ───────────────────────────────────────────────── */
+.aw-action-item {
+    border-color: var(--dz-border);
+    border-radius: 6px;
+}
+
+.aw-action-header {
+    background: var(--dz-modal-header-bg);
+    color: var(--dz-text);
+}
+
+.aw-action-body { background: var(--dz-modal-bg); }
+
+/* ── Action type picker (nested overlay) ────────────────────────── */
+.aw-action-picker-modal {
+    background: var(--dz-modal-bg);
+    color: var(--dz-text);
+    border: 1px solid var(--dz-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.55);
+}
+
+.aw-action-picker-header strong { color: var(--dz-text); }
+
+/* ── Code textareas ─────────────────────────────────────────────── */
+.aw-code-input,
+.aw-code-review {
+    background: var(--dz-input-bg) !important;
+    color: var(--dz-input-text) !important;
+    border-color: var(--dz-border) !important;
+    border-radius: 6px !important;
+    font-family: 'Consolas', 'Monaco', 'Fira Code', monospace;
+    font-size: 12px !important;
+}
+
+/* ── Ace editor replacing .aw-code-review ───────────────────────── */
+.aw-ace-wrap {
+    height: 300px;          /* matches textarea rows="14" */
+    border: 1px solid var(--dz-border);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+}
+
+.aw-ace-wrap .ace_editor {
+    border-radius: 6px;
+    font-family: 'Consolas', 'Monaco', 'Fira Code', monospace !important;
+    font-size: 13px !important;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────── */
+.aw-footer {
+    background: var(--dz-modal-header-bg);
+    border-top-color: var(--dz-border);
+    border-radius: 0 0 10px 10px;
+}
+
+/* ── Wizard launcher button (in file-list nav) ──────────────────── */
+.events-editor__file-wizard {
+    background: linear-gradient(135deg, var(--dz-accent), rgba(var(--dz-accent-rgb), 0.75)) !important;
+    border-color: transparent !important;
+    border-radius: 5px !important;
+    color: #fff !important;
+    font-style: normal !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.02em;
+    opacity: 1 !important;
+    padding: 4px 10px !important;
+    box-shadow: 0 2px 6px rgba(var(--dz-accent-rgb), 0.35);
+    transition: box-shadow 0.15s, opacity 0.15s, transform 0.1s;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 5px;
+}
+
+.events-editor__file-wizard:hover {
+    background: linear-gradient(135deg, var(--dz-accent-light), var(--dz-accent)) !important;
+    box-shadow: 0 3px 10px rgba(var(--dz-accent-rgb), 0.5) !important;
+    transform: translateY(-1px);
+    color: #fff !important;
+}
+
+.events-editor__file-wizard:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(var(--dz-accent-rgb), 0.3) !important;
+}
+
+.events-editor__file-wizard .fa-wand-magic-sparkles {
+    font-size: 11px;
+    opacity: 0.9;
+}

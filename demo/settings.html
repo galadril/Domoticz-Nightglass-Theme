@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings — Nightglass Demo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="../custom.css">
+    <link rel="stylesheet" href="demo.css">
+    <script src="custom.js"></script>
+</head>
+<body>
+<script src="navbar.js"></script>
+<script>buildNavbar('setup');</script>
+
+<div id="holder">
+  <div class="container-fluid">
+    <div style="padding: 16px 0;">
+
+      <!-- page header -->
+      <div class="page-header">
+        <i class="fa-solid fa-gear"></i>
+        Settings
+      </div>
+
+      <!-- Settings content area (mimics Domoticz #settingscontent) -->
+      <div id="settingscontent">
+
+        <!-- Sub-tabs bar (mimics Domoticz settings tabs) -->
+        <ul class="sub-tabs">
+          <li id="demo-tab-system"><a href="javascript:void(0)">System</a></li>
+          <li id="demo-tab-network"><a href="javascript:void(0)">Network</a></li>
+          <li id="demo-tab-security"><a href="javascript:void(0)">Security</a></li>
+          <li id="demo-tab-location"><a href="javascript:void(0)">Location</a></li>
+        </ul>
+
+        <!-- Demo system settings (shown when System tab is active) -->
+        <div id="demo-settings-system" class="demo-settings-pane" style="padding: 24px 0; display:none;">
+          <table style="width:100%; border-collapse:separate; border-spacing:0 8px;">
+            <tr>
+              <td style="width:220px; padding:8px 12px; color:var(--dz-text-soft); font-size:0.88rem; font-weight:500;">Language</td>
+              <td style="padding:8px 12px;">
+                <select style="min-width:200px;">
+                  <option>English</option>
+                  <option>Nederlands</option>
+                  <option>Deutsch</option>
+                  <option>Français</option>
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:8px 12px; color:var(--dz-text-soft); font-size:0.88rem; font-weight:500;">Dashboard Type</td>
+              <td style="padding:8px 12px;">
+                <select style="min-width:200px;">
+                  <option>Standard</option>
+                  <option>Dashboard 2.0</option>
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:8px 12px; color:var(--dz-text-soft); font-size:0.88rem; font-weight:500;">Temp Unit</td>
+              <td style="padding:8px 12px;">
+                <select style="min-width:200px;">
+                  <option>Celsius</option>
+                  <option>Fahrenheit</option>
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:8px 12px; color:var(--dz-text-soft); font-size:0.88rem; font-weight:500;">Wind Unit</td>
+              <td style="padding:8px 12px;">
+                <select style="min-width:200px;">
+                  <option>m/s</option>
+                  <option>km/h</option>
+                  <option>Beaufort</option>
+                </select>
+              </td>
+            </tr>
+          </table>
+          <br>
+          <button class="btn btn-primary" onclick="alert('Demo only — settings not saved')">
+            <i class="fa-solid fa-floppy-disk" style="margin-right:4px;"></i> Apply Settings
+          </button>
+        </div>
+
+      </div><!-- /settingscontent -->
+
+      <!-- ═══ Icon Override Feature Demo ═══ -->
+      <div style="margin-top: 40px;">
+        <div class="page-header" style="margin-bottom: 20px;">
+          <i class="fa-solid fa-icons"></i>
+          Device Icon Override — Feature Demo
+        </div>
+        <p style="color:var(--dz-text-soft); font-size:0.9rem; margin-bottom: 20px; max-width:700px;">
+          The <strong>Device Icon Overrides</strong> feature (in the Nightglass settings tab above) lets you assign
+          any Font Awesome icon — with custom on/off colors — to individual devices by their IDX.
+          Below are example device cards showing the effect of various overrides.
+        </p>
+        <div style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom: 32px;">
+
+          <!-- Demo card: WiFi Router (override: fa-wifi, green on) -->
+          <div style="background:var(--dz-surface-2); border:1px solid var(--dz-border); border-radius:12px; padding:20px 24px; min-width:140px; text-align:center; position:relative;">
+            <div style="position:absolute; top:8px; right:10px; font-size:0.65rem; color:var(--dz-accent); font-weight:600; text-transform:uppercase; letter-spacing:.05em; opacity:.7;">Override</div>
+            <i class="fa-solid fa-wifi" style="font-size:2.2rem; color:#4caf7d; margin-bottom:10px; display:block;"></i>
+            <div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--dz-text); margin-bottom:4px;">WiFi Router</div>
+            <div style="font-size:0.72rem; color:var(--dz-success, #4caf7d);">On</div>
+          </div>
+
+          <!-- Demo card: EV Charger (override: fa-charging-station, blue on) -->
+          <div style="background:var(--dz-surface-2); border:1px solid var(--dz-border); border-radius:12px; padding:20px 24px; min-width:140px; text-align:center; position:relative;">
+            <div style="position:absolute; top:8px; right:10px; font-size:0.65rem; color:var(--dz-accent); font-weight:600; text-transform:uppercase; letter-spacing:.05em; opacity:.7;">Override</div>
+            <i class="fa-solid fa-charging-station" style="font-size:2.2rem; color:#4e9af1; margin-bottom:10px; display:block;"></i>
+            <div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--dz-text); margin-bottom:4px;">EV Charger</div>
+            <div style="font-size:0.72rem; color:#4e9af1;">Charging</div>
+          </div>
+
+          <!-- Demo card: Boiler (override: fa-fire-flame-curved, orange) -->
+          <div style="background:var(--dz-surface-2); border:1px solid var(--dz-border); border-radius:12px; padding:20px 24px; min-width:140px; text-align:center; position:relative;">
+            <div style="position:absolute; top:8px; right:10px; font-size:0.65rem; color:var(--dz-accent); font-weight:600; text-transform:uppercase; letter-spacing:.05em; opacity:.7;">Override</div>
+            <i class="fa-solid fa-fire-flame-curved" style="font-size:2.2rem; color:#ff7043; margin-bottom:10px; display:block;"></i>
+            <div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--dz-text); margin-bottom:4px;">Boiler</div>
+            <div style="font-size:0.72rem; color:#ff7043;">Heating</div>
+          </div>
+
+          <!-- Demo card: Solar Panel (override: fa-solar-panel, amber on) -->
+          <div style="background:var(--dz-surface-2); border:1px solid var(--dz-border); border-radius:12px; padding:20px 24px; min-width:140px; text-align:center; position:relative;">
+            <div style="position:absolute; top:8px; right:10px; font-size:0.65rem; color:var(--dz-accent); font-weight:600; text-transform:uppercase; letter-spacing:.05em; opacity:.7;">Override</div>
+            <i class="fa-solid fa-solar-panel" style="font-size:2.2rem; color:#f0a832; margin-bottom:10px; display:block;"></i>
+            <div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--dz-text); margin-bottom:4px;">Solar Panels</div>
+            <div style="font-size:0.72rem; color:#f0a832;">Generating</div>
+          </div>
+
+          <!-- Demo card: Washing Machine (override: fa-shirt) — OFF state -->
+          <div style="background:var(--dz-surface-2); border:1px solid var(--dz-border); border-radius:12px; padding:20px 24px; min-width:140px; text-align:center; position:relative;">
+            <div style="position:absolute; top:8px; right:10px; font-size:0.65rem; color:var(--dz-accent); font-weight:600; text-transform:uppercase; letter-spacing:.05em; opacity:.7;">Override</div>
+            <i class="fa-solid fa-shirt" style="font-size:2.2rem; color:#555770; margin-bottom:10px; display:block;"></i>
+            <div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--dz-text); margin-bottom:4px;">Washing Machine</div>
+            <div style="font-size:0.72rem; color:var(--dz-text-muted);">Off</div>
+          </div>
+
+          <!-- Demo card: NAS (override: fa-hard-drive) -->
+          <div style="background:var(--dz-surface-2); border:1px solid var(--dz-border); border-radius:12px; padding:20px 24px; min-width:140px; text-align:center; position:relative;">
+            <div style="position:absolute; top:8px; right:10px; font-size:0.65rem; color:var(--dz-accent); font-weight:600; text-transform:uppercase; letter-spacing:.05em; opacity:.7;">Override</div>
+            <i class="fa-solid fa-hard-drive" style="font-size:2.2rem; color:#4e9af1; margin-bottom:10px; display:block;"></i>
+            <div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--dz-text); margin-bottom:4px;">NAS Storage</div>
+            <div style="font-size:0.72rem; color:#4e9af1;">Online</div>
+          </div>
+
+        </div>
+
+        <!-- How it works explainer -->
+        <div style="background:var(--dz-surface-2); border:1px solid var(--dz-border); border-radius:12px; padding:20px 24px; max-width:680px;">
+          <h4 style="margin:0 0 12px; font-size:0.95rem; color:var(--dz-text); display:flex; align-items:center; gap:8px;">
+            <i class="fa-solid fa-circle-info" style="color:var(--dz-accent);"></i>
+            How it works
+          </h4>
+          <ol style="margin:0; padding-left:20px; color:var(--dz-text-soft); font-size:0.85rem; line-height:1.8;">
+            <li>Go to <strong>Settings → Nightglass</strong> tab in Domoticz</li>
+            <li>Find the <strong>Device Icon Overrides</strong> section and click <strong>Manage</strong></li>
+            <li>Search for a device in the list (or use a <em>Quick Preset</em> chip)</li>
+            <li>Click <strong>+</strong> next to any device, then pick an icon from the searchable grid</li>
+            <li>Set custom <strong>On</strong> and <strong>Off</strong> colors with the color pickers</li>
+            <li>Click <strong>Save Overrides</strong> — overrides persist across browsers via Domoticz user variables</li>
+          </ol>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="page-bottom"></div>
+
+<script>
+// Demo device list — used as fallback by openDeviceIconOverrideDialog when API is unavailable
+window.__ngDemoDevices = [
+    { idx: 1,  Name: 'Living Room Light',   Type: 'Light/Switch',    HardwareName: 'Philips Hue' },
+    { idx: 2,  Name: 'Garden Socket',       Type: 'Light/Switch',    HardwareName: 'Z-Wave' },
+    { idx: 3,  Name: 'TV',                  Type: 'Light/Switch',    HardwareName: 'Harmony Hub' },
+    { idx: 4,  Name: 'WiFi Router',         Type: 'Light/Switch',    HardwareName: 'Network' },
+    { idx: 5,  Name: 'Thermostat',          Type: 'Thermostat',      HardwareName: 'Nest' },
+    { idx: 6,  Name: 'Kitchen Sensor',      Type: 'Temp + Humidity', HardwareName: 'Z-Wave' },
+    { idx: 7,  Name: 'Solar Panels',        Type: 'General',         HardwareName: 'SolarEdge' },
+    { idx: 8,  Name: 'Electricity Meter',   Type: 'P1 Smart Meter',  HardwareName: 'DSMR' },
+    { idx: 9,  Name: 'Rain Gauge',          Type: 'Rain',            HardwareName: 'Weather Station' },
+    { idx: 10, Name: 'EV Charger',          Type: 'Light/Switch',    HardwareName: 'EVSE' },
+    { idx: 11, Name: 'NAS Storage',         Type: 'Light/Switch',    HardwareName: 'Synology' },
+    { idx: 12, Name: 'Front Doorbell',      Type: 'Light/Switch',    HardwareName: 'Ring' },
+    { idx: 13, Name: 'Washing Machine',     Type: 'Light/Switch',    HardwareName: 'Smart Plug' },
+    { idx: 14, Name: 'Central Heating',     Type: 'Light/Switch',    HardwareName: 'OpenTherm' },
+    { idx: 15, Name: 'Air Quality',         Type: 'Air Quality',     HardwareName: 'CO\u2082 Sensor' }
+];
+</script>
+
+<script>
+// Demo: wire up the placeholder tabs to show/hide content
+(function() {
+  var tabs = document.querySelectorAll('#settingscontent .sub-tabs li');
+  var systemPane = document.getElementById('demo-settings-system');
+
+  tabs.forEach(function(tab) {
+    tab.querySelector('a').addEventListener('click', function() {
+      // Deactivate all
+      tabs.forEach(function(t) { t.classList.remove('active'); });
+      tab.classList.add('active');
+
+      // Show system pane only for System tab, hide for others
+      if (tab.id === 'demo-tab-system') {
+        systemPane.style.display = '';
+      } else {
+        systemPane.style.display = 'none';
+      }
+
+      // Hide Nightglass panel when switching to other tabs
+      var ngWrap = document.getElementById('ng-theme-settings-wrap');
+      if (ngWrap && tab.id !== 'ng-settings-tab') {
+        ngWrap.style.display = 'none';
+      }
+    });
+  });
+
+  // Default: open the Nightglass tab so visitors immediately see the settings panel
+  setTimeout(function() {
+    var ngTab = document.getElementById('ng-settings-tab');
+    if (ngTab) {
+      ngTab.querySelector('a').click();
+    } else {
+      // Fallback to System tab if Nightglass tab not yet injected
+      document.getElementById('demo-tab-system').classList.add('active');
+      if (systemPane) systemPane.style.display = '';
+    }
+  }, 600);
+})();
+</script>
+
+</body>
+</html>

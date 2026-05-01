@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notifications — Nightglass Demo</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="../custom.css">
+  <link rel="stylesheet" href="demo.css">
+  <script src="custom.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <style>
+    .ng-notif-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+    .ng-notif-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 16px;
+      border-radius: 10px;
+      border: 1.5px solid var(--dz-border-b);
+      background: var(--dz-surface-2);
+      color: var(--dz-text);
+      font-size: 0.83rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, color 0.15s, transform 0.1s;
+    }
+    .ng-notif-btn:hover {
+      border-color: var(--dz-accent);
+      color: var(--dz-accent);
+      background: rgba(var(--dz-accent-rgb), 0.07);
+    }
+    .ng-notif-btn:active { transform: scale(0.96); }
+    .ng-notif-btn--on  { border-color: rgba(var(--dz-accent-rgb), 0.5); color: var(--dz-accent); }
+    .ng-notif-btn--off { border-color: var(--dz-border); color: var(--dz-text-muted); }
+    .ng-notif-btn--warn  { border-color: rgba(var(--dz-warning-rgb, 240,168,50), 0.5); color: var(--dz-warning); }
+    .ng-notif-btn--danger{ border-color: rgba(var(--dz-danger-rgb), 0.5);  color: var(--dz-danger); }
+    .ng-notif-btn--ok    { border-color: rgba(var(--dz-success-rgb), 0.5); color: var(--dz-success); }
+    .ng-notif-btn--scene { border-color: rgba(var(--dz-accent-rgb), 0.5); background: rgba(var(--dz-accent-rgb), 0.06); }
+
+    .ng-demo-section {
+      margin-bottom: 36px;
+    }
+    .ng-demo-section-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--dz-text-muted);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .ng-demo-section-title i { color: var(--dz-accent); opacity: 0.8; }
+    .ng-demo-section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--dz-border);
+      opacity: 0.5;
+    }
+
+    .ng-settings-preview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 16px 20px;
+      background: var(--dz-surface);
+      border: 1px solid var(--dz-border);
+      border-radius: 14px;
+      margin-bottom: 4px;
+    }
+    .ng-sp-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .ng-sp-field label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--dz-text-muted);
+    }
+    .ng-sp-field select {
+      background: var(--dz-surface-2);
+      border: 1.5px solid var(--dz-border-b);
+      border-radius: 8px;
+      color: var(--dz-text);
+      padding: 6px 10px;
+      font-size: 0.83rem;
+      cursor: pointer;
+      outline: none;
+    }
+    .ng-sp-field select:focus { border-color: var(--dz-accent); }
+
+    .ng-how-it-works {
+      background: var(--dz-surface);
+      border: 1px solid var(--dz-border);
+      border-left: 3px solid var(--dz-accent);
+      border-radius: 12px;
+      padding: 16px 20px;
+      font-size: 0.83rem;
+      color: var(--dz-text-muted);
+      line-height: 1.7;
+    }
+    .ng-how-it-works strong { color: var(--dz-text); }
+    .ng-how-it-works code {
+      background: var(--dz-surface-2);
+      border: 1px solid var(--dz-border);
+      border-radius: 5px;
+      padding: 1px 6px;
+      font-size: 0.82rem;
+      color: var(--dz-accent);
+    }
+  </style>
+</head>
+<body>
+<script src="navbar.js"></script>
+<script>buildNavbar('notifications');</script>
+
+<div id="holder">
+  <div class="container-fluid">
+    <div style="padding: 16px 0;">
+
+      <div id="topBar">
+        <span id="tbTimeSun"><span class="tbTime">12:34</span></span>
+      </div>
+
+      <div class="page-header">
+        <i class="fa-solid fa-bell"></i>
+        Live Notifications
+      </div>
+
+      <p style="color:var(--dz-text-muted);font-size:.85rem;margin:0 0 28px">
+        In a real Domoticz setup, toasts fire automatically whenever any device changes state via the WebSocket feed. Click the buttons below to preview them.
+      </p>
+
+      <!-- ── Live settings preview ── -->
+      <div class="ng-demo-section">
+        <div class="ng-demo-section-title"><i class="fa-solid fa-sliders"></i> Toast Settings</div>
+        <div class="ng-settings-preview">
+          <div class="ng-sp-field">
+            <label>Position</label>
+            <select id="demoPosition">
+              <option value="bottom-right" selected>Bottom right</option>
+              <option value="bottom-center">Bottom center</option>
+              <option value="top-right">Top right</option>
+            </select>
+          </div>
+          <div class="ng-sp-field">
+            <label>Duration</label>
+            <select id="demoDuration">
+              <option value="2000">2 seconds</option>
+              <option value="4000" selected>4 seconds</option>
+              <option value="6000">6 seconds</option>
+              <option value="10000">10 seconds</option>
+            </select>
+          </div>
+        </div>
+        <p style="font-size:.78rem;color:var(--dz-text-muted);margin:8px 0 0">
+          These controls apply to the toasts on this page. In Domoticz, use the <strong style="color:var(--dz-text)">Settings panel</strong> <i class="fa-solid fa-gear" style="font-size:.75rem"></i> to configure permanently.
+        </p>
+      </div>
+
+      <!-- ── Device state toasts ── -->
+      <div class="ng-demo-section">
+        <div class="ng-demo-section-title"><i class="fa-solid fa-cube"></i> Device State Changes</div>
+        <div class="ng-notif-grid">
+          <button class="ng-notif-btn ng-notif-btn--on"   onclick="fire('fa-lightbulb','Kitchen Light','Turned On')">
+            <i class="fa-solid fa-lightbulb"></i> Light On</button>
+          <button class="ng-notif-btn ng-notif-btn--off"  onclick="fire('fa-lightbulb','Bedroom Light','Turned Off','muted')">
+            <i class="fa-solid fa-lightbulb"></i> Light Off</button>
+          <button class="ng-notif-btn ng-notif-btn--on"   onclick="fire('fa-door-open','Front Door','Opened')">
+            <i class="fa-solid fa-door-open"></i> Door Opened</button>
+          <button class="ng-notif-btn ng-notif-btn--off"  onclick="fire('fa-door-open','Front Door','Closed','muted')">
+            <i class="fa-solid fa-door-open"></i> Door Closed</button>
+          <button class="ng-notif-btn ng-notif-btn--on"   onclick="fire('fa-person-running','Hallway Motion','Motion Detected')">
+            <i class="fa-solid fa-person-running"></i> Motion</button>
+          <button class="ng-notif-btn ng-notif-btn--on"   onclick="fire('fa-thermometer-half','Living Room Thermostat','Set to 21.0°C')">
+            <i class="fa-solid fa-thermometer-half"></i> Thermostat</button>
+          <button class="ng-notif-btn ng-notif-btn--on"   onclick="fire('fa-fan','Ventilation','Speed: High')">
+            <i class="fa-solid fa-fan"></i> Fan</button>
+          <button class="ng-notif-btn ng-notif-btn--off"  onclick="fire('fa-lock','Front Lock','Unlocked','muted')">
+            <i class="fa-solid fa-lock"></i> Lock</button>
+          <button class="ng-notif-btn ng-notif-btn--on"   onclick="fire('fa-triangle-exclamation','Smoke Detector','Alarm!','danger')">
+            <i class="fa-solid fa-triangle-exclamation"></i> Smoke Alarm</button>
+          <button class="ng-notif-btn ng-notif-btn--on"   onclick="fire('fa-toggle-on','Garden Sprinkler','On')">
+            <i class="fa-solid fa-toggle-on"></i> Switch On</button>
+        </div>
+      </div>
+
+      <!-- ── Scene / burst ── -->
+      <div class="ng-demo-section">
+        <div class="ng-demo-section-title"><i class="fa-solid fa-layer-group"></i> Scene Activation</div>
+        <div class="ng-notif-grid">
+          <button class="ng-notif-btn ng-notif-btn--scene" onclick="fireScene('Evening')">
+            <i class="fa-solid fa-layer-group"></i> Simulate "Evening" Scene</button>
+          <button class="ng-notif-btn ng-notif-btn--scene" onclick="fireScene('Goodnight')">
+            <i class="fa-solid fa-layer-group"></i> Simulate "Goodnight" Scene</button>
+          <button class="ng-notif-btn ng-notif-btn--scene" onclick="fireScene('Away')">
+            <i class="fa-solid fa-layer-group"></i> Simulate "Away" Scene</button>
+        </div>
+        <p style="font-size:.78rem;color:var(--dz-text-muted);margin:8px 0 0">
+          Each scene fires multiple device toasts with a short stagger. The stack caps at 4 — oldest slides out automatically.
+        </p>
+      </div>
+
+      <!-- ── System / Domoticz alerts ── -->
+      <div class="ng-demo-section">
+        <div class="ng-demo-section-title"><i class="fa-solid fa-bell"></i> System Alerts</div>
+        <div class="ng-notif-grid">
+          <button class="ng-notif-btn"            onclick="fireSystem('info')">
+            <i class="fa-solid fa-circle-info"></i> Info</button>
+          <button class="ng-notif-btn ng-notif-btn--ok"     onclick="fireSystem('success')">
+            <i class="fa-solid fa-circle-check"></i> Success</button>
+          <button class="ng-notif-btn ng-notif-btn--warn"   onclick="fireSystem('warning')">
+            <i class="fa-solid fa-triangle-exclamation"></i> Warning</button>
+          <button class="ng-notif-btn ng-notif-btn--danger" onclick="fireSystem('danger')">
+            <i class="fa-solid fa-circle-xmark"></i> Error</button>
+        </div>
+        <p style="font-size:.78rem;color:var(--dz-text-muted);margin:8px 0 0">
+          These simulate Domoticz's own Bootstrap <code>.alert-dismissable</code> notifications — the kind that normally flash as a plain grey box in the corner. The theme intercepts them before they render and replaces them with Nightglass toasts instead.
+        </p>
+      </div>
+
+      <!-- ── How it works ── -->
+      <div class="ng-demo-section">
+        <div class="ng-demo-section-title"><i class="fa-solid fa-circle-info"></i> How It Works</div>
+        <div class="ng-how-it-works">
+          <strong>Device toasts</strong> hook into Angular's <code>$rootScope.$on('device_update')</code> — an event Domoticz already broadcasts via its WebSocket every time any device changes state. No polling, no extra requests.<br><br>
+          <strong>System alerts</strong> are intercepted via <code>MutationObserver</code> watching for <code>.alert-dismissable</code> elements. Domoticz's notification service generates these for scripted alerts, failed commands, and schedule results. The original Bootstrap alert is removed before it renders.<br><br>
+          <strong>Meaningful filter</strong> suppresses high-frequency sensor updates (temperature, power meters, rain gauges) so only intentional state changes — switches toggling, doors opening, motion triggered — produce a toast.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  function getPos()      { return document.getElementById('demoPosition').value; }
+  function getDuration() { return +document.getElementById('demoDuration').value; }
+
+  var ACCENT  = 'var(--dz-accent)';
+  var MUTED   = 'var(--dz-text-muted)';
+  var DANGER  = 'var(--dz-danger)';
+  var WARNING = 'var(--dz-warning)';
+  var SUCCESS = 'var(--dz-success)';
+
+  function colorName(name) {
+    return name === 'muted' ? MUTED : name === 'danger' ? DANGER : name === 'warning' ? WARNING : name === 'success' ? SUCCESS : ACCENT;
+  }
+
+  // Update stack position when selector changes
+  document.getElementById('demoPosition').addEventListener('change', function () {
+    var stack = document.getElementById('ng-toast-stack');
+    if (stack) stack.className = 'ng-toast-pos--' + this.value;
+  });
+
+  window.fire = function (icon, title, body, colorKey) {
+    if (!window.ngShowToast) return;
+    window.ngShowToast({
+      icon:     icon,
+      color:    colorName(colorKey),
+      title:    title,
+      body:     body,
+      type:     'device',
+      duration: getDuration()
+    });
+    // Apply position from demo selector
+    var stack = document.getElementById('ng-toast-stack');
+    if (stack) stack.className = 'ng-toast-pos--' + getPos();
+  };
+
+  var SCENES = {
+    Evening:   [
+      ['fa-lightbulb',       'Living Room Light',  'Dimmed to 40%'],
+      ['fa-lightbulb',       'Kitchen Light',      'On'],
+      ['fa-temperature-half','Thermostat',          'Set to 20.0°C'],
+      ['fa-blinds',          'Living Room Blinds', 'Closed'],
+    ],
+    Goodnight: [
+      ['fa-lightbulb',  'All Lights',    'Off', 'muted'],
+      ['fa-lock',       'Front Door',    'Locked'],
+      ['fa-fan',        'Ventilation',   'Speed: Low'],
+      ['fa-thermometer-half', 'Thermostat', 'Set to 17.0°C'],
+    ],
+    Away: [
+      ['fa-lightbulb',       'All Lights',    'Off', 'muted'],
+      ['fa-lock',            'Front Door',    'Locked'],
+      ['fa-shield-halved',   'Alarm',         'Armed'],
+      ['fa-thermometer-half','Thermostat',    'Set to 15.0°C'],
+      ['fa-toggle-on',       'Garden Pump',   'Off', 'muted'],
+    ]
+  };
+
+  window.fireScene = function (sceneName) {
+    var events = SCENES[sceneName];
+    if (!events || !window.ngShowToast) return;
+    events.forEach(function (ev, i) {
+      setTimeout(function () {
+        window.ngShowToast({
+          icon: ev[0], title: ev[1], body: ev[2],
+          color: colorName(ev[3]),
+          type: 'device',
+          duration: getDuration()
+        });
+        var stack = document.getElementById('ng-toast-stack');
+        if (stack) stack.className = 'ng-toast-pos--' + getPos();
+      }, i * 180);
+    });
+  };
+
+  var SYSTEM_MAP = {
+    info:    { icon: 'fa-circle-info',         color: 'var(--dz-accent)',   title: 'System Info',    body: 'Domoticz restarted successfully.' },
+    success: { icon: 'fa-circle-check',        color: 'var(--dz-success)',  title: 'Script Executed', body: 'Evening scene ran without errors.' },
+    warning: { icon: 'fa-triangle-exclamation',color: 'var(--dz-warning)',  title: 'Low Battery',    body: 'Door sensor battery at 15%.' },
+    danger:  { icon: 'fa-circle-xmark',        color: 'var(--dz-danger)',   title: 'Device Offline', body: 'Zigbee gateway not responding.' },
+  };
+
+  window.fireSystem = function (type) {
+    // Inject a real Bootstrap .alert-dismissable to test the interception pipeline
+    var wrapper = document.createElement('div');
+    wrapper.className = 'alerts';
+    wrapper.style.cssText = 'position:absolute;right:-9999px;opacity:0;pointer-events:none;';
+    var m = SYSTEM_MAP[type] || SYSTEM_MAP.info;
+    wrapper.innerHTML =
+      '<div class="alert alert-' + type + ' alert-dismissable fade in">' +
+      '<button type="button" class="close" data-dismiss="alert">&times;</button>' +
+      '<label>' + m.title + '</label>' +
+      '<div>' + m.body + '</div>' +
+      '</div>';
+    document.body.appendChild(wrapper);
+    // The MutationObserver in custom.js will intercept the .alert-dismissable
+    // and show a Nightglass toast, then remove the original element.
+    // Ensure position is applied to the new toast.
+    setTimeout(function () {
+      var stack = document.getElementById('ng-toast-stack');
+      if (stack) stack.className = 'ng-toast-pos--' + getPos();
+    }, 50);
+  };
+})();
+</script>
+</body>
+</html>

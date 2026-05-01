@@ -1,0 +1,26 @@
+{
+  "name": "Cyberpunk",
+  "description": "Neon magenta and electric cyan on pitch black — Night City awaits",
+  "icon": "fa-solid fa-bolt",
+  "preview": { "bg": "#0a0a12", "surface": "#12121f", "accent": "#ff2d95", "text": "#e8e0f0" },
+  "colors": {
+    "accentColor": "#ff2d95",
+    "dangerColor": "#ff1744",
+    "warningColor": "#ffea00",
+    "successColor": "#00e5ff",
+    "accentColorLight": "#c51162",
+    "dangerColorLight": "#d50000",
+    "warningColorLight": "#c6a700",
+    "successColorLight": "#0097a7",
+    "bgColor": "#12121f",
+    "surfaceColor": "#1a1a2e",
+    "borderColor": "#2a2a45",
+    "textColor": "#e8e0f0",
+    "bgColorLight": "#fdf2f8",
+    "surfaceColorLight": "#fce4ec",
+    "borderColorLight": "#f48fb1",
+    "textColorLight": "#1a0a15",
+    "pageBgColor": "#0a0a12",
+    "pageBgColorLight": "#fce4ec"
+  }
+}

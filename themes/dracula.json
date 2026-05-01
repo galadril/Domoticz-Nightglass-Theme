@@ -1,0 +1,26 @@
+{
+  "name": "Dracula",
+  "description": "The beloved Dracula color scheme — purple, pink, green and cyan on dark",
+  "icon": "fa-solid fa-ghost",
+  "preview": { "bg": "#21222c", "surface": "#282a36", "accent": "#bd93f9", "text": "#f8f8f2" },
+  "colors": {
+    "accentColor": "#bd93f9",
+    "dangerColor": "#ff5555",
+    "warningColor": "#f1fa8c",
+    "successColor": "#50fa7b",
+    "accentColorLight": "#7c4dff",
+    "dangerColorLight": "#d32f2f",
+    "warningColorLight": "#9e9d24",
+    "successColorLight": "#2e7d32",
+    "bgColor": "#282a36",
+    "surfaceColor": "#2e303e",
+    "borderColor": "#44475a",
+    "textColor": "#f8f8f2",
+    "bgColorLight": "#faf8ff",
+    "surfaceColorLight": "#f0ecfa",
+    "borderColorLight": "#c8b8e8",
+    "textColorLight": "#282a36",
+    "pageBgColor": "#21222c",
+    "pageBgColorLight": "#f5f0ff"
+  }
+}

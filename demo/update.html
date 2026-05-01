@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update — Nightglass Demo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="../custom.css">
+    <link rel="stylesheet" href="demo.css">
+    <script src="custom.js"></script>
+</head>
+<body>
+    <script src="navbar.js"></script>
+    <script>buildNavbar('');</script>
+
+    <div id="holder">
+        <div class="container-fluid">
+            <div class="bannercontent">
+                <div id="main-view">
+                    <div id="updatecontent" class="container">
+                        <center>
+
+                        <!-- Status icon -->
+                        <div class="update-icon-wrap">
+                            <i class="fa-solid fa-arrow-rotate-right update-spin-icon"></i>
+                        </div>
+
+                        <h1 id="updateTitle">Update Available... Downloading Update !...</h1>
+                        <h3 id="updateSubtitle">Domoticz 2026.1 → 2026.2 (build 17680)</h3>
+                        <br>
+
+                        <!-- Progress ring -->
+                        <div id="divprogress">
+                            <div class="update-progress-ring" id="demoProgressRing">
+                                <svg viewBox="0 0 160 160" width="160" height="160" xmlns="http://www.w3.org/2000/svg">
+                                    <circle class="ring-track" cx="80" cy="80" r="70"
+                                            fill="none" stroke="#2e3040" stroke-width="8" />
+                                    <circle class="ring-fill" cx="80" cy="80" r="70"
+                                            fill="none" stroke="#4e9af1" stroke-width="8"
+                                            stroke-linecap="round"
+                                            stroke-dasharray="439.82" stroke-dashoffset="26.39"
+                                            style="transition: stroke-dashoffset 0.4s ease, stroke 0.4s ease; filter: drop-shadow(0 0 6px rgba(78, 154, 241, 0.35));" />
+                                </svg>
+                                <span class="ring-label" id="demoProgressLabel">94 %</span>
+                            </div>
+                            <br>
+                            <span class="update-warning"><i class="fa-solid fa-triangle-exclamation"></i> Do not power off the system while updating !...</span>
+                        </div>
+
+                        <!-- Live output console -->
+                        <div class="update-output-section" id="updateOutputSection">
+                            <h4><i class="fa-solid fa-terminal"></i> Update Progress</h4>
+                            <pre id="updateconsole"><span class="log-muted">2026-04-15 15:54:10.021</span> <span class="log-green">&gt;&gt; Starting update...</span>
+<span class="log-muted">2026-04-15 15:54:10.142</span> &gt;&gt; Downloading update...
+<span> 15800K .......... .......... .......... .......... .......... 96%  10.2M 0s</span>
+<span> 15850K .......... .......... .......... .......... .......... 97%  10.9M 0s</span>
+<span> 15900K .......... .......... .......... .......... .......... 97%  11.1M 0s</span>
+<span> 15950K .......... .......... .......... .......... .......... 97%  11.0M 0s</span>
+<span> 16000K .......... .......... .......... .......... .......... 98%  10.8M 0s</span>
+<span> 16050K .......... .......... .......... .......... .......... 98%  11.4M 0s</span>
+<span> 16100K .......... .......... .......... .......... .......... 98%  11.3M 0s</span>
+<span> 16150K .......... .......... .......... .......... .......... 99%  11.5M 0s</span>
+<span> 16200K .......... .......... .......... .......... .......... 99%  11.5M 0s</span>
+<span> 16250K .......... .......... .......... .......... .......... 99%  11.2M 0s</span>
+<span> 16300K .......... .......... .......... .......... .......... 99%  11.4M 0s</span>
+<span> 16350K ........                                              100% 11.4M=1.7s</span>
+<span class="log-muted">2026-04-15 15:54:16.777</span> <span class="log-green">&gt;&gt; Checking file integrity...</span>
+<span class="log-muted">2026-04-15 15:54:18.018</span> <span class="log-yellow">&gt;&gt; Checking for updated upgrade script...</span>
+<span class="log-muted">2026-04-15 15:54:19.204</span> <span class="log-green">&gt;&gt; Extracting files...</span>
+<span class="log-muted">2026-04-15 15:54:22.515</span> &gt;&gt; Updating database schema...
+<span class="log-muted">2026-04-15 15:54:23.873</span> <span class="log-green">&gt;&gt; Restarting Domoticz...</span></pre>
+                        </div>
+
+                        </center>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Copyright -->
+            <div id="copyright">
+                <span class="copyright-inner">
+                    <span>© 2012–2026 Domoticz</span>
+                    <span class="copyright-dot"></span>
+                    <a href="http://domoticz.com/" target="_blank" rel="noopener">domoticz.com</a>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Demo: animate the progress ring -->
+    <script>
+    (function () {
+        var progress = 0;
+        var circumference = 2 * Math.PI * 70; // r=70
+        var fill = document.querySelector('.ring-fill');
+        var label = document.getElementById('demoProgressLabel');
+        var spinner = document.querySelector('.update-spin-icon');
+        var iconWrap = document.querySelector('.update-icon-wrap');
+        var lines = [
+            { text: '2026-04-15 15:54:24.112 >> Verifying installation...', cls: '' },
+            { text: '2026-04-15 15:54:25.340 >> Running post-install hooks...', cls: 'log-green' },
+            { text: '2026-04-15 15:54:26.891 >> Clearing temporary files...', cls: '' },
+            { text: '2026-04-15 15:54:27.402 >> Update complete! Restarting...', cls: 'log-green' },
+        ];
+        var lineIdx = 0;
+        var consoleEl = document.getElementById('updateconsole');
+        var title = document.getElementById('updateTitle');
+
+        // Start at 94%
+        progress = 94;
+
+        var interval = setInterval(function () {
+            progress += 0.5;
+            if (progress > 100) progress = 100;
+
+            var offset = circumference - (progress / 100) * circumference;
+            fill.setAttribute('stroke-dashoffset', offset);
+            label.textContent = Math.round(progress) + ' %';
+
+            // Add console lines as progress moves
+            if (progress >= 96 && lineIdx < 1) { appendLine(lines[lineIdx++]); }
+            if (progress >= 97 && lineIdx < 2) { appendLine(lines[lineIdx++]); }
+            if (progress >= 99 && lineIdx < 3) { appendLine(lines[lineIdx++]); }
+            if (progress >= 100 && lineIdx < 4) {
+                appendLine(lines[lineIdx++]);
+                title.innerHTML = '<i class="fa-solid fa-circle-check" style="color: #4caf7d;"></i> Update Complete!';
+                fill.setAttribute('stroke', '#4caf7d');
+                fill.style.filter = 'drop-shadow(0 0 6px rgba(76, 175, 125, 0.4))';
+                label.textContent = '\u2713';
+                label.style.color = '#4caf7d';
+                spinner.className = 'fa-solid fa-circle-check';
+                spinner.style.animation = 'none';
+                spinner.style.color = '#4caf7d';
+                iconWrap.style.borderColor = 'rgba(76, 175, 125, 0.3)';
+                clearInterval(interval);
+            }
+        }, 300);
+
+        function appendLine(line) {
+            var span = document.createElement('span');
+            span.style.display = 'block';
+            if (line.cls) {
+                var parts = line.text.split(' >> ');
+                span.innerHTML = '<span class="log-muted">' + parts[0] + '</span> <span class="' + line.cls + '">&gt;&gt; ' + (parts[1] || '') + '</span>';
+            } else {
+                var parts2 = line.text.split(' >> ');
+                span.innerHTML = '<span class="log-muted">' + parts2[0] + '</span> &gt;&gt; ' + (parts2[1] || '');
+            }
+            consoleEl.appendChild(span);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+    })();
+    </script>
+</body>
+</html>

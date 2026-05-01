@@ -1,0 +1,26 @@
+{
+  "name": "Emerald Forest",
+  "description": "Lush greens on charcoal — nature-inspired and easy on the eyes",
+  "icon": "fa-solid fa-leaf",
+  "preview": { "bg": "#1a2420", "surface": "#212e28", "accent": "#4caf7d", "text": "#d8e8df" },
+  "colors": {
+    "accentColor": "#4caf7d",
+    "dangerColor": "#e05555",
+    "warningColor": "#f0a832",
+    "successColor": "#66bb6a",
+    "accentColorLight": "#2e8c58",
+    "dangerColorLight": "#d63b3b",
+    "warningColorLight": "#c07818",
+    "successColorLight": "#388e3c",
+    "bgColor": "#212e28",
+    "surfaceColor": "#283830",
+    "borderColor": "#344a3c",
+    "textColor": "#d8e8df",
+    "bgColorLight": "#f5faf7",
+    "surfaceColorLight": "#eaf5ed",
+    "borderColorLight": "#b8d4c2",
+    "textColorLight": "#1a2e22",
+    "pageBgColor": "#1a2420",
+    "pageBgColorLight": "#eef6f0"
+  }
+}

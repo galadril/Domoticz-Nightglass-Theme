@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Popup Showcase — Nightglass Demo</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="../custom.css">
+  <link rel="stylesheet" href="demo.css">
+  <script src="custom.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <style>
+    /* Force popups visible in the showcase grid */
+    .ng-showcase-grid { display: flex; flex-wrap: wrap; gap: 32px 40px; padding: 20px 0 40px; align-items: flex-start; }
+
+    .ng-showcase-item { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .ng-showcase-label {
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--dz-text-muted);
+    }
+    .ng-showcase-hint {
+      font-size: 0.68rem; color: var(--dz-text-muted); opacity: .6;
+    }
+
+    /* Show the popup divs statically in the showcase (override hidden/absolute) */
+    .ng-showcase-item .pop {
+      display: block !important;
+      position: static !important;
+      transform: none !important;
+      z-index: 1 !important;
+    }
+
+    .ng-demo-divider {
+      width: 100%; border-top: 1px solid var(--dz-border);
+      padding-top: 28px; margin-top: 4px;
+    }
+    .ng-demo-divider-title {
+      font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--dz-text-muted); margin-bottom: 20px;
+    }
+    .ng-demo-divider-title i { margin-right: 6px; color: var(--dz-accent); }
+
+    .ng-demo-log {
+      background: var(--dz-surface); border: 1px solid var(--dz-border);
+      border-radius: 10px; padding: 12px 16px; margin-top: 4px;
+      font-family: monospace; font-size: 0.8rem; color: var(--dz-text-muted);
+      min-height: 42px;
+    }
+    .ng-demo-log-entry { color: var(--dz-accent); }
+
+    /* Highlight which device card the popup belongs to */
+    .ng-showcase-item .pop { min-width: 0; }
+
+    /* RGBW demo containers get the same base style as #rgbw_popup in custom.css */
+    #ng-rgbw-demo-a,
+    #ng-rgbw-demo-b,
+    #ng-rgbw-demo-c {
+      background: var(--dz-surface) !important;
+      border: 1px solid var(--dz-border) !important;
+      color: var(--dz-text) !important;
+      border-radius: 20px !important;
+      padding: 0 20px 20px !important;
+      overflow: hidden !important;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.5) !important;
+      width: 300px !important;
+    }
+
+  </style>
+</head>
+<body>
+<script src="navbar.js"></script>
+<script>buildNavbar('popups');</script>
+
+<div id="holder">
+  <div class="container-fluid">
+    <div style="padding: 16px 0;">
+
+      <!-- topbar (minimal) -->
+      <div id="topBar">
+        <span id="tbTimeSun">
+          <span class="tbTime">12:34</span>
+        </span>
+      </div>
+
+      <!-- page header -->
+      <div class="page-header">
+        <i class="fa-solid fa-window-restore"></i>
+        Popup Showcase
+      </div>
+
+      <p style="color:var(--dz-text-muted);font-size:.85rem;margin:0 0 8px">
+        All redesigned popup controls shown statically below. In a real Domoticz dashboard these open centred on screen with a blurred overlay on device icon click.
+        The RGBW popups are rendered with a canvas HSV colour wheel — Nightglass replaces Domoticz's built-in jQWCP widget entirely.
+      </p>
+
+      <!-- ── Thermostat Setpoint ── -->
+      <div class="ng-demo-divider">
+        <div class="ng-demo-divider-title"><i class="fa-solid fa-thermometer-half"></i> Thermostat Setpoint</div>
+        <div class="ng-showcase-grid">
+
+          <div class="ng-showcase-item">
+            <div class="ng-showcase-label">Cold (8 °C)</div>
+            <div id="setpoint_popup" class="pop ui-popup ui-body-b ui-overlay-shadow ui-corner-all"></div>
+            <span class="ng-showcase-hint">arc + drag + ± buttons interactive</span>
+          </div>
+
+          <div class="ng-showcase-item">
+            <div class="ng-showcase-label">Comfortable (21 °C)</div>
+            <div id="ng-sp-preview-b" class="pop ui-popup ui-body-b ui-overlay-shadow ui-corner-all"></div>
+          </div>
+
+          <div class="ng-showcase-item">
+            <div class="ng-showcase-label">Hot (30 °C)</div>
+            <div id="ng-sp-preview-c" class="pop ui-popup ui-body-b ui-overlay-shadow ui-corner-all"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── Fan / Ventilation ── -->
+      <div class="ng-demo-divider">
+        <div class="ng-demo-divider-title"><i class="fa-solid fa-fan"></i> Fan &amp; Ventilation</div>
+        <div class="ng-showcase-grid">
+
+          <div class="ng-showcase-item">
+            <div class="ng-showcase-label">Itho Ventilation</div>
+            <div id="itho_popup" class="pop ui-popup ui-body-b ui-overlay-shadow ui-corner-all"></div>
+          </div>
+
+          <div class="ng-showcase-item">
+            <div class="ng-showcase-label">Lucci Ceiling Fan</div>
+            <div id="lucci_popup" class="pop ui-popup ui-body-b ui-overlay-shadow ui-corner-all"></div>
+          </div>
+
+          <div class="ng-showcase-item">
+            <div class="ng-showcase-label">Lucci DC Fan</div>
+            <div id="lucci_dc_popup" class="pop ui-popup ui-body-b ui-overlay-shadow ui-corner-all"></div>
+          </div>
+
+          <div class="ng-showcase-item">
+            <div class="ng-showcase-label">Falmec Kitchen Fan</div>
+            <div id="falmec_popup" class="pop ui-popup ui-body-b ui-overlay-shadow ui-corner-all"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── Motor / Actuator ── -->
+      <div class="ng-demo-divider">
+        <div class="ng-demo-divider-title"><i class="fa-solid fa-sliders"></i> Motor &amp; Actuator</div>
+        <div class="ng-showcase-grid">
+
+          <div class="ng-showcase-item">
+            <div class="ng-showcase-label">Motor Control (Thermostat3)</div>
+            <div id="thermostat3_popup" class="pop ui-popup ui-body-b ui-overlay-shadow ui-corner-all"></div>
+          </div>
+
+          <div class="ng-showcase-item">
+            <div class="ng-showcase-label">RFY Sun/Wind Detector</div>
+            <div id="rfy_popup" class="pop ui-popup ui-body-b ui-overlay-shadow ui-corner-all"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── RGBW / Hue Colour Picker ── -->
+      <div class="ng-demo-divider">
+        <div class="ng-demo-divider-title"><i class="fa-solid fa-palette"></i> RGB &amp; Hue Colour Picker</div>
+        <div class="ng-showcase-grid">
+
+          <div class="ng-showcase-item">
+            <div class="ng-showcase-label">RGB — colour only</div>
+            <div id="ng-rgbw-demo-a" class="pop ui-popup ui-body-b ui-overlay-shadow ui-corner-all"></div>
+            <span class="ng-showcase-hint">canvas HSV wheel — no white channels</span>
+          </div>
+
+          <div class="ng-showcase-item">
+            <div class="ng-showcase-label">RGBWW — colour + white tabs</div>
+            <div id="ng-rgbw-demo-b" class="pop ui-popup ui-body-b ui-overlay-shadow ui-corner-all"></div>
+            <span class="ng-showcase-hint">colour wheel + warm/cool white tab</span>
+          </div>
+
+          <div class="ng-showcase-item">
+            <div class="ng-showcase-label">WW — warm white only</div>
+            <div id="ng-rgbw-demo-c" class="pop ui-popup ui-body-b ui-overlay-shadow ui-corner-all"></div>
+            <span class="ng-showcase-hint">temperature bar only, no colour wheel</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── Bar Ranges Modal ── -->
+      <div class="ng-demo-divider">
+        <div class="ng-demo-divider-title"><i class="fa-solid fa-chart-bar"></i> Bar Ranges &mdash; Color Picker</div>
+        <p style="color:var(--dz-text-muted);font-size:.82rem;margin:0 0 16px">
+          Opened from the <i class="fa-solid fa-chart-bar" style="font-size:.8rem"></i> bar button on a setpoint edit dialog.
+          Click a color swatch to open the custom HSV picker.
+        </p>
+        <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;">
+
+          <!-- Static mock: bar ranges modal body -->
+          <div class="modal-content" style="width:400px;max-width:100%;">
+            <div class="modal-header">
+              <button type="button" class="close">&times;</button>
+              <h4 class="modal-title"><i class="fa-solid fa-chart-bar"></i> Bar Ranges &mdash; Thermostaat</h4>
+            </div>
+            <div class="modal-body">
+              <div class="dd-action-list-editor">
+                <div class="dd-al-items" id="demo-bar-ranges-rows">
+                  <div>
+                    <span style="flex:1;color:var(--dz-text-muted);font-size:0.78rem;">From</span>
+                    <strong style="min-width:36px;text-align:center;">0</strong>
+                    <span style="color:var(--dz-text-faint);">–</span>
+                    <strong style="min-width:36px;text-align:center;">15</strong>
+                    <input class="dd-range-color-picker" type="color" value="#29b6f6">
+                    <button class="btn btn-xs btn-danger" style="margin-left:auto;" onclick="demoLog('Delete range 0–15')"><i class="fa-solid fa-trash"></i></button>
+                  </div>
+                  <div>
+                    <span style="flex:1;color:var(--dz-text-muted);font-size:0.78rem;">From</span>
+                    <strong style="min-width:36px;text-align:center;">15</strong>
+                    <span style="color:var(--dz-text-faint);">–</span>
+                    <strong style="min-width:36px;text-align:center;">21</strong>
+                    <input class="dd-range-color-picker" type="color" value="#4caf7d">
+                    <button class="btn btn-xs btn-danger" style="margin-left:auto;" onclick="demoLog('Delete range 15–21')"><i class="fa-solid fa-trash"></i></button>
+                  </div>
+                  <div>
+                    <span style="flex:1;color:var(--dz-text-muted);font-size:0.78rem;">From</span>
+                    <strong style="min-width:36px;text-align:center;">21</strong>
+                    <span style="color:var(--dz-text-faint);">–</span>
+                    <strong style="min-width:36px;text-align:center;">28</strong>
+                    <input class="dd-range-color-picker" type="color" value="#f0a832">
+                    <button class="btn btn-xs btn-danger" style="margin-left:auto;" onclick="demoLog('Delete range 21–28')"><i class="fa-solid fa-trash"></i></button>
+                  </div>
+                  <div>
+                    <span style="flex:1;color:var(--dz-text-muted);font-size:0.78rem;">From</span>
+                    <strong style="min-width:36px;text-align:center;">28</strong>
+                    <span style="color:var(--dz-text-faint);">–</span>
+                    <strong style="min-width:36px;text-align:center;">40</strong>
+                    <input class="dd-range-color-picker" type="color" value="#e05555">
+                    <button class="btn btn-xs btn-danger" style="margin-left:auto;" onclick="demoLog('Delete range 28–40')"><i class="fa-solid fa-trash"></i></button>
+                  </div>
+                </div>
+                <div class="dd-al-add">
+                  <div class="dd-al-add-row">
+                    <input type="text" placeholder="From">
+                    <input type="text" placeholder="To">
+                    <input class="dd-range-color-picker" id="demo-rcp-input" type="color" value="#4e9af1">
+                    <button class="btn btn-sm btn-primary" onclick="demoLog('Add range')"><i class="fa-solid fa-plus"></i></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-danger pull-left" onclick="demoLog('Clear all')"><i class="fa-solid fa-trash"></i> Clear all</button>
+              <button class="btn btn-default pull-left" onclick="demoLog('Seed defaults')"><i class="fa-solid fa-wand-magic-sparkles"></i> Seed defaults</button>
+              <button class="btn btn-default" onclick="demoLog('Cancel')">Cancel</button>
+              <button class="btn btn-primary" onclick="demoLog('Save')">Save</button>
+            </div>
+          </div>
+
+          <!-- Info + result display -->
+          <div style="padding:4px 0;">
+            <p style="color:var(--dz-text-muted);font-size:.82rem;margin:0 0 8px;">
+              The color swatches above are injected by JS when the page loads.
+              Clicking one opens the HSV picker.
+            </p>
+            <p id="ng-rcp-demo-result" style="font-size:.82rem;color:var(--dz-text-muted);min-height:20px;"></p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── Action log ── -->
+      <div>
+        <div class="ng-demo-divider-title" style="padding-top:8px"><i class="fa-solid fa-terminal"></i> Action Log</div>
+        <div class="ng-demo-log" id="ng-demo-log">
+          <span style="opacity:.45">Buttons log here…</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── Domoticz stubs ── -->
+<script>
+(function () {
+
+  function log(msg) {
+    var el = document.getElementById('ng-demo-log');
+    if (!el) return;
+    el.innerHTML = '<span class="ng-demo-log-entry">' +
+      new Date().toLocaleTimeString() + '  ' + msg + '</span>';
+  }
+  window.demoLog = log;
+
+  window.$.setmin   = 5;
+  window.$.setmax   = 35;
+  window.$.setstep  = 0.5;
+  window.$.setunit  = '°C';
+  window.$.devIdx   = 1;
+
+  /* Setpoint stubs */
+  window.CloseSetpointPopup = function () { log('CloseSetpointPopup()'); };
+  window.SetSetpoint = function () {
+    var v = document.getElementById('popup_setpoint');
+    log('SetSetpoint → ' + (v ? parseFloat(v.value).toFixed(1) : '?') + ' °C');
+  };
+
+  /* Fan stubs */
+  window.CloseIthoPopup   = function () { log('CloseIthoPopup()'); };
+  window.IthoSendCommand  = function (c) { log('IthoSendCommand("' + c + '")'); };
+  window.CloseLucciPopup  = function () { log('CloseLucciPopup()'); };
+  window.LucciSendCommand = function (c) { log('LucciSendCommand("' + c + '")'); };
+  window.CloseFalmecPopup  = function () { log('CloseFalmecPopup()'); };
+  window.FalmecSendCommand = function (c) { log('FalmecSendCommand("' + c + '")'); };
+
+  /* Motor stubs */
+  window.CloseTherm3Popup = function () { log('CloseTherm3Popup()'); };
+  window.ThermUp    = function () { log('ThermUp()'); };
+  window.ThermDown  = function () { log('ThermDown()'); };
+  window.ThermUp2   = function () { log('ThermUp2()'); };
+  window.ThermDown2 = function () { log('ThermDown2()'); };
+  window.ThermStop  = function () { log('ThermStop()'); };
+
+  /* RFY stubs */
+  window.CloseRFYPopup    = function () { log('CloseRFYPopup()'); };
+  window.RFYEnableSunWind = function (on) { log('RFYEnableSunWind(' + on + ')'); };
+
+  /* ── RGBW canvas demo ── */
+  // subType: 'RGB' | 'RGBWW' | 'WW'
+  function buildRgbwDemo(containerId, subType, initialH, initialS, initialMode) {
+    var p = document.getElementById(containerId);
+    if (!p) return;
+
+    var isWWOnly = (subType === 'WW' || subType === 'CW');
+    var hasWhite = !isWWOnly && (subType === 'RGBW' || subType === 'RGBWW' || subType === 'RGBWWZ');
+    var WSIZE = 160, WR = WSIZE / 2;
+    var _h = initialH, _s = initialS;
+    var _mode = isWWOnly ? 'white' : (initialMode || 'color');
+    var _warmth = 0.3;
+
+    function hsvToRgb(h, s, v) {
+      var r,g,b,i=Math.floor(h*6),f=h*6-i;
+      var pp=v*(1-s),q=v*(1-f*s),t=v*(1-(1-f)*s);
+      switch(i%6){case 0:r=v;g=t;b=pp;break;case 1:r=q;g=v;b=pp;break;
+        case 2:r=pp;g=v;b=t;break;case 3:r=pp;g=q;b=v;break;
+        case 4:r=t;g=pp;b=v;break;default:r=v;g=pp;b=q;}
+      return {r:Math.round(r*255),g:Math.round(g*255),b:Math.round(b*255)};
+    }
+
+    function drawWheel(canvas) {
+      var ctx=canvas.getContext('2d'),img=ctx.createImageData(WSIZE,WSIZE),d=img.data;
+      for(var y=0;y<WSIZE;y++){for(var x=0;x<WSIZE;x++){
+        var dx=x-WR,dy=y-WR,dist=Math.sqrt(dx*dx+dy*dy),i4=(y*WSIZE+x)*4;
+        if(dist>WR){d[i4+3]=0;continue;}
+        var h=((Math.atan2(dy,dx)/(2*Math.PI))+1)%1,s=dist/WR,rgb=hsvToRgb(h,s,1);
+        d[i4]=rgb.r;d[i4+1]=rgb.g;d[i4+2]=rgb.b;d[i4+3]=255;
+      }}
+      ctx.putImageData(img,0,0);
+    }
+
+    function drawCursor(canvas) {
+      var ctx=canvas.getContext('2d'),angle=_h*2*Math.PI,rad=_s*(WR-5);
+      var cx=WR+rad*Math.cos(angle),cy=WR+rad*Math.sin(angle);
+      var rgb=hsvToRgb(_h,_s,1);
+      ctx.beginPath();ctx.arc(cx,cy,8,0,2*Math.PI);
+      ctx.fillStyle='rgb('+rgb.r+','+rgb.g+','+rgb.b+')';ctx.fill();
+      ctx.strokeStyle='#fff';ctx.lineWidth=2.5;ctx.stroke();
+    }
+
+    function drawWarmth(canvas) {
+      var ctx=canvas.getContext('2d'),g=ctx.createLinearGradient(0,0,canvas.width,0);
+      g.addColorStop(0,'#E8F4FD');g.addColorStop(.5,'#FFF5E0');g.addColorStop(1,'#FFB347');
+      ctx.fillStyle=g;
+      if(ctx.roundRect){ctx.beginPath();ctx.roundRect(0,0,canvas.width,canvas.height,12);ctx.fill();}
+      else{ctx.fillRect(0,0,canvas.width,canvas.height);}
+      var ctx2=canvas.getContext('2d'),cx=_warmth*(canvas.width-1);
+      ctx2.beginPath();ctx2.arc(cx,canvas.height/2,10,0,2*Math.PI);
+      var wr=Math.round(232+(255-232)*_warmth),wg=Math.round(244+(179-244)*_warmth),wb=Math.round(253+(71-253)*_warmth);
+      ctx2.fillStyle='rgb('+wr+','+wg+','+wb+')';ctx2.fill();
+      ctx2.strokeStyle='#fff';ctx2.lineWidth=2.5;ctx2.stroke();
+    }
+
+    function updatePreview() {
+      var sw=p.querySelector('.ng-rgbw-swatch'),hex=p.querySelector('.ng-rgbw-hex');
+      if(_mode==='color'){
+        var rgb=hsvToRgb(_h,_s,1);
+        if(sw)sw.style.background='rgb('+rgb.r+','+rgb.g+','+rgb.b+')';
+        var h2=function(n){return ('0'+n.toString(16)).slice(-2);};
+        if(hex)hex.textContent='#'+h2(rgb.r)+h2(rgb.g)+h2(rgb.b);
+      }else{
+        var wr2=Math.round(232+(255-232)*_warmth),wg2=Math.round(244+(179-244)*_warmth),wb2=Math.round(253+(71-253)*_warmth);
+        if(sw)sw.style.background='rgb('+wr2+','+wg2+','+wb2+')';
+        if(hex)hex.textContent=_warmth<.3?'Cool white':_warmth>.7?'Warm white':'Natural';
+      }
+    }
+
+    var colorActive = (_mode !== 'white');
+    var titleIcon  = isWWOnly ? 'fa-lightbulb' : 'fa-palette';
+    var titleLabel = isWWOnly ? 'White Light'  : 'Colour';
+    var setLabel   = isWWOnly ? 'Set Light'    : 'Set Colour';
+
+    var html =
+      '<button class="ng-popup-close" disabled style="cursor:default" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>' +
+      '<div class="ng-popup-title"><i class="fa-solid ' + titleIcon + '"></i> ' + titleLabel + '</div>';
+
+    if (isWWOnly) {
+      // WW-only: just warmth bar
+      html +=
+        '<div class="ng-rgbw-pane">' +
+          '<div class="ng-rgbw-warmth-wrap">' +
+            '<canvas id="'+containerId+'-warmth" width="220" height="36" style="display:block;border-radius:18px"></canvas>' +
+          '</div>' +
+          '<div class="ng-rgbw-warmth-labels"><span><i class="fa-solid fa-snowflake"></i> Cool</span><span>Warm <i class="fa-solid fa-fire"></i></span></div>' +
+        '</div>';
+    } else {
+      // RGB / RGBWW: colour wheel with optional white tab
+      if (hasWhite) {
+        html +=
+          '<div class="ng-rgbw-tabs">' +
+            '<button class="ng-rgbw-tab' + (colorActive?' ng-rgbw-tab--active':'') + '" data-mode="color" onclick="demoRgbwTab(\''+containerId+'\',\'color\')">' +
+              '<i class="fa-solid fa-circle-half-stroke"></i> Colour</button>' +
+            '<button class="ng-rgbw-tab' + (!colorActive?' ng-rgbw-tab--active':'') + '" data-mode="white" onclick="demoRgbwTab(\''+containerId+'\',\'white\')">' +
+              '<i class="fa-solid fa-sun"></i> White</button>' +
+          '</div>';
+      }
+      html +=
+        '<div class="ng-rgbw-pane" id="'+containerId+'-pane-color"' + (!colorActive?' style="display:none"':'') + '>' +
+          '<div class="ng-rgbw-wheel-wrap">' +
+            '<canvas id="'+containerId+'-canvas" width="'+WSIZE+'" height="'+WSIZE+'" style="border-radius:50%;display:block"></canvas>' +
+          '</div>' +
+        '</div>';
+      if (hasWhite) {
+        html +=
+          '<div class="ng-rgbw-pane" id="'+containerId+'-pane-white"' + (colorActive?' style="display:none"':'') + '>' +
+            '<div class="ng-rgbw-warmth-wrap">' +
+              '<canvas id="'+containerId+'-warmth" width="220" height="36" style="display:block;border-radius:18px"></canvas>' +
+            '</div>' +
+            '<div class="ng-rgbw-warmth-labels"><span><i class="fa-solid fa-snowflake"></i> Cool</span><span>Warm <i class="fa-solid fa-fire"></i></span></div>' +
+          '</div>';
+      }
+    }
+
+    html +=
+      '<div class="ng-rgbw-preview"><div class="ng-rgbw-swatch"></div><span class="ng-rgbw-hex">#4e9af1</span></div>' +
+      '<div class="ng-rgbw-slider-row">' +
+        '<i class="fa-solid fa-moon ng-rgbw-icon-dim"></i>' +
+        '<input type="range" class="ng-rgbw-slider" value="80" min="1" max="100" disabled>' +
+        '<i class="fa-solid fa-sun ng-rgbw-icon-bright"></i>' +
+      '</div>' +
+      '<div class="ng-rgbw-presets">' +
+        '<button class="ng-rgbw-preset" onclick="demoLog(\'On\')"><i class="fa-solid fa-power-off"></i> On</button>' +
+        (!isWWOnly ?
+          '<button class="ng-rgbw-preset" onclick="demoLog(\'Full\')"><i class="fa-solid fa-lightbulb"></i> Full</button>' +
+          '<button class="ng-rgbw-preset" onclick="demoLog(\'Night\')"><i class="fa-solid fa-moon"></i> Night</button>' : '') +
+        '<button class="ng-rgbw-preset ng-rgbw-preset--off" onclick="demoLog(\'Off\')"><i class="fa-regular fa-circle-xmark"></i> Off</button>' +
+      '</div>' +
+      '<button class="ng-sp-set-btn" onclick="demoLog(\'' + setLabel + '\')"><i class="fa-solid fa-check"></i> ' + setLabel + '</button>';
+
+    p.innerHTML = html;
+
+    var wc = document.getElementById(containerId + '-canvas');
+    if (wc) { drawWheel(wc); drawCursor(wc); }
+
+    var wtc = document.getElementById(containerId + '-warmth');
+    if (wtc) drawWarmth(wtc);
+
+    updatePreview();
+
+    // Store state on element for tab switching
+    p._rgbwState = { _h:_h,_s:_s,_mode:_mode,_warmth:_warmth,drawWheel:drawWheel,drawCursor:drawCursor,drawWarmth:drawWarmth,updatePreview:updatePreview,WR:WR,WSIZE:WSIZE };
+  }
+
+  window.demoRgbwTab = function(id, mode) {
+    var p = document.getElementById(id);
+    if (!p || !p._rgbwState) return;
+    var s = p._rgbwState;
+    s._mode = mode;
+    var tabs = p.querySelectorAll('.ng-rgbw-tab');
+    tabs.forEach(function(t){ t.classList.toggle('ng-rgbw-tab--active', t.dataset.mode===mode); });
+    var cp = document.getElementById(id+'-pane-color');
+    var wp = document.getElementById(id+'-pane-white');
+    if (cp) cp.style.display = mode==='color' ? '' : 'none';
+    if (wp) wp.style.display = mode==='white' ? '' : 'none';
+    s.updatePreview();
+  };
+
+  // Build RGBW demos immediately (no dependency on custom.js features)
+  buildRgbwDemo('ng-rgbw-demo-a', 'RGB',   0.58, 0.85, 'color');  // RGB: colour wheel only
+  buildRgbwDemo('ng-rgbw-demo-b', 'RGBWW', 0.58, 0.85, 'color'); // RGBWW: colour + white tabs
+  buildRgbwDemo('ng-rgbw-demo-c', 'WW',    0,    0,    'white'); // WW: white-only
+
+  /* ── Init arc previews once Feature 9 has redesigned the popups ── */
+  function tryInit() {
+    if (!window.ngShowSetpointArc) { setTimeout(tryInit, 100); return; }
+
+    // Main interactive setpoint: cold preset (unit from $.setunit stub above)
+    window.ngShowSetpointArc(8.0, 5, 35, 0.5, 8.0, window.$.setunit || '°C');
+
+    // Read-only preview clones
+    buildPreview('ng-sp-preview-b', 21.0, 5, 35);
+    buildPreview('ng-sp-preview-c', 30.0, 5, 35);
+  }
+
+  /* Build a static (non-interactive) arc preview in a separate container */
+  function buildPreview(containerId, val, min, max) {
+    var el = document.getElementById(containerId);
+    if (!el) return;
+
+    var CX=110, CY=115, R=80, START=150, SWEEP=240;
+    function d2r(d) { return d * Math.PI / 180; }
+    function pt(deg) {
+      return { x: +(CX+R*Math.cos(d2r(deg))).toFixed(2), y: +(CY+R*Math.sin(d2r(deg))).toFixed(2) };
+    }
+    function arc(s, sw) {
+      if (sw <= 0) return '';
+      var a=pt(s), b=pt(s+sw);
+      return 'M'+a.x+' '+a.y+' A'+R+' '+R+' 0 '+(sw>180?1:0)+' 1 '+b.x+' '+b.y;
+    }
+    function color(t) {
+      var stops=[[0,[30,144,255]],[.35,[0,200,210]],[.55,[76,175,125]],[.75,[240,168,50]],[1,[224,85,85]]];
+      for (var i=0;i<stops.length-1;i++) {
+        if (t>=stops[i][0]&&t<=stops[i+1][0]) {
+          var f=(t-stops[i][0])/(stops[i+1][0]-stops[i][0]),c=stops[i][1],d=stops[i+1][1];
+          return 'rgb('+[0,1,2].map(function(j){return Math.round(c[j]+f*(d[j]-c[j]));}).join(',')+')';
+        }
+      }
+      return t<.5?'rgb(30,144,255)':'rgb(224,85,85)';
+    }
+
+    var uid = containerId;
+    var t   = Math.max(0, Math.min(1, (val-min)/(max-min)));
+    var col = color(t);
+    var sw  = t * SWEEP;
+    var th  = pt(START+sw);
+    var sp  = pt(START);
+    var ep  = pt(START+SWEEP);
+
+    el.innerHTML =
+      '<div class="ng-popup-title"><i class="fa-solid fa-thermometer-half"></i> Setpoint</div>' +
+      '<div class="ng-sp-actual-row">' +
+        '<span class="ng-sp-actual-label">Current</span>' +
+        '<span class="ng-sp-actual-val">' + val.toFixed(1) + ' °</span>' +
+      '</div>' +
+      '<div class="ng-sp-arc-wrap"><svg viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block">' +
+        '<defs>' +
+          '<filter id="g'+uid+'" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur in="SourceGraphic" stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>' +
+          '<filter id="s'+uid+'" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="rgba(0,0,0,.45)"/></filter>' +
+        '</defs>' +
+        '<path class="ng-sp-track" d="'+arc(START,SWEEP)+'" fill="none" stroke-width="10" stroke-linecap="round"/>' +
+        (sw>=2 ? '<path d="'+arc(START,sw)+'" fill="none" stroke="'+col+'" stroke-width="10" stroke-linecap="round" filter="url(#g'+uid+')"/>' : '') +
+        '<circle cx="'+th.x+'" cy="'+th.y+'" r="11" fill="'+col+'" filter="url(#s'+uid+')"/>' +
+        '<circle cx="'+sp.x+'" cy="'+sp.y+'" r="5" class="ng-sp-cold-dot"/>' +
+        '<circle cx="'+ep.x+'" cy="'+ep.y+'" r="5" class="ng-sp-hot-dot"/>' +
+        '<text x="'+CX+'" y="'+(CY-5)+'" text-anchor="middle" dominant-baseline="middle" class="ng-sp-val-big" fill="'+col+'">'+val.toFixed(1)+'</text>' +
+        '<text x="'+CX+'" y="'+(CY+23)+'" text-anchor="middle" class="ng-sp-unit">°</text>' +
+      '</svg></div>' +
+      '<div class="ng-sp-controls">' +
+        '<button class="ng-sp-btn" disabled><i class="fa-solid fa-minus"></i></button>' +
+        '<div class="ng-sp-readout" style="color:'+col+'">'+val.toFixed(1)+'°</div>' +
+        '<button class="ng-sp-btn" disabled><i class="fa-solid fa-plus"></i></button>' +
+      '</div>' +
+      '<button class="ng-sp-set-btn" disabled><i class="fa-solid fa-check"></i> Set</button>';
+  }
+
+  setTimeout(tryInit, 150);
+
+  // Show picked color in the result div whenever any dd-range-color-picker value changes
+  document.addEventListener('change', function (e) {
+    if (!e.target.classList.contains('dd-range-color-picker')) return;
+    var hex = e.target.value;
+    var el = document.getElementById('ng-rcp-demo-result');
+    if (el) el.innerHTML = 'Picked: <span style="display:inline-block;width:13px;height:13px;border-radius:50%;background:' + hex + ';vertical-align:middle;margin-right:4px;border:1px solid var(--dz-border)"></span><code>' + hex + '</code>';
+    log('Color picked → ' + hex);
+  });
+
+})();
+</script>
+
+</body>
+</html>

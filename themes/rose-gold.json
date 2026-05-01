@@ -1,0 +1,26 @@
+{
+  "name": "Rose Gold",
+  "description": "Soft pink-copper tones on warm gray — elegant and refined",
+  "icon": "fa-solid fa-gem",
+  "preview": { "bg": "#201a1e", "surface": "#2a2226", "accent": "#e8a0b0", "text": "#f0e4e8" },
+  "colors": {
+    "accentColor": "#e8a0b0",
+    "dangerColor": "#e05555",
+    "warningColor": "#f0a832",
+    "successColor": "#66bb6a",
+    "accentColorLight": "#c06078",
+    "dangerColorLight": "#c62828",
+    "warningColorLight": "#c07818",
+    "successColorLight": "#2e7d32",
+    "bgColor": "#2a2226",
+    "surfaceColor": "#332a2e",
+    "borderColor": "#4a3840",
+    "textColor": "#f0e4e8",
+    "bgColorLight": "#fdf6f8",
+    "surfaceColorLight": "#faf0f3",
+    "borderColorLight": "#e0c4cc",
+    "textColorLight": "#2a1820",
+    "pageBgColor": "#201a1e",
+    "pageBgColorLight": "#f8f0f3"
+  }
+}

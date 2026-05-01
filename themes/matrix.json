@@ -1,0 +1,26 @@
+{
+  "name": "Matrix",
+  "description": "Green phosphor on black — follow the white rabbit",
+  "icon": "fa-solid fa-terminal",
+  "preview": { "bg": "#0a0f0a", "surface": "#0f1a0f", "accent": "#00e676", "text": "#b9f6ca" },
+  "colors": {
+    "accentColor": "#00e676",
+    "dangerColor": "#ff1744",
+    "warningColor": "#76ff03",
+    "successColor": "#00e676",
+    "accentColorLight": "#00a152",
+    "dangerColorLight": "#d50000",
+    "warningColorLight": "#558b2f",
+    "successColorLight": "#00803e",
+    "bgColor": "#0f1a0f",
+    "surfaceColor": "#142014",
+    "borderColor": "#1b3a1b",
+    "textColor": "#b9f6ca",
+    "bgColorLight": "#f0faf0",
+    "surfaceColorLight": "#e8f5e9",
+    "borderColorLight": "#a5d6a7",
+    "textColorLight": "#0a1f0a",
+    "pageBgColor": "#0a0f0a",
+    "pageBgColorLight": "#e8f5e9"
+  }
+}

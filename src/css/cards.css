@@ -1,0 +1,901 @@
+/* ══════════════════════════════════════════════════════════════════
+   6.  DEVICE / WIDGET CARDS  (the core of the theme)
+       Redesigned: clean surface card with compact name chip,
+       hero value, smaller icon with background circle,
+       and muted metadata footer.
+       (Inspired by idea/index.html node-card layout)
+
+       Card DOM (all tds are display:block):
+       ┌─ td#name        ← 1st-child   (name chip)
+       ├─ td#bigtext     ← 1st+1       (hero value)
+       ├─ td#img/img1    ← 1st+2       (primary icon)
+       ├─ td#img2        ← 1st+3  *    (2nd icon – blinds/groups only)
+       ├─ td#img3        ← 1st+4  *    (3rd icon – blinds+stop only)
+       ├─ td#status      ← varies      (status / selector buttons)
+       ├─ td#lastupdate  ← varies      (timestamp footer)
+       ├─ td.input       ← varies  *   (dimmer slider)
+       └─ td.options     ←         *   (tab-view: fav + log/edit/etc.)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Helper: all table ID variants */
+/* (written once and re-used via CSS custom-property-like selectors) */
+
+
+/* ── 6a. Card container (.item.itemBlock div) ─────────────────── */
+/* The .item.itemBlock div IS the flex item, so it stretches to the  */
+/* row height automatically via align-items:stretch on the flex      */
+/* container. All visual card appearance lives here so that hover,   */
+/* border and background fill the full equal-height card box.        */
+
+div.item.itemBlock {
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-radius: var(--dz-widget-border-radius);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    padding: 12px 14px 19px;
+    box-sizing: border-box;
+    min-height: 110px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+    overflow: visible;
+    position: relative;
+    color: var(--dz-text);
+    font-family: inherit;
+}
+
+    div.item.itemBlock:hover {
+        background: var(--dz-surface-3);
+        border-color: rgba(var(--dz-accent-rgb), 0.4);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+        transform: translateY(-1px);
+    }
+
+/* Temperature / weather widgets carry .itemBlock on the custom     */
+/* element tag, while the inner div only gets .item — restore card  */
+/* visuals and the positioning context for absolute icons.          */
+.itemBlock > div.item {
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-radius: var(--dz-widget-border-radius);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    padding: 12px 14px 10px;
+    box-sizing: border-box;
+    min-height: 120px;
+    height: 100%;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+    overflow: visible;
+    position: relative;
+    color: var(--dz-text);
+    font-family: inherit;
+}
+
+.itemBlock:hover > div.item {
+    background: var(--dz-surface-3);
+    border-color: rgba(var(--dz-accent-rgb), 0.4);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    transform: translateY(-1px);
+}
+
+div.item.itemBlock > section {
+    height: 100%;
+}
+
+body table[id^="itemtable"],
+body table[id^="itemtable"] tbody,
+body table[id^="itemtable"] tbody tr {
+    width: 100%;
+    height: 100%;
+}
+
+    body table[id^="itemtable"] tbody tr {
+        display: flex;
+        flex-direction: column;
+    }
+
+/* Reset the inner <tr> — it is now a plain layout container.        */
+/* Padding and background have moved to .item.itemBlock above.       */
+body table#itemtable tbody tr,
+body table#itemtablenotype tbody tr,
+body table#itemtablenostatus tbody tr,
+body table#itemtablesmall tbody tr,
+body table#itemtabledoubleicon tbody tr,
+body table#itemtabletrippleicon tbody tr,
+body table#itemtablesmalldoubleicon tbody tr,
+body table#itemtablesmalltrippleicon tbody tr {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    color: inherit !important;
+    font-family: inherit !important;
+    transition: none !important;
+}
+
+
+/* ── 6b. Name chip (td:first-child / td#name) ────────────────── */
+
+body table#itemtable tr td:first-child,
+body table#itemtablenotype tr td:first-child,
+body table#itemtablenostatus tr td:first-child,
+body table#itemtablesmall tr td:first-child,
+body table#itemtabledoubleicon tr td:first-child,
+body table#itemtabletrippleicon tr td:first-child,
+body table#itemtablesmalldoubleicon tr td:first-child,
+body table#itemtablesmalltrippleicon tr td:first-child {
+    display: inline-block !important;
+    float: none !important;
+    width: auto !important;
+    max-width: calc(100% - 10px);
+    background: rgba(var(--dz-accent-rgb), 0.10) !important;
+    color: var(--dz-text-soft) !important;
+    border: none !important;
+    border-radius: 6px !important;
+    padding: 2px 10px !important;
+    margin-bottom: 6px !important;
+    font-family: inherit !important;
+    font-size: 0.72rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    line-height: 1.6 !important;
+    height: auto !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background 0.2s, color 0.2s;
+}
+
+    body table#itemtabletrippleicon tr td:first-child + td + td + td + td + td + td + td {
+        color: var(--dz-text-faint) !important;
+        font-size: 0.68rem !important;
+        padding-left: 0 !important;
+        padding-top: 10px !important;
+    }
+
+body table#itemtable tr:hover td:first-child,
+body table#itemtablenotype tr:hover td:first-child,
+body table#itemtablenostatus tr:hover td:first-child,
+body table#itemtablesmall tr:hover td:first-child,
+body table#itemtabledoubleicon tr:hover td:first-child,
+body table#itemtabletrippleicon tr:hover td:first-child,
+body table#itemtablesmalldoubleicon tr:hover td:first-child,
+body table#itemtablesmalltrippleicon tr:hover td:first-child {
+    background: rgba(var(--dz-accent-rgb), 0.18) !important;
+    color: var(--dz-text) !important;
+}
+
+/* Status-class colour overrides on the name chip */
+div.item.statusNormal td#name {
+    background-color: rgba(var(--dz-accent-rgb), 0.10) !important;
+}
+
+div.item.statusProtected td#name {
+    background-color: rgba(78, 100, 241, 0.15) !important;
+    color: #8da0f0 !important;
+}
+
+div.item.statusTimeout td#name {
+    background-color: rgba(var(--dz-danger-rgb), 0.15) !important;
+    color: var(--dz-danger-light) !important;
+}
+
+div.item.statusLowBattery td#name {
+    background-color: rgba(var(--dz-warning-rgb), 0.15) !important;
+    color: var(--dz-warning-light) !important;
+}
+
+div.item.statusDisabled td#name {
+    background-color: rgba(100, 100, 110, 0.12) !important;
+    color: var(--dz-text-muted) !important;
+}
+
+div.item.statusDisabled {
+    opacity: 0.75;
+}
+
+
+/* ── 6c. Hero value (td#bigtext — 2nd td) ────────────────────── */
+
+body table#itemtable tr td:first-child + td,
+body table#itemtablenotype tr td:first-child + td,
+body table#itemtablenostatus tr td:first-child + td,
+body table#itemtablesmall tr td:first-child + td,
+body table#itemtabledoubleicon tr td:first-child + td,
+body table#itemtabletrippleicon tr td:first-child + td,
+body table#itemtablesmalldoubleicon tr td:first-child + td,
+body table#itemtablesmalltrippleicon tr td:first-child + td {
+    float: none !important;
+    display: block !important;
+    margin: 0 0 2px 0 !important;
+    padding-left: calc(48px * var(--ng-icon-scale, 1)) !important;
+    min-height: calc(24px + (36px * (var(--ng-icon-scale, 1) - 1)));
+    font-size: 1.15rem !important;
+    font-weight: 700 !important;
+    color: var(--dz-text) !important;
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Double/triple icon cards need extra left-padding for multiple icons */
+body table#itemtabledoubleicon tr td:first-child + td,
+body table#itemtablesmalldoubleicon tr td:first-child + td {
+    padding-left: calc(90px * var(--ng-icon-scale, 1)) !important;
+}
+
+body table#itemtabletrippleicon tr td:first-child + td,
+body table#itemtablesmalltrippleicon tr td:first-child + td {
+    padding-left: calc(132px * var(--ng-icon-scale, 1)) !important;
+}
+
+
+    /* ── 6d. Primary icon (td#img — 3rd td) ──────────────────────── */
+
+    body table#itemtable tr td:first-child + td + td,
+    body table#itemtablenotype tr td:first-child + td + td,
+    body table#itemtablenostatus tr td:first-child + td + td,
+    body table#itemtablesmall tr td:first-child + td + td,
+    body table#itemtabledoubleicon tr td:first-child + td + td,
+    body table#itemtabletrippleicon tr td:first-child + td + td,
+    body table#itemtablesmalldoubleicon tr td:first-child + td + td,
+    body table#itemtablesmalltrippleicon tr td:first-child + td + td {
+        position: absolute !important;
+        top: 27px !important;
+        left: 0px !important;
+        float: none !important;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        width: calc(36px * var(--ng-icon-scale, 1)) !important;
+        height: calc(36px * var(--ng-icon-scale, 1)) !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: rgba(var(--dz-accent-rgb), 0.08);
+        border-radius: 10px;
+        overflow: hidden;
+        border: none !important;
+        transition: background 0.2s;
+    }
+
+body table[id^="itemtable"] tr:hover td:first-child + td + td {
+    background: rgba(var(--dz-accent-rgb), 0.14);
+}
+
+body table#itemtable tr td:first-child + td + td img,
+body table#itemtablenotype tr td:first-child + td + td img,
+body table#itemtablenostatus tr td:first-child + td + td img,
+body table#itemtablesmall tr td:first-child + td + td img,
+body table#itemtabledoubleicon tr td:first-child + td + td img,
+body table#itemtabletrippleicon tr td:first-child + td + td img,
+body table#itemtablesmalldoubleicon tr td:first-child + td + td img,
+body table#itemtablesmalltrippleicon tr td:first-child + td + td img {
+    width: calc(30px * var(--ng-icon-scale, 1)) !important;
+    height: calc(30px * var(--ng-icon-scale, 1)) !important;
+    display: block;
+    object-fit: contain;
+}
+
+
+/* ── 6e. Second icon (td#img2 — 4th td) ──────────────────────── */
+
+body table#itemtabledoubleicon tr td:first-child + td + td + td,
+body table#itemtabletrippleicon tr td:first-child + td + td + td,
+body table#itemtablesmalldoubleicon tr td:first-child + td + td + td,
+body table#itemtablesmalltrippleicon tr td:first-child + td + td + td {
+    position: absolute !important;
+    top: 27px !important;
+    left: calc(38px * var(--ng-icon-scale, 1)) !important;
+    float: none !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: calc(36px * var(--ng-icon-scale, 1)) !important;
+    height: calc(36px * var(--ng-icon-scale, 1)) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: rgba(var(--dz-accent-rgb), 0.08);
+    border-radius: 10px;
+    overflow: hidden;
+    border: none !important;
+    transition: background 0.2s;
+}
+
+body table#itemtabledoubleicon tr:hover td:first-child + td + td + td,
+body table#itemtablesmalldoubleicon tr:hover td:first-child + td + td + td {
+    background: rgba(var(--dz-accent-rgb), 0.14);
+}
+
+body table#itemtabledoubleicon tr td:first-child + td + td + td img,
+body table#itemtabletrippleicon tr td:first-child + td + td + td img,
+body table#itemtablesmalldoubleicon tr td:first-child + td + td + td img,
+body table#itemtablesmalltrippleicon tr td:first-child + td + td + td img {
+    width: calc(30px * var(--ng-icon-scale, 1)) !important;
+    height: calc(30px * var(--ng-icon-scale, 1)) !important;
+    display: block;
+    object-fit: contain;
+}
+
+/* Triple icon third button (td#img3 — 5th td) */
+body table#itemtabletrippleicon tr td:first-child + td + td + td + td,
+body table#itemtablesmalltrippleicon tr td:first-child + td + td + td + td {
+    position: absolute !important;
+    top: 27px !important;
+    left: calc(76px * var(--ng-icon-scale, 1)) !important;
+    float: none !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: calc(36px * var(--ng-icon-scale, 1)) !important;
+    height: calc(36px * var(--ng-icon-scale, 1)) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: rgba(var(--dz-accent-rgb), 0.08);
+    border-radius: 10px;
+    overflow: hidden;
+    border: none !important;
+    transition: background 0.2s;
+}
+
+body table#itemtabletrippleicon tr:hover td:first-child + td + td + td + td,
+body table#itemtablesmalltrippleicon tr:hover td:first-child + td + td + td + td {
+    background: rgba(var(--dz-accent-rgb), 0.14);
+}
+
+body table#itemtabletrippleicon tr td:first-child + td + td + td + td img,
+body table#itemtablesmalltrippleicon tr td:first-child + td + td + td + td img {
+    width: calc(30px * var(--ng-icon-scale, 1)) !important;
+    height: calc(30px * var(--ng-icon-scale, 1)) !important;
+    display: block;
+    object-fit: contain;
+}
+
+
+/* ── 6f. Status line (td#status) ──────────────────────────────── */
+/*    Must clear the absolute icons and sit below the value line.   */
+
+body table[id^="itemtable"] tr td#status {
+    display: block !important;
+    float: none !important;
+    clear: both;
+    position: relative;
+    z-index: 1;
+    padding-left: calc(48px * var(--ng-icon-scale, 1)) !important;
+    min-height: calc(0px + (12px * (var(--ng-icon-scale, 1) - 1)));
+    margin-top: 2px !important;
+    font-size: 0.78rem !important;
+    font-weight: 500;
+    color: var(--dz-text-muted) !important;
+    line-height: 1.4;
+    min-height: 0;
+}
+
+/* Double/triple icon cards: match the bigtext padding */
+body table#itemtabledoubleicon tr td#status,
+body table#itemtablesmalldoubleicon tr td#status {
+    padding-left: calc(90px * var(--ng-icon-scale, 1)) !important;
+}
+
+body table#itemtabletrippleicon tr td#status,
+body table#itemtablesmalltrippleicon tr td#status {
+    padding-left: calc(132px * var(--ng-icon-scale, 1)) !important;
+}
+
+.ui-dialog-titlebar,
+.ui-state-default:not(.ui-slider-handle),
+.ui-widget-header:not(.ui-slider-handle):not(.ui-slider-range),
+.ui-timepicker-div .ui-slider-handle {
+    background-image: none !important;
+    background-color: transparent !important;
+}
+
+.ui-dialog-titlebar,
+.ui-state-default:not(.ui-slider-handle),
+.ui-widget-header:not(.ui-slider-handle, .ui-slider-range) {
+    background-image: none !important;
+}
+
+.ui-widget-header {
+    background: none !important;
+    background-image: none !important;
+    background-color: transparent !important;
+}
+
+.dd-select {
+    border-radius: 2px;
+    border: solid 1px var(--dz-border-b);
+    position: relative;
+    cursor: pointer;
+    background: var(--dz-surface) !important;
+}
+
+.dd-options {
+    border: solid 1px var(--dz-border-b);
+    border-top-width: 1px;
+    border-top-style: solid;
+    border-top-color: var(--dz-border-b);
+    border-top: none;
+    list-style: none;
+    box-shadow: 0px 1px 5px rgba(0, 0, 0, 0.15);
+    display: none;
+    position: absolute;
+    z-index: 2000;
+    margin: 0;
+    padding: 0;
+    background: var(--dz-surface) !important;
+    overflow: auto;
+}
+
+/* ── 6g. Last update line (td#lastupdate) ─────────────────────── */
+
+body table[id^="itemtable"] tr td#lastupdate {
+    display: none !important;
+    float: none !important;
+    clear: both;
+    padding-left: 0 !important;
+    margin-top: 8px !important;
+    padding-top: 6px !important;
+    border-top: 0px solid rgba(var(--dz-overlay-rgb), 0.05) !important;
+    font-size: 0.68rem !important;
+    color: var(--dz-text-faint) !important;
+    font-style: normal !important;
+    line-height: 1.5;
+    position: absolute;
+    bottom: -18px;
+    right: -7px;
+}
+
+.itemBlock .ui-selectmenu-button {
+    width: 93%;
+}
+
+
+body table[id^="itemtable"] tr td#lastupdate span[style] {
+    font-style: normal !important;
+    color: var(--dz-text-faint) !important;
+}
+
+dztemperaturewidget .dz-card-footer {
+    margin-top: -5px !important;
+}
+
+dzweatherwidget .dz-card-footer {
+    margin-top: -5px !important;
+}
+
+.dz-card-footer .dz-time {
+    white-space: nowrap;
+    flex-shrink: 0;
+    position: absolute;
+    right: 5px;
+    font-size: 0.68rem !important;
+    color: var(--dz-text-faint) !important;
+    font-style: normal !important;
+    line-height: 1.5;
+}
+
+body table[id^="itemtable"] tr td#type {
+    display: block !important;
+    float: none !important;
+    clear: both;
+    padding-left: calc(48px * var(--ng-icon-scale, 1)) !important;
+    padding-top: calc(4px + (18px * (var(--ng-icon-scale, 1) - 1)));
+    font-size: 0.68rem !important;
+    color: var(--dz-text-faint) !important;
+    font-style: normal !important;
+    margin-bottom: 35px;
+}
+
+/* ── 6h. Dimmer / blinds slider ──────────────────────────────── */
+/*    The HTML has inline margin-left (50/94/124px) sized for the    */
+/*    original full-width name bar layout. The JS ResizeDimSliders   */
+/*    also sets an inline pixel width based on #name width.          */
+/*    Both must be overridden to fit the new card layout.            */
+
+/* Dashboard slider container (td.input) */
+body table[id^="itemtable"] tr td.input {
+    display: block !important;
+    clear: both;
+    float: none !important;
+    position: relative;
+    width: auto !important;
+    padding: 8px 10px 4px 10px !important;
+    margin-top: 6px !important;
+    border-top: 1px solid rgba(var(--dz-overlay-rgb), 0.04);
+    overflow: visible !important;
+}
+
+/* ALL .dimslider divs inside any card — override inline styles.
+   Covers dashboard (td.input .dimslider) and tab-view (td#type .dimslider). */
+body table[id^="itemtable"] tr .dimslider,
+body table[id^="itemtable"] tr div[class*="dimslider"],
+body table[id^="itemtable"] tr .dimsmall,
+body table[id^="itemtable"] tr .dimsmall3 {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    margin-top: 4px !important;
+    margin-bottom: 4px !important;
+    width: calc(100% - 4px) !important;
+    min-width: 60px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    visibility: visible !important;
+    overflow: visible !important;
+}
+
+#itemtabletrippleicon .dimslider {
+    margin-top: 10px !important;
+}
+
+/* jQuery UI slider track — clean slim track */
+body table[id^="itemtable"] tr .dimslider.ui-slider,
+body table[id^="itemtable"] tr .ui-slider {
+    background: var(--dz-border) !important;
+    background-image: none !important;
+    border: none !important;
+    border-radius: 6px !important;
+    height: 6px !important;
+    margin-top: 10px !important;
+    margin-bottom: 10px !important;
+    position: relative;
+    overflow: visible !important;
+}
+
+    /* Slider fill / range */
+    body table[id^="itemtable"] tr .ui-slider .ui-slider-range {
+        background: linear-gradient(90deg, var(--dz-accent), var(--dz-accent-light)) !important;
+        background-image: none !important;
+        border-radius: 6px !important;
+        height: 100% !important;
+        top: 0 !important;
+    }
+
+    /* Slider handle */
+    body table[id^="itemtable"] tr .ui-slider .ui-slider-handle {
+        background: var(--dz-accent) !important;
+        background-image: none !important;
+        border: 2px solid #fff !important;
+        border-radius: 50% !important;
+        width: 18px !important;
+        height: 18px !important;
+        top: -7px !important;
+        margin-left: -9px !important;
+        cursor: grab !important;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3) !important;
+        outline: none !important;
+        transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+        body table[id^="itemtable"] tr .ui-slider .ui-slider-handle:hover,
+        body table[id^="itemtable"] tr .ui-slider .ui-slider-handle:focus {
+            background: var(--dz-accent-light) !important;
+            transform: scale(1.15);
+            box-shadow: 0 0 0 4px rgba(var(--dz-accent-rgb), 0.2), 0 1px 4px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        body table[id^="itemtable"] tr .ui-slider .ui-slider-handle:active {
+            cursor: grabbing !important;
+            transform: scale(1.1);
+        }
+
+
+/* ── 6i. Selector buttons → chip / pill style ─────────────────── */
+/*    (Like idea/index.html .filter-btn)                            */
+
+dztemperaturewidget table[id^="itemtablenotype"] tr td#status,
+dzweatherwidget table[id^="itemtablenotype"] tr td#status {
+    margin-bottom: 40px !important;
+}
+
+dztemperaturewidget table[id^="itemtablenotype"] tr td.options,
+dzweatherwidget table[id^="itemtablenotype"] tr td.options {
+    position: absolute !important;
+    bottom: -10px !important;
+    margin-top: 0 !important;
+}
+
+
+body table[id^="itemtable"] tr td#status .btn-group {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 5px !important;
+    margin-left: 0 !important;
+    margin-top: 4px !important;
+}
+
+    body table[id^="itemtable"] tr td#status .btn-group .btn {
+        font-size: 0.72rem !important;
+        padding: 3px 12px !important;
+        border-radius: 20px !important;
+        border: 1px solid var(--dz-border-b) !important;
+        background: var(--dz-surface) !important;
+        color: var(--dz-text-muted) !important;
+        font-weight: 500;
+        line-height: 1.4;
+        white-space: normal !important;
+        transition: all 0.15s;
+        box-shadow: none !important;
+        text-shadow: none !important;
+        background-image: none !important;
+    }
+
+        body table[id^="itemtable"] tr td#status .btn-group .btn:hover {
+            background: var(--dz-border) !important;
+            color: var(--dz-text) !important;
+            border-color: var(--dz-accent) !important;
+        }
+
+        body table[id^="itemtable"] tr td#status .btn-group .btn-selected,
+        body table[id^="itemtable"] tr td#status .btn-group .btn.active,
+        body table[id^="itemtable"] tr td#status .btn-group .btn-selected:hover {
+            background: var(--dz-accent) !important;
+            color: #fff !important;
+            border-color: var(--dz-accent) !important;
+        }
+
+/* Standalone action buttons in td#status (e.g. smoke detector Reset button) —
+   direct <a> or <input> children that are NOT inside a .btn-group                */
+body table[id^="itemtable"] tr td#status > a.btnstyle,
+body table[id^="itemtable"] tr td#status > a.btnstyle3,
+body table[id^="itemtable"] tr td#status > input[type="button"],
+body table[id^="itemtable"] tr td#status > button {
+    display: inline-block;
+    font-size: 0.72rem !important;
+    padding: 3px 12px !important;
+    border-radius: 20px !important;
+    border: 1px solid var(--dz-border-b) !important;
+    background: var(--dz-surface) !important;
+    background-image: none !important;
+    color: var(--dz-text-muted) !important;
+    font-weight: 500;
+    line-height: 1.4;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+    vertical-align: middle;
+    margin-top: 4px;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    transition: all 0.15s;
+}
+
+    body table[id^="itemtable"] tr td#status > a.btnstyle:hover,
+    body table[id^="itemtable"] tr td#status > a.btnstyle3:hover,
+    body table[id^="itemtable"] tr td#status > input[type="button"]:hover,
+    body table[id^="itemtable"] tr td#status > button:hover {
+        background: var(--dz-border) !important;
+        color: var(--dz-text) !important;
+        border-color: var(--dz-accent) !important;
+    }
+
+/* Selector dropdown (SelectorStyle 1) */
+body table[id^="itemtable"] tr td#status .selectorlevels select,
+body table[id^="itemtable"] tr td#status select {
+    background: var(--dz-surface) !important;
+    color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 8px !important;
+    padding: 3px 8px !important;
+    font-size: 0.78rem !important;
+}
+
+/* jQuery UI selectmenu inside cards */
+body table[id^="itemtable"] .ui-selectmenu-button {
+    background: var(--dz-surface) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-radius: 8px !important;
+    color: var(--dz-text) !important;
+}
+
+
+/* ── 6j. Card entrance animation ──────────────────────────────── */
+
+body table[id^="itemtable"] tbody tr {
+    animation: cardSlideIn 0.35s ease both;
+}
+
+@keyframes cardSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+/* ── 6k. Type label for full-size cards ───────────────────────── */
+
+body table#itemtable tr td:first-child + td + td + td + td + td:before,
+body table#itemtablenotype tr td:first-child + td + td + td + td:before,
+body table#itemtablenostatus tr td:first-child + td + td + td + td + td:before {
+    color: var(--dz-text-faint) !important;
+    font-size: 0.68rem !important;
+}
+
+body table#itemtable tr td:first-child + td + td + td + td + td,
+body table#itemtablenostatus tr td:first-child + td + td + td + td + td {
+    color: var(--dz-text-faint) !important;
+    font-size: 0.68rem !important;
+    padding-left: 0 !important;
+    margin-top: 10px;
+}
+
+    /* Description / detail row in full-size cards */
+    body table#itemtable tr td:first-child + td + td + td + td + td + td,
+    body table#itemtablenotype tr td:first-child + td + td + td + td + td,
+    body table#itemtablenostatus tr td:first-child + td + td + td + td + td + td {
+        color: var(--dz-text-muted) !important;
+        font-size: 0.78rem !important;
+        padding-top: 4px !important;
+        padding-left: 0 !important;
+        border-top: 0px solid rgba(var(--dz-overlay-rgb), 0.05) !important;
+        margin-bottom: 10px;
+    }
+
+
+/* ── 6l. Tab-view options row (favorite star + Log/Edit/etc.) ── */
+/*    Style the .btnsmall chips and favorite star                   */
+
+body table[id^="itemtable"] tr td.options {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 0 2px !important;
+    margin-top: auto !important;
+    border-top: 0px solid rgba(var(--dz-overlay-rgb), 0.05) !important;
+    clear: both;
+    position: absolute;
+    bottom: -15px;
+}
+
+    /* Favorite star icon — FA replacement + PNG fallback */
+    body table[id^="itemtable"] tr td.options img[src*="favorite"] {
+        width: 18px !important;
+        height: 18px !important;
+        opacity: 0.6;
+        transition: opacity 0.15s, transform 0.15s;
+        vertical-align: middle;
+        flex-shrink: 0;
+    }
+
+        body table[id^="itemtable"] tr td.options img[src*="favorite"]:hover {
+            opacity: 1;
+            transform: scale(1.15);
+        }
+
+    body table[id^="itemtable"] tr td.options i.dz-fa-fav {
+        font-size: 0.9rem;
+        flex-shrink: 0;
+    }
+
+    /* Remove the &nbsp; spacers after the star */
+    body table[id^="itemtable"] tr td.options span {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    /* Log / Edit / Timers / Notifications → chip style */
+    body table[id^="itemtable"] tr td.options .btnsmall,
+    body table[id^="itemtable"] tr td.options .btnsmall-sel,
+    body table[id^="itemtable"] tr td.options .btnsmall-dis {
+        font-size: 0.68rem !important;
+        padding: 2px 8px !important;
+        border-radius: 20px !important;
+        border: 1px solid var(--dz-border-b) !important;
+        background: var(--dz-surface) !important;
+        background-image: none !important;
+        color: var(--dz-text-soft) !important;
+        font-weight: 500;
+        line-height: 1.4;
+        text-decoration: none;
+        transition: all 0.15s;
+        white-space: nowrap;
+        display: inline-block;
+    }
+
+        body table[id^="itemtable"] tr td.options .btnsmall:hover {
+            background: var(--dz-border) !important;
+            color: var(--dz-text) !important;
+            border-color: var(--dz-accent) !important;
+        }
+
+    /* Active / "has items" variant (e.g. Timers active, Notifications set) */
+    body table[id^="itemtable"] tr td.options .btnsmall-sel {
+        background: rgba(var(--dz-accent-rgb), 0.15) !important;
+        color: var(--dz-accent) !important;
+        border-color: rgba(var(--dz-accent-rgb), 0.4) !important;
+    }
+
+        body table[id^="itemtable"] tr td.options .btnsmall-sel:hover {
+            background: rgba(var(--dz-accent-rgb), 0.25) !important;
+            color: #fff !important;
+            border-color: var(--dz-accent) !important;
+        }
+
+    /* Disabled variant */
+    body table[id^="itemtable"] tr td.options .btnsmall-dis {
+        opacity: 0.4;
+        cursor: default;
+    }
+
+
+/* ── 6l-fix. Scene tab: prevent description-row nth-child collision ─
+   td.options in itemtablenostatus is the 7th td, which accidentally
+   matches the "description row" nth-child rule (specificity 0,2,8).
+   Reset the cosmetic bleed-through here with equal or higher specificity. */
+body table#itemtablenostatus tr td.options {
+    color: var(--dz-text-soft) !important;
+    font-size: inherit !important;
+    padding-top: 8px !important;
+    margin-bottom: 0 !important;
+}
+
+/* ── 6m. Text device cards (.dz-text-device) ──────────────────── */
+/*    "General, Text" devices contain long messages that don't fit   */
+/*    the hero-value style. The JS moves the full text into #status  */
+/*    as a .dz-text-msg div. The bigtext shows a short preview.     */
+
+.dz-text-device table[id^="itemtable"] tr td#bigtext {
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    color: var(--dz-text-soft) !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-height: 0 !important;
+    line-height: 1.3;
+    display: none !important;
+}
+
+.dz-text-device table[id^="itemtable"] tr td#status {
+    margin-top: 4px !important;
+}
+
+.dz-text-msg {
+    font-family: 'Courier New', 'Consolas', ui-monospace, monospace;
+    font-size: 0.75rem;
+    line-height: 1.55;
+    color: var(--dz-text-soft);
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border-b);
+    border-radius: 8px;
+    padding: 8px 10px;
+    max-height: 80px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    white-space: normal;
+    word-break: break-word;
+    -webkit-user-select: text;
+    user-select: text;
+    scrollbar-width: thin;
+    scrollbar-color: var(--dz-border) transparent;
+}
+
+    .dz-text-msg::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .dz-text-msg::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .dz-text-msg::-webkit-scrollbar-thumb {
+        background: var(--dz-border);
+        border-radius: 2px;
+    }
+
+/* Hover: expand slightly + accent border */
+.dz-text-device:hover .dz-text-msg {
+    border-color: rgba(var(--dz-accent-rgb), 0.15);
+    max-height: 120px;
+}
+
+

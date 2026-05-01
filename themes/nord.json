@@ -1,0 +1,26 @@
+{
+  "name": "Nord",
+  "description": "Arctic-inspired muted blues from the Nord palette — calm and focused",
+  "icon": "fa-solid fa-mountain",
+  "preview": { "bg": "#242933", "surface": "#2e3440", "accent": "#88c0d0", "text": "#d8dee9" },
+  "colors": {
+    "accentColor": "#88c0d0",
+    "dangerColor": "#bf616a",
+    "warningColor": "#ebcb8b",
+    "successColor": "#a3be8c",
+    "accentColorLight": "#5e81ac",
+    "dangerColorLight": "#bf616a",
+    "warningColorLight": "#d08770",
+    "successColorLight": "#689d6a",
+    "bgColor": "#2e3440",
+    "surfaceColor": "#3b4252",
+    "borderColor": "#4c566a",
+    "textColor": "#d8dee9",
+    "bgColorLight": "#eceff4",
+    "surfaceColorLight": "#e5e9f0",
+    "borderColorLight": "#c8ced8",
+    "textColorLight": "#2e3440",
+    "pageBgColor": "#242933",
+    "pageBgColorLight": "#eceff4"
+  }
+}

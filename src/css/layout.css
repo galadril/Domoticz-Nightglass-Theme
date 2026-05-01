@@ -1,0 +1,978 @@
+/* ══════════════════════════════════════════════════════════════════
+   3.  NAVBAR  (matches idea/index.html pilot)
+   ══════════════════════════════════════════════════════════════════ */
+
+.navbar-inverse .navbar-inner {
+    position: relative;
+    z-index: 1030;
+    background: var(--dz-surface) !important;
+    background-image: none !important;
+    border-bottom: 1px solid var(--dz-surface-3) !important;
+    box-shadow: 0 1px 12px rgba(0, 0, 0, 0.3) !important;
+    filter: none !important;
+    padding: 0 16px !important;
+    height: 54px;
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    min-width: 0;
+}
+
+    /* Override .container inside navbar: full-width flex row so
+   brand + nav + toggle share the bar without a fixed max-width. */
+    .navbar-inverse .navbar-inner > .container,
+    .navbar-inverse .navbar-inner > .container-fluid {
+        max-width: none !important;
+        width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        flex: 1 1 0px;
+        min-width: 0;
+    }
+
+/* ── Top-edge accent line ────────────────────────────────── */
+.dz-nav-topline {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--dz-surface-3);
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* ── Brand / Logo ─────────────────────────────────────────── */
+
+/* Replace default Domoticz logo with ic_launcher.png */
+
+.brand {
+    margin-top: -16px !important;
+}
+
+    .brand > img {
+        width: 40px !important;
+        height: 40px !important;
+        vertical-align: middle;
+        margin-right: 4px;
+        margin-top: -3px;
+        border-radius: 10px;
+        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .brand:hover > img {
+        transform: scale(1.08) rotate(-3deg);
+    }
+
+    .brand:hover h1 {
+        color: var(--dz-accent) !important;
+    }
+
+    .brand h1 {
+        color: var(--dz-text) !important;
+        font-weight: 600;
+        padding-top: 9px;
+        float: left;
+        margin-left: 36px;
+        margin-top: -50px;
+        text-decoration: none;
+        transition: color 0.2s ease;
+    }
+
+    .brand h2 {
+        color: var(--dz-text-muted) !important;
+        background-color: transparent !important;
+        float: left;
+        margin-left: 38px;
+        margin-top: -4px;
+    }
+
+h2#appversion {
+    color: var(--dz-text-muted);
+}
+
+/* ── Nav items ────────────────────────────────────────────── */
+
+
+.navbar .nav {
+    margin: 0 !important;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    min-width: 0;
+    flex: 1 1 0px;
+    justify-content: center;
+}
+
+
+    .navbar .nav > li {
+        margin-top: 0;
+        margin-left: 2px;
+        min-width: 0;
+    }
+
+    .navbar .nav li a {
+        font-family: inherit;
+        font-weight: 500;
+        font-size: 0.82rem;
+        color: var(--dz-text-muted) !important;
+        background: transparent !important;
+        border: none !important;
+        border-bottom: 2px solid transparent !important;
+        border-radius: 0 !important;
+        padding: 16px 14px 14px !important;
+        text-shadow: none !important;
+        transition: color 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+        white-space: nowrap;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Staggered entrance animation for nav items */
+    .navbar .nav > li {
+        animation: dzNavFadeIn 0.5s ease both;
+    }
+
+        .navbar .nav > li:nth-child(1) {
+            animation-delay: 0.05s;
+        }
+
+        .navbar .nav > li:nth-child(2) {
+            animation-delay: 0.10s;
+        }
+
+        .navbar .nav > li:nth-child(3) {
+            animation-delay: 0.15s;
+        }
+
+        .navbar .nav > li:nth-child(4) {
+            animation-delay: 0.20s;
+        }
+
+        .navbar .nav > li:nth-child(5) {
+            animation-delay: 0.25s;
+        }
+
+        .navbar .nav > li:nth-child(6) {
+            animation-delay: 0.30s;
+        }
+
+        .navbar .nav > li:nth-child(7) {
+            animation-delay: 0.35s;
+        }
+
+        /* Hover ripple effect via ::before */
+        .navbar .nav > li:not(.dropdown) > a::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: radial-gradient(circle, rgba(var(--dz-accent-rgb), 0.12) 0%, transparent 70%);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.4s ease, height 0.4s ease;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .navbar .nav > li:not(.dropdown) > a:hover::before {
+            width: 160px;
+            height: 160px;
+        }
+
+    /* Font Awesome icon styling in navbar */
+    .navbar .nav li a > i.dz-fa-icon {
+        font-size: 1rem;
+        width: 1.2em;
+        text-align: center;
+        vertical-align: middle;
+        margin-right: 4px;
+        opacity: 0.7;
+        transition: opacity 0.25s ease, color 0.25s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        position: relative;
+        z-index: 1;
+    }
+
+    .navbar .nav li a:hover > i.dz-fa-icon {
+        opacity: 1;
+        transform: scale(1.15) translateY(-1px);
+    }
+
+    .navbar .nav .current_page_item > a > i.dz-fa-icon {
+        opacity: 1;
+        color: var(--dz-accent);
+    }
+
+    /* Gear icon spins on Setup hover */
+    .navbar .nav .dropdown > a:hover > i.fa-gear {
+        animation: dzGearSpin 0.6s ease;
+    }
+
+    /* Font Awesome icons in dropdown menus */
+    .navbar .nav .dropdown-menu li a > i.dz-fa-icon {
+        font-size: 0.85rem;
+        width: 1.4em;
+        text-align: center;
+        margin-right: 6px;
+        opacity: 0.6;
+    }
+
+    .navbar .nav .dropdown-menu li a:hover > i.dz-fa-icon {
+        opacity: 1;
+    }
+
+/* ── Favorite stars → Font Awesome ───────────────────────── */
+
+i.dz-fa-fav {
+    font-size: 1rem;
+    cursor: pointer;
+    transition: color 0.15s, transform 0.15s;
+    vertical-align: middle;
+}
+
+    i.dz-fa-fav.dz-fav-off {
+        color: var(--dz-border-b);
+    }
+
+        i.dz-fa-fav.dz-fav-off:hover {
+            color: var(--dz-warning);
+            transform: scale(1.15);
+        }
+
+    i.dz-fa-fav.dz-fav-on {
+        color: var(--dz-warning);
+    }
+
+        i.dz-fa-fav.dz-fav-on:hover {
+            color: var(--dz-warning-light);
+            transform: scale(1.15);
+        }
+
+/* ── Icon replacement: pre-hide to prevent flicker ──────── */
+/* All theme images are hidden immediately on render.        */
+/* JS then either replaces (display:none below) or marks    */
+/* .dz-icon-skipped to restore visibility.                  */
+img[src^="images/"]:not(.dd-option-image) {
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+    /* Restore visibility for icon selector/picker images */
+    .iconlist img[src^="images/"],
+    .iconlistitem img[src^="images/"] {
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+
+    img[src^="images/"].dz-icon-skipped {
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+
+/* ── Icon replacement: hide replaced PNGs ────────────────── */
+
+img.dz-icon-replaced {
+    display: none !important;
+}
+
+/* ── Icon replacement: size context classes ───────────────── */
+
+/* Default (menu / navbar) */
+i.dz-fa-icon {
+    font-size: 1rem;
+    width: 1.2em;
+    text-align: center;
+    vertical-align: middle;
+    margin-right: 4px;
+    opacity: 0.8;
+    transition: opacity 0.15s, color 0.15s;
+}
+
+/* Device list action buttons (Log, Edit, etc.) — ensure icon visibility */
+table.dataTable a.btn-icon > i.dz-fa-icon,
+table.dataTable a[href*="Log"] > i.dz-fa-icon,
+table.dataTable a[href*="Edit"] > i.dz-fa-icon {
+    color: var(--dz-text-soft);
+    opacity: 0.9;
+}
+
+    table.dataTable a.btn-icon:hover > i.dz-fa-icon,
+    table.dataTable a[href*="Log"]:hover > i.dz-fa-icon,
+    table.dataTable a[href*="Edit"]:hover > i.dz-fa-icon {
+        color: var(--dz-accent);
+        opacity: 1;
+    }
+
+/* Trend arrows (tiny inline in bigtext / status) */
+i.dz-fa-trend {
+    font-size: 0.75rem;
+    vertical-align: middle;
+    margin: 0 2px;
+    line-height: 1;
+}
+
+    i.dz-fa-trend.fa-arrow-trend-up {
+        color: var(--dz-success);
+    }
+
+    i.dz-fa-trend.fa-arrow-trend-down {
+        color: var(--dz-danger);
+    }
+
+    i.dz-fa-trend.fa-right-long {
+        color: var(--dz-text-muted);
+        opacity: 0.5;
+    }
+
+    /* Unknown trend — no useful info, hide completely */
+    i.dz-fa-trend.dz-trend-unk {
+        display: none;
+    }
+
+    /* Report trend equal icons (equal.png / gequal.png) still use fa-minus */
+    i.dz-fa-trend.fa-minus {
+        color: var(--dz-text-muted);
+    }
+
+/* Sensor / weather / device (replaces 48px PNGs) */
+i.dz-fa-device {
+    font-size: calc(1.5rem * var(--ng-icon-scale, 1));
+    width: calc(40px * var(--ng-icon-scale, 1));
+    height: calc(40px * var(--ng-icon-scale, 1));
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.15s, color 0.2s, transform 0.2s;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+    i.dz-fa-device:hover {
+        opacity: 0.85;
+    }
+
+/* Wind direction arrow — smooth rotation transitions */
+i.dz-wind {
+    transition: opacity 0.15s, color 0.2s, transform 0.4s ease;
+}
+
+/* Blinds stop button */
+i.dz-fa-device.fa-stop {
+    color: var(--dz-text-muted);
+}
+
+    i.dz-fa-device.fa-stop:hover {
+        color: var(--dz-text);
+    }
+
+/* Action icons (delete / rename / add in data tables) */
+i.dz-fa-action {
+    font-size: 0.9rem;
+    vertical-align: middle;
+    transition: color 0.15s, transform 0.15s;
+    cursor: pointer;
+}
+
+    i.dz-fa-action.fa-trash-can {
+        color: var(--dz-danger);
+    }
+
+        i.dz-fa-action.fa-trash-can:hover {
+            color: var(--dz-danger-light);
+            transform: scale(1.1);
+        }
+
+    i.dz-fa-action.fa-pen-to-square {
+        color: var(--dz-accent);
+    }
+
+        i.dz-fa-action.fa-pen-to-square:hover {
+            color: var(--dz-accent-light);
+            transform: scale(1.1);
+        }
+
+    i.dz-fa-action.fa-plus {
+        color: var(--dz-success);
+    }
+
+        i.dz-fa-action.fa-plus:hover {
+            color: var(--dz-success-light);
+            transform: scale(1.1);
+        }
+
+    i.dz-fa-action.fa-sliders {
+        color: var(--dz-warning);
+    }
+
+        i.dz-fa-action.fa-sliders:hover {
+            color: var(--dz-warning-light);
+            transform: scale(1.1);
+        }
+
+    i.dz-fa-action.fa-circle-minus {
+        color: var(--dz-danger);
+    }
+
+        i.dz-fa-action.fa-circle-minus:hover {
+            color: var(--dz-danger-light);
+            transform: scale(1.1);
+        }
+
+    i.dz-fa-action.fa-arrow-up,
+    i.dz-fa-action.fa-arrow-down {
+        color: var(--dz-text-faint);
+    }
+
+        i.dz-fa-action.fa-arrow-up:hover,
+        i.dz-fa-action.fa-arrow-down:hover {
+            color: var(--dz-text-soft);
+            transform: scale(1.1);
+        }
+
+    /* Status / state icons */
+    i.dz-fa-action.fa-circle-check {
+        color: var(--dz-success);
+    }
+
+    i.dz-fa-action.fa-circle-xmark {
+        color: var(--dz-danger);
+    }
+
+    i.dz-fa-action.fa-circle-question {
+        color: var(--dz-text-faint);
+    }
+
+    i.dz-fa-action.fa-moon {
+        color: var(--dz-text-muted);
+    }
+
+    i.dz-fa-action.fa-heart-pulse {
+        color: var(--dz-accent);
+    }
+
+        i.dz-fa-action.fa-heart-pulse:hover {
+                color: var(--dz-accent-light);
+                transform: scale(1.1);
+            }
+
+        i.dz-fa-action.fa-terminal {
+            color: var(--dz-text-soft);
+        }
+
+            i.dz-fa-action.fa-terminal:hover {
+                color: var(--dz-accent);
+                transform: scale(1.1);
+            }
+
+/* Battery level colours */
+i.dz-batt-ok {
+    color: var(--dz-success);
+}
+
+i.dz-batt-mid {
+    color: var(--dz-warning);
+}
+
+i.dz-batt-low {
+    color: var(--dz-danger);
+}
+
+/* Navigation chevron (mobile next arrows) */
+i.dz-fa-nav {
+    font-size: 0.85rem;
+    color: var(--dz-text-muted);
+    vertical-align: middle;
+    transition: color 0.15s;
+}
+
+    i.dz-fa-nav:hover {
+        color: var(--dz-accent);
+    }
+
+/* ── Navbar-specific icon overrides ──────────────────────── */
+
+.navbar .nav li a:hover {
+    color: var(--dz-text) !important;
+    background: transparent !important;
+    border-bottom-color: transparent !important;
+    border-radius: 8px 8px 0 0 !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.navbar .nav .current_page_item > a,
+.navbar .nav .current_page_item > a:hover {
+    color: var(--dz-text) !important;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: none !important;
+    border-radius: 8px 8px 0 0 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+
+    .navbar .nav .current_page_item > a:hover {
+        color: var(--dz-text) !important;
+    }
+
+/* ── Sliding indicator pill ──────────────────────────────── */
+.dz-nav-indicator {
+    position: absolute;
+    bottom: 0;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+    background: var(--dz-accent);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 10;
+    will-change: left, width, opacity;
+}
+
+.dz-nav-indicator--animated {
+    transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1), width 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+}
+
+/* ── Dark/Light mode toggle button ───────────────────────── */
+
+#dz-theme-style-nav {
+    position: relative;
+    right: 0;
+    top: 0;
+    height: 54px;
+    margin: 0 0 0 12px;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    z-index: 1050;
+    background: none;
+    flex-shrink: 0;
+}
+
+#dz-theme-style-toggle > a,
+#dz-theme-style-btn {
+    display: flex !important;
+    align-items: center;
+    height: 54px;
+    padding: 0 10px !important;
+    color: var(--dz-text-muted) !important;
+    font-size: 1rem;
+    background: transparent !important;
+    border: none !important;
+    transition: color 0.2s;
+    text-decoration: none !important;
+    outline: none;
+    box-shadow: none;
+}
+
+    #dz-theme-style-toggle > a:hover,
+    #dz-theme-style-btn:hover {
+        color: var(--dz-accent) !important;
+        background: transparent !important;
+        border-bottom-color: transparent !important;
+        box-shadow: none !important;
+    }
+
+/* ── Dropdown menus ───────────────────────────────────────── */
+
+.navbar .nav .dropdown-menu {
+    background: var(--dz-surface) !important;
+    border: 1px solid var(--dz-surface-3) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45) !important;
+    padding: 6px !important;
+    margin-top: 0 !important;
+    z-index: 99999;
+    position: fixed !important;
+    /* Slide-down entrance */
+    animation: dzDropdownIn 0.2s ease-out;
+    transform-origin: top right;
+}
+
+    /* Staggered entrance for dropdown items */
+    .navbar .nav .dropdown-menu > li {
+        animation: dzDropdownItemIn 0.25s ease both;
+    }
+
+        .navbar .nav .dropdown-menu > li:nth-child(1) {
+            animation-delay: 0.02s;
+        }
+
+        .navbar .nav .dropdown-menu > li:nth-child(2) {
+            animation-delay: 0.04s;
+        }
+
+        .navbar .nav .dropdown-menu > li:nth-child(3) {
+            animation-delay: 0.06s;
+        }
+
+        .navbar .nav .dropdown-menu > li:nth-child(4) {
+            animation-delay: 0.08s;
+        }
+
+        .navbar .nav .dropdown-menu > li:nth-child(5) {
+            animation-delay: 0.10s;
+        }
+
+        .navbar .nav .dropdown-menu > li:nth-child(6) {
+            animation-delay: 0.12s;
+        }
+
+        .navbar .nav .dropdown-menu > li:nth-child(7) {
+            animation-delay: 0.14s;
+        }
+
+        .navbar .nav .dropdown-menu > li:nth-child(8) {
+            animation-delay: 0.16s;
+        }
+
+        .navbar .nav .dropdown-menu > li:nth-child(9) {
+            animation-delay: 0.18s;
+        }
+
+        .navbar .nav .dropdown-menu > li:nth-child(10) {
+            animation-delay: 0.20s;
+        }
+
+        .navbar .nav .dropdown-menu > li:nth-child(11) {
+            animation-delay: 0.22s;
+        }
+
+        .navbar .nav .dropdown-menu > li:nth-child(12) {
+            animation-delay: 0.24s;
+        }
+
+        .navbar .nav .dropdown-menu > li:nth-child(13) {
+            animation-delay: 0.26s;
+        }
+
+        .navbar .nav .dropdown-menu > li:nth-child(14) {
+            animation-delay: 0.28s;
+        }
+
+        .navbar .nav .dropdown-menu > li:nth-child(15) {
+            animation-delay: 0.30s;
+        }
+
+        .navbar .nav .dropdown-menu > li:nth-child(16) {
+            animation-delay: 0.32s;
+        }
+
+        .navbar .nav .dropdown-menu > li:nth-child(17) {
+            animation-delay: 0.34s;
+        }
+
+    .navbar .nav .dropdown-menu li a {
+        color: var(--dz-text-soft) !important;
+        border-radius: 6px !important;
+        padding: 8px 14px !important;
+        border: none !important;
+        border-left: 2px solid transparent !important;
+        background: transparent !important;
+        transition: background 0.15s, color 0.15s, border-color 0.15s, padding-left 0.15s;
+    }
+
+        .navbar .nav .dropdown-menu li a:hover {
+            background: rgba(var(--dz-accent-rgb), 0.08) !important;
+            color: var(--dz-text) !important;
+            border-left-color: var(--dz-accent) !important;
+            padding-left: 18px !important;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+            /* Icon brightens and shifts accent on hover */
+            .navbar .nav .dropdown-menu li a:hover > i.dz-fa-icon {
+                opacity: 1;
+                color: var(--dz-accent);
+            }
+
+    .navbar .nav .dropdown-menu .current_page_item > a {
+        background: rgba(var(--dz-accent-rgb), 0.12) !important;
+        border: none !important;
+        border-left: 2px solid var(--dz-accent) !important;
+        color: var(--dz-text) !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+    }
+
+        .navbar .nav .dropdown-menu .current_page_item > a:hover {
+            background: rgba(var(--dz-accent-rgb), 0.20) !important;
+        }
+
+    /* Danger-colored items: Restart, Shutdown, Logout */
+    .navbar .nav .dropdown-menu li a > i.fa-rotate-right,
+    .navbar .nav .dropdown-menu li a > i.fa-power-off,
+    .navbar .nav .dropdown-menu li a > i.fa-right-from-bracket {
+        color: var(--dz-danger) !important;
+        opacity: 0.7;
+    }
+
+    .navbar .nav .dropdown-menu li a:hover > i.fa-rotate-right,
+    .navbar .nav .dropdown-menu li a:hover > i.fa-power-off,
+    .navbar .nav .dropdown-menu li a:hover > i.fa-right-from-bracket {
+        color: var(--dz-danger) !important;
+        opacity: 1;
+    }
+
+    /* Danger items: text turns red-ish on hover too */
+    .navbar .nav .dropdown-menu li:has(> a > i.fa-power-off) > a:hover,
+    .navbar .nav .dropdown-menu li:has(> a > i.fa-rotate-right) > a:hover,
+    .navbar .nav .dropdown-menu li:has(> a > i.fa-right-from-bracket) > a:hover {
+        background: rgba(var(--dz-danger-rgb), 0.08) !important;
+        color: var(--dz-danger) !important;
+        border-left-color: var(--dz-danger) !important;
+    }
+
+    /* Dividers — subtle with spacing */
+    .navbar .nav .dropdown-menu .divider {
+        background-color: var(--dz-surface-3) !important;
+        border-bottom: none !important;
+        margin: 5px 10px !important;
+        opacity: 0.6;
+    }
+
+.navbar .divider-vertical {
+    border-left: 1px solid var(--dz-surface-3);
+    border-right: none;
+}
+
+.dropdown-menu .divider {
+    background-color: var(--dz-surface-3);
+    border-bottom: 1px solid var(--dz-border-b);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   4.  TOP BAR  (#topBar — search, room selector, sun times)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* All interactive elements in the topbar share a single height anchor */
+#topBar { --topbar-h: 26px; }
+
+#topBar {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;      /* always one row */
+    gap: 6px !important;
+    padding: 6px 0 10px !important;
+    margin-bottom: 10px !important;
+    border-bottom: 1px solid var(--dz-border) !important;
+    overflow: hidden;                  /* clip instead of wrap */
+}
+
+/* ── Shared pill mixin applied to the topbar span groups ─────── */
+#tbFilters,
+#tbTimeSun,
+#tbLinks {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+#tbFilters { flex: 1 1 auto; }
+
+/* ── Room selector ─────────────────────────────────────────────── */
+#tbFiltRooms {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px;
+}
+
+#tbFiltRooms #tbIconRoom {
+    color: var(--dz-text-muted);
+    font-size: 12px;
+    pointer-events: none;
+}
+
+/* Target by id to beat Bootstrap/jQuery-UI specificity, no height override */
+#comboroom {
+    background: var(--dz-surface-2) !important;
+    color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 8px !important;
+    padding: 0 6px !important;
+    font-size: 12px !important;
+    line-height: var(--topbar-h) !important;
+    min-height: var(--topbar-h) !important;
+    box-sizing: border-box !important;
+    cursor: pointer !important;
+    transition: border-color 0.15s !important;
+}
+
+#comboroom:hover  { border-color: var(--dz-accent) !important; }
+#comboroom:focus  {
+    border-color: var(--dz-accent) !important;
+    box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.15) !important;
+    outline: none !important;
+}
+
+/* ── Clock ─────────────────────────────────────────────────────── */
+#jsTbTime {
+    display: inline-flex !important;
+    align-items: center !important;
+    height: var(--topbar-h) !important;
+    padding: 0 9px !important;
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--dz-text);
+    letter-spacing: 0.03em;
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-radius: 8px;
+    box-sizing: border-box;
+}
+
+/* ── Sun group: one pill, items inside ─────────────────────────── */
+#tbSunGroup {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px;
+    height: var(--topbar-h) !important;
+    padding: 0 9px !important;
+    font-size: 12px;
+    color: var(--dz-text-muted);
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-radius: 8px;
+    box-sizing: border-box;
+}
+
+#tbIconSun { color: var(--dz-warning) !important; font-size: 12px; }
+
+#tbSunRise,
+#tbSunSet {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+#tbSunRise .fa-arrow-up   { color: #f59e42; font-size: 10px; }
+#tbSunSet  .fa-arrow-down { color: #7eb6f5; font-size: 10px; }
+
+/* Hairline divider between rise and set */
+#tbSunRise::after {
+    content: "";
+    display: inline-block;
+    width: 1px;
+    height: 10px;
+    background: var(--dz-border);
+    margin-left: 5px;
+}
+
+/* ── Quick-links (same height anchor as pills) ──────────────────── */
+#tbLinks a.btn,
+#tbLinks a.btn.btn-xs {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    height: var(--topbar-h) !important;
+    padding: 0 10px !important;
+    box-sizing: border-box !important;
+    background: var(--dz-surface-2) !important;
+    border: 1px solid var(--dz-border) !important;
+    color: var(--dz-text-muted) !important;
+    border-radius: 8px !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    transition: border-color 0.15s, background 0.15s, color 0.15s !important;
+}
+
+#tbLinks a.btn:hover {
+    background: rgba(var(--dz-accent-rgb), 0.1) !important;
+    border-color: var(--dz-accent) !important;
+    color: var(--dz-accent) !important;
+}
+
+/* The actual search input is kept as an invisible overlay (see command palette section) */
+
+/* ── Responsive topbar — single row, items hide progressively ───── */
+
+/* ≤ 900px: button text → icon only; sun icon hidden */
+@media (max-width: 900px) {
+    #topBar { gap: 4px !important; }
+
+    #tbLinks a.btn span[data-i18n] { display: none !important; }
+    #tbLinks a.btn,
+    #tbLinks a.btn.btn-xs           { padding: 0 8px !important; }
+
+    #tbIconSun                      { display: none !important; }
+}
+
+/* ≤ 700px: hide clock */
+@media (max-width: 700px) {
+    #jsTbTime { display: none !important; }
+}
+
+/* ≤ 580px: hide sun group; hide room icon */
+@media (max-width: 580px) {
+    #tbSunGroup              { display: none !important; }
+    #tbFiltRooms #tbIconRoom { display: none !important; }
+    #comboroom               { max-width: 100px !important; }
+}
+
+/* ≤ 420px: hide link buttons entirely */
+@media (max-width: 420px) {
+    #topBar { --topbar-h: 24px; }
+    #tbLinks { display: none !important; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   5.  CONTENT PANELS & SECTIONS
+   ══════════════════════════════════════════════════════════════════ */
+
+.row-fluid [class^="span"] {
+    background-color: rgba(var(--dz-surface-rgb), 0.5) !important;
+    color: var(--dz-text) !important;
+    border-radius: 10px;
+}
+
+.item > section {
+    height: 100% !important;
+}
+
+.row-fluid .span2 {
+    background-color: transparent !important;
+}
+
+.page-header-small {
+    border-bottom: 1px solid var(--dz-surface-3);
+}
+
+.page-content-container {
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-surface-3);
+    border-radius: 10px;
+}
+
+SECTION.dashCategory h2 {
+    color: var(--dz-text-muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--dz-surface-3);
+    margin-bottom: 10px;
+}
+
+/* ── Device card grid: equal row heights + vertical gap ──────── */
+/* align-items:stretch (overrides Domoticz flex-start) makes every  */
+/* .item in a flex row grow to the tallest card's height.           */
+/* row-gap provides consistent vertical space between wrapped rows. */
+.devicesList .row,
+SECTION.dashCategory .row,
+#tempwidgets,
+#weatherwidgets {
+    align-items: stretch;
+    row-gap: 14px;
+}
+
+

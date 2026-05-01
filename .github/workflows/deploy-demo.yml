@@ -34,6 +34,7 @@ jobs:
           cp -r demo/. _site/
           cp custom.css _site/
           cp custom.js  _site/
+          cp -r src     _site/
           cp -r images  _site/
           # Demo files use ../custom.css and ../images/ (relative to demo/).
           # On Pages everything is flat, so rewrite to same-directory paths.

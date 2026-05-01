@@ -1,0 +1,826 @@
+/* ══════════════════════════════════════════════════════════════════
+   14. GLASSMORPHISM CARDS (login, setup wizard, about)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Galaxy / constellation canvas ───────────────────────────────
+   The canvas is drawn by JS with hardcoded cyan-blue particles.
+   We desaturate + reduce opacity so the body background (which is
+   var(--dz-bg) from the theme) tints the overall colour.
+   The particle/constellation animation stays fully visible.       */
+#canvas-login,
+#canvas2 {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    filter: saturate(0.2) brightness(0.85) !important;
+    opacity: 0.35;
+}
+
+/* Glass container — transparent so the body bg + canvas show through */
+.glass-container {
+    background: transparent !important;
+    position: relative;
+    z-index: 1;
+}
+
+/* About page container */
+#aboutcontent {
+    background: transparent !important;
+    color: var(--dz-text) !important;
+}
+
+    #aboutcontent .glass-container {
+        background: transparent !important;
+    }
+
+/* About page text */
+.about-title {
+    color: var(--dz-text) !important;
+}
+
+.about-subtitle,
+.glass-container .glass-text {
+    color: var(--dz-text-soft) !important;
+}
+
+.version-badge {
+    background: linear-gradient(135deg, rgba(var(--dz-accent-rgb), 0.2), rgba(var(--dz-accent-rgb), 0.08)) !important;
+    color: var(--dz-text) !important;
+    border-color: rgba(var(--dz-accent-rgb), 0.35) !important;
+}
+
+.info-item {
+    color: var(--dz-text-soft) !important;
+    border-bottom-color: var(--dz-border) !important;
+}
+
+    .info-item .info-label {
+        color: var(--dz-text-muted) !important;
+    }
+
+    .info-item .info-value {
+        color: var(--dz-text) !important;
+    }
+
+/* Login page — transparent so canvas shows through */
+#logincontent,
+#login {
+    background: transparent !important;
+    color: var(--dz-text) !important;
+}
+
+    #logincontent .glass-container,
+    #login .glass-container {
+        background: transparent !important;
+    }
+
+    #logincontent h1,
+    #logincontent h2,
+    #logincontent h3,
+    #logincontent label,
+    #login h1,
+    #login h2,
+    #login h3,
+    #login label {
+        color: var(--dz-text) !important;
+    }
+
+    #logincontent input[type="text"],
+    #logincontent input[type="password"],
+    #login input[type="text"],
+    #login input[type="password"] {
+        background: var(--dz-surface-2) !important;
+        color: var(--dz-text) !important;
+        border-color: var(--dz-border) !important;
+    }
+
+        #logincontent input:focus,
+        #login input:focus {
+            border-color: var(--dz-accent) !important;
+        }
+
+.glass-card {
+    background: rgba(var(--dz-surface-rgb), 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--dz-surface-3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.section-title {
+    color: var(--dz-text);
+    border-bottom: 1px solid rgba(var(--dz-accent-rgb), 0.2);
+}
+
+.glass-text {
+    color: var(--dz-text-soft);
+}
+
+.glass-progress {
+    background: var(--dz-bg-alt);
+    border: 1px solid var(--dz-surface-3);
+}
+
+.glass-progress-info {
+    background: linear-gradient(135deg, rgba(var(--dz-accent-rgb), 0.6), rgba(var(--dz-accent-rgb), 0.4));
+    box-shadow: 0 0 10px rgba(var(--dz-accent-rgb), 0.3);
+}
+
+.glass-progress-warning {
+    background: linear-gradient(135deg, rgba(var(--dz-accent-rgb), 0.4), rgba(var(--dz-accent-rgb), 0.2));
+    box-shadow: 0 0 10px rgba(var(--dz-accent-rgb), 0.2);
+}
+
+.glass-alert-danger {
+    background: rgba(var(--dz-accent-rgb), 0.06);
+    border: 1px solid rgba(var(--dz-accent-rgb), 0.15);
+    color: var(--dz-danger);
+}
+
+.glass-file-input {
+    border-color: var(--dz-border-b);
+}
+
+    .glass-file-input:hover {
+        border-color: rgba(var(--dz-accent-rgb), 0.3);
+    }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   15. DASHBOARD 2.0  (dd- prefixed classes)
+   ══════════════════════════════════════════════════════════════════ */
+
+.dd-page {
+    background: var(--dz-bg);
+}
+
+/* Top bar pill */
+.dd-topbar {
+    background: var(--dz-surface) !important;
+    border: 1px solid var(--dz-surface-3) !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35) !important;
+    border-radius: 20px;
+}
+
+.dd-topbar-name {
+    color: var(--dz-text) !important;
+}
+
+/* Edit toolbar */
+.dd-toolbar {
+    background: var(--dz-surface);
+    border: 1px solid var(--dz-surface-3);
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.dd-toolbar-title {
+    color: var(--dz-text);
+}
+
+.dd-title-editable:hover {
+    border-bottom-color: var(--dz-accent);
+}
+
+.dd-toolbar .dropdown-menu {
+    background: var(--dz-surface) !important;
+    border-color: var(--dz-surface-3) !important;
+}
+
+    .dd-toolbar .dropdown-menu > li > a {
+        color: var(--dz-text) !important;
+    }
+
+        .dd-toolbar .dropdown-menu > li > a:hover {
+            background: rgba(var(--dz-accent-rgb), 0.1) !important;
+        }
+
+    .dd-toolbar .dropdown-menu > li.active > a {
+        background: var(--dz-accent) !important;
+    }
+
+    .dd-toolbar .dropdown-menu .divider {
+        background-color: var(--dz-surface-3) !important;
+    }
+
+/* Widget library panel */
+.dd-library-panel {
+    background: var(--dz-surface);
+    border-left: 1px solid var(--dz-surface-3);
+}
+
+.dd-library-panel-header {
+    background: var(--dz-surface);
+    border-bottom-color: var(--dz-surface-3);
+}
+
+.dd-library-search {
+    background: var(--dz-surface);
+}
+
+.dd-library-item:hover {
+    background: rgba(var(--dz-accent-rgb), 0.08);
+}
+
+.dd-library-item-icon {
+    background: rgba(var(--dz-accent-rgb), 0.1);
+    border-radius: 8px;
+}
+
+    .dd-library-item-icon i {
+        color: var(--dz-text);
+    }
+
+/* GridStack */
+.grid-stack-item-content {
+    background: var(--dz-surface) !important;
+    border: 1px solid var(--dz-surface-3);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+/* Normalize widget content to fill grid cell uniformly */
+.grid-stack-item-content > * {
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.grid-stack-item-content .dd-widget {
+    height: 100% !important;
+    display: flex;
+    flex-direction: column;
+}
+
+    .grid-stack-item-content .dd-widget .dd-widget-body {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+    }
+
+.dd-page.edit-mode .dd-grid .grid-stack-item-content {
+    outline: 1px dashed rgba(240, 168, 50, 0.5);
+    border-radius: 10px;
+}
+
+.grid-stack-placeholder > .placeholder-content {
+    background: rgba(var(--dz-surface-rgb), 0.5) !important;
+    border: 2px dashed var(--dz-accent) !important;
+    border-radius: 10px;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   15b. ENERGY DASHBOARD
+   ══════════════════════════════════════════════════════════════════ */
+
+#dashcontent.force-select {
+    background: transparent !important;
+}
+
+#dashcontent > #emain {
+    background: radial-gradient(circle at top, rgba(var(--dz-accent-rgb), 0.10), transparent 42%), linear-gradient(180deg, rgba(var(--dz-surface-rgb), 0.96), rgba(var(--dz-surface-rgb), 0.98)) !important;
+    border: 1px solid rgba(var(--dz-accent-rgb), 0.16) !important;
+    border-radius: 22px !important;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(var(--dz-overlay-rgb), 0.04) !important;
+    backdrop-filter: blur(14px) saturate(1.15) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(1.15) !important;
+    overflow: hidden;
+}
+
+    #dashcontent > #emain > svg {
+        display: block;
+    }
+
+    #dashcontent > #emain .etext,
+    #dashcontent > #emain #ltext,
+    #dashcontent > #emain foreignObject div {
+        fill: var(--dz-text) !important;
+        color: var(--dz-text) !important;
+    }
+
+    #dashcontent > #emain .eicon {
+        fill: var(--dz-text) !important;
+        opacity: 0.95;
+    }
+
+    #dashcontent > #emain .ecircle {
+        transition: fill 0.2s ease, stroke 0.2s ease, filter 0.2s ease, transform 0.2s ease;
+    }
+
+        #dashcontent > #emain .ecircle.circle-active {
+            stroke-width: 0.6 !important;
+        }
+
+    #dashcontent > #emain .ecircle-solar {
+        fill: rgba(var(--dz-warning-rgb), 0.10) !important;
+        stroke: var(--dz-warning) !important;
+    }
+
+    #dashcontent > #emain .ecircle-grid {
+        fill: rgba(41, 182, 246, 0.10) !important;
+        stroke: #29b6f6 !important;
+    }
+
+    #dashcontent > #emain .ecircle-home {
+        fill: rgba(200, 160, 255, 0.10) !important;
+        stroke: #c8a0ff !important;
+    }
+
+    #dashcontent > #emain .ecircle-batt {
+        fill: rgba(var(--dz-success-rgb), 0.10) !important;
+        stroke: var(--dz-success) !important;
+    }
+
+    #dashcontent > #emain .ecircle-gas {
+        fill: rgba(255, 112, 67, 0.10) !important;
+        stroke: #ff7043 !important;
+    }
+
+    #dashcontent > #emain .ecircle-water {
+        fill: rgba(var(--dz-accent-rgb), 0.10) !important;
+        stroke: var(--dz-accent) !important;
+    }
+
+    #dashcontent > #emain .ecircle-custom {
+        fill: rgba(176, 179, 198, 0.08) !important;
+        stroke: var(--dz-text-soft) !important;
+    }
+
+    #dashcontent > #emain #SolarToBatt,
+    #dashcontent > #emain #SolarToHome,
+    #dashcontent > #emain #SolarToGrid {
+        stroke: rgba(var(--dz-warning-rgb), 0.65) !important;
+    }
+
+    #dashcontent > #emain #GridToHome,
+    #dashcontent > #emain #lineRT1,
+    #dashcontent > #emain #lineRB1 {
+        stroke: rgba(41, 182, 246, 0.55) !important;
+    }
+
+    #dashcontent > #emain #BattNet,
+    #dashcontent > #emain #BattHome {
+        stroke: rgba(var(--dz-success-rgb), 0.65) !important;
+    }
+
+    #dashcontent > #emain [id$='-flow'] {
+        stroke-linecap: round;
+        filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.15));
+    }
+
+@media (width <=767px) {
+    #dashcontent > #emain {
+        width: calc(100vw - 18px) !important;
+        height: calc(100vh - 84px) !important;
+        border-radius: 16px !important;
+    }
+}
+
+/* ── 15b-light. ENERGY DASHBOARD — LIGHT MODE ────────────────── */
+
+body.dz-light #dashcontent.force-select {
+    background: transparent !important;
+}
+
+/* Override inline <style> on #dashcontent and #emain */
+body.dz-light #dashcontent {
+    background: var(--dz-bg) !important;
+}
+
+    body.dz-light #emain,
+    body.dz-light #dashcontent > #emain {
+        background: radial-gradient(circle at top, rgba(var(--dz-accent-rgb), 0.06), transparent 42%), linear-gradient(180deg, rgba(var(--dz-surface-rgb), 0.96), rgba(var(--dz-surface-rgb), 0.98)) !important;
+        border: 1px solid rgba(var(--dz-accent-rgb), 0.12) !important;
+        border-radius: 22px !important;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+        backdrop-filter: blur(14px) saturate(1.15) !important;
+        -webkit-backdrop-filter: blur(14px) saturate(1.15) !important;
+    }
+
+        /* Override inline <style> that forces white text/icons */
+        body.dz-light #dashcontent > #emain .etext,
+        body.dz-light #dashcontent > #emain #ltext,
+        body.dz-light #dashcontent .etext,
+        body.dz-light #dashcontent #ltext {
+            fill: var(--dz-text) !important;
+            color: var(--dz-text) !important;
+        }
+
+        body.dz-light #dashcontent > #emain .eicon,
+        body.dz-light #dashcontent .eicon {
+            fill: var(--dz-text) !important;
+            opacity: 0.85;
+        }
+
+    /* Override the inline foreignObject text color */
+    body.dz-light #dashcontent #ltext {
+        color: var(--dz-text) !important;
+    }
+
+    /* Circle styles for light mode — softer fills, darker strokes */
+    body.dz-light #dashcontent .ecircle-solar {
+        fill: rgba(var(--dz-warning-rgb), 0.08) !important;
+        stroke: var(--dz-warning) !important;
+    }
+
+    body.dz-light #dashcontent .ecircle-grid {
+        fill: rgba(var(--dz-accent-rgb), 0.08) !important;
+        stroke: var(--dz-accent) !important;
+    }
+
+    body.dz-light #dashcontent .ecircle-home {
+        fill: rgba(200, 160, 255, 0.06) !important;
+        stroke: var(--dz-widget-energy-price, #7c4fc0) !important;
+    }
+
+    body.dz-light #dashcontent .ecircle-batt {
+        fill: rgba(var(--dz-success-rgb), 0.06) !important;
+        stroke: var(--dz-success) !important;
+    }
+
+    body.dz-light #dashcontent .ecircle-gas {
+        fill: rgba(255, 112, 67, 0.06) !important;
+        stroke: var(--dz-widget-energy-gas, #c94a1a) !important;
+    }
+
+    body.dz-light #dashcontent .ecircle-water {
+        fill: rgba(var(--dz-accent-rgb), 0.06) !important;
+        stroke: var(--dz-widget-energy-water, var(--dz-accent)) !important;
+    }
+
+    body.dz-light #dashcontent .ecircle-custom {
+        fill: rgba(var(--dz-border-rgb), 0.06) !important;
+        stroke: var(--dz-text-muted) !important;
+    }
+
+    /* Flow lines — darker for light backgrounds */
+    body.dz-light #dashcontent #SolarToBatt,
+    body.dz-light #dashcontent #SolarToHome,
+    body.dz-light #dashcontent #SolarToGrid {
+        stroke: var(--dz-warning) !important;
+        stroke-opacity: 0.5 !important;
+    }
+
+    body.dz-light #dashcontent #GridToHome,
+    body.dz-light #dashcontent #lineRT1,
+    body.dz-light #dashcontent #lineRB1 {
+        stroke: var(--dz-accent) !important;
+        stroke-opacity: 0.4 !important;
+    }
+
+    body.dz-light #dashcontent #BattNet,
+    body.dz-light #dashcontent #BattHome {
+        stroke: var(--dz-success) !important;
+        stroke-opacity: 0.5 !important;
+    }
+
+    /* Flow dot drop-shadow for light mode */
+    body.dz-light #dashcontent [id$='-flow'] {
+        filter: none !important;
+    }
+
+    /* Glow filters — disable on light mode for cleaner look */
+    body.dz-light #dashcontent .ecircle {
+        filter: none !important;
+    }
+
+    /* Sphere flow dots — use darker fills */
+    body.dz-light #dashcontent #SolarToGrid-sphere ellipse,
+    body.dz-light #dashcontent #SolarToHome-sphere ellipse,
+    body.dz-light #dashcontent #SolarToBatt-sphere ellipse,
+    body.dz-light #dashcontent ellipse[style*="fill:#efc040"] {
+        fill: #c07818 !important;
+    }
+
+    body.dz-light #dashcontent ellipse[style*="fill:#00c6da"] {
+        fill: #2a7de1 !important;
+    }
+
+    body.dz-light #dashcontent ellipse[style*="fill:#90e090"] {
+        fill: #2e8c58 !important;
+    }
+
+    /* Connector lines (grey #777) → darker for light mode */
+    body.dz-light #dashcontent line[style*="stroke:#777"] {
+        stroke: #b0b3c6 !important;
+    }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   16. CHARTS (Highcharts panels)
+   ══════════════════════════════════════════════════════════════════ */
+
+.device-log-chart,
+wind-direction-chart,
+wind-speed-frequency-chart {
+    background: rgba(var(--dz-surface-rgb), 0.7) !important;
+    border: 1px solid var(--dz-surface-3) !important;
+    border-radius: 10px !important;
+}
+
+.chart h2 {
+    color: var(--dz-text-soft);
+}
+
+.chart-title-center {
+    color: var(--dz-text);
+}
+
+.highcharts-background {
+    fill: transparent;
+}
+
+.highcharts-title,
+.highcharts-subtitle {
+    fill: var(--dz-text) !important;
+}
+
+.highcharts-axis-title {
+    fill: var(--dz-text-muted) !important;
+}
+
+.highcharts-axis-labels text {
+    fill: var(--dz-text-muted) !important;
+}
+
+.highcharts-grid-line {
+    stroke: var(--dz-surface-3) !important;
+}
+
+.highcharts-xaxis-grid .highcharts-grid-line {
+    stroke: var(--dz-border) !important;
+    stroke-opacity: 0.3 !important;
+}
+
+.highcharts-crosshair,
+.highcharts-crosshair-thin {
+    stroke: var(--dz-text-muted) !important;
+}
+
+.highcharts-tooltip-box {
+    fill: var(--dz-surface);
+    stroke: var(--dz-border-b);
+}
+
+.highcharts-legend-item text {
+    fill: var(--dz-text-soft) !important;
+}
+
+.zoom-button {
+    color: var(--dz-text-soft);
+}
+
+.zoom-button-active {
+    color: var(--dz-success);
+}
+
+.zoom-button-active-blue {
+    color: var(--dz-accent);
+}
+
+.zoom-button-active-orange {
+    color: var(--dz-warning);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   17. TOOLTIPS & POPOVERS
+   ══════════════════════════════════════════════════════════════════ */
+
+.tooltip-inner {
+    background-color: var(--dz-surface-2);
+    color: var(--dz-text);
+    border: 1px solid var(--dz-border-b);
+    border-radius: 6px;
+}
+
+.tooltip.top .tooltip-arrow {
+    border-top-color: var(--dz-surface-2);
+}
+
+.tooltip.bottom .tooltip-arrow {
+    border-bottom-color: var(--dz-surface-2);
+}
+
+.tooltip.left .tooltip-arrow {
+    border-left-color: var(--dz-surface-2);
+}
+
+.tooltip.right .tooltip-arrow {
+    border-right-color: var(--dz-surface-2);
+}
+
+.popover {
+    background-color: var(--dz-surface);
+    border: 1px solid var(--dz-surface-3);
+    border-radius: 10px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+.popover-title {
+    background-color: var(--dz-surface-2);
+    color: var(--dz-text);
+    border-bottom: 1px solid var(--dz-surface-3);
+    border-radius: 10px 10px 0 0;
+}
+
+.popover-content {
+    color: var(--dz-text);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   18. ACCORDION MENUS
+   ══════════════════════════════════════════════════════════════════ */
+
+.accordion li > a {
+    background: var(--dz-surface-2);
+    background-image: none;
+    color: var(--dz-text);
+    border-radius: 6px;
+    text-shadow: none;
+    box-shadow: none;
+    transition: background 0.15s;
+}
+
+.accordion > li:hover > a,
+.accordion > li:target > a,
+.accordion > li > a.active {
+    background: rgba(var(--dz-accent-rgb), 0.18);
+    background-image: none;
+    color: var(--dz-accent);
+    text-shadow: none;
+}
+
+.accordion li > a span {
+    background: var(--dz-border-b);
+    box-shadow: none;
+}
+
+.accordion > li:hover > a span,
+.accordion > li:target > a span,
+.accordion > li > a.active span {
+    background: rgba(var(--dz-accent-rgb), 0.25);
+    color: var(--dz-text);
+    text-shadow: none;
+}
+
+.sub-menu li a {
+    background: var(--dz-bg-alt);
+    border-bottom: 1px solid var(--dz-surface-3);
+    color: var(--dz-text);
+}
+
+.sub-menu li:hover a {
+    background: var(--dz-surface-2);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   19. MOBILE & TABLE ITEMS
+   ══════════════════════════════════════════════════════════════════ */
+
+table.mobileitem,
+.mobileitem {
+    background-color: var(--dz-surface);
+    border: 1px solid var(--dz-surface-3);
+    border-radius: 10px;
+    color: var(--dz-text);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+    .mobileitem tr:hover {
+        background: var(--dz-surface-3);
+    }
+
+    .mobileitem td,
+    .mobileitem th {
+        border-top: 1px solid var(--dz-surface-3);
+        border-left: none;
+    }
+
+    .mobileitem th {
+        background: var(--dz-surface-2);
+        background-image: none;
+        color: var(--dz-text);
+        text-shadow: none;
+        box-shadow: none;
+    }
+
+    .mobileitem td:last-child {
+        color: var(--dz-text);
+    }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   20. NOTIFICATIONS & MISC
+   ══════════════════════════════════════════════════════════════════ */
+
+/* #notification and Noty containers are replaced by Nightglass toasts via JS hooks.
+   These rules suppress any residual rendering if the hook fires slightly late.  */
+#notification {
+    display: none !important;
+}
+
+/* Noty containers — hidden when generate_noty is hooked; styled as fallback otherwise */
+.noty_layout__topRight,
+.noty_layout__topLeft,
+.noty_layout__topCenter,
+.noty_layout__bottomRight,
+.noty_layout__bottomLeft,
+.noty_layout__bottomCenter {
+    display: none !important;
+}
+
+#timesun {
+    color: var(--dz-text-muted);
+}
+
+#copyright {
+    border-top: 1px solid var(--dz-surface-3);
+    text-align: center;
+    margin-top: 32px;
+}
+
+    #copyright .copyright-inner {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--dz-text-faint);
+        font-size: 0.8rem;
+        letter-spacing: 0.02em;
+    }
+
+    #copyright .copyright-dot {
+        width: 3px;
+        height: 3px;
+        border-radius: 50%;
+        background: var(--dz-text-faint);
+        opacity: 0.5;
+    }
+
+    #copyright p {
+        color: var(--dz-text-faint);
+        font-size: 0.8rem;
+        margin: 0;
+        letter-spacing: 0.02em;
+    }
+
+    #copyright a {
+        color: var(--dz-text-muted);
+        text-decoration: none;
+        transition: color 0.2s ease;
+    }
+
+        #copyright a:hover {
+            color: var(--dz-accent);
+        }
+
+#divprogress {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+}
+
+#divprogress > span:not(.update-warning) {
+    background-color: var(--dz-danger);
+    border-radius: 8px;
+}
+
+.update-progress-ring span,
+.update-warning,
+.update-warning i {
+    background-color: transparent;
+}
+
+/* Z-Wave labels */
+.zwave_label {
+    color: var(--dz-text);
+}
+
+.zwave_no_info {
+    color: var(--dz-danger);
+}
+
+.zwave_help {
+    color: var(--dz-text-soft);
+}
+
+.zwave_last_update {
+    color: var(--dz-text-muted);
+}
+
+.warning-text {
+    color: var(--dz-warning);
+}
+
+#room,
+.room {
+    background-color: var(--dz-surface-2) !important;
+    color: var(--dz-text-muted) !important;
+    border-color: var(--dz-border-b) !important;
+}
+

@@ -1,0 +1,26 @@
+{
+  "name": "Arctic Ice",
+  "description": "Crisp cyan and white on slate — clean, clinical, and modern",
+  "icon": "fa-solid fa-snowflake",
+  "preview": { "bg": "#171c22", "surface": "#1e2530", "accent": "#29b6f6", "text": "#e0eaf2" },
+  "colors": {
+    "accentColor": "#29b6f6",
+    "dangerColor": "#ef5350",
+    "warningColor": "#ffb74d",
+    "successColor": "#4dd0e1",
+    "accentColorLight": "#0288d1",
+    "dangerColorLight": "#c62828",
+    "warningColorLight": "#e65100",
+    "successColorLight": "#00838f",
+    "bgColor": "#1e2530",
+    "surfaceColor": "#253040",
+    "borderColor": "#334455",
+    "textColor": "#e0eaf2",
+    "bgColorLight": "#f0f7fc",
+    "surfaceColorLight": "#e6f1fa",
+    "borderColorLight": "#b0c8e0",
+    "textColorLight": "#152030",
+    "pageBgColor": "#171c22",
+    "pageBgColorLight": "#e8f0f8"
+  }
+}
