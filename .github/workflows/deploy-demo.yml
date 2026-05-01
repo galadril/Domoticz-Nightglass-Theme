@@ -40,7 +40,7 @@ jobs:
           sed -i 's|href="\.\./custom\.css"|href="custom.css"|g' _site/*.html
           sed -i 's|href="\.\./|href="|g'                        _site/*.html
           sed -i "s|src=\"\.\./images/|src=\"images/|g"          _site/*.html
-          sed -i "s|'\.\./images/|'images/|g"                    _site/navbar.js
+          sed -i "s|src=\"\.\./images/|src=\"images/|g"          _site/navbar.js
 
       - uses: actions/configure-pages@v5
 
