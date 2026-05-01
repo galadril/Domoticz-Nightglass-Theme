@@ -1,5 +1,4 @@
 # Domoticz Nightglass Theme
-# Domoticz Nightglass Theme
 
 ![Nightglass Theme Banner](images/banner.png)
 
