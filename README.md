@@ -1,4 +1,7 @@
 # Domoticz Nightglass Theme
+# Domoticz Nightglass Theme
+
+![Nightglass Theme Banner](images/banner.png)
 
 A clean, modern dark theme for Domoticz dashboards with powerful keyboard shortcuts and real-time features.
 
