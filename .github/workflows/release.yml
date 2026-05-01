@@ -21,7 +21,10 @@ jobs:
       - name: Get latest tag
         id: latest_tag
         run: |
-          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          TAG=$(git tag --sort=-v:refname | head -n 1)
+          if [ -z "$TAG" ]; then
+            TAG="v0.0.0"
+          fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       # ── 2. Decide patch vs minor bump ────────────────────────────────────
@@ -61,12 +64,12 @@ jobs:
 
       # ── 5. Publish GitHub release with auto-generated notes ──────────────
       #   Bundles the theme into a zip so users can install by extracting
-      #   the folder into www/styles/. Also attaches the entry-point files
-      #   individually for users who only need to update those.
+      #   the folder into www/styles/nightglass/. Includes README for
+      #   installation instructions.
       - name: Bundle theme zip
         run: |
           zip -r "nightglass-${{ steps.version.outputs.next }}.zip" \
-            custom.css custom.js src/ \
+            custom.css custom.js src/ README.md \
             --exclude "*.DS_Store" "*.gitkeep"
 
       - name: Create GitHub release
@@ -75,8 +78,6 @@ jobs:
         run: |
           gh release create "${{ steps.version.outputs.next }}" \
             "nightglass-${{ steps.version.outputs.next }}.zip" \
-            custom.css \
-            custom.js \
             --title "Nightglass ${{ steps.version.outputs.next }}" \
             --generate-notes \
             --latest
