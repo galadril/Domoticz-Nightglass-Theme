@@ -215,19 +215,12 @@ body.dashboard div.item.Fan.onn .img1 img {
     }
 
     /* ── Level-2 submenus (More Options) ───────────────────────────────
-       Appear as a fixed panel to the LEFT of the Setup menu so both
-       are visible side-by-side.  Width is ~half the viewport so they
-       don't overlap on narrow portrait screens.                        */
+       JS (search.js initSubmenus) measures the parent menu and sets
+       position/left/top/width via inline style so it never collides.
+       Only display toggling is done here.                              */
     .navbar .nav .dropdown-submenu > .dropdown-menu {
-        position: fixed !important;
-        left: 4px !important;
-        right: auto !important;
-        top: 54px !important;
-        width: calc(50vw - 8px) !important;
-        min-width: 150px !important;
-        max-height: calc(100vh - 60px) !important;
-        overflow-y: auto !important;
         display: none !important;
+        overflow-y: auto !important;
     }
 
     .navbar .nav .dropdown-submenu.open > .dropdown-menu {
@@ -263,23 +256,28 @@ body.dashboard div.item.Fan.onn .img1 img {
     }
 
     /* ── Chevron indicators ─────────────────────────────────────────
-       Level-2: left-pointing arrow (panel flies left).
-       Level-3: right-arrow that rotates down when expanded.           */
+       Level-2: FA chevron-left (panel flies left).
+       Level-3: FA chevron-right that rotates 90° when expanded.      */
     .navbar .nav .dropdown-submenu > a::after {
-        content: " ‹" !important;
-        font-style: normal;
-        font-size: 1em;
+        font-family: "Font Awesome 6 Free" !important;
+        font-weight: 900 !important;
+        content: "\f053" !important;  /* fa-chevron-left */
+        display: inline-block !important;
         float: right;
-        margin-left: 6px;
+        margin-left: 8px;
+        font-size: 0.75em;
         opacity: 0.6;
-        display: inline !important;
         border: none !important;
         width: auto !important;
         height: auto !important;
+        vertical-align: middle;
+        line-height: inherit;
     }
 
     .navbar .nav .dropdown-submenu .dropdown-submenu > a::after {
-        content: " ›" !important;
+        font-family: "Font Awesome 6 Free" !important;
+        font-weight: 900 !important;
+        content: "\f054" !important;  /* fa-chevron-right */
         display: inline-block !important;
         transition: transform 0.2s;
         transform: none;

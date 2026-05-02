@@ -594,20 +594,23 @@ i.dz-fa-nav {
 }
 
 /* Submenus always open to the LEFT — replace Bootstrap's right-pointing
-   border-triangle with a left-pointing text chevron.                    */
+   border-triangle with a Font Awesome chevron-left icon.               */
 .navbar .nav .dropdown-submenu > a::after {
-    content: " ‹" !important;   /* left-pointing: submenu opens left */
-    display: inline !important;
+    font-family: "Font Awesome 6 Free" !important;
+    font-weight: 900 !important;
+    content: "\f053" !important;  /* fa-chevron-left */
+    display: inline-block !important;
     float: right;
-    margin-left: 6px;
+    margin-left: 8px;
     margin-right: 0 !important;
     border: none !important;    /* kill Bootstrap's border-triangle */
     width: auto !important;
     height: auto !important;
     opacity: 0.6;
     color: var(--dz-text-muted);
-    font-size: 1em;
+    font-size: 0.75em;
     line-height: inherit;
+    vertical-align: middle;
 }
 
 .navbar .nav .dropdown-submenu:hover > a::after,

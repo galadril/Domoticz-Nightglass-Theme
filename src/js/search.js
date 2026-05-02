@@ -231,6 +231,46 @@
     'use strict';
 
     function initSubmenus() {
+        // --- Mobile: position level-2 panel to the left of the parent menu ---
+        // Measures the parent .dropdown-menu BoundingRect so it never overlaps.
+        function positionMobileLevel2($item) {
+            var menu = $item.children('.dropdown-menu')[0];
+            if (!menu) return;
+            // Parent menu (e.g. Setup dropdown) is one level up
+            var parentMenu = $item.closest('.navbar .nav .dropdown').children('.dropdown-menu')[0];
+            if (!parentMenu) return;
+            var r = parentMenu.getBoundingClientRect();
+            // Available space to the left of the parent menu
+            var availW = Math.max(130, r.left - 8);
+            var leftPos = Math.max(4, r.left - availW - 4);
+            var topPos  = r.top;
+            var maxH    = window.innerHeight - topPos - 8;
+            menu.style.setProperty('position',   'fixed',             'important');
+            menu.style.setProperty('top',         topPos  + 'px',     'important');
+            menu.style.setProperty('left',        leftPos + 'px',     'important');
+            menu.style.setProperty('right',       'auto',             'important');
+            menu.style.setProperty('width',       availW  + 'px',     'important');
+            menu.style.setProperty('min-width',   '130px',            'important');
+            menu.style.setProperty('max-height',  maxH    + 'px',     'important');
+            menu.style.setProperty('z-index',     '100000',           'important');
+        }
+
+        function clearMobileLevel2($dropdown) {
+            $dropdown.find('.dropdown-submenu').children('.dropdown-menu').each(function () {
+                // Only clear if this is a level-2 (direct child of top-level dropdown)
+                if (!$(this).closest('.dropdown-submenu .dropdown-submenu').length) {
+                    this.style.removeProperty('position');
+                    this.style.removeProperty('top');
+                    this.style.removeProperty('left');
+                    this.style.removeProperty('right');
+                    this.style.removeProperty('width');
+                    this.style.removeProperty('min-width');
+                    this.style.removeProperty('max-height');
+                    this.style.removeProperty('z-index');
+                }
+            });
+        }
+
         // --- Touch / click toggle (capture phase) ---
         // Fires before Bootstrap's bubble-phase clearMenus, so the
         // parent dropdown stays open while we expand the submenu.
@@ -258,6 +298,14 @@
             $item.siblings('.dropdown-submenu').removeClass('open');
             $item.toggleClass('open', !wasOpen);
 
+            // Mobile: position level-2 panel via JS so it never collides
+            if (window.innerWidth <= 767 && !wasOpen) {
+                var isLevel2 = !$item.closest('.dropdown-submenu .dropdown-submenu').length;
+                if (isLevel2) {
+                    positionMobileLevel2($item);
+                }
+            }
+
             // Stop propagation AND prevent default so Bootstrap's
             // clearMenus (bubble phase, document) never fires and the
             // link does not navigate.
@@ -268,7 +316,7 @@
         // --- Desktop hover: CSS defaults to right:100% (fly left).
         // Only flip to right when there is not enough room on the left.
         $(document).on('mouseenter.dz-submenu-pos', '.navbar .nav .dropdown-submenu', function () {
-            if (window.innerWidth <= 767) return; // mobile layout handled by CSS
+            if (window.innerWidth <= 767) return; // mobile layout handled by JS
             var $menu = $(this).children('.dropdown-menu');
             // Reset any previous flip so we start from the CSS default (right:100%)
             $menu.css({ left: '', right: '' });
@@ -285,6 +333,9 @@
         // Clean up: collapse all submenus when the parent dropdown closes
         $(document).on('hidden.bs.dropdown hidden', '.dropdown', function () {
             $(this).find('.dropdown-submenu').removeClass('open');
+            if (window.innerWidth <= 767) {
+                clearMobileLevel2($(this));
+            }
         });
     }
 
