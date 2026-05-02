@@ -224,14 +224,20 @@
         // Tap on a submenu heading: toggle .open on its parent li.
         // On desktop, Bootstrap uses CSS :hover; this handler makes it
         // also work on touch devices where :hover never fires.
-        $(document).on('click.dz-submenu', '.dropdown-submenu > a', function (e) {
+        //
+        // IMPORTANT: bind on body, not document.  Bootstrap's clearMenus
+        // is registered on document, so binding on body means our handler
+        // fires first (body is earlier in the bubble chain).  Calling
+        // stopPropagation() here then prevents clearMenus from closing the
+        // parent Setup dropdown before our .open toggle takes effect.
+        $('body').on('click.dz-submenu', '.dropdown-submenu > a', function (e) {
             var $item = $(this).closest('.dropdown-submenu');
             var wasOpen = $item.hasClass('open');
             // Close any open siblings at this level first
             $item.siblings('.dropdown-submenu').removeClass('open');
             $item.toggleClass('open', !wasOpen);
-            // Prevent the link from navigating and stop the event from
-            // closing the parent dropdown (Bootstrap listens on document)
+            // Prevent the link from navigating and stop bubbling to
+            // Bootstrap's document-level clearMenus handler
             e.preventDefault();
             e.stopPropagation();
         });
