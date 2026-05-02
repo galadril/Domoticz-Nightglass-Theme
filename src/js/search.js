@@ -221,7 +221,9 @@
     'use strict';
 
     function initSubmenus() {
-        // Tap on a submenu heading: toggle .open on its parent li
+        // Tap on a submenu heading: toggle .open on its parent li.
+        // On desktop, Bootstrap uses CSS :hover; this handler makes it
+        // also work on touch devices where :hover never fires.
         $(document).on('click.dz-submenu', '.dropdown-submenu > a', function (e) {
             var $item = $(this).closest('.dropdown-submenu');
             var wasOpen = $item.hasClass('open');
@@ -232,6 +234,23 @@
             // closing the parent dropdown (Bootstrap listens on document)
             e.preventDefault();
             e.stopPropagation();
+        });
+
+        // Desktop hover: auto-flip submenu to the left when it would
+        // overflow the right edge of the viewport.
+        $(document).on('mouseenter.dz-submenu-pos', '.navbar .nav .dropdown-submenu', function () {
+            var $menu = $(this).children('.dropdown-menu');
+            // Reset to Bootstrap's default (fly right: left:100%)
+            $menu.css({ left: '', right: '' });
+            // Check position after the browser has painted the element
+            requestAnimationFrame(function () {
+                if (!$menu.is(':visible')) return;
+                var offset = $menu.offset();
+                if (offset && (offset.left + $menu.outerWidth()) > window.innerWidth - 8) {
+                    // Not enough room on the right — flip to the left
+                    $menu.css({ left: 'auto', right: '100%' });
+                }
+            });
         });
 
         // When the top-level Setup dropdown closes, collapse all submenus

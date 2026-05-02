@@ -595,12 +595,12 @@ i.dz-fa-nav {
 
 /* Nested submenus fly out from the parent menu item — use absolute
    positioning (relative to the .dropdown-submenu li with position:relative)
-   instead of fixed, which would place them at viewport coordinates. */
+   instead of fixed, which would place them at viewport coordinates.
+   No explicit left/right here: Bootstrap's CSS defaults (left:100%) take
+   effect, and the JS overflow-detector in search.js flips to right:100%
+   when there is not enough room on the right side of the viewport. */
 .navbar .nav .dropdown-submenu > .dropdown-menu {
     position: absolute !important;
-    top: 0 !important;
-    left: 100% !important;
-    margin-top: -6px !important;
     animation: none !important;
 }
 
