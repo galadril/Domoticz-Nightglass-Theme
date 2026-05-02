@@ -1,15 +1,16 @@
 (function () {
     'use strict';
 
-    // Press 1–9 while not in a text field to jump to these routes
+    // Press 1–9 while not in a text field to jump to these routes.
+    // Keys must match the Domoticz Angular route names exactly (app.routes.js).
     var NAV = {
         '1': 'Dashboard',
-        '2': 'Switches',
+        '2': 'LightSwitches',
         '3': 'Scenes',
-        '4': 'Temp',
+        '4': 'Temperature',
         '5': 'Weather',
         '6': 'Utility',
-        '7': 'Cameras',
+        '7': 'Cam',
         '8': 'Log',
         '9': 'Setup'
     };
@@ -331,7 +332,7 @@
         });
 
         // Clean up: collapse all submenus when the parent dropdown closes
-        $(document).on('hidden.bs.dropdown hidden', '.dropdown', function () {
+        $(document).on('hidden.bs.dropdown', '.dropdown', function () {
             $(this).find('.dropdown-submenu').removeClass('open');
             if (window.innerWidth <= 767) {
                 clearMobileLevel2($(this));

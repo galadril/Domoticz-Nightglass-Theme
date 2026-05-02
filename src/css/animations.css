@@ -217,8 +217,11 @@ body.dashboard div.item.Fan.onn .img1 img {
     /* ── Level-2 submenus (More Options) ───────────────────────────────
        JS (search.js initSubmenus) measures the parent menu and sets
        position/left/top/width via inline style so it never collides.
-       Only display toggling is done here.                              */
-    .navbar .nav .dropdown-submenu > .dropdown-menu {
+       Only display toggling is done here.
+       Touch devices simulate :hover after a tap, so we override the
+       desktop :hover rule back to none — only .open (JS-toggled) shows. */
+    .navbar .nav .dropdown-submenu > .dropdown-menu,
+    .navbar .nav .dropdown-submenu:hover > .dropdown-menu {
         display: none !important;
         overflow-y: auto !important;
     }

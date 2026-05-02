@@ -633,7 +633,10 @@ i.dz-fa-nav {
     animation: none !important;
 }
 
-/* Show nested submenu when .open is added (JS-driven toggle for touch) */
+/* Show on desktop hover, or when JS adds .open (touch / click toggle).
+   The mobile media-query in animations.css overrides :hover back to none
+   so touch devices don't accidentally trigger it via tap-then-hover.    */
+.navbar .nav .dropdown-submenu:hover > .dropdown-menu,
 .navbar .nav .dropdown-submenu.open > .dropdown-menu {
     display: block !important;
 }
