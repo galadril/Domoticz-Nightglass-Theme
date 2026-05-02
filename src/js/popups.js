@@ -203,19 +203,22 @@
 
     function fetchDeviceUnit(idx) {
         if (!idx) return;
-        fetch('/json.htm?type=devices&rid=' + encodeURIComponent(idx))
+        // Correct Domoticz API: type=command&param=getdevices&rid=<idx>
+        fetch('/json.htm?type=command&param=getdevices&rid=' + encodeURIComponent(idx),
+              { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 var item = data && data.result && data.result[0];
                 if (!item) return;
-                // item.Unit is an integer code — the human-readable unit string
-                // lives at the end of item.Data (e.g. "20.5 °C", "1234 €", "68.0 °F")
-                var unit = '';
-                if (item.Data) {
-                    var m = (/^[\s\d.,+\-]+\s*(.+?)\s*$/).exec(item.Data);
-                    if (m && m[1]) unit = m[1];
-                }
-                if (unit) applyUnit(unit);
+                // Domoticz exposes the display unit in item.vunit for non-temperature
+                // devices (e.g. "€"), or via the global tempsign for temperature devices.
+                // Mirror what the Angular controller does:
+                //   ctrl.getSetpointUnit = function () {
+                //       return item.vunit || ('°' + $scope.tempsign);
+                //   };
+                var unit = item.vunit ||
+                           ('°' + ((window.$ && window.$.myglobals && window.$.myglobals.tempsign) || 'C'));
+                applyUnit(unit);
             })
             .catch(function () {});
     }
