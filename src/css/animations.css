@@ -214,27 +214,19 @@ body.dashboard div.item.Fan.onn .img1 img {
         overflow-y: auto;
     }
 
-    /* ── Level-2 submenus (More Options) ───────────────────────────────
-       JS (search.js initSubmenus) measures the parent menu and sets
-       position/left/top/width via inline style so it never collides.
-       Only display toggling is done here.
-       Touch devices simulate :hover after a tap, so we override the
-       desktop :hover rule back to none — only .open (JS-toggled) shows. */
+    /* ── Level-2 AND level-3 submenus: accordion ───────────────────────
+       On mobile portrait there is no room to fly submenus left — the
+       parent menu already takes most of the screen width.  Instead,
+       both levels expand inline (accordion) with a left-border indent.
+
+       Touch devices also simulate :hover after a tap, so the desktop
+       :hover show-rule is overridden here to none; only .open (set by
+       the JS click handler) controls visibility.                        */
     .navbar .nav .dropdown-submenu > .dropdown-menu,
     .navbar .nav .dropdown-submenu:hover > .dropdown-menu {
-        display: none !important;
-        overflow-y: auto !important;
-    }
-
-    .navbar .nav .dropdown-submenu.open > .dropdown-menu {
-        display: block !important;
-    }
-
-    /* ── Level-3 submenus (Plans, Data Push inside More Options) ────
-       There is no room to keep flying left, so expand them as an
-       inline accordion within the level-2 panel.                      */
-    .navbar .nav .dropdown-submenu .dropdown-submenu > .dropdown-menu {
         position: static !important;
+        display: none !important;
+        float: none !important;
         width: auto !important;
         min-width: 0 !important;
         left: auto !important;
@@ -242,8 +234,6 @@ body.dashboard div.item.Fan.onn .img1 img {
         top: auto !important;
         max-height: none !important;
         overflow-y: visible !important;
-        float: none !important;
-        display: none !important;
         margin: 2px 0 4px 12px !important;
         padding: 2px 0 !important;
         box-shadow: none !important;
@@ -254,17 +244,16 @@ body.dashboard div.item.Fan.onn .img1 img {
         animation: none !important;
     }
 
-    .navbar .nav .dropdown-submenu .dropdown-submenu.open > .dropdown-menu {
+    .navbar .nav .dropdown-submenu.open > .dropdown-menu {
         display: block !important;
     }
 
     /* ── Chevron indicators ─────────────────────────────────────────
-       Level-2: FA chevron-left (panel flies left).
-       Level-3: FA chevron-right that rotates 90° when expanded.      */
+       Both level-2 and level-3: chevron-right rotates 90° when open. */
     .navbar .nav .dropdown-submenu > a::after {
         font-family: "Font Awesome 6 Free" !important;
         font-weight: 900 !important;
-        content: "\f053" !important;  /* fa-chevron-left */
+        content: "\f054" !important;  /* fa-chevron-right */
         display: inline-block !important;
         float: right;
         margin-left: 8px;
@@ -275,18 +264,11 @@ body.dashboard div.item.Fan.onn .img1 img {
         height: auto !important;
         vertical-align: middle;
         line-height: inherit;
-    }
-
-    .navbar .nav .dropdown-submenu .dropdown-submenu > a::after {
-        font-family: "Font Awesome 6 Free" !important;
-        font-weight: 900 !important;
-        content: "\f054" !important;  /* fa-chevron-right */
-        display: inline-block !important;
         transition: transform 0.2s;
         transform: none;
     }
 
-    .navbar .nav .dropdown-submenu .dropdown-submenu.open > a::after {
+    .navbar .nav .dropdown-submenu.open > a::after {
         transform: rotate(90deg);
         opacity: 1;
     }
