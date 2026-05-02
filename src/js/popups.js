@@ -185,10 +185,8 @@
             _spMin  = parseFloat(window.$.setmin)  !== undefined ? parseFloat(window.$.setmin)  : -200;
             _spMax  = parseFloat(window.$.setmax)  !== undefined ? parseFloat(window.$.setmax)  :  200;
             _spStep = parseFloat(window.$.setstep) || 0.5;
-            // Unit: Domoticz sets $.setunit when available; fall back to API fetch
-            if (window.$.setunit) {
-                applyUnit(window.$.setunit);
-            } else if (window.$.devIdx) {
+            // Domoticz does not expose a unit string directly; fetch it from the API
+            if (window.$.devIdx) {
                 fetchDeviceUnit(window.$.devIdx);
             }
         }
@@ -209,7 +207,15 @@
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 var item = data && data.result && data.result[0];
-                if (item && item.Unit) applyUnit(item.Unit);
+                if (!item) return;
+                // item.Unit is an integer code — the human-readable unit string
+                // lives at the end of item.Data (e.g. "20.5 °C", "1234 €", "68.0 °F")
+                var unit = '';
+                if (item.Data) {
+                    var m = (/^[\s\d.,+\-]+\s*(.+?)\s*$/).exec(item.Data);
+                    if (m && m[1]) unit = m[1];
+                }
+                if (unit) applyUnit(unit);
             })
             .catch(function () {});
     }
