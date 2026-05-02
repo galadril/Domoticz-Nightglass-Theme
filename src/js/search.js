@@ -265,17 +265,19 @@
             e.preventDefault();
         }, true /* capture */);
 
-        // --- Desktop hover: auto-flip if submenu overflows right edge ---
+        // --- Desktop hover: CSS defaults to right:100% (fly left).
+        // Only flip to right when there is not enough room on the left.
         $(document).on('mouseenter.dz-submenu-pos', '.navbar .nav .dropdown-submenu', function () {
+            if (window.innerWidth <= 767) return; // mobile layout handled by CSS
             var $menu = $(this).children('.dropdown-menu');
-            // Reset to Bootstrap's default (fly right: left:100%)
+            // Reset any previous flip so we start from the CSS default (right:100%)
             $menu.css({ left: '', right: '' });
-            // Measure after the browser has painted the element
             requestAnimationFrame(function () {
                 if (!$menu.is(':visible')) return;
-                var offset = $menu.offset();
-                if (offset && (offset.left + $menu.outerWidth()) > window.innerWidth - 8) {
-                    $menu.css({ left: 'auto', right: '100%' });
+                var rect = $menu[0].getBoundingClientRect();
+                if (rect.left < 8) {
+                    // Clipped by left edge — flip to fly right instead
+                    $menu.css({ right: 'auto', left: '100%' });
                 }
             });
         });

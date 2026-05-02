@@ -214,54 +214,79 @@ body.dashboard div.item.Fan.onn .img1 img {
         overflow-y: auto;
     }
 
-    /* Nested submenus: display as an inline accordion instead of a
-       fixed-position fly-out (which would overlap the parent menu at
-       the same top/right coordinates on narrow screens).              */
+    /* ── Level-2 submenus (More Options) ───────────────────────────────
+       Appear as a fixed panel to the LEFT of the Setup menu so both
+       are visible side-by-side.  Width is ~half the viewport so they
+       don't overlap on narrow portrait screens.                        */
     .navbar .nav .dropdown-submenu > .dropdown-menu {
-        position: static !important;
-        top: auto !important;
-        left: auto !important;
+        position: fixed !important;
+        left: 4px !important;
         right: auto !important;
-        float: none !important;
+        top: 54px !important;
+        width: calc(50vw - 8px) !important;
+        min-width: 150px !important;
+        max-height: calc(100vh - 60px) !important;
+        overflow-y: auto !important;
         display: none !important;
-        max-height: none !important;
-        overflow-y: visible !important;
-        margin: 0 0 4px 16px !important;
-        padding: 4px 0 !important;
-        box-shadow: none !important;
-        border-radius: 0 0 0 6px !important;
-        border: none !important;
-        border-left: 2px solid var(--dz-accent) !important;
-        background: transparent !important;
-        animation: none !important;
-        z-index: auto !important;
     }
 
-    /* Expand when parent .dropdown-submenu receives the .open class */
     .navbar .nav .dropdown-submenu.open > .dropdown-menu {
         display: block !important;
     }
 
-    /* Replace Bootstrap's right-arrow caret with a down/up chevron that
-       reflects the accordion open/closed state on mobile. */
+    /* ── Level-3 submenus (Plans, Data Push inside More Options) ────
+       There is no room to keep flying left, so expand them as an
+       inline accordion within the level-2 panel.                      */
+    .navbar .nav .dropdown-submenu .dropdown-submenu > .dropdown-menu {
+        position: static !important;
+        width: auto !important;
+        min-width: 0 !important;
+        left: auto !important;
+        right: auto !important;
+        top: auto !important;
+        max-height: none !important;
+        overflow-y: visible !important;
+        float: none !important;
+        display: none !important;
+        margin: 2px 0 4px 12px !important;
+        padding: 2px 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-left: 2px solid var(--dz-accent) !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        animation: none !important;
+    }
+
+    .navbar .nav .dropdown-submenu .dropdown-submenu.open > .dropdown-menu {
+        display: block !important;
+    }
+
+    /* ── Chevron indicators ─────────────────────────────────────────
+       Level-2: left-pointing arrow (panel flies left).
+       Level-3: right-arrow that rotates down when expanded.           */
     .navbar .nav .dropdown-submenu > a::after {
-        content: " ›" !important;
+        content: " ‹" !important;
         font-style: normal;
         font-size: 1em;
         float: right;
         margin-left: 6px;
         opacity: 0.6;
-        transition: transform 0.2s;
         display: inline !important;
         border: none !important;
         width: auto !important;
         height: auto !important;
     }
 
-    .navbar .nav .dropdown-submenu.open > a::after {
+    .navbar .nav .dropdown-submenu .dropdown-submenu > a::after {
         content: " ›" !important;
-        transform: rotate(90deg);
         display: inline-block !important;
+        transition: transform 0.2s;
+        transform: none;
+    }
+
+    .navbar .nav .dropdown-submenu .dropdown-submenu.open > a::after {
+        transform: rotate(90deg);
         opacity: 1;
     }
 }
