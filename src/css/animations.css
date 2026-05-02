@@ -202,45 +202,107 @@ body.dashboard div.item.Fan.onn .img1 img {
     display: none !important;
 }
 
-/* ── Dropdown positioning for narrow viewports ────────────────── */
-/* On portrait phones / small tablets, pin the dropdown below the   */
-/* navbar and constrain its height so it scrolls if needed.         */
+/* ══════════════════════════════════════════════════════════════════
+   Mobile full-screen navigation menu (≤ 767px portrait / tablet)
+   ══════════════════════════════════════════════════════════════════
+
+   Level-1 dropdown  →  full-screen slide-in panel from the right
+   Level-2 submenu   →  accordion, background: --dz-bg-alt (#1e2028)
+   Level-3 submenu   →  accordion, background: --dz-bg  (#1b1d25)
+
+   The progressive darkening creates clear visual depth without
+   borders, matching the glassmorphism card style of the theme.
+   ══════════════════════════════════════════════════════════════════ */
 @media (max-width: 767px) {
-    .navbar .nav .dropdown-menu {
-        right: 4px !important;
-        left: auto !important;
-        top: 54px !important;
-        max-height: calc(100vh - 60px);
-        overflow-y: auto;
+
+    /* ── Translucent scrim behind the open dropdown panel ─────── */
+    /* Pure CSS — no JS needed.  pointer-events: none lets taps pass
+       through to the page so Bootstrap's document click handler
+       (clearMenus) can close the panel when tapping the backdrop.  */
+    .navbar .nav .dropdown.open::before {
+        content: '';
+        position: fixed;
+        top: 54px;
+        left: 0; right: 0; bottom: 0;
+        background: rgba(0, 0, 0, 0.55);
+        -webkit-backdrop-filter: blur(4px);
+        backdrop-filter: blur(4px);
+        z-index: 99998;
+        pointer-events: none;
     }
 
-    /* ── Level-2 AND level-3 submenus: accordion ───────────────────────
-       On mobile portrait there is no room to fly submenus left — the
-       parent menu already takes most of the screen width.  Instead,
-       both levels expand inline (accordion) with a left-border indent.
+    /* ── Level-1: full-screen panel ───────────────────────────── */
+    .navbar .nav .dropdown-menu {
+        position: fixed !important;
+        top: 54px !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100% !important;
+        max-height: none !important;
+        overflow-y: auto !important;
+        /* Clean slate — remove card chrome */
+        border-radius: 0 !important;
+        border: none !important;
+        border-top: 1px solid var(--dz-border) !important;
+        box-shadow: none !important;
+        padding: 8px 0 24px !important;
+        z-index: 99999 !important;
+        /* Slide in from the right */
+        animation: dzMobileMenuIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        transform-origin: top center !important;
+    }
 
-       Touch devices also simulate :hover after a tap, so the desktop
-       :hover show-rule is overridden here to none; only .open (set by
-       the JS click handler) controls visibility.                        */
+    @keyframes dzMobileMenuIn {
+        from { opacity: 0; transform: translateX(32px); }
+        to   { opacity: 1; transform: translateX(0);    }
+    }
+
+    /* Items — 48 px touch targets, accent left-border on hover */
+    .navbar .nav .dropdown-menu > li > a {
+        display: block !important;
+        padding: 13px 20px !important;
+        font-size: 1rem !important;
+        border-radius: 0 !important;
+        border-left: 3px solid transparent !important;
+        transition: background 0.14s, border-color 0.14s !important;
+    }
+
+    .navbar .nav .dropdown-menu > li > a:hover,
+    .navbar .nav .dropdown-menu > li > a:focus {
+        background: var(--dz-surface-3) !important;
+        border-left-color: var(--dz-accent) !important;
+        color: var(--dz-text) !important;
+    }
+
+    /* Active / current page item */
+    .navbar .nav .dropdown-menu > li.current_page_item > a {
+        border-left-color: var(--dz-accent) !important;
+        color: var(--dz-accent) !important;
+    }
+
+    /* ── Level-2 submenus: accordion, darker background ───────── */
+    /* Override desktop :hover rule — touch devices simulate hover
+       after a tap, which would show the submenu at desktop position.
+       Only .open (set by the JS click handler) controls visibility. */
     .navbar .nav .dropdown-submenu > .dropdown-menu,
     .navbar .nav .dropdown-submenu:hover > .dropdown-menu {
         position: static !important;
         display: none !important;
         float: none !important;
-        width: auto !important;
+        width: 100% !important;
         min-width: 0 !important;
-        left: auto !important;
-        right: auto !important;
-        top: auto !important;
+        left: 0 !important; right: 0 !important;
+        top: auto !important; bottom: auto !important;
+        margin: 0 !important;
+        padding: 4px 0 !important;
         max-height: none !important;
         overflow-y: visible !important;
-        margin: 2px 0 4px 12px !important;
-        padding: 2px 0 !important;
-        box-shadow: none !important;
+        background: var(--dz-bg-alt) !important;    /* #1e2028 — one step darker */
         border: none !important;
-        border-left: 2px solid var(--dz-accent) !important;
+        border-left: 3px solid var(--dz-accent) !important;
         border-radius: 0 !important;
-        background: transparent !important;
+        box-shadow: none !important;
         animation: none !important;
     }
 
@@ -248,29 +310,76 @@ body.dashboard div.item.Fan.onn .img1 img {
         display: block !important;
     }
 
-    /* ── Chevron indicators ─────────────────────────────────────────
-       Both level-2 and level-3: chevron-right rotates 90° when open. */
+    /* Level-2 items — indented, softer text */
+    .navbar .nav .dropdown-submenu > .dropdown-menu > li > a {
+        padding: 11px 20px 11px 24px !important;
+        font-size: 0.95rem !important;
+        color: var(--dz-text-soft) !important;
+        border-left: 3px solid transparent !important;
+        border-radius: 0 !important;
+        transition: background 0.14s, border-color 0.14s !important;
+    }
+
+    .navbar .nav .dropdown-submenu > .dropdown-menu > li > a:hover {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border-left-color: var(--dz-accent) !important;
+        color: var(--dz-text) !important;
+    }
+
+    /* ── Level-3 submenus: deepest, most muted ────────────────── */
+    .navbar .nav .dropdown-submenu .dropdown-submenu > .dropdown-menu {
+        background: var(--dz-bg) !important;        /* #1b1d25 — deepest */
+        border-left: 3px solid rgba(var(--dz-accent-rgb), 0.38) !important;
+    }
+
+    /* Level-3 items — deeper indent, muted colour */
+    .navbar .nav .dropdown-submenu .dropdown-submenu > .dropdown-menu > li > a {
+        padding: 10px 20px 10px 36px !important;
+        font-size: 0.9rem !important;
+        color: var(--dz-text-muted) !important;
+    }
+
+    .navbar .nav .dropdown-submenu .dropdown-submenu > .dropdown-menu > li > a:hover {
+        background: rgba(255, 255, 255, 0.04) !important;
+        color: var(--dz-text-soft) !important;
+        border-left-color: rgba(var(--dz-accent-rgb), 0.6) !important;
+    }
+
+    /* ── Chevron arrows ────────────────────────────────────────── */
+    /* Fix: Bootstrap sets margin-right:-10px on the ::after which
+       clips the icon.  Override all Bootstrap triangle properties. */
     .navbar .nav .dropdown-submenu > a::after {
         font-family: "Font Awesome 6 Free" !important;
         font-weight: 900 !important;
-        content: "\f054" !important;  /* fa-chevron-right */
+        content: "\f054" !important;        /* chevron-right → rotates down */
         display: inline-block !important;
-        float: right;
-        margin-left: 8px;
-        font-size: 0.75em;
-        opacity: 0.6;
+        float: right !important;
+        margin-top: 1px !important;
+        margin-left: 8px !important;
+        margin-right: 4px !important;       /* fix Bootstrap's -10px clip */
+        margin-bottom: 0 !important;
+        font-size: 0.75em !important;
+        line-height: inherit !important;
+        vertical-align: middle !important;
+        color: var(--dz-text-muted) !important;
+        opacity: 0.55 !important;
         border: none !important;
+        border-color: transparent !important;
+        border-width: 0 !important;
+        border-style: none !important;
         width: auto !important;
         height: auto !important;
-        vertical-align: middle;
-        line-height: inherit;
-        transition: transform 0.2s;
-        transform: none;
+        background: transparent !important;
+        transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+                    opacity 0.15s,
+                    color 0.15s !important;
+        transform: rotate(0deg) !important;
     }
 
     .navbar .nav .dropdown-submenu.open > a::after {
-        transform: rotate(90deg);
-        opacity: 1;
+        transform: rotate(90deg) !important;
+        opacity: 1 !important;
+        color: var(--dz-accent) !important;
     }
 }
 

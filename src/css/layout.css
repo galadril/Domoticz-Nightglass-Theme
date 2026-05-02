@@ -593,24 +593,32 @@ i.dz-fa-nav {
     transform-origin: top right;
 }
 
-/* Submenus always open to the LEFT — replace Bootstrap's right-pointing
-   border-triangle with a Font Awesome chevron-left icon.               */
+/* Submenus fly LEFT on desktop — replace Bootstrap's border-triangle
+   with a Font Awesome chevron-left icon.
+   Key fix: Bootstrap sets margin-right:-10px on this pseudo-element
+   which clips the icon off-screen.  Override every triangle property. */
 .navbar .nav .dropdown-submenu > a::after {
     font-family: "Font Awesome 6 Free" !important;
     font-weight: 900 !important;
-    content: "\f053" !important;  /* fa-chevron-left */
+    content: "\f053" !important;        /* fa-chevron-left */
     display: inline-block !important;
-    float: right;
-    margin-left: 8px;
-    margin-right: 0 !important;
-    border: none !important;    /* kill Bootstrap's border-triangle */
+    float: right !important;
+    margin-top: 1px !important;
+    margin-left: 8px !important;
+    margin-right: 4px !important;       /* fix Bootstrap's -10px clip */
+    margin-bottom: 0 !important;
+    font-size: 0.75em !important;
+    line-height: inherit !important;
+    vertical-align: middle !important;
+    color: var(--dz-text-muted) !important;
+    opacity: 0.6 !important;
+    border: none !important;
+    border-color: transparent !important;
+    border-width: 0 !important;
+    border-style: none !important;
     width: auto !important;
     height: auto !important;
-    opacity: 0.6;
-    color: var(--dz-text-muted);
-    font-size: 0.75em;
-    line-height: inherit;
-    vertical-align: middle;
+    background: transparent !important;
 }
 
 .navbar .nav .dropdown-submenu:hover > a::after,
