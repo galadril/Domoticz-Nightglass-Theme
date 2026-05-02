@@ -368,7 +368,7 @@ body.dashboard div.item.Fan.onn .img1 img {
     /* Fix: Bootstrap sets margin-right:-10px on the ::after which
        clips the icon.  Override all Bootstrap triangle properties. */
     .navbar .nav .dropdown-submenu > a::after {
-        font-family: "Font Awesome 6 Free" !important;
+        font-family: "Font Awesome 7 Free" !important;
         font-weight: 900 !important;
         content: "\f054" !important;        /* chevron-right → rotates down */
         display: inline-block !important;

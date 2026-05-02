@@ -604,7 +604,7 @@ i.dz-fa-nav {
    Key fix: Bootstrap sets margin-right:-10px on this pseudo-element
    which clips the icon off-screen.  Override every triangle property. */
 .navbar .nav .dropdown-submenu > a::after {
-    font-family: "Font Awesome 6 Free" !important;
+    font-family: "Font Awesome 7 Free" !important;
     font-weight: 900 !important;
     content: "\f053" !important;        /* fa-chevron-left */
     display: inline-block !important;
