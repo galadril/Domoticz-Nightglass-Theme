@@ -1502,13 +1502,24 @@
         });
     }
 
+    // Keys that represent personal device/notification data.
+    // Presets may never overwrite these — they belong to the user, not to a theme.
+    var PRESET_PROTECTED_KEYS = {
+        deviceIconOverrides: true,
+        toastBlacklist:      true
+    };
+
     function applyPreset(preset) {
         if (!preset || !preset.colors) return;
         var colors = preset.colors;
         var keys = Object.keys(colors);
 
-        // Apply all color keys locally (synchronous), then one API call
-        keys.forEach(function (key) { _settings[key] = colors[key]; });
+        // Apply color keys — skip any that hold personal user data
+        keys.forEach(function (key) {
+            if (!PRESET_PROTECTED_KEYS[key]) {
+                _settings[key] = colors[key];
+            }
+        });
         saveToLocalStorage();
         if (_apiAvailable) saveJsonUvar();
 
