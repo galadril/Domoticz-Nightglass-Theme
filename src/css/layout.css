@@ -212,16 +212,22 @@ h2#appversion {
         animation: dzGearSpin 0.6s ease;
     }
 
-    /* Font Awesome icons in dropdown menus */
-    .navbar .nav .dropdown-menu li a > i.dz-fa-icon {
+    /* Font Awesome icons in dropdown menus — both replaced (dz-fa-icon)
+       and Domoticz's own built-in FA markup (i.fa class used in the
+       Plans and Data Push level-3 submenus).                         */
+    .navbar .nav .dropdown-menu li a > i.dz-fa-icon,
+    .navbar .nav .dropdown-menu li a > i.fa {
         font-size: 0.85rem;
         width: 1.4em;
         text-align: center;
+        vertical-align: middle;
         margin-right: 6px;
         opacity: 0.6;
+        transition: opacity 0.15s;
     }
 
-    .navbar .nav .dropdown-menu li a:hover > i.dz-fa-icon {
+    .navbar .nav .dropdown-menu li a:hover > i.dz-fa-icon,
+    .navbar .nav .dropdown-menu li a:hover > i.fa {
         opacity: 1;
     }
 

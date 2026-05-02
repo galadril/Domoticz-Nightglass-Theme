@@ -312,18 +312,27 @@ body.dashboard div.item.Fan.onn .img1 img {
 
     /* Level-2 items — indented, softer text */
     .navbar .nav .dropdown-submenu > .dropdown-menu > li > a {
-        padding: 11px 20px 11px 24px !important;
+        padding: 11px 20px 11px 20px !important;
         font-size: 0.95rem !important;
         color: var(--dz-text-soft) !important;
-        border-left: 3px solid transparent !important;
         border-radius: 0 !important;
-        transition: background 0.14s, border-color 0.14s !important;
+        transition: background 0.14s !important;
     }
 
     .navbar .nav .dropdown-submenu > .dropdown-menu > li > a:hover {
         background: rgba(255, 255, 255, 0.05) !important;
-        border-left-color: var(--dz-accent) !important;
         color: var(--dz-text) !important;
+    }
+
+    /* Level-2 icons — bump opacity up; the parent item text is already muted */
+    .navbar .nav .dropdown-submenu > .dropdown-menu li a > i.dz-fa-icon,
+    .navbar .nav .dropdown-submenu > .dropdown-menu li a > i.fa {
+        opacity: 0.75 !important;
+    }
+
+    .navbar .nav .dropdown-submenu > .dropdown-menu li a:hover > i.dz-fa-icon,
+    .navbar .nav .dropdown-submenu > .dropdown-menu li a:hover > i.fa {
+        opacity: 1 !important;
     }
 
     /* ── Level-3 submenus: deepest, most muted ────────────────── */
@@ -334,7 +343,7 @@ body.dashboard div.item.Fan.onn .img1 img {
 
     /* Level-3 items — deeper indent, muted colour */
     .navbar .nav .dropdown-submenu .dropdown-submenu > .dropdown-menu > li > a {
-        padding: 10px 20px 10px 36px !important;
+        padding: 10px 20px 10px 28px !important;
         font-size: 0.9rem !important;
         color: var(--dz-text-muted) !important;
     }
@@ -342,7 +351,17 @@ body.dashboard div.item.Fan.onn .img1 img {
     .navbar .nav .dropdown-submenu .dropdown-submenu > .dropdown-menu > li > a:hover {
         background: rgba(255, 255, 255, 0.04) !important;
         color: var(--dz-text-soft) !important;
-        border-left-color: rgba(var(--dz-accent-rgb), 0.6) !important;
+    }
+
+    /* Level-3 icons */
+    .navbar .nav .dropdown-submenu .dropdown-submenu > .dropdown-menu li a > i.dz-fa-icon,
+    .navbar .nav .dropdown-submenu .dropdown-submenu > .dropdown-menu li a > i.fa {
+        opacity: 0.55 !important;
+    }
+
+    .navbar .nav .dropdown-submenu .dropdown-submenu > .dropdown-menu li a:hover > i.dz-fa-icon,
+    .navbar .nav .dropdown-submenu .dropdown-submenu > .dropdown-menu li a:hover > i.fa {
+        opacity: 1 !important;
     }
 
     /* ── Chevron arrows ────────────────────────────────────────── */
