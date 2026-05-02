@@ -165,7 +165,7 @@
 
         var readout = document.getElementById('ng-sp-display');
         if (readout) {
-            readout.textContent = (+val).toFixed(1) + ' ' + _spUnit;
+            readout.textContent = (+val).toFixed(1);
             readout.style.color = color;
         }
     }
@@ -180,18 +180,17 @@
         if (inp) updateArc(parseFloat(inp.value) || 0);
     }
 
-    function syncArcFromInput() {
+    // devIdx is passed directly from the hook so we don't rely on window.$.devIdx
+    function syncArcFromInput(devIdx) {
         if (window.$) {
-            _spMin  = parseFloat(window.$.setmin)  !== undefined ? parseFloat(window.$.setmin)  : -200;
-            _spMax  = parseFloat(window.$.setmax)  !== undefined ? parseFloat(window.$.setmax)  :  200;
+            _spMin  = parseFloat(window.$.setmin)  || -200;
+            _spMax  = parseFloat(window.$.setmax)  ||  200;
             _spStep = parseFloat(window.$.setstep) || 0.5;
-            // Unit: Domoticz sets $.setunit when available; fall back to API fetch
-            if (window.$.setunit) {
-                applyUnit(window.$.setunit);
-            } else if (window.$.devIdx) {
-                fetchDeviceUnit(window.$.devIdx);
-            }
         }
+        // Prefer the idx captured from ShowSetpointPopupInt args; fall back to $.devIdx
+        var idx = devIdx || (window.$ && window.$.devIdx);
+        if (idx) fetchDeviceUnit(idx);
+
         var input = document.getElementById('popup_setpoint');
         if (!input) return;
         updateArc(parseFloat(input.value) || 0);
@@ -205,11 +204,22 @@
 
     function fetchDeviceUnit(idx) {
         if (!idx) return;
-        fetch('/json.htm?type=devices&rid=' + encodeURIComponent(idx))
+        // Correct Domoticz API: type=command&param=getdevices&rid=<idx>
+        fetch('/json.htm?type=command&param=getdevices&rid=' + encodeURIComponent(idx),
+              { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 var item = data && data.result && data.result[0];
-                if (item && item.Unit) applyUnit(item.Unit);
+                if (!item) return;
+                // Domoticz exposes the display unit in item.vunit for non-temperature
+                // devices (e.g. "€"), or via the global tempsign for temperature devices.
+                // Mirror what the Angular controller does:
+                //   ctrl.getSetpointUnit = function () {
+                //       return item.vunit || ('°' + $scope.tempsign);
+                //   };
+                var unit = item.vunit ||
+                           ('°' + ((window.$ && window.$.myglobals && window.$.myglobals.tempsign) || 'C'));
+                applyUnit(unit);
             })
             .catch(function () {});
     }
@@ -923,9 +933,12 @@
         if (!window.ShowSetpointPopupInt) { setTimeout(hookSetpointShow, 300); return; }
         if (window.ShowSetpointPopupInt._ngHooked) return;
         var orig = window.ShowSetpointPopupInt;
-        window.ShowSetpointPopupInt = function () {
+        // ShowSetpointPopupInt(mouseX, mouseY, idx, currentvalue, ismobile, step, min, max)
+        // Capture idx (arg[2]) directly so we don't depend on window.$.devIdx being readable.
+        window.ShowSetpointPopupInt = function (mouseX, mouseY, idx) {
             orig.apply(this, arguments);
-            setTimeout(syncArcFromInput, 0);
+            var capturedIdx = idx;
+            setTimeout(function () { syncArcFromInput(capturedIdx); }, 0);
         };
         window.ShowSetpointPopupInt._ngHooked = true;
     }
@@ -980,7 +993,7 @@
         if (actDisp) actDisp.textContent = (actualVal !== undefined ? actualVal : val);
         updateArc(+val);
         var disp = document.getElementById('ng-sp-display');
-        if (disp) { disp.textContent = (+val).toFixed(1) + ' ' + _spUnit; disp.style.color = tempColor(valToT(+val)); }
+        if (disp) { disp.textContent = (+val).toFixed(1); disp.style.color = tempColor(valToT(+val)); }
     };
 
     if (document.readyState === 'loading') {

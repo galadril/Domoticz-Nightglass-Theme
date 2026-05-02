@@ -1,15 +1,16 @@
 (function () {
     'use strict';
 
-    // Press 1–9 while not in a text field to jump to these routes
+    // Press 1–9 while not in a text field to jump to these routes.
+    // Keys must match the Domoticz Angular route names exactly (app.routes.js).
     var NAV = {
         '1': 'Dashboard',
-        '2': 'Switches',
+        '2': 'LightSwitches',
         '3': 'Scenes',
-        '4': 'Temp',
+        '4': 'Temperature',
         '5': 'Weather',
         '6': 'Utility',
-        '7': 'Cameras',
+        '7': 'Cam',
         '8': 'Log',
         '9': 'Setup'
     };
@@ -206,6 +207,83 @@
         document.addEventListener('DOMContentLoaded', initIndicator);
     } else {
         initIndicator();
+    }
+})();
+
+
+/* ==================================================================
+ *  Dropdown-submenu toggle (mobile accordion + desktop hover/flip)
+ *
+ *  Desktop: submenus open on CSS :hover (fly left by default).
+ *           JS mouseenter flips direction when the left edge clips.
+ *           JS click toggle adds .open for keyboard/click use.
+ *
+ *  Mobile (≤767px): submenus expand accordion-style inline — no
+ *           flying panel (there is no room to the left on portrait).
+ *           A capture-phase click handler toggles .open before
+ *           Bootstrap's bubble-phase clearMenus can fire.
+ * ================================================================== */
+(function () {
+    'use strict';
+
+    function initSubmenus() {
+
+        // --- Click / touch toggle (capture phase) ---
+        // Runs before Bootstrap's bubble-phase clearMenus, so the
+        // parent dropdown stays open while we toggle the submenu.
+        document.addEventListener('click', function (e) {
+            // Walk up to find a submenu trigger anchor
+            var a = null;
+            var el = e.target;
+            while (el && el !== document) {
+                if (el.tagName === 'A' &&
+                    el.parentNode &&
+                    (' ' + el.parentNode.className + ' ').indexOf(' dropdown-submenu ') !== -1) {
+                    a = el;
+                    break;
+                }
+                el = el.parentNode;
+            }
+            if (!a) return;
+
+            var $item   = $(a).parent(); // the .dropdown-submenu li
+            var wasOpen = $item.hasClass('open');
+
+            // Collapse sibling submenus at the same level, then toggle self
+            $item.siblings('.dropdown-submenu').removeClass('open');
+            $item.toggleClass('open', !wasOpen);
+
+            // Prevent Bootstrap's clearMenus from closing the parent dropdown
+            e.stopPropagation();
+            e.preventDefault();
+        }, true /* capture phase */);
+
+        // --- Desktop: flip submenu to the right when left edge clips ---
+        // CSS default is right:100% (fly left). If the left edge of the
+        // rendered menu is off-screen, switch to left:100% (fly right).
+        $(document).on('mouseenter.dz-submenu', '.navbar .nav .dropdown-submenu', function () {
+            if (window.innerWidth <= 767) return;
+            var $menu = $(this).children('.dropdown-menu');
+            $menu.css({ left: '', right: '' }); // reset to CSS default
+            requestAnimationFrame(function () {
+                if (!$menu.length || !$menu[0].getBoundingClientRect) return;
+                var rect = $menu[0].getBoundingClientRect();
+                if (rect.left < 8) {
+                    $menu.css({ right: 'auto', left: '100%' });
+                }
+            });
+        });
+
+        // --- Cleanup: collapse all submenus when the parent dropdown closes ---
+        $(document).on('hidden.bs.dropdown', '.dropdown', function () {
+            $(this).find('.dropdown-submenu').removeClass('open');
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSubmenus);
+    } else {
+        initSubmenus();
     }
 })();
 
@@ -1365,13 +1443,24 @@
         });
     }
 
+    // Keys that represent personal device/notification data.
+    // Presets may never overwrite these — they belong to the user, not to a theme.
+    var PRESET_PROTECTED_KEYS = {
+        deviceIconOverrides: true,
+        toastBlacklist:      true
+    };
+
     function applyPreset(preset) {
         if (!preset || !preset.colors) return;
         var colors = preset.colors;
         var keys = Object.keys(colors);
 
-        // Apply all color keys locally (synchronous), then one API call
-        keys.forEach(function (key) { _settings[key] = colors[key]; });
+        // Apply color keys — skip any that hold personal user data
+        keys.forEach(function (key) {
+            if (!PRESET_PROTECTED_KEYS[key]) {
+                _settings[key] = colors[key];
+            }
+        });
         saveToLocalStorage();
         if (_apiAvailable) saveJsonUvar();
 

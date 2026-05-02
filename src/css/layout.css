@@ -212,16 +212,22 @@ h2#appversion {
         animation: dzGearSpin 0.6s ease;
     }
 
-    /* Font Awesome icons in dropdown menus */
-    .navbar .nav .dropdown-menu li a > i.dz-fa-icon {
+    /* Font Awesome icons in dropdown menus — both replaced (dz-fa-icon)
+       and Domoticz's own built-in FA markup (i.fa class used in the
+       Plans and Data Push level-3 submenus).                         */
+    .navbar .nav .dropdown-menu li a > i.dz-fa-icon,
+    .navbar .nav .dropdown-menu li a > i.fa {
         font-size: 0.85rem;
         width: 1.4em;
         text-align: center;
+        vertical-align: middle;
         margin-right: 6px;
         opacity: 0.6;
+        transition: opacity 0.15s;
     }
 
-    .navbar .nav .dropdown-menu li a:hover > i.dz-fa-icon {
+    .navbar .nav .dropdown-menu li a:hover > i.dz-fa-icon,
+    .navbar .nav .dropdown-menu li a:hover > i.fa {
         opacity: 1;
     }
 
@@ -591,6 +597,62 @@ i.dz-fa-nav {
     /* Slide-down entrance */
     animation: dzDropdownIn 0.2s ease-out;
     transform-origin: top right;
+}
+
+/* Submenus fly LEFT on desktop — replace Bootstrap's border-triangle
+   with a Font Awesome chevron-left icon.
+   Key fix: Bootstrap sets margin-right:-10px on this pseudo-element
+   which clips the icon off-screen.  Override every triangle property. */
+.navbar .nav .dropdown-submenu > a::after {
+    font-family: "Font Awesome 7 Free" !important;
+    font-weight: 900 !important;
+    content: "\f053" !important;        /* fa-chevron-left */
+    display: inline-block !important;
+    float: right !important;
+    margin-top: 1px !important;
+    margin-left: 8px !important;
+    margin-right: 4px !important;       /* fix Bootstrap's -10px clip */
+    margin-bottom: 0 !important;
+    font-size: 0.75em !important;
+    line-height: inherit !important;
+    vertical-align: middle !important;
+    color: var(--dz-text-muted) !important;
+    opacity: 0.6 !important;
+    border: none !important;
+    border-color: transparent !important;
+    border-width: 0 !important;
+    border-style: none !important;
+    width: auto !important;
+    height: auto !important;
+    background: transparent !important;
+}
+
+.navbar .nav .dropdown-submenu:hover > a::after,
+.navbar .nav .dropdown-submenu.open > a::after {
+    opacity: 1;
+    color: var(--dz-accent);
+}
+
+/* Nested submenus: always fly to the LEFT of the parent menu item.
+   position:absolute (not fixed) keeps them relative to their parent
+   .dropdown-submenu li (position:relative from Bootstrap), not the viewport.
+   On mobile the animations.css media query overrides position to fixed and
+   anchors the panel to the left edge of the screen. */
+.navbar .nav .dropdown-submenu > .dropdown-menu {
+    position: absolute !important;
+    right: 100% !important;
+    left: auto !important;
+    top: 0 !important;
+    margin-right: -1px !important;
+    animation: none !important;
+}
+
+/* Show on desktop hover, or when JS adds .open (touch / click toggle).
+   The mobile media-query in animations.css overrides :hover back to none
+   so touch devices don't accidentally trigger it via tap-then-hover.    */
+.navbar .nav .dropdown-submenu:hover > .dropdown-menu,
+.navbar .nav .dropdown-submenu.open > .dropdown-menu {
+    display: block !important;
 }
 
     /* Staggered entrance for dropdown items */
