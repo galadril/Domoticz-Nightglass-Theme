@@ -213,6 +213,39 @@ body.dashboard div.item.Fan.onn .img1 img {
         max-height: calc(100vh - 60px);
         overflow-y: auto;
     }
+
+    /* Nested submenus: display as an inline accordion instead of a
+       fixed-position fly-out (which would overlap the parent menu at
+       the same top/right coordinates on narrow screens).              */
+    .navbar .nav .dropdown-submenu > .dropdown-menu {
+        position: static !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        float: none !important;
+        display: none !important;
+        max-height: none !important;
+        overflow-y: visible !important;
+        margin: 0 0 4px 16px !important;
+        padding: 4px 0 !important;
+        box-shadow: none !important;
+        border-radius: 0 0 0 6px !important;
+        border: none !important;
+        border-left: 2px solid var(--dz-accent) !important;
+        background: transparent !important;
+        animation: none !important;
+        z-index: auto !important;
+    }
+
+    /* Expand when parent .dropdown-submenu receives the .open class */
+    .navbar .nav .dropdown-submenu.open > .dropdown-menu {
+        display: block !important;
+    }
+
+    /* Hide Bootstrap's right-arrow caret on submenu items (no fly-out on mobile) */
+    .navbar .nav .dropdown-submenu > a::after {
+        display: none !important;
+    }
 }
 
 /* ── Phone (< 600px): hide brand, ultra-compact ──────────────── */

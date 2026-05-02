@@ -211,6 +211,44 @@
 
 
 /* ==================================================================
+ *  Mobile dropdown-submenu toggle
+ *  Bootstrap 2/3 reveals nested submenus via CSS :hover, which does
+ *  not fire on touch devices.  This handler adds/removes the .open
+ *  class on .dropdown-submenu elements when their heading is tapped,
+ *  enabling the CSS accordion rules to expand them on mobile.
+ * ================================================================== */
+(function () {
+    'use strict';
+
+    function initSubmenus() {
+        // Tap on a submenu heading: toggle .open on its parent li
+        $(document).on('click.dz-submenu', '.dropdown-submenu > a', function (e) {
+            var $item = $(this).closest('.dropdown-submenu');
+            var wasOpen = $item.hasClass('open');
+            // Close any open siblings at this level first
+            $item.siblings('.dropdown-submenu').removeClass('open');
+            $item.toggleClass('open', !wasOpen);
+            // Prevent the link from navigating and stop the event from
+            // closing the parent dropdown (Bootstrap listens on document)
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
+        // When the top-level Setup dropdown closes, collapse all submenus
+        $(document).on('hidden.bs.dropdown hidden', '.dropdown', function () {
+            $(this).find('.dropdown-submenu').removeClass('open');
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSubmenus);
+    } else {
+        initSubmenus();
+    }
+})();
+
+
+/* ==================================================================
  *  Nightglass Theme Settings Panel
  *  Injects a themed config panel into the Domoticz Settings page.
  *  On Domoticz build ≥ 17806 settings are persisted via the ThemeSettings

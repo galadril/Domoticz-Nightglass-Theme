@@ -593,6 +593,22 @@ i.dz-fa-nav {
     transform-origin: top right;
 }
 
+/* Nested submenus fly out from the parent menu item — use absolute
+   positioning (relative to the .dropdown-submenu li with position:relative)
+   instead of fixed, which would place them at viewport coordinates. */
+.navbar .nav .dropdown-submenu > .dropdown-menu {
+    position: absolute !important;
+    top: 0 !important;
+    left: 100% !important;
+    margin-top: -6px !important;
+    animation: none !important;
+}
+
+/* Show nested submenu when .open is added (JS-driven toggle for touch) */
+.navbar .nav .dropdown-submenu.open > .dropdown-menu {
+    display: block !important;
+}
+
     /* Staggered entrance for dropdown items */
     .navbar .nav .dropdown-menu > li {
         animation: dzDropdownItemIn 0.25s ease both;
