@@ -211,55 +211,76 @@
 
 
 /* ==================================================================
- *  Mobile dropdown-submenu toggle
- *  Bootstrap 2/3 reveals nested submenus via CSS :hover, which does
- *  not fire on touch devices.  This handler adds/removes the .open
- *  class on .dropdown-submenu elements when their heading is tapped,
- *  enabling the CSS accordion rules to expand them on mobile.
+ *  Dropdown-submenu toggle (mobile accordion + desktop overflow flip)
+ *
+ *  Bootstrap 2/3 reveals nested submenus via CSS :hover only.
+ *  On touch devices :hover never fires, so we need a click handler.
+ *
+ *  The fundamental problem: Bootstrap's clearMenus is a bubble-phase
+ *  handler on `document`.  Any jQuery handler we add on body or
+ *  document also runs in the bubble phase, and Bootstrap's fires first
+ *  (registered earlier), closing the parent dropdown before our .open
+ *  toggle takes effect.
+ *
+ *  Solution: register a native capture-phase listener on document.
+ *  Capture fires top-down BEFORE any bubble-phase handlers, so our
+ *  code runs first.  Calling stopPropagation() in capture prevents the
+ *  event from ever reaching Bootstrap's bubble handler.
  * ================================================================== */
 (function () {
     'use strict';
 
     function initSubmenus() {
-        // Tap on a submenu heading: toggle .open on its parent li.
-        // On desktop, Bootstrap uses CSS :hover; this handler makes it
-        // also work on touch devices where :hover never fires.
-        //
-        // IMPORTANT: bind on body, not document.  Bootstrap's clearMenus
-        // is registered on document, so binding on body means our handler
-        // fires first (body is earlier in the bubble chain).  Calling
-        // stopPropagation() here then prevents clearMenus from closing the
-        // parent Setup dropdown before our .open toggle takes effect.
-        $('body').on('click.dz-submenu', '.dropdown-submenu > a', function (e) {
-            var $item = $(this).closest('.dropdown-submenu');
+        // --- Touch / click toggle (capture phase) ---
+        // Fires before Bootstrap's bubble-phase clearMenus, so the
+        // parent dropdown stays open while we expand the submenu.
+        document.addEventListener('click', function (e) {
+            var a = e.target && e.target.closest
+                ? e.target.closest('.dropdown-submenu > a')
+                : (function (el) {
+                    // IE/old-Android fallback for closest()
+                    while (el && el !== document) {
+                        if (el.tagName === 'A' &&
+                            el.parentNode &&
+                            (' ' + el.parentNode.className + ' ').indexOf(' dropdown-submenu ') !== -1) {
+                            return el;
+                        }
+                        el = el.parentNode;
+                    }
+                    return null;
+                }(e.target));
+
+            if (!a) return;
+
+            var $item = $(a).closest('.dropdown-submenu');
             var wasOpen = $item.hasClass('open');
-            // Close any open siblings at this level first
+            // Collapse any open sibling submenus at the same level
             $item.siblings('.dropdown-submenu').removeClass('open');
             $item.toggleClass('open', !wasOpen);
-            // Prevent the link from navigating and stop bubbling to
-            // Bootstrap's document-level clearMenus handler
-            e.preventDefault();
-            e.stopPropagation();
-        });
 
-        // Desktop hover: auto-flip submenu to the left when it would
-        // overflow the right edge of the viewport.
+            // Stop propagation AND prevent default so Bootstrap's
+            // clearMenus (bubble phase, document) never fires and the
+            // link does not navigate.
+            e.stopPropagation();
+            e.preventDefault();
+        }, true /* capture */);
+
+        // --- Desktop hover: auto-flip if submenu overflows right edge ---
         $(document).on('mouseenter.dz-submenu-pos', '.navbar .nav .dropdown-submenu', function () {
             var $menu = $(this).children('.dropdown-menu');
             // Reset to Bootstrap's default (fly right: left:100%)
             $menu.css({ left: '', right: '' });
-            // Check position after the browser has painted the element
+            // Measure after the browser has painted the element
             requestAnimationFrame(function () {
                 if (!$menu.is(':visible')) return;
                 var offset = $menu.offset();
                 if (offset && (offset.left + $menu.outerWidth()) > window.innerWidth - 8) {
-                    // Not enough room on the right — flip to the left
                     $menu.css({ left: 'auto', right: '100%' });
                 }
             });
         });
 
-        // When the top-level Setup dropdown closes, collapse all submenus
+        // Clean up: collapse all submenus when the parent dropdown closes
         $(document).on('hidden.bs.dropdown hidden', '.dropdown', function () {
             $(this).find('.dropdown-submenu').removeClass('open');
         });

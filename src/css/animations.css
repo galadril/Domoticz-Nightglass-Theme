@@ -242,9 +242,27 @@ body.dashboard div.item.Fan.onn .img1 img {
         display: block !important;
     }
 
-    /* Hide Bootstrap's right-arrow caret on submenu items (no fly-out on mobile) */
+    /* Replace Bootstrap's right-arrow caret with a down/up chevron that
+       reflects the accordion open/closed state on mobile. */
     .navbar .nav .dropdown-submenu > a::after {
-        display: none !important;
+        content: " ›" !important;
+        font-style: normal;
+        font-size: 1em;
+        float: right;
+        margin-left: 6px;
+        opacity: 0.6;
+        transition: transform 0.2s;
+        display: inline !important;
+        border: none !important;
+        width: auto !important;
+        height: auto !important;
+    }
+
+    .navbar .nav .dropdown-submenu.open > a::after {
+        content: " ›" !important;
+        transform: rotate(90deg);
+        display: inline-block !important;
+        opacity: 1;
     }
 }
 
