@@ -593,6 +593,29 @@ i.dz-fa-nav {
     transform-origin: top right;
 }
 
+/* Submenus always open to the LEFT — replace Bootstrap's right-pointing
+   border-triangle with a left-pointing text chevron.                    */
+.navbar .nav .dropdown-submenu > a::after {
+    content: " ‹" !important;   /* left-pointing: submenu opens left */
+    display: inline !important;
+    float: right;
+    margin-left: 6px;
+    margin-right: 0 !important;
+    border: none !important;    /* kill Bootstrap's border-triangle */
+    width: auto !important;
+    height: auto !important;
+    opacity: 0.6;
+    color: var(--dz-text-muted);
+    font-size: 1em;
+    line-height: inherit;
+}
+
+.navbar .nav .dropdown-submenu:hover > a::after,
+.navbar .nav .dropdown-submenu.open > a::after {
+    opacity: 1;
+    color: var(--dz-accent);
+}
+
 /* Nested submenus: always fly to the LEFT of the parent menu item.
    position:absolute (not fixed) keeps them relative to their parent
    .dropdown-submenu li (position:relative from Bootstrap), not the viewport.
