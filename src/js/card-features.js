@@ -652,6 +652,25 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             var gradient = 'linear-gradient(to right, ' + stops.join(', ') + ')';
 
+            // For ranges spanning zero, add a subtle notch/marker in the gradient at zero position
+            if (spansZero) {
+                var zeroMarkerWidth = 0.3; // % width of the marker
+                var zeroLeft = Math.max(0, zeroPct - zeroMarkerWidth / 2);
+                var zeroRight = Math.min(100, zeroPct + zeroMarkerWidth / 2);
+                // Add a subtle darker/lighter line at zero by modifying the gradient
+                // We'll prepend marker stops to the gradient
+                var markerStops = [
+                    'rgba(0, 0, 0, 0.4) ' + zeroLeft.toFixed(2) + '%',
+                    'rgba(0, 0, 0, 0.4) ' + zeroPct.toFixed(2) + '%',
+                    'rgba(255, 255, 255, 0.6) ' + zeroPct.toFixed(2) + '%',
+                    'rgba(255, 255, 255, 0.6) ' + zeroRight.toFixed(2) + '%'
+                ];
+                // Create a composite gradient with the marker
+                gradient = 'linear-gradient(to right, ' + stops.join(', ') + '), ' +
+                          'linear-gradient(to right, transparent ' + zeroLeft.toFixed(2) + '%, ' +
+                          markerStops.join(', ') + ', transparent ' + zeroRight.toFixed(2) + '%)';
+            }
+
             // Interpolated color at current value for the accent fallback
             var color = sorted[0].color;
             for (var j = 0; j < sorted.length; j++) {

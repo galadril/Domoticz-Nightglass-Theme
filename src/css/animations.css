@@ -776,28 +776,6 @@ div.item.itemBlock.dz-temp-accent.dz-range-gradient:hover,
     pointer-events: none;
 }
 
-/* Zero point indicator — rendered as a tiny notch in the top border for ranges spanning negative to positive
-   Uses box-shadow to create the indicator without affecting layout at all */
-.dz-temp-accent.dz-range-gradient.dz-range-spans-zero {
-    --dz-zero-indicator: 
-        calc(var(--dz-range-zero-pct, 50%) - 0.5px) 0 0 0.5px var(--dz-text),
-        calc(var(--dz-range-zero-pct, 50%) + 0.5px) 0 0 0.5px var(--dz-text);
-}
-
-.dz-temp-accent.dz-range-gradient.dz-range-spans-zero::before {
-    content: '';
-    position: absolute;
-    top: -1px;
-    left: 0;
-    right: 0;
-    height: 3px;
-    pointer-events: none;
-    box-shadow: 
-        var(--dz-range-zero-pct, 50%) 0 0 1px rgba(255, 255, 255, 0.9),
-        var(--dz-range-zero-pct, 50%) 1px 0 1px rgba(0, 0, 0, 0.5);
-    z-index: 3;
-}
-
 
 /* ══════════════════════════════════════════════════════════════════
    30. DEAD DEVICE STALENESS INDICATOR
