@@ -665,7 +665,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            return { gradient: gradient, color: color, valPct: valPct };
+            return { gradient: gradient, color: color, valPct: valPct, zeroPct: zeroPct, spansZero: spansZero };
         } catch (e) {
             return null;
         }
@@ -787,6 +787,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 var rangeResult = resolveBarRangeGradient(card);
                 if (rangeResult) {
                     card.classList.add('dz-temp-accent', 'dz-range-gradient');
+                    if (rangeResult.spansZero) {
+                        card.classList.add('dz-range-spans-zero');
+                        card.style.setProperty('--dz-range-zero-pct', rangeResult.zeroPct.toFixed(1) + '%');
+                    } else {
+                        card.classList.remove('dz-range-spans-zero');
+                    }
                     card.style.setProperty('--dz-range-gradient', rangeResult.gradient);
                     card.style.setProperty('--dz-temp-accent', rangeResult.color);
                     card.style.setProperty('--dz-range-val-pct', rangeResult.valPct.toFixed(1) + '%');
