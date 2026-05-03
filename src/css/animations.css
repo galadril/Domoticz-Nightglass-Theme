@@ -776,22 +776,6 @@ div.item.itemBlock.dz-temp-accent.dz-range-gradient:hover,
     pointer-events: none;
 }
 
-/* Zero point indicator — small vertical line at zero for ranges spanning negative to positive */
-.dz-temp-accent.dz-range-gradient.dz-range-spans-zero::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: var(--dz-range-zero-pct, 50%);
-    transform: translateX(-50%);
-    width: 0;
-    height: 0;
-    border-left: 1px solid rgba(255, 255, 255, 0.8);
-    border-right: 1px solid rgba(0, 0, 0, 0.6);
-    filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.3));
-    z-index: 3;
-    pointer-events: none;
-}
-
 
 /* ══════════════════════════════════════════════════════════════════
    30. DEAD DEVICE STALENESS INDICATOR
