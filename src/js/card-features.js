@@ -588,16 +588,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (spansZero) {
                     // Special handling for ranges that cross zero
                     if (pctStart < zeroPct && pctEnd > zeroPct) {
-                        // Range crosses zero - split into negative and positive parts
-                        // For negative side: active if val < 0
-                        // For positive side: active if val >= 0
+                        // Range crosses zero - ensure colors meet exactly at zero point
                         var negAlpha = val < 0 ? ACTIVE_ALPHA : FADED_ALPHA;
                         var posAlpha = val >= 0 ? ACTIVE_ALPHA : FADED_ALPHA;
 
                         stops.push(hexToRgba(col, negAlpha) + ' ' + adjStart.toFixed(1) + '%');
-                        stops.push(hexToRgba(col, negAlpha) + ' ' + Math.max(adjStart, Math.min(zeroPct, valPct)).toFixed(1) + '%');
-                        stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + zeroPct.toFixed(1) + '%');
-                        stops.push(hexToRgba(col, posAlpha) + ' ' + Math.min(adjEnd, Math.max(zeroPct, valPct)).toFixed(1) + '%');
+                        stops.push(hexToRgba(col, negAlpha) + ' ' + zeroPct.toFixed(1) + '%');
+                        stops.push(hexToRgba(col, posAlpha) + ' ' + zeroPct.toFixed(1) + '%');
                         stops.push(hexToRgba(col, posAlpha) + ' ' + adjEnd.toFixed(1) + '%');
                     } else if (pctEnd <= zeroPct) {
                         // Negative range: active from zero towards negative value
@@ -608,12 +605,12 @@ document.addEventListener('DOMContentLoaded', function () {
                             stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + adjStart.toFixed(1) + '%');
                             stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + valPct.toFixed(1) + '%');
                             stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + valPct.toFixed(1) + '%');
-                            stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + adjEnd.toFixed(1) + '%');
+                            stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + (i < sorted.length - 1 ? zeroPct : adjEnd).toFixed(1) + '%');
                         } else {
                             // Fully faded or fully active
                             var alpha = (val < 0 && valPct < pctStart) ? ACTIVE_ALPHA : FADED_ALPHA;
                             stops.push(hexToRgba(col, alpha) + ' ' + adjStart.toFixed(1) + '%');
-                            stops.push(hexToRgba(col, alpha) + ' ' + adjEnd.toFixed(1) + '%');
+                            stops.push(hexToRgba(col, alpha) + ' ' + (i < sorted.length - 1 ? zeroPct : adjEnd).toFixed(1) + '%');
                         }
                     } else if (pctStart >= zeroPct) {
                         // Positive range: active from zero towards positive value
@@ -621,14 +618,14 @@ document.addEventListener('DOMContentLoaded', function () {
                         var isInActiveZone = val >= 0 && valPct >= zeroPct && valPct >= pctStart;
                         if (isInActiveZone && valPct <= pctEnd) {
                             // Partially active: from zero to valPct
-                            stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + adjStart.toFixed(1) + '%');
+                            stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + (i > 0 ? zeroPct : adjStart).toFixed(1) + '%');
                             stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + valPct.toFixed(1) + '%');
                             stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + valPct.toFixed(1) + '%');
                             stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + adjEnd.toFixed(1) + '%');
                         } else {
                             // Fully active or fully faded
                             var alpha = (val >= 0 && valPct > pctEnd) ? ACTIVE_ALPHA : FADED_ALPHA;
-                            stops.push(hexToRgba(col, alpha) + ' ' + adjStart.toFixed(1) + '%');
+                            stops.push(hexToRgba(col, alpha) + ' ' + (i > 0 ? zeroPct : adjStart).toFixed(1) + '%');
                             stops.push(hexToRgba(col, alpha) + ' ' + adjEnd.toFixed(1) + '%');
                         }
                     }
