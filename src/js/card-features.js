@@ -652,25 +652,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             var gradient = 'linear-gradient(to right, ' + stops.join(', ') + ')';
 
-            // For ranges spanning zero, add a subtle notch/marker in the gradient at zero position
-            if (spansZero) {
-                var zeroMarkerWidth = 0.3; // % width of the marker
-                var zeroLeft = Math.max(0, zeroPct - zeroMarkerWidth / 2);
-                var zeroRight = Math.min(100, zeroPct + zeroMarkerWidth / 2);
-                // Add a subtle darker/lighter line at zero by modifying the gradient
-                // We'll prepend marker stops to the gradient
-                var markerStops = [
-                    'rgba(0, 0, 0, 0.4) ' + zeroLeft.toFixed(2) + '%',
-                    'rgba(0, 0, 0, 0.4) ' + zeroPct.toFixed(2) + '%',
-                    'rgba(255, 255, 255, 0.6) ' + zeroPct.toFixed(2) + '%',
-                    'rgba(255, 255, 255, 0.6) ' + zeroRight.toFixed(2) + '%'
-                ];
-                // Create a composite gradient with the marker
-                gradient = 'linear-gradient(to right, ' + stops.join(', ') + '), ' +
-                          'linear-gradient(to right, transparent ' + zeroLeft.toFixed(2) + '%, ' +
-                          markerStops.join(', ') + ', transparent ' + zeroRight.toFixed(2) + '%)';
-            }
-
             // Interpolated color at current value for the accent fallback
             var color = sorted[0].color;
             for (var j = 0; j < sorted.length; j++) {
@@ -684,7 +665,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            return { gradient: gradient, color: color, valPct: valPct, zeroPct: zeroPct, spansZero: spansZero };
+            return { gradient: gradient, color: color, valPct: valPct };
         } catch (e) {
             return null;
         }
@@ -806,12 +787,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 var rangeResult = resolveBarRangeGradient(card);
                 if (rangeResult) {
                     card.classList.add('dz-temp-accent', 'dz-range-gradient');
-                    if (rangeResult.spansZero) {
-                        card.classList.add('dz-range-spans-zero');
-                        card.style.setProperty('--dz-range-zero-pct', rangeResult.zeroPct.toFixed(1) + '%');
-                    } else {
-                        card.classList.remove('dz-range-spans-zero');
-                    }
                     card.style.setProperty('--dz-range-gradient', rangeResult.gradient);
                     card.style.setProperty('--dz-temp-accent', rangeResult.color);
                     card.style.setProperty('--dz-range-val-pct', rangeResult.valPct.toFixed(1) + '%');
