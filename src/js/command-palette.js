@@ -164,7 +164,7 @@
         var t  = (d.Type        || '').toLowerCase();
         var st = (d.SwitchType  || '').toLowerCase();
         if (t === 'scene' || t === 'group')                        return '/Scenes';
-        if (t.indexOf('temp') >= 0 || t.indexOf('humid') >= 0)    return '/Temp';
+        if (t.indexOf('temp') >= 0 || t.indexOf('humid') >= 0)    return '/Temperature';
         if (t.indexOf('wind') >= 0 || t.indexOf('rain') >= 0 ||
             t.indexOf('uv')   >= 0 || t.indexOf('baro') >= 0)     return '/Weather';
         if (t.indexOf('light')   >= 0 || t.indexOf('color')  >= 0 ||
@@ -172,7 +172,7 @@
             st.indexOf('dimmer') >= 0 || st.indexOf('blind')  >= 0 ||
             st.indexOf('door')   >= 0 || st.indexOf('motion') >= 0 ||
             st.indexOf('contact')>= 0 || st.indexOf('smoke')  >= 0)
-                                                                   return '/Switches';
+                                                                   return '/LightSwitches';
         return '/Utility';
     }
 
