@@ -665,7 +665,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            return { gradient: gradient, color: color, valPct: valPct };
+            return { gradient: gradient, color: color, valPct: valPct, zeroPct: zeroPct, spansZero: spansZero };
         } catch (e) {
             return null;
         }
@@ -790,6 +790,22 @@ document.addEventListener('DOMContentLoaded', function () {
                     card.style.setProperty('--dz-range-gradient', rangeResult.gradient);
                     card.style.setProperty('--dz-temp-accent', rangeResult.color);
                     card.style.setProperty('--dz-range-val-pct', rangeResult.valPct.toFixed(1) + '%');
+
+                    // Add/remove zero indicator as a real DOM element
+                    var existingZeroIndicator = card.querySelector('.dz-zero-indicator');
+                    if (rangeResult.spansZero) {
+                        if (!existingZeroIndicator) {
+                            var zeroIndicator = document.createElement('span');
+                            zeroIndicator.className = 'dz-zero-indicator';
+                            card.appendChild(zeroIndicator);
+                        }
+                        card.style.setProperty('--dz-range-zero-pct', rangeResult.zeroPct.toFixed(1) + '%');
+                    } else {
+                        if (existingZeroIndicator) {
+                            existingZeroIndicator.remove();
+                        }
+                    }
+
                     var rangeIcon = card.querySelector('i.dz-fa-device');
                     if (rangeIcon) rangeIcon.style.color = rangeResult.color;
                 } else {
