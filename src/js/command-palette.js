@@ -173,10 +173,8 @@
         }
         if (cls === 'dimmer') return (d.Level != null ? d.Level : '?') + '%';
         if (cls === 'selector') {
-            var names = selectorNames(d);
-            var lvl = parseInt(d.Level || 0, 10);
-            var nameIdx = lvl / 10;
-            return names[nameIdx] || d.Status || '';
+            // d.Data is already the decoded current option name from the API
+            return d.Data || d.Status || '';
         }
         return d.Status || d.Data || '';
     }
@@ -203,7 +201,12 @@
 
     function selectorNames(d) {
         if (!d.LevelNames) return [];
-        return d.LevelNames.split('|');
+        try {
+            // LevelNames is base64-encoded, pipe-separated list e.g. "Off|Low|Medium|High"
+            return atob(d.LevelNames).split('|');
+        } catch (e) {
+            return d.LevelNames.split('|');
+        }
     }
 
     // Maps a device to the Domoticz Angular route where it appears
@@ -481,7 +484,7 @@
         if (cls === 'selector') {
             var names = selectorNames(device);
             var curLevel = parseInt(device.Level || 0, 10);
-            var curName  = names[curLevel / 10] || device.Status || '';
+            var curName  = device.Data || names[curLevel / 10] || device.Status || '';
 
             var selPill = document.createElement('button');
             selPill.className = 'dz-cmd-toggle-pill dz-cmd-toggle-pill--on';
@@ -494,31 +497,36 @@
             });
             wrap.appendChild(selPill);
 
-            // Options row
-            if (names.length > 1) {
-                var selRow = document.createElement('div');
-                selRow.className = 'dz-cmd-selector-row';
-                names.forEach(function (name, i) {
-                    var optBtn = document.createElement('button');
-                    optBtn.className = 'dz-cmd-sel-opt' + (i * 10 === curLevel ? ' dz-cmd-sel-opt--active' : '');
-                    optBtn.textContent = name;
-                    optBtn.addEventListener('click', function (e) {
-                        e.stopPropagation();
-                        var newLevel = i * 10;
-                        apiSetSelector(device, newLevel, function () {
-                            device.Level = newLevel;
-                            device.Status = name;
-                            selPill.textContent = name;
-                            selRow.querySelectorAll('.dz-cmd-sel-opt').forEach(function (b, j) {
-                                b.classList.toggle('dz-cmd-sel-opt--active', j === i);
+            // Options row — skip the first entry when LevelOffHidden is set
+                if (names.length > 0) {
+                    var selRow = document.createElement('div');
+                    selRow.className = 'dz-cmd-selector-row';
+                    names.forEach(function (name, i) {
+                        // Hide the Off entry when LevelOffHidden is true (level 0 / index 0)
+                        if (i === 0 && device.LevelOffHidden) return;
+                        var optLevel = i * 10;
+                        var optBtn = document.createElement('button');
+                        optBtn.className = 'dz-cmd-sel-opt' + (optLevel === curLevel ? ' dz-cmd-sel-opt--active' : '');
+                        optBtn.textContent = name;
+                        optBtn.addEventListener('click', function (e) {
+                            e.stopPropagation();
+                            apiSetSelector(device, optLevel, function () {
+                                device.Level = optLevel;
+                                device.Data  = name;
+                                device.Status = name;
+                                selPill.textContent = name;
+                                selRow.querySelectorAll('.dz-cmd-sel-opt').forEach(function (b) {
+                                    b.classList.toggle('dz-cmd-sel-opt--active',
+                                        parseInt(b.getAttribute('data-level'), 10) === optLevel);
+                                });
+                                selRow.classList.remove('dz-cmd-selector-row--visible');
                             });
-                            selRow.classList.remove('dz-cmd-selector-row--visible');
                         });
+                        optBtn.setAttribute('data-level', optLevel);
+                        selRow.appendChild(optBtn);
                     });
-                    selRow.appendChild(optBtn);
-                });
-                el.appendChild(selRow);
-            }
+                    el.appendChild(selRow);
+                }
             return wrap;
         }
 
