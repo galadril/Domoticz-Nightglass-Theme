@@ -163,15 +163,15 @@
 
 /* -- Alert device card enhancement -------------------------------- */
 /*    For "General, Alert" devices the bigtext contains a multi-line  */
-/*    status message that doesn't fit the hero-value style. Move the  */
-/*    full text into the status area as a styled message block.       */
+/*    status message that looks oversized in the default hero-value   */
+/*    style. Add a class to the itemBlock so CSS can restyle it.      */
 
 (function () {
     'use strict';
 
     function processAlertDevices() {
         var cards = document.querySelectorAll(
-            'table[id^="itemtable"] tbody tr'
+            'table[id^="itemtable"] tr'
         );
         for (var i = 0; i < cards.length; i++) {
             var tr = cards[i];
@@ -182,25 +182,10 @@
             var typeText = (typeTd.textContent || '').trim();
             if (!/\bAlert\b/i.test(typeText)) continue;
 
-            var bigtext = tr.querySelector('td#bigtext');
-            var status  = tr.querySelector('td#status');
-            if (!bigtext || !status) continue;
-
-            var plainText = (bigtext.textContent || bigtext.innerText || '').replace(/\s+/g, ' ').trim();
-            if (!plainText) continue;
-
             tr.setAttribute('data-dz-alert-done', '1');
 
             var itemBlock = tr.closest('.itemBlock');
             if (itemBlock) itemBlock.classList.add('dz-alert-device');
-
-            status.textContent = '';
-            var msgDiv = document.createElement('div');
-            msgDiv.className = 'dz-alert-msg';
-            msgDiv.textContent = plainText;
-            status.appendChild(msgDiv);
-
-            bigtext.textContent = '';
         }
     }
 

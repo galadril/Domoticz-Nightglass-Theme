@@ -900,54 +900,19 @@ body table#itemtablenostatus tr td.options {
 
 
 /* ── 6n. Alert device cards (.dz-alert-device) ─────────────────── */
-/*    "General, Alert" devices have a multi-line status message in    */
-/*    bigtext that looks oversized in the hero-value style. The JS    */
-/*    moves the content into #status as a .dz-alert-msg block.       */
+/*    "General, Alert" devices display their message in td#bigtext    */
+/*    which inherits the hero-value style (1.15rem bold, no-wrap).    */
+/*    Override to a normal-sized, wrapping, readable style.           */
 
 .dz-alert-device table[id^="itemtable"] tr td#bigtext {
-    display: none !important;
-}
-
-.dz-alert-device table[id^="itemtable"] tr td#status {
-    margin-top: 4px !important;
-}
-
-.dz-alert-msg {
-    font-size: 0.82rem;
-    line-height: 1.5;
-    color: var(--dz-text-soft);
-    background: var(--dz-surface-2);
-    border: 1px solid var(--dz-border-b);
-    border-radius: 8px;
-    padding: 8px 10px;
-    max-height: 90px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    white-space: pre-wrap;
-    word-break: break-word;
-    -webkit-user-select: text;
-    user-select: text;
-    scrollbar-width: thin;
-    scrollbar-color: var(--dz-border) transparent;
-}
-
-    .dz-alert-msg::-webkit-scrollbar {
-        width: 4px;
-    }
-
-    .dz-alert-msg::-webkit-scrollbar-track {
-        background: transparent;
-    }
-
-    .dz-alert-msg::-webkit-scrollbar-thumb {
-        background: var(--dz-border);
-        border-radius: 2px;
-    }
-
-/* Hover: expand slightly + accent border */
-.dz-alert-device:hover .dz-alert-msg {
-    border-color: rgba(var(--dz-accent-rgb), 0.15);
-    max-height: 140px;
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
+    color: var(--dz-text-soft) !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    line-height: 1.5 !important;
+    min-height: 0 !important;
 }
 
 
