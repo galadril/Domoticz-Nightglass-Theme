@@ -613,36 +613,78 @@
     }
 
     // ── Intercept Domoticz search bar ──────────────────────────────
-    // Replace the built-in live-search field with a command-palette trigger.
-    // The original #tbFiltSearch element stays in the DOM (Angular manages its
-    // visibility via ng-show), we just hijack its click/focus behaviour and
-    // restyle it to show the Ctrl+K hint.
+    // Add a second button for command palette alongside the page filter button.
+    // Left side (#tbSearch): Opens page filter (/) 
+    // Right side (new button): Opens command palette (Ctrl+K)
 
-    // Visual styling is 100% CSS (no class needed, applies before first render).
-    // JS only attaches click handlers — no DOM mutations, no flicker.
-    // Use document-level capture delegation — fires before Domoticz's WatchLiveSearch()
-    // handlers, survives DOM recreation on route changes, no timing issues.
     (function () {
-        function isInsideSearchBar(el) {
+        // Add the command palette trigger button to the search bar
+        function addCommandPaletteTrigger() {
+            var searchBar = document.getElementById('tbFiltSearch');
+            if (!searchBar) {
+                setTimeout(addCommandPaletteTrigger, 100);
+                return;
+            }
+
+            // Only add once
+            if (searchBar.querySelector('.dz-cmd-palette-trigger')) return;
+
+            var isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+            var modKey = isMac ? '⌘' : 'Ctrl';
+
+            var cmdBtn = document.createElement('button');
+            cmdBtn.className = 'dz-cmd-palette-trigger';
+            cmdBtn.innerHTML = 'Command Palette <kbd class="dz-cmd-palette-trigger-kbd">' + modKey + ' K</kbd>';
+            cmdBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                openPalette();
+            });
+
+            searchBar.appendChild(cmdBtn);
+        }
+
+        function isPageFilterClick(el) {
+            // Check if click was on the left button (#tbSearch) for page filter
             while (el) {
-                if (el.id === 'tbFiltSearch') return true;
-                if (el.id === 'tbResults')    return false; // ignore clear-results btn
+                if (el.id === 'tbSearch') return true;
+                if (el.id === 'tbFiltSearch') return false;
                 el = el.parentElement;
             }
             return false;
         }
 
+        // Intercept clicks on the search bar
         document.addEventListener('mousedown', function (e) {
-            if (!isInsideSearchBar(e.target)) return;
-            e.preventDefault(); // block native focus on the input
-            openPalette();
-        }, true); // capture phase — beats WatchLiveSearch()
+            var searchBar = document.getElementById('tbFiltSearch');
+            if (!searchBar || !searchBar.contains(e.target)) return;
+
+            // If clicking on command palette button, let it handle it
+            if (e.target.closest('.dz-cmd-palette-trigger')) return;
+
+            // If clicking on page filter button, let search.js handle it
+            if (isPageFilterClick(e.target)) return;
+
+            // Otherwise prevent default
+            e.preventDefault();
+        }, true);
 
         document.addEventListener('touchend', function (e) {
-            if (!isInsideSearchBar(e.target)) return;
+            var searchBar = document.getElementById('tbFiltSearch');
+            if (!searchBar || !searchBar.contains(e.target)) return;
+
+            if (e.target.closest('.dz-cmd-palette-trigger')) return;
+            if (isPageFilterClick(e.target)) return;
+
             e.preventDefault();
-            openPalette();
         }, true);
+
+        // Initialize
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', addCommandPaletteTrigger);
+        } else {
+            addCommandPaletteTrigger();
+        }
     }());
 
     // ── Init ───────────────────────────────────────────────────────

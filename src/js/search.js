@@ -140,6 +140,16 @@
         return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
     }
 
+    // Handle clicks on the page filter button (#tbSearch)
+    document.addEventListener('click', function(e) {
+        var tbSearch = document.getElementById('tbSearch');
+        if (tbSearch && (e.target === tbSearch || tbSearch.contains(e.target))) {
+            e.preventDefault();
+            e.stopPropagation();
+            open();
+        }
+    });
+
     document.addEventListener('keydown', function (e) {
         if (inInputField(e.target) && !overlay) return;
         if (e.ctrlKey || e.altKey || e.metaKey) return;

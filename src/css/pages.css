@@ -1909,72 +1909,112 @@ body.dz-light #dz-cmd-box {
     box-shadow: 0 20px 60px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.12);
 }
 
-/* ── Domoticz search bar → command palette trigger (pure CSS) ──── */
-/* Applies before first render — zero flicker, no JS DOM mutations. */
+/* ── Domoticz search bar → dual search trigger ──── */
+/* Shows two options: Filter Page (/) and Command Palette (Ctrl+K) */
 
-/* Style the container as a pill button */
 #tbFiltSearch {
     position: relative !important;
     display: inline-flex !important;
     align-items: center !important;
-    gap: 6px !important;
-    padding: 4px 10px !important;
+    gap: 0 !important;
+    padding: 0 !important;
     border: 1px solid var(--dz-border) !important;
     border-radius: 8px !important;
-    cursor: pointer !important;
-    transition: border-color 0.15s, box-shadow 0.15s !important;
     vertical-align: middle !important;
     white-space: nowrap !important;
+    overflow: hidden !important;
 }
 
 #tbFiltSearch:hover {
     border-color: var(--dz-accent) !important;
-    box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.15) !important;
 }
 
-/* Hide results/clear button — superseded by palette */
+/* Hide results/clear button */
 #tbFiltSearch #tbResults {
     display: none !important;
 }
 
-/* Keep the #tbSearch icon span, style it consistently */
+/* Left button: Page filter (/) */
 #tbFiltSearch #tbSearch {
-    pointer-events: none !important;
-    font-size: 12px !important;
-    opacity: 0.7 !important;
-}
-
-/* Make the input an invisible full-size click target */
-#tbFiltSearch input.jsLiveSearch {
-    position: absolute !important;
-    inset: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    opacity: 0 !important;
+    position: relative !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 5px 10px !important;
     cursor: pointer !important;
-    z-index: 1 !important;
-    -webkit-appearance: none !important;
-    appearance: none !important;
+    transition: background 0.15s !important;
+    z-index: 2 !important;
     border: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    background: transparent !important;
 }
 
-/* Add "Search" text label between icon and badges */
+#tbFiltSearch #tbSearch:hover {
+    background: rgba(var(--dz-accent-rgb), 0.08) !important;
+}
+
+#tbFiltSearch #tbSearch i {
+    font-size: 12px !important;
+    color: var(--dz-text-muted) !important;
+}
+
+/* "Filter Page" text */
 #tbFiltSearch #tbSearch::after {
-    content: "Search" !important;
+    content: "Filter Page" !important;
     display: inline-block !important;
-    margin-left: 4px !important;
-    font-size: 13px !important;
+    font-size: 12px !important;
     font-weight: 500 !important;
     color: var(--dz-text) !important;
-    pointer-events: none !important;
 }
 
-/* Keyboard shortcut badge shown via CSS */
-/* Ctrl+K badge: opens command palette for global device control */
-#tbFiltSearch::after {
-    content: "Ctrl\00a0K" !important;
+/* "/" badge */
+#tbFiltSearch #tbSearch::before {
+    content: "/" !important;
+    display: inline-block !important;
+    background: var(--dz-surface-2) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-bottom-width: 2px !important;
+    border-radius: 4px !important;
+    padding: 2px 7px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    color: var(--dz-text-muted) !important;
+    font-family: monospace !important;
+    line-height: 1.4 !important;
+    order: 10 !important;
+    margin-left: 4px !important;
+}
+
+/* Divider */
+#tbFiltSearch::before {
+    content: "" !important;
+    display: block !important;
+    width: 1px !important;
+    height: 24px !important;
+    background: var(--dz-border) !important;
+    flex-shrink: 0 !important;
+}
+
+/* Right section: Command Palette - created via JS */
+.dz-cmd-palette-trigger {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 5px 10px !important;
+    cursor: pointer !important;
+    transition: background 0.15s !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: var(--dz-text) !important;
+    white-space: nowrap !important;
+    border: none !important;
+    background: transparent !important;
+}
+
+.dz-cmd-palette-trigger:hover {
+    background: rgba(var(--dz-accent-rgb), 0.08) !important;
+}
+
+.dz-cmd-palette-trigger-kbd {
     display: inline-block !important;
     background: var(--dz-surface-2) !important;
     border: 1px solid var(--dz-border) !important;
@@ -1984,8 +2024,10 @@ body.dz-light #dz-cmd-box {
     font-size: 10px !important;
     font-weight: 500 !important;
     color: var(--dz-text-muted) !important;
-    font-family: inherit !important;
-    pointer-events: none !important;
-    white-space: nowrap !important;
     line-height: 1.4 !important;
+}
+
+/* Hide the actual input */
+#tbFiltSearch input.jsLiveSearch {
+    display: none !important;
 }
