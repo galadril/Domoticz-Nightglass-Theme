@@ -906,7 +906,7 @@ body table#itemtablenostatus tr td.options {
 
 .dz-alert-device table[id^="itemtable"] tr td#bigtext {
     font-size: 0.9rem !important;
-    font-weight: 500 !important;
+    font-weight: 300 !important;
     color: var(--dz-text-soft) !important;
     white-space: normal !important;
     overflow: visible !important;
