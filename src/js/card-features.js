@@ -161,6 +161,66 @@
 })();
 
 
+/* -- Alert device card enhancement -------------------------------- */
+/*    For "General, Alert" devices the bigtext contains a multi-line  */
+/*    status message that looks oversized in the default hero-value   */
+/*    style. Add a class to the itemBlock so CSS can restyle it.      */
+
+(function () {
+    'use strict';
+
+    function processAlertDevices() {
+        var cards = document.querySelectorAll(
+            'table[id^="itemtable"] tr'
+        );
+        for (var i = 0; i < cards.length; i++) {
+            var tr = cards[i];
+            if (tr.getAttribute('data-dz-alert-done')) continue;
+
+            var typeTd = tr.querySelector('td#type');
+            if (!typeTd) continue;
+            var typeText = (typeTd.textContent || '').trim();
+            if (!/\bAlert\b/i.test(typeText)) continue;
+
+            tr.setAttribute('data-dz-alert-done', '1');
+
+            var itemBlock = tr.closest('.itemBlock');
+            if (itemBlock) itemBlock.classList.add('dz-alert-device');
+        }
+    }
+
+    window._dzExtraProcessors = window._dzExtraProcessors || [];
+    window._dzExtraProcessors.push(processAlertDevices);
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', processAlertDevices);
+    } else {
+        processAlertDevices();
+    }
+
+    var _timer = null;
+    var observer = new MutationObserver(function () {
+        clearTimeout(_timer);
+        _timer = setTimeout(processAlertDevices, 250);
+    });
+
+    function startObserver() {
+        var target = document.getElementById('dashcontent') ||
+                     document.getElementById('main-content') ||
+                     document.body;
+        if (target) {
+            observer.observe(target, { childList: true, subtree: true });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startObserver);
+    } else {
+        startObserver();
+    }
+})();
+
+
 /* -- Format last-update timestamps + strip "Type:" prefix --------- */
 /*    Runs after Angular renders each digest cycle.                   */
 
