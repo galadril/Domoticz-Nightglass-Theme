@@ -65,8 +65,14 @@
     function pick(d) {
         close();
         d.card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        d.card.classList.add('dz-flash-on');
-        setTimeout(function () { d.card.classList.remove('dz-flash-on'); }, 700);
+
+        // Add prominent highlight animation
+        d.card.classList.add('dz-search-highlight');
+
+        // Remove after animation completes
+        setTimeout(function () { 
+            d.card.classList.remove('dz-search-highlight'); 
+        }, 2500);
     }
 
     function open() {

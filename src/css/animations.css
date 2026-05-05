@@ -717,6 +717,88 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
     animation: dz-card-flash-off 0.65s ease-out forwards !important;
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   SEARCH HIGHLIGHT - More prominent highlight for page filter results
+   ══════════════════════════════════════════════════════════════════ */
+
+@keyframes dz-search-highlight-pulse {
+    0% { 
+        outline: 4px solid var(--dz-accent); 
+        outline-offset: 0px;
+        background: rgba(var(--dz-accent-rgb), 0.12);
+        transform: scale(1);
+    }
+    10% { 
+        outline: 4px solid var(--dz-accent); 
+        outline-offset: 4px;
+        background: rgba(var(--dz-accent-rgb), 0.15);
+        transform: scale(1.01);
+    }
+    20% { 
+        outline: 4px solid var(--dz-accent); 
+        outline-offset: 0px;
+        background: rgba(var(--dz-accent-rgb), 0.12);
+        transform: scale(1);
+    }
+    30% { 
+        outline: 4px solid var(--dz-accent); 
+        outline-offset: 4px;
+        background: rgba(var(--dz-accent-rgb), 0.15);
+        transform: scale(1.01);
+    }
+    40% { 
+        outline: 4px solid var(--dz-accent); 
+        outline-offset: 0px;
+        background: rgba(var(--dz-accent-rgb), 0.12);
+        transform: scale(1);
+    }
+    50% { 
+        outline: 4px solid var(--dz-accent); 
+        outline-offset: 4px;
+        background: rgba(var(--dz-accent-rgb), 0.15);
+        transform: scale(1.01);
+    }
+    70% {
+        outline: 4px solid var(--dz-accent);
+        outline-offset: 2px;
+        background: rgba(var(--dz-accent-rgb), 0.08);
+        transform: scale(1);
+    }
+    100% { 
+        outline: 4px solid rgba(var(--dz-accent-rgb), 0); 
+        outline-offset: 8px;
+        background: rgba(var(--dz-accent-rgb), 0);
+        transform: scale(1);
+    }
+}
+
+.dz-search-highlight {
+    animation: dz-search-highlight-pulse 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+    position: relative !important;
+    z-index: 100 !important;
+}
+
+/* Ensure highlight is visible even with reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+    @keyframes dz-search-highlight-pulse {
+        0% { 
+            outline: 4px solid var(--dz-accent); 
+            outline-offset: 2px;
+            background: rgba(var(--dz-accent-rgb), 0.15);
+        }
+        100% { 
+            outline: 4px solid rgba(var(--dz-accent-rgb), 0); 
+            outline-offset: 2px;
+            background: rgba(var(--dz-accent-rgb), 0);
+        }
+    }
+
+    .dz-search-highlight {
+        animation-duration: 1.5s !important;
+    }
+}
+
+
 
 /* ══════════════════════════════════════════════════════════════════
    27. 3D CARD TILT
@@ -960,13 +1042,22 @@ div.item.itemBlock:hover .dz-sparkline-wrap,
     gap: 12px;
     color: var(--dz-text);
     font-size: 0.95rem;
-    transition: background 0.1s;
+    transition: background 0.15s, transform 0.15s, padding-left 0.15s;
+    border-left: 3px solid transparent;
 }
 
-    .dz-search-item:hover,
-    .dz-search-item.dz-search-active {
+    .dz-search-item:hover {
         background: rgba(var(--dz-accent-rgb), 0.08);
         color: var(--dz-text);
+        padding-left: 23px;
+    }
+
+    .dz-search-item.dz-search-active {
+        background: rgba(var(--dz-accent-rgb), 0.15);
+        color: var(--dz-text);
+        border-left-color: var(--dz-accent);
+        padding-left: 20px;
+        font-weight: 500;
     }
 
     .dz-search-item i {
@@ -974,6 +1065,11 @@ div.item.itemBlock:hover .dz-sparkline-wrap,
         width: 20px;
         text-align: center;
         flex-shrink: 0;
+        transition: transform 0.15s;
+    }
+
+    .dz-search-item.dz-search-active i {
+        transform: scale(1.15);
     }
 
 .dz-search-hint {
