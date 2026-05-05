@@ -698,46 +698,37 @@
                 var $rootScope = injector && injector.get('$rootScope');
                 if ($location && $rootScope) {
                     var alreadyHere = $location.path() === route;
-                    _pendingHighlight = String(device.idx);
-                    console.log('[dz-cmd] navigateToDevice idx=' + device.idx + ' route=' + route + ' alreadyHere=' + alreadyHere);
+                    _pendingHighlight = device.Name;
                     if (!alreadyHere) {
                         $rootScope.$apply(function () { $location.path(route); });
+                        // hookAngular's $routeChangeSuccess will call scrollToCard
                     } else {
-                        scrollToCard(_pendingHighlight);
+                        scrollToCard(device.Name);
                         _pendingHighlight = null;
                     }
                     return;
                 }
-            } catch (e) { console.error('[dz-cmd] navigateToDevice error', e); }
+            } catch (e) {}
             window.location.hash = route;
         }, 10);
     }
 
-    function scrollToCard(idx) {
-        console.log('[dz-cmd] scrollToCard idx=' + idx);
+    function scrollToCard(name) {
         var attempts = 0;
         var poll = setInterval(function () {
-            var tbl = document.getElementById('itemtable' + idx);
-            console.log('[dz-cmd] poll attempt=' + attempts + ' found=' + !!tbl);
-            if (tbl) {
-                clearInterval(poll);
-                var el = tbl.parentElement;
-                while (el && el !== document.body) {
-                    if (el.classList.contains('itemBlock')) break;
-                    if (el.classList.contains('item') && el.parentElement &&
-                        el.parentElement.classList.contains('itemBlock')) break;
-                    el = el.parentElement;
+            var found = false;
+            document.querySelectorAll('div.item.itemBlock, .itemBlock > div.item').forEach(function (card) {
+                if (found) return;
+                var nameEl = card.querySelector('td#name');
+                if (nameEl && (nameEl.textContent || '').trim() === name) {
+                    found = true;
+                    clearInterval(poll);
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    card.classList.add('dz-search-highlight');
+                    setTimeout(function () { card.classList.remove('dz-search-highlight'); }, 2500);
                 }
-                console.log('[dz-cmd] card found:', el);
-                if (el && el !== document.body) {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    el.classList.add('dz-search-highlight');
-                    setTimeout(function () { el.classList.remove('dz-search-highlight'); }, 2500);
-                }
-            } else if (++attempts >= 30) {
-                clearInterval(poll);
-                console.warn('[dz-cmd] scrollToCard: itemtable' + idx + ' never appeared');
-            }
+            });
+            if (!found && ++attempts >= 30) clearInterval(poll);
         }, 100);
     }
 
