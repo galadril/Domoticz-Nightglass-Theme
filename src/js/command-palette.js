@@ -90,30 +90,50 @@
         return 'fa-solid fa-circle-dot';
     }
 
-    // ── Device state helpers ───────────────────────────────────────
+    // ── Device classification ──────────────────────────────────────
 
     function isOn(d) {
         var s = d.Status || '';
         return ['On','Group On','Chime','Panic','Mixed'].indexOf(s) >= 0 ||
-               s.indexOf('Set ') === 0 ||
-               s.indexOf('NightMode') === 0 ||
-               s.indexOf('Disco ') === 0;
+               s.indexOf('Set ') === 0 || s.indexOf('NightMode') === 0 || s.indexOf('Disco ') === 0;
+    }
+
+    function deviceClass(d) {
+        var t  = d.Type        || '';
+        var st = d.SwitchType  || '';
+        if (t === 'Scene')  return 'scene';
+        if (t === 'Group')  return 'group';
+        var controllable = ['Light/Switch','Lighting 1','Lighting 2','Lighting 5',
+                            'Lighting 6','Color Switch','Chime','Homeer','RFY'];
+        if (st === 'Selector')                          return 'selector';
+        if (st === 'Door Lock' || st === 'Door Lock Inverted') return 'lock';
+        if (st === 'Dimmer' || st === 'Blinds Percentage' || st === 'Blinds % + Stop')
+                                                        return 'dimmer';
+        if (st.indexOf('Blinds') >= 0 || st.indexOf('Venetian') >= 0) {
+            var hasStop = st.indexOf('Stop') >= 0 || st.indexOf('Venetian') >= 0 ||
+                          (d.SubType || '').indexOf('RFY') === 0;
+            return hasStop ? 'blinds3' : 'blinds2';
+        }
+        var readOnly = ['Door Contact','Contact','Motion Sensor','Dusk Sensor',
+                        'Smoke Detector','Doorbell'];
+        if (readOnly.indexOf(st) >= 0) return 'readonly';
+        if (controllable.indexOf(t) >= 0 && st !== 'Push On Button' && st !== 'Push Off Button') return 'toggle';
+        if (st === 'Push On Button')  return 'push';
+        if (st === 'Push Off Button') return 'push';
+        return 'sensor';
+    }
+
+    function isControllable(d) {
+        var c = deviceClass(d);
+        return ['toggle','dimmer','blinds2','blinds3','scene','group','lock','selector','push'].indexOf(c) >= 0;
     }
 
     function isToggleable(d) {
-        var t  = d.Type       || '';
-        var st = d.SwitchType || '';
-        if (t === 'Scene' || t === 'Group') return true;
-        var lights = ['Light/Switch','Lighting 1','Lighting 2','Lighting 5',
-                      'Lighting 6','Color Switch','Chime'];
-        if (lights.indexOf(t) < 0) return false;
-        var readOnly = ['Door Contact','Contact','Motion Sensor','Dusk Sensor'];
-        return readOnly.indexOf(st) < 0;
+        return ['toggle','scene','group'].indexOf(deviceClass(d)) >= 0;
     }
 
     function isDimmer(d) {
-        return ['Dimmer','Blinds Percentage','Blinds % + Stop']
-               .indexOf(d.SwitchType || '') >= 0;
+        return deviceClass(d) === 'dimmer';
     }
 
     // Derive a display unit for sensor devices that return bare numbers
@@ -138,25 +158,51 @@
     }
 
     function stateLabel(d) {
-        // Toggleable devices: prefer Status ("On" / "Off" / "Set 75 %")
-        if (isToggleable(d)) return d.Status || d.Data || '';
-        var data = (d.Data || '').trim();
-        if (!data) return d.Status || '';
-
-        // Take only the first ';'- or newline-separated segment
-        var first = data.split(/[;\n]/)[0].trim();
-
-        // Strip "Label: value" prefixes produced by P1/counter devices
-        // e.g. "Usage1: 1234.567 kWh" → "1234.567 kWh"
-        first = first.replace(/^[A-Za-z][A-Za-z0-9 _]*:\s*/, '');
-
-        // If the result is still a bare number, append the derived unit
-        if (/^-?\d+(\.\d+)?$/.test(first)) {
-            var unit = _derivedUnit(d);
-            if (unit) first += '\u00a0' + unit;
+        var cls = deviceClass(d);
+        if (cls === 'sensor' || cls === 'readonly') {
+            var data = (d.Data || '').trim();
+            if (!data) return d.Status || '';
+            var first = data.split(/[;\n]/)[0].trim()
+                            .replace(/^[A-Za-z][A-Za-z0-9 _]*:\s*/, '');
+            if (/^-?\d+(\.\d+)?$/.test(first)) {
+                var unit = _derivedUnit(d);
+                if (unit) first += '\u00a0' + unit;
+            }
+            return first || d.Status || '';
         }
+        if (cls === 'dimmer') return (d.Level != null ? d.Level : '?') + '%';
+        if (cls === 'selector') {
+            var names = selectorNames(d);
+            var lvl = parseInt(d.Level || 0, 10);
+            var nameIdx = lvl / 10;
+            return names[nameIdx] || d.Status || '';
+        }
+        return d.Status || d.Data || '';
+    }
 
-        return first || d.Status || '';
+    function relativeTime(str) {
+        if (!str) return '';
+        // Domoticz formats: "2024-01-15 14:30:00" or "Today HH:MM:SS"
+        var m = str.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})/);
+        if (!m) {
+            // already "Today HH:MM" style
+            var t = str.match(/(\d{2}:\d{2})/);
+            return t ? 'Today ' + t[1] : str;
+        }
+        var then = new Date(m[1] + 'T' + m[2]);
+        var now  = new Date();
+        var diff = Math.floor((now - then) / 60000); // minutes
+        if (isNaN(diff) || diff < 0) return '';
+        if (diff < 2)   return 'just now';
+        if (diff < 60)  return diff + 'm ago';
+        if (diff < 120) return '1h ago';
+        if (diff < 1440) return Math.floor(diff / 60) + 'h ago';
+        return Math.floor(diff / 1440) + 'd ago';
+    }
+
+    function selectorNames(d) {
+        if (!d.LevelNames) return [];
+        return d.LevelNames.split('|');
     }
 
     // Maps a device to the Domoticz Angular route where it appears
@@ -176,40 +222,357 @@
         return '/Utility';
     }
 
-    // ── API calls ──────────────────────────────────────────────────
+    // ── Build item ─────────────────────────────────────────────────
 
-    function apiToggle(d, cb) {
-        var param = (d.Type === 'Scene' || d.Type === 'Group')
-            ? 'switchscene' : 'switchlight';
-        var cmd;
-        if (d.Type === 'Group') {
-            cmd = isOn(d) ? 'Off' : 'On';
-        } else if (d.Type === 'Scene') {
-            cmd = 'On';
-        } else {
-            cmd = 'Toggle';
-        }
-        fetch('json.htm?type=command&param=' + param +
-              '&idx=' + d.idx + '&switchcmd=' + cmd,
-              { credentials: 'same-origin' })
-            .then(function (r) { return r.json(); })
-            .then(function () {
-                if (cmd === 'Toggle') {
-                    d.Status = isOn(d) ? 'Off' : 'On';
-                } else {
-                    d.Status = cmd;
-                }
-                if (cb) cb(d);
-            })
-            .catch(function () {});
+    function buildItem(device, index, query) {
+        var el  = document.createElement('div');
+        var on  = isOn(device);
+        var cls = deviceClass(device);
+        el.className = 'dz-cmd-item';
+        el.setAttribute('data-index', index);
+        el._dzDevice = device;
+
+        // ── Icon
+        var iconWrap = document.createElement('div');
+        iconWrap.className = 'dz-cmd-icon' + (on ? ' dz-cmd-icon--on' : '');
+        iconWrap.innerHTML = '<i class="' + iconFor(device) + '"></i>';
+        el.appendChild(iconWrap);
+
+        // ── Body: name + meta
+        var body = document.createElement('div');
+        body.className = 'dz-cmd-body';
+
+        var nameEl = document.createElement('div');
+        nameEl.className = 'dz-cmd-name';
+        nameEl.innerHTML = highlight(device.Name || '', query);
+        body.appendChild(nameEl);
+
+        var metaEl = document.createElement('div');
+        metaEl.className = 'dz-cmd-meta';
+        var metaParts = [];
+        // Device type hint
+        var typeHint = device.SwitchType && device.SwitchType !== device.Type
+            ? device.SwitchType : (device.Type || '');
+        if (typeHint) metaParts.push(typeHint);
+        // Last seen relative
+        var ago = relativeTime(device.LastUpdate);
+        if (ago) metaParts.push(ago);
+        metaEl.textContent = metaParts.join(' \u00b7 ');
+        body.appendChild(metaEl);
+        el.appendChild(body);
+
+        // ── Inline controls (contextual per device class)
+        var ctrlEl = buildControls(device, cls, on, el, iconWrap);
+        if (ctrlEl) el.appendChild(ctrlEl);
+
+        // ── Navigate button (always present, revealed on hover)
+        var navBtn = document.createElement('button');
+        navBtn.className = 'dz-cmd-nav-btn';
+        navBtn.title = 'Go to device (Shift+\u21b5)';
+        navBtn.innerHTML = '<i class="fa-solid fa-arrow-right"></i>';
+        navBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            navigateToDevice(device);
+        });
+        el.appendChild(navBtn);
+
+        el.addEventListener('mouseenter', function () { setActive(index); });
+        el.addEventListener('click', function (e) {
+            if (e.target.closest('.dz-cmd-controls')) return; // controls handle themselves
+            if (e.target.classList.contains('dz-cmd-nav-btn') ||
+                e.target.closest('.dz-cmd-nav-btn')) return;
+            onItemClick(device, el, iconWrap);
+        });
+
+        return el;
     }
 
-    function apiSetLevel(d, level, cb) {
-        fetch('json.htm?type=command&param=switchlight&idx=' + d.idx +
-              '&switchcmd=Set+Level&level=' + level,
-              { credentials: 'same-origin' })
-            .then(function () { if (cb) cb(); })
-            .catch(function () {});
+    function buildControls(device, cls, on, el, iconWrap) {
+        var wrap = document.createElement('div');
+        wrap.className = 'dz-cmd-controls';
+
+        // ── State badge for sensors / readonly (no inline controls)
+        if (cls === 'sensor' || cls === 'readonly') {
+            var badge = document.createElement('span');
+            badge.className = 'dz-cmd-state';
+            badge.textContent = stateLabel(device);
+            wrap.appendChild(badge);
+            return wrap;
+        }
+
+        // ── Simple toggle
+        if (cls === 'toggle') {
+            var pill = document.createElement('button');
+            pill.className = 'dz-cmd-toggle-pill' + (on ? ' dz-cmd-toggle-pill--on' : '');
+            pill.textContent = on ? 'On' : 'Off';
+            pill.addEventListener('click', function (e) {
+                e.stopPropagation();
+                apiToggle(device, function (d) {
+                    var nowOn = isOn(d);
+                    pill.textContent = nowOn ? 'On' : 'Off';
+                    pill.classList.toggle('dz-cmd-toggle-pill--on', nowOn);
+                    iconWrap.classList.toggle('dz-cmd-icon--on', nowOn);
+                    flashCard(d, nowOn);
+                });
+            });
+            wrap.appendChild(pill);
+            return wrap;
+        }
+
+        // ── Scene: Run button only
+        if (cls === 'scene') {
+            var runBtn = document.createElement('button');
+            runBtn.className = 'dz-cmd-action-btn';
+            runBtn.innerHTML = '<i class="fa-solid fa-play"></i> Run';
+            runBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                apiCommand(device, 'On', function () {
+                    runBtn.innerHTML = '<i class="fa-solid fa-check"></i> Done';
+                    setTimeout(function () {
+                        runBtn.innerHTML = '<i class="fa-solid fa-play"></i> Run';
+                    }, 1500);
+                });
+            });
+            wrap.appendChild(runBtn);
+            return wrap;
+        }
+
+        // ── Group: On + Off buttons
+        if (cls === 'group') {
+            wrap.appendChild(makeBtn('<i class="fa-solid fa-power-off"></i> On', 'dz-cmd-action-btn' + (on ? ' dz-cmd-action-btn--active' : ''), function (btn) {
+                apiCommand(device, 'On', function () {
+                    iconWrap.classList.add('dz-cmd-icon--on');
+                    btn.classList.add('dz-cmd-action-btn--active');
+                    var off = wrap.querySelector('[data-cmd="Off"]');
+                    if (off) off.classList.remove('dz-cmd-action-btn--active');
+                    flashCard(device, true);
+                });
+            }, 'On'));
+            wrap.appendChild(makeBtn('<i class="fa-solid fa-power-off"></i> Off', 'dz-cmd-action-btn' + (!on ? ' dz-cmd-action-btn--active' : ''), function (btn) {
+                apiCommand(device, 'Off', function () {
+                    iconWrap.classList.remove('dz-cmd-icon--on');
+                    btn.classList.add('dz-cmd-action-btn--active');
+                    var onb = wrap.querySelector('[data-cmd="On"]');
+                    if (onb) onb.classList.remove('dz-cmd-action-btn--active');
+                    flashCard(device, false);
+                });
+            }, 'Off'));
+            return wrap;
+        }
+
+        // ── Lock: Unlock + Lock buttons
+        if (cls === 'lock') {
+            var locked = (device.Status || '').toLowerCase().indexOf('locked') >= 0 &&
+                         (device.Status || '').toLowerCase().indexOf('unlocked') < 0;
+            wrap.appendChild(makeBtn('<i class="fa-solid fa-lock-open"></i>', 'dz-cmd-action-btn' + (!locked ? ' dz-cmd-action-btn--active' : ''), function () {
+                apiCommand(device, 'Off', function () {
+                    iconWrap.classList.remove('dz-cmd-icon--on');
+                    flashCard(device, false);
+                });
+            }, 'Off'));
+            wrap.appendChild(makeBtn('<i class="fa-solid fa-lock"></i>', 'dz-cmd-action-btn' + (locked ? ' dz-cmd-action-btn--active' : ''), function () {
+                apiCommand(device, 'On', function () {
+                    iconWrap.classList.add('dz-cmd-icon--on');
+                    flashCard(device, true);
+                });
+            }, 'On'));
+            return wrap;
+        }
+
+        // ── Push button: single press
+        if (cls === 'push') {
+            var pushBtn = document.createElement('button');
+            pushBtn.className = 'dz-cmd-action-btn';
+            pushBtn.innerHTML = '<i class="fa-solid fa-hand-pointer"></i> Press';
+            pushBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var cmd = (device.SwitchType === 'Push Off Button') ? 'Off' : 'On';
+                apiCommand(device, cmd, function () {
+                    pushBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                    setTimeout(function () {
+                        pushBtn.innerHTML = '<i class="fa-solid fa-hand-pointer"></i> Press';
+                    }, 1000);
+                });
+            });
+            wrap.appendChild(pushBtn);
+            return wrap;
+        }
+
+        // ── Dimmer: On/Off pill + expand slider
+        if (cls === 'dimmer') {
+            var level = parseInt(device.Level || 0, 10);
+            var dimPill = document.createElement('button');
+            dimPill.className = 'dz-cmd-toggle-pill' + (on ? ' dz-cmd-toggle-pill--on' : '');
+            dimPill.textContent = on ? level + '%' : 'Off';
+            dimPill.title = 'Click to expand slider';
+            dimPill.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var row = el.querySelector('.dz-cmd-slider-row');
+                if (row) {
+                    var visible = row.classList.toggle('dz-cmd-slider-row--visible');
+                    if (visible) row.querySelector('.dz-cmd-slider').focus();
+                }
+            });
+            wrap.appendChild(dimPill);
+
+            // slider row (hidden until pill clicked)
+            var sliderRow = document.createElement('div');
+            sliderRow.className = 'dz-cmd-slider-row';
+            sliderRow.innerHTML =
+                '<button class="dz-cmd-slider-off" title="Off"><i class="fa-solid fa-power-off"></i></button>' +
+                '<input type="range" class="dz-cmd-slider" min="0" max="100" step="5" value="' + level + '">' +
+                '<span class="dz-cmd-slider-val">' + level + '%</span>';
+            var slider  = sliderRow.querySelector('.dz-cmd-slider');
+            var valSpan = sliderRow.querySelector('.dz-cmd-slider-val');
+            var offBtn  = sliderRow.querySelector('.dz-cmd-slider-off');
+            slider.addEventListener('input', function () { valSpan.textContent = this.value + '%'; });
+            slider.addEventListener('change', function () {
+                var v = parseInt(this.value, 10);
+                apiSetLevel(device, v, function () {
+                    device.Level  = v;
+                    device.Status = v > 0 ? 'Set ' + v + ' %' : 'Off';
+                    dimPill.textContent = v > 0 ? v + '%' : 'Off';
+                    dimPill.classList.toggle('dz-cmd-toggle-pill--on', v > 0);
+                    iconWrap.classList.toggle('dz-cmd-icon--on', v > 0);
+                });
+            });
+            slider.addEventListener('click', function (e) { e.stopPropagation(); });
+            offBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                apiCommand(device, 'Off', function () {
+                    device.Level = 0;
+                    device.Status = 'Off';
+                    slider.value = 0;
+                    valSpan.textContent = '0%';
+                    dimPill.textContent = 'Off';
+                    dimPill.classList.remove('dz-cmd-toggle-pill--on');
+                    iconWrap.classList.remove('dz-cmd-icon--on');
+                });
+            });
+            el.appendChild(sliderRow);
+            return wrap;
+        }
+
+        // ── Blinds 2-button (no stop)
+        if (cls === 'blinds2') {
+            wrap.appendChild(makeIconBtn('fa-solid fa-chevron-up',   'Open',  function () { apiCommand(device, 'On',  function () { flashCard(device, true); }); }));
+            wrap.appendChild(makeIconBtn('fa-solid fa-chevron-down', 'Close', function () { apiCommand(device, 'Off', function () { flashCard(device, false); }); }));
+            var blindState = document.createElement('span');
+            blindState.className = 'dz-cmd-state';
+            blindState.textContent = stateLabel(device) || device.Status || '';
+            wrap.insertBefore(blindState, wrap.firstChild);
+            return wrap;
+        }
+
+        // ── Blinds 3-button (with stop)
+        if (cls === 'blinds3') {
+            wrap.appendChild(makeIconBtn('fa-solid fa-chevron-up',   'Open',  function () { apiCommand(device, 'On',   function () { flashCard(device, true); }); }));
+            wrap.appendChild(makeIconBtn('fa-solid fa-stop',         'Stop',  function () { apiCommand(device, 'Stop', function () {}); }));
+            wrap.appendChild(makeIconBtn('fa-solid fa-chevron-down', 'Close', function () { apiCommand(device, 'Off',  function () { flashCard(device, false); }); }));
+            var blindState3 = document.createElement('span');
+            blindState3.className = 'dz-cmd-state';
+            blindState3.textContent = stateLabel(device) || device.Status || '';
+            wrap.insertBefore(blindState3, wrap.firstChild);
+            return wrap;
+        }
+
+        // ── Selector switch: show current option + expand options on click
+        if (cls === 'selector') {
+            var names = selectorNames(device);
+            var curLevel = parseInt(device.Level || 0, 10);
+            var curName  = names[curLevel / 10] || device.Status || '';
+
+            var selPill = document.createElement('button');
+            selPill.className = 'dz-cmd-toggle-pill dz-cmd-toggle-pill--on';
+            selPill.textContent = curName;
+            selPill.title = 'Click to change mode';
+            selPill.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var row = el.querySelector('.dz-cmd-selector-row');
+                if (row) row.classList.toggle('dz-cmd-selector-row--visible');
+            });
+            wrap.appendChild(selPill);
+
+            // Options row
+            if (names.length > 1) {
+                var selRow = document.createElement('div');
+                selRow.className = 'dz-cmd-selector-row';
+                names.forEach(function (name, i) {
+                    var optBtn = document.createElement('button');
+                    optBtn.className = 'dz-cmd-sel-opt' + (i * 10 === curLevel ? ' dz-cmd-sel-opt--active' : '');
+                    optBtn.textContent = name;
+                    optBtn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        var newLevel = i * 10;
+                        apiSetSelector(device, newLevel, function () {
+                            device.Level = newLevel;
+                            device.Status = name;
+                            selPill.textContent = name;
+                            selRow.querySelectorAll('.dz-cmd-sel-opt').forEach(function (b, j) {
+                                b.classList.toggle('dz-cmd-sel-opt--active', j === i);
+                            });
+                            selRow.classList.remove('dz-cmd-selector-row--visible');
+                        });
+                    });
+                    selRow.appendChild(optBtn);
+                });
+                el.appendChild(selRow);
+            }
+            return wrap;
+        }
+
+        return null;
+    }
+
+    function makeBtn(html, cls, cb, cmd) {
+        var btn = document.createElement('button');
+        btn.className = cls;
+        btn.innerHTML = html;
+        if (cmd) btn.setAttribute('data-cmd', cmd);
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            cb(btn);
+        });
+        return btn;
+    }
+
+    function makeIconBtn(icon, title, cb) {
+        var btn = document.createElement('button');
+        btn.className = 'dz-cmd-icon-btn';
+        btn.title = title;
+        btn.innerHTML = '<i class="' + icon + '"></i>';
+        btn.addEventListener('click', function (e) { e.stopPropagation(); cb(); });
+        return btn;
+    }
+
+    function flashCard(d, nowOn) {
+        var tbl = document.getElementById('itemtable' + d.idx);
+        if (!tbl) return;
+        var card = tbl.closest ? tbl.closest('div.item.itemBlock, .itemBlock > div.item') : null;
+        if (card) {
+            card.classList.add(nowOn ? 'dz-flash-on' : 'dz-flash-off');
+            setTimeout(function () { card.classList.remove('dz-flash-on', 'dz-flash-off'); }, 700);
+        }
+    }
+
+    function onItemClick(device, el, iconWrap) {
+        var cls = deviceClass(device);
+        // For sensors/readonly → navigate
+        if (cls === 'sensor' || cls === 'readonly') { navigateToDevice(device); return; }
+        // For toggle → quick toggle
+        if (cls === 'toggle') {
+            apiToggle(device, function (d) {
+                var nowOn = isOn(d);
+                iconWrap.classList.toggle('dz-cmd-icon--on', nowOn);
+                var pill = el.querySelector('.dz-cmd-toggle-pill');
+                if (pill) {
+                    pill.textContent = nowOn ? 'On' : 'Off';
+                    pill.classList.toggle('dz-cmd-toggle-pill--on', nowOn);
+                }
+                flashCard(d, nowOn);
+            });
+        }
+        // Other types: controls in the row handle interactions, clicking body is no-op
     }
 
     // ── Fuzzy search ───────────────────────────────────────────────
@@ -323,153 +686,41 @@
         });
     }
 
-    function buildItem(device, index, query) {
-        var el  = document.createElement('div');
-        var on  = isOn(device);
-        var tog = isToggleable(device);
-        var dim = isDimmer(device);
-        el.className = 'dz-cmd-item';
-        el.setAttribute('data-index', index);
-
-        var iconWrap = document.createElement('div');
-        iconWrap.className = 'dz-cmd-icon' + (on ? ' dz-cmd-icon--on' : '');
-        iconWrap.innerHTML = '<i class="' + iconFor(device) + '"></i>';
-        el.appendChild(iconWrap);
-
-        var body = document.createElement('div');
-        body.className = 'dz-cmd-body';
-        var nameEl = document.createElement('div');
-        nameEl.className = 'dz-cmd-name';
-        nameEl.innerHTML = highlight(device.Name || '', query);
-        body.appendChild(nameEl);
-        var metaEl = document.createElement('div');
-        metaEl.className = 'dz-cmd-meta';
-        var parts = [];
-        if (device.Type) parts.push(device.Type);
-        if (device.SwitchType && device.SwitchType !== device.Type) parts.push(device.SwitchType);
-        metaEl.textContent = parts.join(' \u00b7 ');
-        body.appendChild(metaEl);
-        el.appendChild(body);
-
-        var stateEl = document.createElement('div');
-        stateEl.className = 'dz-cmd-state' + (on ? ' dz-cmd-state--on' : '');
-        stateEl.textContent = stateLabel(device);
-        el.appendChild(stateEl);
-
-        // Navigate button — always present, visible on hover / keyboard focus
-        var navBtn = document.createElement('button');
-        navBtn.className = 'dz-cmd-nav-btn';
-        navBtn.title = 'Go to device page (Shift+\u21b5)';
-        navBtn.innerHTML = '<i class="fa-solid fa-arrow-right"></i>';
-        navBtn.addEventListener('click', function (e) {
-            e.stopPropagation();
-            navigateToDevice(device);
-        });
-        el.appendChild(navBtn);
-
-        // Toggle hint — only shown for toggleable devices
-        if (tog || dim) {
-            var hint = document.createElement('div');
-            hint.className = 'dz-cmd-hint';
-            hint.innerHTML = '<kbd>\u21b5</kbd>';
-            el.appendChild(hint);
-        }
-
-        // Store device reference for keyboard Shift+Enter
-        el._dzDevice = device;
-
-        var sliderRow = null;
-        if (dim) {
-            sliderRow = document.createElement('div');
-            sliderRow.className = 'dz-cmd-slider-row';
-            var level = parseInt(device.Level || 0, 10) || 0;
-            sliderRow.innerHTML =
-                '<input type="range" class="dz-cmd-slider" min="0" max="100" step="5" value="' + level + '">' +
-                '<span class="dz-cmd-slider-val">' + level + '%</span>';
-            var slider  = sliderRow.querySelector('.dz-cmd-slider');
-            var valSpan = sliderRow.querySelector('.dz-cmd-slider-val');
-            slider.addEventListener('input', function () {
-                valSpan.textContent = this.value + '%';
-            });
-            slider.addEventListener('change', function () {
-                apiSetLevel(device, this.value, function () {
-                    device.Level = parseInt(slider.value, 10);
-                    stateEl.textContent = slider.value + '%';
-                });
-            });
-            slider.addEventListener('click', function (e) { e.stopPropagation(); });
-            el.appendChild(sliderRow);
-        }
-
-        el.addEventListener('mouseenter', function () { setActive(index); });
-        el.addEventListener('click', function (e) {
-            if (e.target.classList.contains('dz-cmd-slider')) return;
-            onActivate(device, el, stateEl, iconWrap, sliderRow);
-        });
-
-        return el;
-    }
-
     function navigateToDevice(device) {
         var route = deviceRoute(device);
         closePalette();
-        // Always navigate to the device's type page so the user lands in the right section.
-        // Use Angular's $location if available (fires $routeChangeSuccess properly);
-        // fall back to direct hash assignment.
         setTimeout(function () {
+            function scrollAndHighlight() {
+                setTimeout(function () {
+                    var tbl = document.getElementById('itemtable' + device.idx);
+                    if (tbl) {
+                        var card = tbl.closest
+                            ? tbl.closest('div.item.itemBlock, .itemBlock > div.item') : null;
+                        if (card) {
+                            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            card.classList.add('dz-search-highlight');
+                            setTimeout(function () { card.classList.remove('dz-search-highlight'); }, 2500);
+                        }
+                    }
+                }, 350);
+            }
             try {
-                var injector = window.angular && angular.element(document.body).injector();
+                var injector  = window.angular && angular.element(document.body).injector();
                 var $location  = injector && injector.get('$location');
                 var $rootScope = injector && injector.get('$rootScope');
                 if ($location && $rootScope) {
                     $rootScope.$apply(function () { $location.path(route); });
-                    // Scroll to and highlight the device after navigation
-                    setTimeout(function() {
-                        var card = document.getElementById('itemtable' + device.idx);
-                        if (card) {
-                            var cardEl = card.closest('div.item.itemBlock, .itemBlock > div.item');
-                            if (cardEl) {
-                                cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                cardEl.classList.add('dz-flash-on');
-                                setTimeout(function() { cardEl.classList.remove('dz-flash-on'); }, 700);
-                            }
-                        }
-                    }, 300);
+                    scrollAndHighlight();
                     return;
                 }
             } catch (e) {}
             window.location.hash = route;
-        }, 10); // defer past closePalette's synchronous work
+        }, 10);
     }
 
     function onActivate(device, el, stateEl, iconWrap, sliderRow) {
-        if (isDimmer(device) && sliderRow) {
-            if (!sliderRow.classList.contains('dz-cmd-slider-row--visible')) {
-                sliderRow.classList.add('dz-cmd-slider-row--visible');
-                var s = sliderRow.querySelector('.dz-cmd-slider');
-                if (s) setTimeout(function () { s.focus(); }, 0);
-                return;
-            }
-        }
-        if (!isToggleable(device)) return; // Enter only toggles; use nav button or Shift+Enter to navigate
-        apiToggle(device, function (d) {
-            var nowOn = isOn(d);
-            stateEl.textContent = stateLabel(d);
-            stateEl.classList.toggle('dz-cmd-state--on', nowOn);
-            iconWrap.classList.toggle('dz-cmd-icon--on', nowOn);
-            var tbl2 = document.getElementById('itemtable' + d.idx);
-            if (tbl2) {
-                var card2 = tbl2.closest
-                    ? tbl2.closest('div.item.itemBlock, .itemBlock > div.item')
-                    : null;
-                if (card2) {
-                    card2.classList.add(nowOn ? 'dz-flash-on' : 'dz-flash-off');
-                    setTimeout(function () {
-                        card2.classList.remove('dz-flash-on', 'dz-flash-off');
-                    }, 700);
-                }
-            }
-        });
+        // legacy shim — new flow uses onItemClick; keep for keyboard Enter fallback
+        onItemClick(device, el, iconWrap);
     }
 
     // ── Active item ────────────────────────────────────────────────
@@ -526,10 +777,10 @@
         var isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
         var modKey = isMac ? '\u2318' : 'Ctrl';
         footer.innerHTML =
-            '<span class="dz-cmd-footer-tip"><kbd>' + modKey + '</kbd><kbd>K</kbd> global search &nbsp;\u00b7&nbsp; <kbd>/</kbd> filter current page</span>' +
+            '<span class="dz-cmd-footer-tip"><kbd>' + modKey + '</kbd><kbd>K</kbd> global &nbsp;\u00b7&nbsp; <kbd>/</kbd> filter page</span>' +
             '<span class="dz-cmd-footer-right">' +
             '<span><kbd>\u2191</kbd><kbd>\u2193</kbd> navigate</span>' +
-            '<span><kbd>\u21b5</kbd> toggle</span>' +
+            '<span><kbd>\u21b5</kbd> action</span>' +
             '<span><kbd>\u21e7\u21b5</kbd> go\u202fto\u202fpage</span>' +
             '<span><kbd>Esc</kbd> close</span>' +
             '</span>';
@@ -555,12 +806,11 @@
             } else if (e.key === 'Enter') {
                 e.preventDefault();
                 var target = _activeIdx >= 0 ? items[_activeIdx] : items[0];
-                if (!target) return;
+                if (!target || !target._dzDevice) return;
                 if (e.shiftKey) {
-                    // Shift+Enter → always navigate to device page
-                    if (target._dzDevice) navigateToDevice(target._dzDevice);
+                    navigateToDevice(target._dzDevice);
                 } else {
-                    target.click(); // Enter → toggle (or expand dimmer)
+                    onItemClick(target._dzDevice, target, target.querySelector('.dz-cmd-icon'));
                 }
             } else if (e.key === 'Escape') {
                 closePalette();
