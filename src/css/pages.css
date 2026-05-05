@@ -1765,9 +1765,12 @@ mark.dz-cmd-mark {
     flex-shrink: 0;
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 4px;
     margin-left: auto;
     padding-left: 8px;
+    max-width: 60%;
+    justify-content: flex-end;
 }
 
 /* Toggle pill — On/Off badge that is also a button */
@@ -1889,18 +1892,8 @@ mark.dz-cmd-mark {
     text-align: right;
 }
 
-/* Selector options row */
-.dz-cmd-selector-row {
-    flex-basis: 100%;
-    display: none;
-    flex-wrap: wrap;
-    gap: 4px;
-    padding: 6px 0 2px 48px;
-}
-
-.dz-cmd-selector-row--visible { display: flex; }
-
-.dz-cmd-sel-opt {
+/* Selector option buttons — shown inline, wrap if many */
+.dz-cmd-controls .dz-cmd-sel-opt {
     padding: 3px 10px;
     border-radius: 5px;
     font-size: 11px;
@@ -1909,11 +1902,12 @@ mark.dz-cmd-mark {
     background: var(--dz-surface-2);
     color: var(--dz-text-muted);
     transition: background 0.1s, color 0.1s, border-color 0.1s;
+    white-space: nowrap;
 }
 
-.dz-cmd-sel-opt:hover { border-color: var(--dz-accent); color: var(--dz-accent); }
+.dz-cmd-controls .dz-cmd-sel-opt:hover { border-color: var(--dz-accent); color: var(--dz-accent); }
 
-.dz-cmd-sel-opt--active {
+.dz-cmd-controls .dz-cmd-sel-opt--active {
     background: rgba(var(--dz-accent-rgb), 0.13);
     border-color: rgba(var(--dz-accent-rgb), 0.4);
     color: var(--dz-accent);

@@ -480,53 +480,47 @@
             return wrap;
         }
 
-        // ── Selector switch: show current option + expand options on click
+        // ── Selector switch: show all options inline, active one highlighted
         if (cls === 'selector') {
-            var names = selectorNames(device);
+            var names    = selectorNames(device);
             var curLevel = parseInt(device.Level || 0, 10);
-            var curName  = device.Data || names[curLevel / 10] || device.Status || '';
+            // Resolve current name from decoded names, then Data, then strip Status prefix
+            var curName  = names[curLevel / 10] ||
+                           (device.Data || '').trim() ||
+                           (device.Status || '').replace(/^Set Level:\s*\d+\s*%/i, '').trim();
 
-            var selPill = document.createElement('button');
-            selPill.className = 'dz-cmd-toggle-pill dz-cmd-toggle-pill--on';
-            selPill.textContent = curName;
-            selPill.title = 'Click to change mode';
-            selPill.addEventListener('click', function (e) {
-                e.stopPropagation();
-                var row = el.querySelector('.dz-cmd-selector-row');
-                if (row) row.classList.toggle('dz-cmd-selector-row--visible');
-            });
-            wrap.appendChild(selPill);
+            if (names.length === 0) {
+                // No level names — fallback to plain state badge
+                var fbBadge = document.createElement('span');
+                fbBadge.className = 'dz-cmd-state';
+                fbBadge.textContent = curName || device.Status || '';
+                wrap.appendChild(fbBadge);
+                return wrap;
+            }
 
-            // Options row — skip the first entry when LevelOffHidden is set
-                if (names.length > 0) {
-                    var selRow = document.createElement('div');
-                    selRow.className = 'dz-cmd-selector-row';
-                    names.forEach(function (name, i) {
-                        // Hide the Off entry when LevelOffHidden is true (level 0 / index 0)
-                        if (i === 0 && device.LevelOffHidden) return;
-                        var optLevel = i * 10;
-                        var optBtn = document.createElement('button');
-                        optBtn.className = 'dz-cmd-sel-opt' + (optLevel === curLevel ? ' dz-cmd-sel-opt--active' : '');
-                        optBtn.textContent = name;
-                        optBtn.addEventListener('click', function (e) {
-                            e.stopPropagation();
-                            apiSetSelector(device, optLevel, function () {
-                                device.Level = optLevel;
-                                device.Data  = name;
-                                device.Status = name;
-                                selPill.textContent = name;
-                                selRow.querySelectorAll('.dz-cmd-sel-opt').forEach(function (b) {
-                                    b.classList.toggle('dz-cmd-sel-opt--active',
-                                        parseInt(b.getAttribute('data-level'), 10) === optLevel);
-                                });
-                                selRow.classList.remove('dz-cmd-selector-row--visible');
-                            });
+            names.forEach(function (name, i) {
+                if (i === 0 && device.LevelOffHidden) return;
+                var optLevel = i * 10;
+                var isActive = optLevel === curLevel;
+                var optBtn   = document.createElement('button');
+                optBtn.className  = 'dz-cmd-sel-opt' + (isActive ? ' dz-cmd-sel-opt--active' : '');
+                optBtn.textContent = name;
+                optBtn.setAttribute('data-level', optLevel);
+                optBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    if (optLevel === parseInt(device.Level || 0, 10)) return; // already active
+                    apiSetSelector(device, optLevel, function () {
+                        device.Level  = optLevel;
+                        device.Data   = name;
+                        device.Status = name;
+                        wrap.querySelectorAll('.dz-cmd-sel-opt').forEach(function (b) {
+                            b.classList.toggle('dz-cmd-sel-opt--active',
+                                parseInt(b.getAttribute('data-level'), 10) === optLevel);
                         });
-                        optBtn.setAttribute('data-level', optLevel);
-                        selRow.appendChild(optBtn);
                     });
-                    el.appendChild(selRow);
-                }
+                });
+                wrap.appendChild(optBtn);
+            });
             return wrap;
         }
 
