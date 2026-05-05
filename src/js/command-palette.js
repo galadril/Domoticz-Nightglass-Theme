@@ -689,40 +689,52 @@
     function navigateToDevice(device) {
         var route = deviceRoute(device);
         closePalette();
+
         setTimeout(function () {
-            function scrollAndHighlight() {
-                // Poll until the card appears in the DOM — Angular renders async
-                var attempts = 0;
-                var maxAttempts = 40; // 40 × 100ms = 4s max wait
-                var poll = setInterval(function () {
-                    attempts++;
-                    var tbl = document.getElementById('itemtable' + device.idx);
-                    if (tbl) {
-                        clearInterval(poll);
-                        var card = tbl.closest
-                            ? tbl.closest('div.item.itemBlock, .itemBlock > div.item') : null;
-                        if (card) {
-                            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            card.classList.add('dz-search-highlight');
-                            setTimeout(function () { card.classList.remove('dz-search-highlight'); }, 2500);
-                        }
-                    } else if (attempts >= maxAttempts) {
-                        clearInterval(poll);
-                    }
-                }, 100);
-            }
             try {
                 var injector   = window.angular && angular.element(document.body).injector();
                 var $location  = injector && injector.get('$location');
                 var $rootScope = injector && injector.get('$rootScope');
                 if ($location && $rootScope) {
-                    $rootScope.$apply(function () { $location.path(route); });
-                    scrollAndHighlight();
+                    var alreadyHere = $location.path() === route;
+
+                    if (alreadyHere) {
+                        // Already on the right page — just find and highlight immediately
+                        scrollToCard(device);
+                    } else {
+                        // Navigate first, then wait for Angular to signal the view is loaded
+                        var unsubscribe = $rootScope.$on('$routeChangeSuccess', function () {
+                            unsubscribe();
+                            // Give Angular's ng-repeat a tick to stamp out the cards
+                            setTimeout(function () { scrollToCard(device); }, 50);
+                        });
+                        $rootScope.$apply(function () { $location.path(route); });
+                    }
                     return;
                 }
             } catch (e) {}
             window.location.hash = route;
         }, 10);
+    }
+
+    function scrollToCard(device) {
+        // Poll until itemtable{idx} is rendered (ng-repeat fills cards async)
+        var attempts = 0;
+        var poll = setInterval(function () {
+            var tbl = document.getElementById('itemtable' + device.idx);
+            if (tbl) {
+                clearInterval(poll);
+                var card = tbl.closest
+                    ? tbl.closest('div.item.itemBlock, .itemBlock > div.item') : null;
+                if (card) {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    card.classList.add('dz-search-highlight');
+                    setTimeout(function () { card.classList.remove('dz-search-highlight'); }, 2500);
+                }
+            } else if (++attempts >= 30) {
+                clearInterval(poll);
+            }
+        }, 100);
     }
 
     function onActivate(device, el, stateEl, iconWrap, sliderRow) {
