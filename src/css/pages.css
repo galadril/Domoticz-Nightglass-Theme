@@ -1915,7 +1915,7 @@ body.dz-light #dz-cmd-box {
 #tbFiltSearch {
     position: relative !important;
     display: inline-flex !important;
-    align-items: center !important;
+    align-items: stretch !important;
     gap: 0 !important;
     padding: 0 !important;
     border: 1px solid var(--dz-border) !important;
@@ -1923,6 +1923,7 @@ body.dz-light #dz-cmd-box {
     vertical-align: middle !important;
     white-space: nowrap !important;
     overflow: hidden !important;
+    height: 34px !important;
 }
 
 #tbFiltSearch:hover {
@@ -1940,13 +1941,13 @@ body.dz-light #dz-cmd-box {
     display: inline-flex !important;
     align-items: center !important;
     gap: 6px !important;
-    padding: 5px 10px !important;
+    padding: 0 10px !important;
     cursor: pointer !important;
     transition: background 0.15s !important;
     z-index: 2 !important;
     border: none !important;
     background: transparent !important;
-    height: 100% !important;
+    align-self: stretch !important;
 }
 
 #tbFiltSearch #tbSearch:hover {
@@ -1990,10 +1991,10 @@ body.dz-light #dz-cmd-box {
     content: "" !important;
     display: block !important;
     width: 1px !important;
-    height: 24px !important;
     background: var(--dz-border) !important;
     flex-shrink: 0 !important;
     align-self: stretch !important;
+    margin: 4px 0 !important;
 }
 
 /* Right section: Command Palette - created via JS */
@@ -2001,7 +2002,7 @@ body.dz-light #dz-cmd-box {
     display: inline-flex !important;
     align-items: center !important;
     gap: 6px !important;
-    padding: 5px 10px !important;
+    padding: 0 10px !important;
     cursor: pointer !important;
     transition: background 0.15s !important;
     font-size: 12px !important;
@@ -2010,7 +2011,7 @@ body.dz-light #dz-cmd-box {
     white-space: nowrap !important;
     border: none !important;
     background: transparent !important;
-    height: 100% !important;
+    align-self: stretch !important;
 }
 
 .dz-cmd-palette-trigger:hover {
@@ -2041,11 +2042,12 @@ body.dz-light #dz-cmd-box {
 @media (max-width: 768px) {
     #tbFiltSearch {
         gap: 0 !important;
+        height: 32px !important;
     }
 
     #tbFiltSearch #tbSearch,
     .dz-cmd-palette-trigger {
-        padding: 4px 8px !important;
+        padding: 0 8px !important;
         gap: 4px !important;
         font-size: 11px !important;
     }
@@ -2077,17 +2079,22 @@ body.dz-light #dz-cmd-box {
         padding: 1px 6px !important;
         font-size: 10px !important;
     }
+
+    #tbFiltSearch::before {
+        margin: 3px 0 !important;
+    }
 }
 
 /* Mobile phones (portrait) */
 @media (max-width: 480px) {
     #tbFiltSearch {
         border-radius: 6px !important;
+        height: 30px !important;
     }
 
     #tbFiltSearch #tbSearch,
     .dz-cmd-palette-trigger {
-        padding: 3px 6px !important;
+        padding: 0 6px !important;
         gap: 3px !important;
     }
 
@@ -2116,6 +2123,6 @@ body.dz-light #dz-cmd-box {
     }
 
     #tbFiltSearch::before {
-        height: 20px !important;
+        margin: 2px 0 !important;
     }
 }
