@@ -161,6 +161,81 @@
 })();
 
 
+/* -- Alert device card enhancement -------------------------------- */
+/*    For "General, Alert" devices the bigtext contains a multi-line  */
+/*    status message that doesn't fit the hero-value style. Move the  */
+/*    full text into the status area as a styled message block.       */
+
+(function () {
+    'use strict';
+
+    function processAlertDevices() {
+        var cards = document.querySelectorAll(
+            'table[id^="itemtable"] tbody tr'
+        );
+        for (var i = 0; i < cards.length; i++) {
+            var tr = cards[i];
+            if (tr.getAttribute('data-dz-alert-done')) continue;
+
+            var typeTd = tr.querySelector('td#type');
+            if (!typeTd) continue;
+            var typeText = (typeTd.textContent || '').trim();
+            if (!/\bAlert\b/i.test(typeText)) continue;
+
+            var bigtext = tr.querySelector('td#bigtext');
+            var status  = tr.querySelector('td#status');
+            if (!bigtext || !status) continue;
+
+            var plainText = (bigtext.textContent || bigtext.innerText || '').replace(/\s+/g, ' ').trim();
+            if (!plainText) continue;
+
+            tr.setAttribute('data-dz-alert-done', '1');
+
+            var itemBlock = tr.closest('.itemBlock');
+            if (itemBlock) itemBlock.classList.add('dz-alert-device');
+
+            status.textContent = '';
+            var msgDiv = document.createElement('div');
+            msgDiv.className = 'dz-alert-msg';
+            msgDiv.textContent = plainText;
+            status.appendChild(msgDiv);
+
+            bigtext.textContent = '';
+        }
+    }
+
+    window._dzExtraProcessors = window._dzExtraProcessors || [];
+    window._dzExtraProcessors.push(processAlertDevices);
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', processAlertDevices);
+    } else {
+        processAlertDevices();
+    }
+
+    var _timer = null;
+    var observer = new MutationObserver(function () {
+        clearTimeout(_timer);
+        _timer = setTimeout(processAlertDevices, 250);
+    });
+
+    function startObserver() {
+        var target = document.getElementById('dashcontent') ||
+                     document.getElementById('main-content') ||
+                     document.body;
+        if (target) {
+            observer.observe(target, { childList: true, subtree: true });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startObserver);
+    } else {
+        startObserver();
+    }
+})();
+
+
 /* -- Format last-update timestamps + strip "Type:" prefix --------- */
 /*    Runs after Angular renders each digest cycle.                   */
 
