@@ -1946,6 +1946,7 @@ body.dz-light #dz-cmd-box {
     z-index: 2 !important;
     border: none !important;
     background: transparent !important;
+    height: 100% !important;
 }
 
 #tbFiltSearch #tbSearch:hover {
@@ -1992,6 +1993,7 @@ body.dz-light #dz-cmd-box {
     height: 24px !important;
     background: var(--dz-border) !important;
     flex-shrink: 0 !important;
+    align-self: stretch !important;
 }
 
 /* Right section: Command Palette - created via JS */
@@ -2008,6 +2010,7 @@ body.dz-light #dz-cmd-box {
     white-space: nowrap !important;
     border: none !important;
     background: transparent !important;
+    height: 100% !important;
 }
 
 .dz-cmd-palette-trigger:hover {
@@ -2030,4 +2033,89 @@ body.dz-light #dz-cmd-box {
 /* Hide the actual input */
 #tbFiltSearch input.jsLiveSearch {
     display: none !important;
+}
+
+/* ── Mobile responsive adjustments ────────────────────────────────── */
+
+/* Tablets and smaller (portrait orientation) */
+@media (max-width: 768px) {
+    #tbFiltSearch {
+        gap: 0 !important;
+    }
+
+    #tbFiltSearch #tbSearch,
+    .dz-cmd-palette-trigger {
+        padding: 4px 8px !important;
+        gap: 4px !important;
+        font-size: 11px !important;
+    }
+
+    /* Shorten text labels on tablets */
+    #tbFiltSearch #tbSearch::after {
+        content: "Filter" !important;
+        font-size: 11px !important;
+    }
+
+    .dz-cmd-palette-trigger {
+        font-size: 0 !important; /* Hide "Command Palette" text */
+    }
+
+    /* Show just icon on mobile for command palette */
+    .dz-cmd-palette-trigger::before {
+        content: "⌘" !important;
+        font-size: 14px !important;
+        display: inline-block !important;
+        margin-right: 4px !important;
+    }
+
+    .dz-cmd-palette-trigger-kbd {
+        font-size: 9px !important;
+        padding: 1px 5px !important;
+    }
+
+    #tbFiltSearch #tbSearch::before {
+        padding: 1px 6px !important;
+        font-size: 10px !important;
+    }
+}
+
+/* Mobile phones (portrait) */
+@media (max-width: 480px) {
+    #tbFiltSearch {
+        border-radius: 6px !important;
+    }
+
+    #tbFiltSearch #tbSearch,
+    .dz-cmd-palette-trigger {
+        padding: 3px 6px !important;
+        gap: 3px !important;
+    }
+
+    /* Even shorter on phones */
+    #tbFiltSearch #tbSearch::after {
+        display: none !important; /* Hide "Filter" text completely */
+    }
+
+    /* Just show icon and badge */
+    #tbFiltSearch #tbSearch i {
+        font-size: 13px !important;
+        margin-right: 2px !important;
+    }
+
+    /* Command palette: just icon and badge */
+    .dz-cmd-palette-trigger::before {
+        font-size: 13px !important;
+        margin-right: 2px !important;
+    }
+
+    /* Smaller badges on phone */
+    #tbFiltSearch #tbSearch::before,
+    .dz-cmd-palette-trigger-kbd {
+        padding: 1px 4px !important;
+        font-size: 9px !important;
+    }
+
+    #tbFiltSearch::before {
+        height: 20px !important;
+    }
 }

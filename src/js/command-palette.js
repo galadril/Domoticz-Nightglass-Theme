@@ -618,16 +618,19 @@
     // Right side (new button): Opens command palette (Ctrl+K)
 
     (function () {
+        var buttonAdded = false;
+
         // Add the command palette trigger button to the search bar
         function addCommandPaletteTrigger() {
             var searchBar = document.getElementById('tbFiltSearch');
             if (!searchBar) {
-                setTimeout(addCommandPaletteTrigger, 100);
+                setTimeout(addCommandPaletteTrigger, 50);
                 return;
             }
 
-            // Only add once
-            if (searchBar.querySelector('.dz-cmd-palette-trigger')) return;
+            // Check if button already exists
+            var existing = searchBar.querySelector('.dz-cmd-palette-trigger');
+            if (existing) return;
 
             var isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
             var modKey = isMac ? '⌘' : 'Ctrl';
@@ -642,6 +645,31 @@
             });
 
             searchBar.appendChild(cmdBtn);
+            buttonAdded = true;
+        }
+
+        // Watch for DOM changes and re-add button if navbar is recreated
+        var observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.addedNodes.length > 0) {
+                    // Check if the search bar was added/modified
+                    var searchBar = document.getElementById('tbFiltSearch');
+                    if (searchBar && !searchBar.querySelector('.dz-cmd-palette-trigger')) {
+                        addCommandPaletteTrigger();
+                    }
+                }
+            });
+        });
+
+        // Observe the navbar area for changes
+        function startObserving() {
+            var navbar = document.getElementById('appnavbar') || document.querySelector('.navbar') || document.body;
+            if (navbar) {
+                observer.observe(navbar, {
+                    childList: true,
+                    subtree: true
+                });
+            }
         }
 
         function isPageFilterClick(el) {
@@ -679,12 +707,30 @@
             e.preventDefault();
         }, true);
 
-        // Initialize
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', addCommandPaletteTrigger);
-        } else {
-            addCommandPaletteTrigger();
+        // Initialize immediately and start observing
+        addCommandPaletteTrigger();
+        startObserving();
+
+        // Also hook into Angular route changes if available
+        function hookAngularRoutes() {
+            if (!window.angular) {
+                setTimeout(hookAngularRoutes, 300);
+                return;
+            }
+            var body = angular.element(document.body);
+            if (!body || !body.injector || !body.injector()) {
+                setTimeout(hookAngularRoutes, 300);
+                return;
+            }
+            try {
+                body.injector().get('$rootScope').$on('$routeChangeSuccess', function() {
+                    // Re-add button after route change
+                    setTimeout(addCommandPaletteTrigger, 50);
+                });
+            } catch (e) {}
         }
+
+        hookAngularRoutes();
     }());
 
     // ── Init ───────────────────────────────────────────────────────
