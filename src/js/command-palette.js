@@ -10,6 +10,7 @@
     var _recentMap  = {};       // idx → { device, ts }
     var _recentKeys = [];       // sorted idx list, most-recent first
     var _fetched    = false;
+    var _pendingHighlight = null; // idx to scroll+highlight after route change
 
     // ── Device data ────────────────────────────────────────────────
 
@@ -697,18 +698,13 @@
                 var $rootScope = injector && injector.get('$rootScope');
                 if ($location && $rootScope) {
                     var alreadyHere = $location.path() === route;
-
-                    if (alreadyHere) {
-                        // Already on the right page — just find and highlight immediately
-                        scrollToCard(device);
-                    } else {
-                        // Navigate first, then wait for Angular to signal the view is loaded
-                        var unsubscribe = $rootScope.$on('$routeChangeSuccess', function () {
-                            unsubscribe();
-                            // Give Angular's ng-repeat a tick to stamp out the cards
-                            setTimeout(function () { scrollToCard(device); }, 50);
-                        });
+                    _pendingHighlight = String(device.idx);
+                    if (!alreadyHere) {
                         $rootScope.$apply(function () { $location.path(route); });
+                        // scrollToCard will be called by hookAngular's $routeChangeSuccess listener
+                    } else {
+                        scrollToCard(_pendingHighlight);
+                        _pendingHighlight = null;
                     }
                     return;
                 }
@@ -717,19 +713,24 @@
         }, 10);
     }
 
-    function scrollToCard(device) {
-        // Poll until itemtable{idx} is rendered (ng-repeat fills cards async)
+    function scrollToCard(idx) {
         var attempts = 0;
         var poll = setInterval(function () {
-            var tbl = document.getElementById('itemtable' + device.idx);
+            var tbl = document.getElementById('itemtable' + idx);
             if (tbl) {
                 clearInterval(poll);
-                var card = tbl.closest
-                    ? tbl.closest('div.item.itemBlock, .itemBlock > div.item') : null;
-                if (card) {
-                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    card.classList.add('dz-search-highlight');
-                    setTimeout(function () { card.classList.remove('dz-search-highlight'); }, 2500);
+                // Walk up to the itemBlock card div (mirrors realtime.js findCard logic)
+                var el = tbl.parentElement;
+                while (el && el !== document.body) {
+                    if (el.classList.contains('itemBlock')) break;
+                    if (el.classList.contains('item') && el.parentElement &&
+                        el.parentElement.classList.contains('itemBlock')) break;
+                    el = el.parentElement;
+                }
+                if (el && el !== document.body) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    el.classList.add('dz-search-highlight');
+                    setTimeout(function () { el.classList.remove('dz-search-highlight'); }, 2500);
                 }
             } else if (++attempts >= 30) {
                 clearInterval(poll);
@@ -869,15 +870,22 @@
         }
     });
 
-    // ── Track recent device changes ────────────────────────────────
+    // ── Track recent device changes + pending highlight after navigation ──
 
     function hookAngular() {
         if (!window.angular) { setTimeout(hookAngular, 600); return; }
         var body = angular.element(document.body);
         if (!body || !body.injector || !body.injector()) { setTimeout(hookAngular, 400); return; }
         try {
-            body.injector().get('$rootScope')
-                .$on('device_update', function (evt, d) { patchDevice(d); });
+            var $rootScope = body.injector().get('$rootScope');
+            $rootScope.$on('device_update', function (evt, d) { patchDevice(d); });
+            $rootScope.$on('$routeChangeSuccess', function () {
+                if (_pendingHighlight) {
+                    var idx = _pendingHighlight;
+                    _pendingHighlight = null;
+                    scrollToCard(idx);
+                }
+            });
         } catch (e) { setTimeout(hookAngular, 600); }
     }
 
