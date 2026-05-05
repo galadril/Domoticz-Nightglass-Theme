@@ -699,27 +699,28 @@
                 if ($location && $rootScope) {
                     var alreadyHere = $location.path() === route;
                     _pendingHighlight = String(device.idx);
+                    console.log('[dz-cmd] navigateToDevice idx=' + device.idx + ' route=' + route + ' alreadyHere=' + alreadyHere);
                     if (!alreadyHere) {
                         $rootScope.$apply(function () { $location.path(route); });
-                        // scrollToCard will be called by hookAngular's $routeChangeSuccess listener
                     } else {
                         scrollToCard(_pendingHighlight);
                         _pendingHighlight = null;
                     }
                     return;
                 }
-            } catch (e) {}
+            } catch (e) { console.error('[dz-cmd] navigateToDevice error', e); }
             window.location.hash = route;
         }, 10);
     }
 
     function scrollToCard(idx) {
+        console.log('[dz-cmd] scrollToCard idx=' + idx);
         var attempts = 0;
         var poll = setInterval(function () {
             var tbl = document.getElementById('itemtable' + idx);
+            console.log('[dz-cmd] poll attempt=' + attempts + ' found=' + !!tbl);
             if (tbl) {
                 clearInterval(poll);
-                // Walk up to the itemBlock card div (mirrors realtime.js findCard logic)
                 var el = tbl.parentElement;
                 while (el && el !== document.body) {
                     if (el.classList.contains('itemBlock')) break;
@@ -727,6 +728,7 @@
                         el.parentElement.classList.contains('itemBlock')) break;
                     el = el.parentElement;
                 }
+                console.log('[dz-cmd] card found:', el);
                 if (el && el !== document.body) {
                     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     el.classList.add('dz-search-highlight');
@@ -734,6 +736,7 @@
                 }
             } else if (++attempts >= 30) {
                 clearInterval(poll);
+                console.warn('[dz-cmd] scrollToCard: itemtable' + idx + ' never appeared');
             }
         }, 100);
     }
