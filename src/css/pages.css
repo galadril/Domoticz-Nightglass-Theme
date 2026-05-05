@@ -1748,47 +1748,173 @@ mark.dz-cmd-mark {
     padding: 0 1px;
 }
 
-/* State badge — fixed width so values align in the same column */
+/* State badge — for sensors/readonly */
 .dz-cmd-state {
     flex-shrink: 0;
-    width: 82px;
     font-size: 12px;
     font-weight: 600;
     color: var(--dz-text-muted);
-    text-align: right;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 90px;
 }
 
-.dz-cmd-state--on {
+/* Controls container */
+.dz-cmd-controls {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-left: auto;
+    padding-left: 8px;
+    max-width: 60%;
+    justify-content: flex-end;
+}
+
+/* Toggle pill — On/Off badge that is also a button */
+.dz-cmd-toggle-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--dz-border);
+    background: var(--dz-surface-2);
+    color: var(--dz-text-muted);
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+
+.dz-cmd-toggle-pill--on {
+    background: rgba(var(--dz-accent-rgb), 0.15);
+    border-color: rgba(var(--dz-accent-rgb), 0.4);
     color: var(--dz-accent);
 }
 
-/* Enter hint */
-.dz-cmd-hint {
-    flex-shrink: 0;
-    opacity: 0;
-    transition: opacity 0.1s;
+.dz-cmd-toggle-pill:hover {
+    border-color: var(--dz-accent);
+    color: var(--dz-accent);
 }
 
-.dz-cmd-item--active .dz-cmd-hint,
-.dz-cmd-item:hover .dz-cmd-hint {
-    opacity: 1;
-}
-
-.dz-cmd-hint kbd {
+/* Action buttons (On/Off for groups, Run for scenes, lock/unlock) */
+.dz-cmd-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 6px;
     font-size: 11px;
-    font-family: inherit;
-    color: var(--dz-text-muted);
-    background: var(--dz-surface-2);
+    font-weight: 500;
+    cursor: pointer;
     border: 1px solid var(--dz-border);
-    border-bottom-width: 2px;
-    border-radius: 5px;
-    padding: 2px 6px;
+    background: var(--dz-surface-2);
+    color: var(--dz-text-muted);
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    white-space: nowrap;
 }
 
-/* Navigate button (arrow) — for going to device page */
+.dz-cmd-action-btn:hover {
+    border-color: var(--dz-accent);
+    color: var(--dz-accent);
+}
+
+.dz-cmd-action-btn--active {
+    background: rgba(var(--dz-accent-rgb), 0.13);
+    border-color: rgba(var(--dz-accent-rgb), 0.4);
+    color: var(--dz-accent);
+}
+
+/* Small icon-only buttons (blinds up/stop/down) */
+.dz-cmd-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    border: 1px solid var(--dz-border);
+    background: var(--dz-surface-2);
+    color: var(--dz-text-muted);
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.dz-cmd-icon-btn:hover {
+    border-color: var(--dz-accent);
+    color: var(--dz-accent);
+    background: rgba(var(--dz-accent-rgb), 0.08);
+}
+
+/* Dimmer slider row */
+.dz-cmd-slider-row {
+    flex-basis: 100%;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0 2px 48px;
+}
+
+.dz-cmd-slider-row--visible { display: flex; }
+
+.dz-cmd-slider-off {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 5px;
+    font-size: 10px;
+    cursor: pointer;
+    border: 1px solid var(--dz-border);
+    background: transparent;
+    color: var(--dz-text-muted);
+    transition: background 0.1s, color 0.1s;
+}
+.dz-cmd-slider-off:hover { background: rgba(220,80,80,0.12); color: #e05555; border-color: #e05555; }
+
+.dz-cmd-slider {
+    flex: 1;
+    height: 4px;
+    accent-color: var(--dz-accent);
+    cursor: pointer;
+}
+
+.dz-cmd-slider-val {
+    font-size: 12px;
+    color: var(--dz-text-muted);
+    min-width: 34px;
+    text-align: right;
+}
+
+/* Selector option buttons — shown inline, wrap if many */
+.dz-cmd-controls .dz-cmd-sel-opt {
+    padding: 3px 10px;
+    border-radius: 5px;
+    font-size: 11px;
+    cursor: pointer;
+    border: 1px solid var(--dz-border);
+    background: var(--dz-surface-2);
+    color: var(--dz-text-muted);
+    transition: background 0.1s, color 0.1s, border-color 0.1s;
+    white-space: nowrap;
+}
+
+.dz-cmd-controls .dz-cmd-sel-opt:hover { border-color: var(--dz-accent); color: var(--dz-accent); }
+
+.dz-cmd-controls .dz-cmd-sel-opt--active {
+    background: rgba(var(--dz-accent-rgb), 0.13);
+    border-color: rgba(var(--dz-accent-rgb), 0.4);
+    color: var(--dz-accent);
+    font-weight: 600;
+}
+
+/* Navigate button (arrow) */
 .dz-cmd-nav-btn {
     flex-shrink: 0;
     display: flex;
@@ -1815,33 +1941,6 @@ mark.dz-cmd-mark {
     background: rgba(var(--dz-accent-rgb), 0.15);
     color: var(--dz-accent);
     border-color: var(--dz-accent);
-}
-
-/* Dimmer slider row */
-.dz-cmd-slider-row {
-    flex-basis: 100%;
-    display: none;
-    align-items: center;
-    gap: 10px;
-    padding: 4px 0 2px 48px;
-}
-
-.dz-cmd-slider-row--visible {
-    display: flex;
-}
-
-.dz-cmd-slider {
-    flex: 1;
-    height: 4px;
-    accent-color: var(--dz-accent);
-    cursor: pointer;
-}
-
-.dz-cmd-slider-val {
-    font-size: 12px;
-    color: var(--dz-text-muted);
-    min-width: 34px;
-    text-align: right;
 }
 
 /* Empty state */
