@@ -691,9 +691,14 @@
         closePalette();
         setTimeout(function () {
             function scrollAndHighlight() {
-                setTimeout(function () {
+                // Poll until the card appears in the DOM — Angular renders async
+                var attempts = 0;
+                var maxAttempts = 40; // 40 × 100ms = 4s max wait
+                var poll = setInterval(function () {
+                    attempts++;
                     var tbl = document.getElementById('itemtable' + device.idx);
                     if (tbl) {
+                        clearInterval(poll);
                         var card = tbl.closest
                             ? tbl.closest('div.item.itemBlock, .itemBlock > div.item') : null;
                         if (card) {
@@ -701,11 +706,13 @@
                             card.classList.add('dz-search-highlight');
                             setTimeout(function () { card.classList.remove('dz-search-highlight'); }, 2500);
                         }
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(poll);
                     }
-                }, 350);
+                }, 100);
             }
             try {
-                var injector  = window.angular && angular.element(document.body).injector();
+                var injector   = window.angular && angular.element(document.body).injector();
                 var $location  = injector && injector.get('$location');
                 var $rootScope = injector && injector.get('$rootScope');
                 if ($location && $rootScope) {
