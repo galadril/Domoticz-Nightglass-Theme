@@ -1788,7 +1788,45 @@ mark.dz-cmd-mark {
     padding: 2px 6px;
 }
 
-/* Navigate button (arrow) — always present, revealed on hover/active */
+/* Action buttons container */
+.dz-cmd-actions {
+    flex-shrink: 0;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.1s;
+}
+
+.dz-cmd-item--active .dz-cmd-actions,
+.dz-cmd-item:hover .dz-cmd-actions {
+    opacity: 1;
+}
+
+/* Log button (chart icon) — for viewing device history */
+.dz-cmd-log-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--dz-border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--dz-text-muted);
+    font-size: 11px;
+    cursor: pointer;
+    transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.dz-cmd-log-btn:hover {
+    background: rgba(var(--dz-accent-rgb), 0.15);
+    color: var(--dz-accent);
+    border-color: var(--dz-accent);
+}
+
+/* Navigate button (arrow) — for going to device page */
 .dz-cmd-nav-btn {
     flex-shrink: 0;
     display: flex;
@@ -1802,14 +1840,7 @@ mark.dz-cmd-mark {
     color: var(--dz-text-muted);
     font-size: 11px;
     cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.1s, background 0.1s;
-    margin-right: 2px;
-}
-
-.dz-cmd-item--active .dz-cmd-nav-btn,
-.dz-cmd-item:hover .dz-cmd-nav-btn {
-    opacity: 1;
+    transition: background 0.1s, color 0.1s, border-color 0.1s;
 }
 
 .dz-cmd-nav-btn:hover {
@@ -1918,8 +1949,8 @@ body.dz-light #dz-cmd-box {
     position: relative !important;
     display: inline-flex !important;
     align-items: center !important;
-    gap: 5px !important;
-    padding: 3px 8px !important;
+    gap: 6px !important;
+    padding: 4px 10px !important;
     border: 1px solid var(--dz-border) !important;
     border-radius: 8px !important;
     cursor: pointer !important;
@@ -1961,36 +1992,29 @@ body.dz-light #dz-cmd-box {
     padding: 0 !important;
 }
 
-/* Keyboard shortcut badges shown via CSS — always correct, no JS timing */
-/* "/" badge: quick card search on the current page */
-#tbFiltSearch::before {
-    content: "/";
+/* Add "Search" text label between icon and badges */
+#tbFiltSearch #tbSearch::after {
+    content: "Search" !important;
     display: inline-block !important;
-    background: var(--dz-surface-2) !important;
-    border: 1px solid var(--dz-border) !important;
-    border-bottom-width: 2px !important;
-    border-radius: 4px !important;
-    padding: 1px 6px !important;
-    font-size: 11px !important;
-    font-weight: 600 !important;
-    color: var(--dz-text-muted) !important;
-    font-family: monospace, inherit !important;
+    margin-left: 4px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: var(--dz-text) !important;
     pointer-events: none !important;
-    white-space: nowrap !important;
-    line-height: 1.4 !important;
-    order: -1 !important;
 }
 
-/* Ctrl+K badge: command palette */
+/* Keyboard shortcut badge shown via CSS */
+/* Ctrl+K badge: opens command palette for global device control */
 #tbFiltSearch::after {
-    content: "Ctrl\00a0K";
+    content: "Ctrl\00a0K" !important;
     display: inline-block !important;
     background: var(--dz-surface-2) !important;
     border: 1px solid var(--dz-border) !important;
     border-bottom-width: 2px !important;
     border-radius: 4px !important;
-    padding: 1px 5px !important;
+    padding: 2px 6px !important;
     font-size: 10px !important;
+    font-weight: 500 !important;
     color: var(--dz-text-muted) !important;
     font-family: inherit !important;
     pointer-events: none !important;
