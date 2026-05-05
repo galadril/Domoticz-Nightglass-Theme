@@ -1,4 +1,4 @@
-/* ══════════════════════════════════════════════════════════════════
+. bu/* ══════════════════════════════════════════════════════════════════
    DASHBOARD 2.0 WIDGETS (dd-* components)
    ══════════════════════════════════════════════════════════════════ */
 
@@ -1788,44 +1788,6 @@ mark.dz-cmd-mark {
     padding: 2px 6px;
 }
 
-/* Action buttons container */
-.dz-cmd-actions {
-    flex-shrink: 0;
-    display: flex;
-    gap: 4px;
-    align-items: center;
-    opacity: 0;
-    transition: opacity 0.1s;
-}
-
-.dz-cmd-item--active .dz-cmd-actions,
-.dz-cmd-item:hover .dz-cmd-actions {
-    opacity: 1;
-}
-
-/* Log button (chart icon) — for viewing device history */
-.dz-cmd-log-btn {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 26px;
-    height: 26px;
-    border: 1px solid var(--dz-border);
-    border-radius: 6px;
-    background: transparent;
-    color: var(--dz-text-muted);
-    font-size: 11px;
-    cursor: pointer;
-    transition: background 0.1s, color 0.1s, border-color 0.1s;
-}
-
-.dz-cmd-log-btn:hover {
-    background: rgba(var(--dz-accent-rgb), 0.15);
-    color: var(--dz-accent);
-    border-color: var(--dz-accent);
-}
-
 /* Navigate button (arrow) — for going to device page */
 .dz-cmd-nav-btn {
     flex-shrink: 0;
@@ -1840,7 +1802,13 @@ mark.dz-cmd-mark {
     color: var(--dz-text-muted);
     font-size: 11px;
     cursor: pointer;
-    transition: background 0.1s, color 0.1s, border-color 0.1s;
+    opacity: 0;
+    transition: opacity 0.1s, background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.dz-cmd-item--active .dz-cmd-nav-btn,
+.dz-cmd-item:hover .dz-cmd-nav-btn {
+    opacity: 1;
 }
 
 .dz-cmd-nav-btn:hover {

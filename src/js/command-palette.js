@@ -356,21 +356,6 @@
         stateEl.textContent = stateLabel(device);
         el.appendChild(stateEl);
 
-        // Action buttons container
-        var actionsWrap = document.createElement('div');
-        actionsWrap.className = 'dz-cmd-actions';
-
-        // View Log button — for sensors and devices with history
-        var logBtn = document.createElement('button');
-        logBtn.className = 'dz-cmd-log-btn';
-        logBtn.title = 'View device log';
-        logBtn.innerHTML = '<i class="fa-solid fa-chart-line"></i>';
-        logBtn.addEventListener('click', function (e) {
-            e.stopPropagation();
-            navigateToDeviceLog(device);
-        });
-        actionsWrap.appendChild(logBtn);
-
         // Navigate button — always present, visible on hover / keyboard focus
         var navBtn = document.createElement('button');
         navBtn.className = 'dz-cmd-nav-btn';
@@ -380,9 +365,7 @@
             e.stopPropagation();
             navigateToDevice(device);
         });
-        actionsWrap.appendChild(navBtn);
-
-        el.appendChild(actionsWrap);
+        el.appendChild(navBtn);
 
         // Toggle hint — only shown for toggleable devices
         if (tog || dim) {
@@ -457,26 +440,6 @@
             } catch (e) {}
             window.location.hash = route;
         }, 10); // defer past closePalette's synchronous work
-    }
-
-    function navigateToDeviceLog(device) {
-        closePalette();
-        // Navigate to the device log page
-        setTimeout(function () {
-            try {
-                var injector = window.angular && angular.element(document.body).injector();
-                var $location  = injector && injector.get('$location');
-                var $rootScope = injector && injector.get('$rootScope');
-                if ($location && $rootScope) {
-                    $rootScope.$apply(function () { 
-                        $location.path('/Log');
-                        $location.search('id', device.idx);
-                    });
-                    return;
-                }
-            } catch (e) {}
-            window.location.hash = '/Log?id=' + device.idx;
-        }, 10);
     }
 
     function onActivate(device, el, stateEl, iconWrap, sliderRow) {

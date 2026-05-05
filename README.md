@@ -52,38 +52,46 @@ Press **1-9** (when not typing) to instantly jump to sections:
 | `8` | Log |
 | `9` | Setup |
 
-### Device Search
-- **`/`** → Open device search overlay
-- **`↑` `↓`** → Navigate results
-- **`Enter`** → Jump to device (smooth scroll + flash)
-- **`Esc`** → Close search
+### Page Filter (`/` Key)
+Quick filter to find devices **on the current page only**:
+- **`/`** → Open page filter overlay
+- **`↑` `↓`** → Navigate filtered results
+- **`Enter`** → Scroll to device (with highlight flash)
+- **`Esc`** → Close filter
 
-### Command Palette (Power User Feature!)
+**Use this when:** You're already on the right page (e.g., Switches) and want to quickly find a specific device among many.
+
+### Command Palette (`Ctrl+K` - Global Search & Control)
 Press **`Ctrl+K`** (or **`⌘K`** on Mac) from anywhere to open the command palette:
 
 - **`Ctrl+K`** / **`⌘K`** → Open/close palette
 - **`↑` `↓`** → Navigate devices
 - **`Enter`** → Toggle device on/off (or expand dimmer slider)
-- **`Shift+Enter`** → Navigate to device's page
+- **`Shift+Enter`** → Navigate to device's page (scrolls & highlights device)
+- **Arrow button** → Jump to device page
 - **`Esc`** → Close palette
 
 #### Command Palette Features:
+- **Global search** - Search all devices across all pages from anywhere
 - **Fuzzy search** - Type partial names (e.g., "lvng lght" finds "Living Room Light")
-- **Recent devices** - Shows your 24 most recently changed devices
+- **Favorites first** - Shows favorite devices (⭐) by default, or recently changed if no favorites set
 - **Live state display** - Current on/off/level/temp status with color coding
+- **Direct control** - Toggle switches without leaving your current page
 - **Dimmer controls** - Inline slider for brightness adjustment (0-100%)
-- **Instant feedback** - Icons and colors update immediately
+- **Quick navigation** - Click arrow button or Shift+Enter to go to device page
 - **Smart routing** - Automatically navigates to the correct page for each device type
+
+**Use this when:** You want to control any device from anywhere, or search globally across all your devices.
 
 **Example workflow:**
 1. Press `Ctrl+K` anywhere
 2. Type "bed" → find "Bedroom Light"  
-3. Press `Enter` → toggle on/off
+3. Press `Enter` → toggle on/off instantly
 4. Type "liv" → find "Living Room Dimmer"
 5. Press `Enter` → adjust brightness with slider
-6. Press `Shift+Enter` → jump to device page
-7. Press `3` → jump to Scenes
-8. Press `/` → search devices on current page
+6. Press `Shift+Enter` → jump to device page (scrolls to it)
+7. Press `3` → jump to Scenes section
+8. Press `/` → filter devices on current page only
 
 It's **Spotlight/Alfred for your smart home!** 🚀
 
