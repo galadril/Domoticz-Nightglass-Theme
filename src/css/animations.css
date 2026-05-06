@@ -1138,8 +1138,12 @@ div.item.itemBlock:hover .dz-sparkline-wrap,
     animation: dzUpdateSpin 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
-/* Hide Domoticz native round-progress element */
-#divprogress round-progress {
+/* Hide Domoticz native canvas-based progress element.
+   Domoticz renders it as <div ang:round:progress data-round-progress-model="...">
+   (not a <round-progress> custom element), so we match by attribute.
+   Keep the old tag selector for forward-compatibility. */
+#divprogress round-progress,
+#divprogress [data-round-progress-model] {
     display: none !important;
 }
 
