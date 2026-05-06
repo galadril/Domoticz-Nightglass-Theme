@@ -986,6 +986,56 @@ document.addEventListener('DOMContentLoaded', function () {
                     warnSpan.insertAdjacentHTML('afterbegin', '<i class="fa-solid fa-triangle-exclamation"></i> ');
                 }
             }
+
+            /* ── 5. Inject themed SVG progress ring ──────────────
+               The native Domoticz ring uses a canvas element with
+               data-round-progress-label-color="#fff" (hardcoded white),
+               which is invisible in light mode.  We hide the canvas via
+               CSS and inject our own CSS-variable-driven SVG ring that
+               works correctly in both dark and light mode.             */
+            var nativeRing = divProg.querySelector('[data-round-progress-model]');
+            if (nativeRing && !divProg.querySelector('.update-progress-ring')) {
+                var C = parseFloat((2 * Math.PI * 70).toFixed(2));
+
+                var ringEl = document.createElement('div');
+                ringEl.className = 'update-progress-ring';
+                ringEl.setAttribute('role', 'progressbar');
+                ringEl.setAttribute('aria-valuemin', '0');
+                ringEl.setAttribute('aria-valuemax', '100');
+                ringEl.setAttribute('aria-valuenow', '0');
+                ringEl.innerHTML =
+                    '<svg viewBox="0 0 160 160" width="160" height="160" xmlns="http://www.w3.org/2000/svg">' +
+                        '<circle class="ring-track" cx="80" cy="80" r="70" fill="none" stroke-width="8"/>' +
+                        '<circle class="ring-fill" cx="80" cy="80" r="70" fill="none" stroke-width="8"' +
+                        ' stroke-linecap="round" stroke-dasharray="' + C + '" stroke-dashoffset="' + C + '"/>' +
+                    '</svg>' +
+                    '<span class="ring-label">0\u00a0%</span>';
+
+                /* Insert before the hidden native ring */
+                divProg.insertBefore(ringEl, nativeRing);
+
+                var ringFill  = ringEl.querySelector('.ring-fill');
+                var ringLabel = ringEl.querySelector('.ring-label');
+
+                function updateRing(label) {
+                    label = Math.min(100, Math.max(0, parseInt(label, 10) || 0));
+                    var offset = (C - (label / 100) * C).toFixed(2);
+                    if (ringFill)  ringFill.setAttribute('stroke-dashoffset', offset);
+                    if (ringLabel) ringLabel.textContent = label + '\u00a0%';
+                    ringEl.setAttribute('aria-valuenow', label);
+                }
+
+                /* Sync with Angular scope's ProgressData.label (0–100) */
+                try {
+                    var $s = typeof angular !== 'undefined' &&
+                             angular.element(uc).scope();
+                    if ($s && typeof $s.$watch === 'function') {
+                        $s.$watch('ProgressData.label', function (val) {
+                            updateRing(val);
+                        });
+                    }
+                } catch (e) { /* Angular not ready yet — ring starts at 0 */ }
+            }
         }
 
         /* ── 4. Wrap the console output section ─────────────────── */
