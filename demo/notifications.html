@@ -139,8 +139,30 @@
       </div>
 
       <p style="color:var(--dz-text-muted);font-size:.85rem;margin:0 0 28px">
-        In a real Domoticz setup, toasts fire automatically whenever any device changes state via the WebSocket feed. Click the buttons below to preview them.
+        In a real Domoticz setup, toasts fire automatically whenever any device changes state via the WebSocket feed.
+        Every event is also recorded in the <strong style="color:var(--dz-text)">Notification History Panel</strong>
+        (bell icon in the navbar). Click the buttons below to preview both.
       </p>
+
+      <!-- ── Notification Panel intro ── -->
+      <div class="ng-demo-section">
+        <div class="ng-demo-section-title"><i class="fa-solid fa-bell"></i> Notification History Panel</div>
+        <div class="ng-how-it-works">
+          <strong>Bell icon</strong> in the top-right navbar accumulates every device event into a persistent history list —
+          toasts disappear after a few seconds, but the panel keeps the full record.<br><br>
+          <strong>Unread badge</strong> counts events received while the panel is closed.
+          Opening the panel marks all as read and resets the counter.<br><br>
+          <strong>Keyboard shortcut:</strong> press <code>N</code> anywhere (outside a text field) to toggle the panel open/closed.
+          Press <code>Esc</code> to close. On mobile it slides up as a bottom sheet.<br><br>
+          <strong>Try it:</strong> fire some events with the buttons below, then click the bell icon in the navbar
+          (or press&nbsp;<code>N</code>) to see them in the history panel.
+        </div>
+        <div style="margin-top:12px">
+          <button class="ng-notif-btn" onclick="openPanel()" style="gap:6px">
+            <i class="fa-solid fa-bell"></i> Open Notification Panel&nbsp;<kbd style="font-size:.7rem;background:var(--dz-surface-3);border:1px solid var(--dz-border);border-radius:4px;padding:1px 5px;color:var(--dz-text-muted)">N</kbd>
+          </button>
+        </div>
+      </div>
 
       <!-- ── Live settings preview ── -->
       <div class="ng-demo-section">
@@ -265,6 +287,20 @@
     if (stack) stack.className = 'ng-toast-pos--' + this.value;
   });
 
+  window.openPanel = function () {
+    if (window.ngNotifRecord) {
+      /* Seed a couple of historical entries if panel is empty */
+      var panel = document.getElementById('ng-notif-panel');
+      if (!panel || !panel.querySelector('.ng-notif-item')) {
+        window.ngNotifRecord({ Name:'Living Room Light', Status:'On',   Type:'Light/Switch' });
+        window.ngNotifRecord({ Name:'Front Door',        Status:'Open', Type:'Door'         });
+      }
+    }
+    /* Toggle panel via keyboard simulation or direct call */
+    var btn = document.getElementById('ng-notif-btn');
+    if (btn) btn.click();
+  };
+
   window.fire = function (icon, title, body, colorKey) {
     if (!window.ngShowToast) return;
     window.ngShowToast({
@@ -275,7 +311,11 @@
       type:     'device',
       duration: getDuration()
     });
-    // Apply position from demo selector
+    /* Also record in the notification history panel */
+    if (window.ngNotifRecord) {
+      window.ngNotifRecord({ Name: title, Status: body, Type: 'Device' });
+    }
+    /* Apply position from demo selector */
     var stack = document.getElementById('ng-toast-stack');
     if (stack) stack.className = 'ng-toast-pos--' + getPos();
   };

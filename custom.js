@@ -37,6 +37,9 @@
         'src/js/toasts.js',         /* Feature 10: live toasts */
         'src/js/realtime.js',       /* Feature 11: WebSocket live card updates */
         'src/js/command-palette.js',/* Feature 12: Ctrl+K command palette */
+        'src/js/notifications.js',  /* Feature 13: notification history panel (N key) */
+        'src/js/statusbar.js',      /* Feature 14: at-a-glance status bar */
+        'src/js/room-filter.js',    /* Feature 15: room filter pill-bar */
         'src/js/events-editor.js',  /* Events editor: language classes + glyphicon swap */
     ];
 
