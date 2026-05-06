@@ -29,21 +29,18 @@
 
 .ng-notif-badge {
     position: absolute;
-    top: 9px;
-    right: 3px;
-    min-width: 16px;
-    height: 16px;
-    padding: 0 4px;
+    top: 10px;
+    right: 6px;
+    width: 7px;
+    height: 7px;
     background: var(--dz-danger);
-    color: #fff;
-    font-size: 0.6rem;
-    font-weight: 700;
-    border-radius: 8px;
-    line-height: 16px;
-    text-align: center;
+    border-radius: 50%;
     pointer-events: none;
     box-sizing: border-box;
     animation: ngBadgePop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* dot has no text — textContent set by JS is intentionally ignored */
+    font-size: 0;
+    overflow: hidden;
 }
 
 @keyframes ngBadgePop {
@@ -257,28 +254,89 @@
    Drives the hidden #comboroom → Angular handles device filtering.
    ══════════════════════════════════════════════════════════════════ */
 
+/* ── Toggle button (injected next to command palette) ────────────── */
+
+.ng-rf-toggle-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 0 10px !important;
+    cursor: pointer !important;
+    transition: background 0.15s, color 0.15s !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: var(--dz-text-muted) !important;
+    white-space: nowrap !important;
+    border: none !important;
+    background: transparent !important;
+    align-self: stretch !important;
+}
+
+    .ng-rf-toggle-btn:hover {
+        background: rgba(var(--dz-accent-rgb), 0.08) !important;
+        color: var(--dz-text) !important;
+    }
+
+    .ng-rf-toggle-btn--active {
+        color: var(--dz-accent) !important;
+        background: rgba(var(--dz-accent-rgb), 0.1) !important;
+    }
+
+    .ng-rf-toggle-btn--active:hover {
+        background: rgba(var(--dz-accent-rgb), 0.15) !important;
+    }
+
+    .ng-rf-toggle-btn > i { font-size: 13px; }
+
+/* ── Responsive: hide label on narrow screens ────────────────────── */
+
+@media (max-width: 768px) {
+    .ng-rf-toggle-label { display: none !important; }
+    .ng-rf-toggle-btn   { padding: 0 8px !important; }
+}
+
+/* ── Pill strip — collapsed by default, slides open on toggle ─────── */
+
 #ng-room-filter {
     display: flex;
     align-items: center;
     flex-wrap: nowrap;
     gap: 6px;
-    padding: 8px 0 10px;
-    border-bottom: 1px solid var(--dz-border);
-    margin-bottom: 10px;
     overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
     -webkit-overflow-scrolling: touch;
+    /* Collapsed state */
+    max-height: 0;
+    opacity: 0;
+    padding: 0;
+    border-bottom: none;
+    margin-bottom: 0;
+    overflow-y: hidden;
+    transition: max-height 0.3s ease, opacity 0.25s ease,
+                padding 0.3s ease, margin-bottom 0.3s ease,
+                border-color 0.3s ease;
 }
 
     #ng-room-filter::-webkit-scrollbar { display: none; }
+
+#ng-room-filter.ng-rf--open {
+    max-height: 60px;
+    opacity: 1;
+    padding: 8px 0 10px;
+    border-bottom: 1px solid var(--dz-border);
+    margin-bottom: 10px;
+    overflow-y: visible;
+}
+
+/* ── Pills ───────────────────────────────────────────────────────── */
 
 .ng-rf-pill {
     display: inline-flex;
     align-items: center;
     height: 28px;
     padding: 0 14px;
-    border-radius: 14px;       /* fully rounded — actual pill shape */
+    border-radius: 14px;       /* fully rounded — true pill shape */
     font-size: 0.78rem;
     font-weight: 500;
     white-space: nowrap;
@@ -311,5 +369,6 @@
 /* ── Mobile: hide at very narrow widths ─────────────────────────── */
 
 @media (max-width: 420px) {
-    #ng-room-filter { display: none !important; }
+    #ng-room-filter     { display: none !important; }
+    .ng-rf-toggle-btn   { display: none !important; }
 }

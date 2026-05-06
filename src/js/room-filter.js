@@ -1,22 +1,87 @@
 /* ── Feature 14: Room Filter Pill-Bar ──────────────────────────────
-   Injects a pill strip directly BELOW #topBar (sibling, not child)
-   so it has its own full row — no topbar crowding.
+   Injects a toggle button ("Rooms") next to the command palette
+   trigger inside #tbFiltSearch.  Clicking it slides open a pill
+   strip below #topBar with the Domoticz room plans.
 
-   Room plans are read from #comboroom (Angular-populated select).
-   #tbFiltRooms is hidden via CSS so it stays hidden across route
-   changes without needing JS re-application.
+   Also acts as topbar reveal coordinator: #topBar starts at opacity:0
+   (CSS) and is made visible once all topbar JS work is done, so the
+   user never sees a half-built topbar on page load or route change.
 
-   Clicking a pill drives #comboroom + triggers ng-change so Angular
-   filters devices exactly as if the user picked from the dropdown.
+   Room plans come from #comboroom (Angular-populated select).
+   #tbFiltRooms is hidden via CSS so it stays gone across re-renders.
+   Clicking a pill drives #comboroom + triggers ng-change → Angular
+   filters devices exactly as with the original dropdown.
 ──────────────────────────────────────────────────────────────────── */
 (function () {
     'use strict';
 
-    var _pills   = [];
-    var _retries = 0;
-    var MAX_RETRIES = 12;
+    var _pills       = [];
+    var _retries     = 0;
+    var MAX_RETRIES  = 12;
+    var _safetyTimer = null;
 
-    /* ── Read room options from the Angular-populated combobox ──── */
+    /* ══ Topbar reveal ══════════════════════════════════════════════ */
+
+    function revealTopBar() {
+        if (_safetyTimer) { clearTimeout(_safetyTimer); _safetyTimer = null; }
+        var tb = document.getElementById('topBar');
+        if (tb) tb.classList.add('ng-topbar--ready');
+        /* Pills strip visibility is user-controlled — not revealed here */
+    }
+
+    function scheduleRevealFallback() {
+        if (_safetyTimer) clearTimeout(_safetyTimer);
+        /* Always reveal topbar within 1.2 s even if something goes wrong */
+        _safetyTimer = setTimeout(revealTopBar, 1200);
+    }
+
+    /* ══ Toggle button ══════════════════════════════════════════════ */
+
+    function injectToggleBtn() {
+        if (document.getElementById('ng-rf-toggle')) return;
+        var searchBar = document.getElementById('tbFiltSearch');
+        if (!searchBar) return;
+
+        var btn = document.createElement('button');
+        btn.id        = 'ng-rf-toggle';
+        btn.className = 'ng-rf-toggle-btn';
+        btn.setAttribute('aria-label',    'Toggle room filter');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.innerHTML = '<i class="fa-solid fa-sliders"></i>' +
+                        '<span class="ng-rf-toggle-label">Rooms</span>';
+        btn.addEventListener('click', toggleFilter);
+
+        /* Insert immediately after the command palette trigger */
+        var cmdBtn = searchBar.querySelector('.dz-cmd-palette-trigger');
+        if (cmdBtn && cmdBtn.nextSibling) {
+            searchBar.insertBefore(btn, cmdBtn.nextSibling);
+        } else if (cmdBtn) {
+            searchBar.appendChild(btn);
+        } else {
+            searchBar.appendChild(btn);
+        }
+    }
+
+    function toggleFilter() {
+        var rf  = document.getElementById('ng-room-filter');
+        var btn = document.getElementById('ng-rf-toggle');
+        if (!rf || !btn) return;
+        var open = rf.classList.toggle('ng-rf--open');
+        btn.classList.toggle('ng-rf-toggle-btn--active', open);
+        btn.setAttribute('aria-expanded', String(open));
+    }
+
+    function closeFilter() {
+        var rf  = document.getElementById('ng-room-filter');
+        var btn = document.getElementById('ng-rf-toggle');
+        if (rf)  rf.classList.remove('ng-rf--open');
+        if (btn) {
+            btn.classList.remove('ng-rf-toggle-btn--active');
+            btn.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    /* ══ Room options ═══════════════════════════════════════════════ */
 
     function getOptions() {
         var sel = document.getElementById('comboroom');
@@ -26,18 +91,15 @@
         });
     }
 
-    /* ── Drive the hidden combobox → Angular filters devices ────── */
+    /* ══ Drive Angular combobox ═════════════════════════════════════ */
 
     function selectRoom(index) {
         var sel = document.getElementById('comboroom');
         if (!sel) return;
         sel.selectedIndex = index;
-        /* jQuery is always present in Domoticz */
-        $(sel).trigger('change');
+        $(sel).trigger('change');   /* jQuery always present in Domoticz */
         syncActive();
     }
-
-    /* ── Keep active pill in sync with select ───────────────────── */
 
     function syncActive() {
         var sel = document.getElementById('comboroom');
@@ -49,36 +111,42 @@
         });
     }
 
-    /* ── Remove bar from DOM ────────────────────────────────────── */
+    /* ══ Build / remove bar ═════════════════════════════════════════ */
 
     function removeBar() {
-        var el = document.getElementById('ng-room-filter');
-        if (el) el.remove();
+        var rf  = document.getElementById('ng-room-filter');
+        var btn = document.getElementById('ng-rf-toggle');
+        if (rf)  rf.remove();
+        if (btn) btn.remove();
         _pills = [];
     }
-
-    /* ── (Re)build bar ──────────────────────────────────────────── */
 
     function buildBar() {
         var opts   = getOptions();
         var topBar = document.getElementById('topBar');
 
-        /* Not ready yet — retry */
         if (!topBar || opts.length < 2) {
-            if (_retries < MAX_RETRIES) { _retries++; setTimeout(buildBar, 400); }
-            else { removeBar(); }   /* page has no room plans */
+            if (_retries < MAX_RETRIES) {
+                _retries++;
+                setTimeout(buildBar, 400);
+            } else {
+                removeBar();
+                revealTopBar();   /* no room plans — still reveal topbar */
+            }
             return;
         }
         _retries = 0;
 
-        /* Bar already in DOM with the right number of pills? Just sync. */
+        /* Already correct? Sync + ensure topbar visible. */
         var existing = document.getElementById('ng-room-filter');
         if (existing && _pills.length === opts.length) {
             syncActive();
+            injectToggleBtn();
+            revealTopBar();
             return;
         }
 
-        /* Start fresh */
+        /* Rebuild from scratch */
         removeBar();
 
         var bar = document.createElement('div');
@@ -99,17 +167,18 @@
             _pills.push(btn);
         });
 
-        /* Inject after the ng-include wrapper that contains #topBar
-           so the pill strip sits between the topbar and page content  */
-        var anchor = topBar.parentNode;   /* the ng-include div */
+        /* Inject pill strip after the ng-include div that wraps #topBar */
+        var anchor = topBar.parentNode;
         if (anchor && anchor.parentNode) {
             anchor.parentNode.insertBefore(bar, anchor.nextSibling);
         }
 
         syncActive();
+        injectToggleBtn();
+        revealTopBar();
     }
 
-    /* ── Angular hooks ──────────────────────────────────────────── */
+    /* ══ Angular hooks ══════════════════════════════════════════════ */
 
     function attachHooks() {
         if (!window.angular) { setTimeout(attachHooks, 600); return; }
@@ -120,14 +189,16 @@
         }
         try {
             var $rs = bodyEl.injector().get('$rootScope');
-            /* Route change: old view torn down — remove stale bar immediately */
+
             $rs.$on('$routeChangeSuccess', function () {
                 removeBar();
                 _retries = 0;
+                if (_safetyTimer) clearTimeout(_safetyTimer);
             });
-            /* View rendered: rebuild after Angular finishes populating comboroom */
+
             $rs.$on('$viewContentLoaded', function () {
                 _retries = 0;
+                scheduleRevealFallback();
                 setTimeout(buildBar, 400);
             });
         } catch (e) {
@@ -135,10 +206,11 @@
         }
     }
 
-    /* ── Init ───────────────────────────────────────────────────── */
+    /* ══ Init ════════════════════════════════════════════════════════ */
 
     function init() {
-        setTimeout(buildBar, 800);   /* first load: give Angular time to render */
+        scheduleRevealFallback();
+        setTimeout(buildBar, 800);
         attachHooks();
     }
 
