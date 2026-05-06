@@ -972,7 +972,7 @@ i.dz-fa-nav {
     #jsTbTime { display: none !important; }
 }
 
-/* ≤ 580px: hide sun group; hide room icon */
+/* ≤ 580px: hide sun group; shrink room pills */
 @media (max-width: 580px) {
     #tbSunGroup              { display: none !important; }
     #tbFiltRooms #tbIconRoom { display: none !important; }

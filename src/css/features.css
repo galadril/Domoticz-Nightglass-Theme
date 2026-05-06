@@ -253,18 +253,20 @@
 
 /* ══════════════════════════════════════════════════════════════════
    FEATURE 14 — Room Filter Pill-Bar
+   Replaces the #tbFiltRooms combobox in the topbar.
+   Pills match the topbar height anchor (--topbar-h).
    ══════════════════════════════════════════════════════════════════ */
 
 #ng-room-filter {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 10px 0 8px;
+    gap: 4px;
+    max-width: 340px;       /* cap so pills don't crowd out other topbar items */
     overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    flex-wrap: nowrap;
     -webkit-overflow-scrolling: touch;
+    flex-shrink: 1;
 }
 
     #ng-room-filter::-webkit-scrollbar { display: none; }
@@ -272,44 +274,44 @@
 .ng-rf-pill {
     display: inline-flex;
     align-items: center;
-    padding: 5px 14px;
-    border-radius: 20px;
-    font-size: 0.76rem;
+    height: var(--topbar-h, 26px);
+    padding: 0 10px;
+    border-radius: 8px;
+    font-size: 12px;
     font-weight: 500;
     white-space: nowrap;
     cursor: pointer;
     background: var(--dz-surface-2);
     color: var(--dz-text-muted);
     border: 1px solid var(--dz-border);
-    transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
     flex-shrink: 0;
     user-select: none;
+    box-sizing: border-box;
 }
 
     .ng-rf-pill:hover {
-        background: var(--dz-surface-3);
+        background: rgba(var(--dz-accent-rgb), 0.1);
         color: var(--dz-text);
         border-color: var(--dz-accent);
     }
 
     .ng-rf-pill--active {
-        background: rgba(var(--dz-accent-rgb), 0.12);
+        background: rgba(var(--dz-accent-rgb), 0.15);
         color: var(--dz-accent);
         border-color: var(--dz-accent);
-        box-shadow: 0 0 0 1px rgba(var(--dz-accent-rgb), 0.2);
     }
 
         .ng-rf-pill--active:hover {
-            background: rgba(var(--dz-accent-rgb), 0.18);
+            background: rgba(var(--dz-accent-rgb), 0.22);
         }
 
-section.dashCategory.ng-rf-hidden {
-    display: none !important;
+/* ── Responsive ─────────────────────────────────────────────────── */
+
+@media (max-width: 580px) {
+    #ng-room-filter { max-width: 150px; }
 }
 
-/* ── Mobile: larger tap targets ──────────────────────────────────── */
-
-@media (max-width: 480px) {
-    #ng-room-filter      { padding: 8px 0 6px; gap: 8px; }
-    .ng-rf-pill          { padding: 7px 16px;  font-size: 0.8rem; }
+@media (max-width: 420px) {
+    #ng-room-filter { display: none !important; }
 }
