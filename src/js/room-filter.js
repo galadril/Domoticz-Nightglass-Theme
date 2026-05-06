@@ -132,11 +132,14 @@
 
     /* Collect all device card elements on the current page.
        Dashboard uses .movable wrappers (id="light_42").
-       Tab pages (Lights, Scenes, Temp, etc.) use .item.itemBlock directly (id="42"). */
+       Tab pages use the outer custom element with class "span4 itemBlock" (id="42").
+       This covers Switches, Scenes, Utility, Weather, Temperature, etc.
+       The outer element is preferred over the inner div so that hiding it cleanly
+       removes the entire widget including spacing. */
     function getCards() {
         var cards = [];
         document.querySelectorAll('.movable').forEach(function (el) { cards.push(el); });
-        document.querySelectorAll('.item.itemBlock').forEach(function (el) {
+        document.querySelectorAll('.span4.itemBlock').forEach(function (el) {
             if (!el.closest('.movable')) cards.push(el);
         });
         return cards;
