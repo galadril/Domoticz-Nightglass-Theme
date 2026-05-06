@@ -65,8 +65,14 @@
     function pick(d) {
         close();
         d.card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        d.card.classList.add('dz-flash-on');
-        setTimeout(function () { d.card.classList.remove('dz-flash-on'); }, 700);
+
+        // Add prominent highlight animation
+        d.card.classList.add('dz-search-highlight');
+
+        // Remove after animation completes
+        setTimeout(function () { 
+            d.card.classList.remove('dz-search-highlight'); 
+        }, 2500);
     }
 
     function open() {
@@ -78,10 +84,16 @@
         var box = document.createElement('div');
         box.id  = 'dz-search-box';
 
+        // Add header with title
+        var header = document.createElement('div');
+        header.className = 'dz-search-header';
+        header.innerHTML = '<i class="fa-solid fa-filter"></i><span class="dz-search-title">Filter Current Page</span><kbd class="dz-search-kbd">/</kbd>';
+        box.appendChild(header);
+
         inputEl = document.createElement('input');
         inputEl.id          = 'dz-search-input';
         inputEl.type        = 'text';
-        inputEl.placeholder = 'Search devices…';
+        inputEl.placeholder = 'Filter devices on current page…';
         inputEl.autocomplete = 'off';
 
         listEl = document.createElement('div');
@@ -90,10 +102,12 @@
         var hint = document.createElement('div');
         hint.className = 'dz-search-hint';
         hint.innerHTML =
+            '<span style="opacity: 0.75; margin-right: 4px;"><kbd>/</kbd> filters devices on this page &nbsp;·&nbsp; Use <kbd>Ctrl</kbd><kbd>K</kbd> for global search</span>' +
+            '<span style="margin-left: auto; display: flex; gap: 14px;">' +
             '<span><kbd>↑↓</kbd> navigate</span>' +
-            '<span><kbd>↵</kbd> go to</span>' +
+            '<span><kbd>↵</kbd> scroll to</span>' +
             '<span><kbd>Esc</kbd> close</span>' +
-            '<span><kbd>1–9</kbd> jump to section</span>';
+            '</span>';
 
         box.appendChild(inputEl);
         box.appendChild(listEl);
@@ -131,6 +145,16 @@
         var tag = (target.tagName || '').toUpperCase();
         return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
     }
+
+    // Handle clicks on the page filter button (#tbSearch)
+    document.addEventListener('click', function(e) {
+        var tbSearch = document.getElementById('tbSearch');
+        if (tbSearch && (e.target === tbSearch || tbSearch.contains(e.target))) {
+            e.preventDefault();
+            e.stopPropagation();
+            open();
+        }
+    });
 
     document.addEventListener('keydown', function (e) {
         if (inInputField(e.target) && !overlay) return;

@@ -161,6 +161,66 @@
 })();
 
 
+/* -- Alert device card enhancement -------------------------------- */
+/*    For "General, Alert" devices the bigtext contains a multi-line  */
+/*    status message that looks oversized in the default hero-value   */
+/*    style. Add a class to the itemBlock so CSS can restyle it.      */
+
+(function () {
+    'use strict';
+
+    function processAlertDevices() {
+        var cards = document.querySelectorAll(
+            'table[id^="itemtable"] tr'
+        );
+        for (var i = 0; i < cards.length; i++) {
+            var tr = cards[i];
+            if (tr.getAttribute('data-dz-alert-done')) continue;
+
+            var typeTd = tr.querySelector('td#type');
+            if (!typeTd) continue;
+            var typeText = (typeTd.textContent || '').trim();
+            if (!/\bAlert\b/i.test(typeText)) continue;
+
+            tr.setAttribute('data-dz-alert-done', '1');
+
+            var itemBlock = tr.closest('.itemBlock');
+            if (itemBlock) itemBlock.classList.add('dz-alert-device');
+        }
+    }
+
+    window._dzExtraProcessors = window._dzExtraProcessors || [];
+    window._dzExtraProcessors.push(processAlertDevices);
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', processAlertDevices);
+    } else {
+        processAlertDevices();
+    }
+
+    var _timer = null;
+    var observer = new MutationObserver(function () {
+        clearTimeout(_timer);
+        _timer = setTimeout(processAlertDevices, 250);
+    });
+
+    function startObserver() {
+        var target = document.getElementById('dashcontent') ||
+                     document.getElementById('main-content') ||
+                     document.body;
+        if (target) {
+            observer.observe(target, { childList: true, subtree: true });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startObserver);
+    } else {
+        startObserver();
+    }
+})();
+
+
 /* -- Format last-update timestamps + strip "Type:" prefix --------- */
 /*    Runs after Angular renders each digest cycle.                   */
 
@@ -563,6 +623,10 @@ document.addEventListener('DOMContentLoaded', function () {
             var span = globalMax - globalMin;
             if (span <= 0) return null;
 
+            // Check if range spans zero (negative to positive)
+            var spansZero = globalMin < 0 && globalMax > 0;
+            var zeroPct = spansZero ? ((0 - globalMin) / span) * 100 : 0;
+
             // Build gradient stops: full opacity up to current value, low opacity beyond
             var valPct = Math.max(0, Math.min(100, ((val - globalMin) / span) * 100));
             var ACTIVE_ALPHA = 1;
@@ -580,19 +644,67 @@ document.addEventListener('DOMContentLoaded', function () {
                 var adjStart = pctStart + (i > 0 ? BLEND_HALF : 0);
                 var adjEnd   = pctEnd   - (i < sorted.length - 1 ? BLEND_HALF : 0);
 
-                if (pctEnd <= valPct) {
-                    stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + adjStart.toFixed(1) + '%');
-                    stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + adjEnd.toFixed(1) + '%');
-                } else if (pctStart >= valPct) {
-                    stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + adjStart.toFixed(1) + '%');
-                    stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + adjEnd.toFixed(1) + '%');
+                // When range spans zero, draw from center (zero point) outward
+                if (spansZero) {
+                    // Special handling for ranges that cross zero
+                    if (pctStart < zeroPct && pctEnd > zeroPct) {
+                        // Range crosses zero - ensure colors meet exactly at zero point
+                        var negAlpha = val < 0 ? ACTIVE_ALPHA : FADED_ALPHA;
+                        var posAlpha = val >= 0 ? ACTIVE_ALPHA : FADED_ALPHA;
+
+                        stops.push(hexToRgba(col, negAlpha) + ' ' + adjStart.toFixed(1) + '%');
+                        stops.push(hexToRgba(col, negAlpha) + ' ' + zeroPct.toFixed(1) + '%');
+                        stops.push(hexToRgba(col, posAlpha) + ' ' + zeroPct.toFixed(1) + '%');
+                        stops.push(hexToRgba(col, posAlpha) + ' ' + adjEnd.toFixed(1) + '%');
+                    } else if (pctEnd <= zeroPct) {
+                        // Negative range: active from zero towards negative value
+                        // Active if: val < 0 AND this range is between val and zero
+                        var isInActiveZone = val < 0 && valPct <= zeroPct && valPct >= pctStart;
+                        if (isInActiveZone) {
+                            // Partially active: from valPct to zero
+                            stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + adjStart.toFixed(1) + '%');
+                            stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + valPct.toFixed(1) + '%');
+                            stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + valPct.toFixed(1) + '%');
+                            stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + (i < sorted.length - 1 ? zeroPct : adjEnd).toFixed(1) + '%');
+                        } else {
+                            // Fully faded or fully active
+                            var alpha = (val < 0 && valPct < pctStart) ? ACTIVE_ALPHA : FADED_ALPHA;
+                            stops.push(hexToRgba(col, alpha) + ' ' + adjStart.toFixed(1) + '%');
+                            stops.push(hexToRgba(col, alpha) + ' ' + (i < sorted.length - 1 ? zeroPct : adjEnd).toFixed(1) + '%');
+                        }
+                    } else if (pctStart >= zeroPct) {
+                        // Positive range: active from zero towards positive value
+                        // Active if: val >= 0 AND this range is between zero and val
+                        var isInActiveZone = val >= 0 && valPct >= zeroPct && valPct >= pctStart;
+                        if (isInActiveZone && valPct <= pctEnd) {
+                            // Partially active: from zero to valPct
+                            stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + (i > 0 ? zeroPct : adjStart).toFixed(1) + '%');
+                            stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + valPct.toFixed(1) + '%');
+                            stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + valPct.toFixed(1) + '%');
+                            stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + adjEnd.toFixed(1) + '%');
+                        } else {
+                            // Fully active or fully faded
+                            var alpha = (val >= 0 && valPct > pctEnd) ? ACTIVE_ALPHA : FADED_ALPHA;
+                            stops.push(hexToRgba(col, alpha) + ' ' + (i > 0 ? zeroPct : adjStart).toFixed(1) + '%');
+                            stops.push(hexToRgba(col, alpha) + ' ' + adjEnd.toFixed(1) + '%');
+                        }
+                    }
                 } else {
-                    var clampedStart = Math.min(adjStart, valPct);
-                    var clampedEnd   = Math.max(adjEnd,   valPct);
-                    stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + clampedStart.toFixed(1) + '%');
-                    stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + valPct.toFixed(1) + '%');
-                    stops.push(hexToRgba(col, FADED_ALPHA)  + ' ' + valPct.toFixed(1) + '%');
-                    stops.push(hexToRgba(col, FADED_ALPHA)  + ' ' + clampedEnd.toFixed(1) + '%');
+                    // Original logic for ranges that don't span zero
+                    if (pctEnd <= valPct) {
+                        stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + adjStart.toFixed(1) + '%');
+                        stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + adjEnd.toFixed(1) + '%');
+                    } else if (pctStart >= valPct) {
+                        stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + adjStart.toFixed(1) + '%');
+                        stops.push(hexToRgba(col, FADED_ALPHA) + ' ' + adjEnd.toFixed(1) + '%');
+                    } else {
+                        var clampedStart = Math.min(adjStart, valPct);
+                        var clampedEnd   = Math.max(adjEnd,   valPct);
+                        stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + clampedStart.toFixed(1) + '%');
+                        stops.push(hexToRgba(col, ACTIVE_ALPHA) + ' ' + valPct.toFixed(1) + '%');
+                        stops.push(hexToRgba(col, FADED_ALPHA)  + ' ' + valPct.toFixed(1) + '%');
+                        stops.push(hexToRgba(col, FADED_ALPHA)  + ' ' + clampedEnd.toFixed(1) + '%');
+                    }
                 }
             }
             var gradient = 'linear-gradient(to right, ' + stops.join(', ') + ')';
@@ -610,7 +722,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            return { gradient: gradient, color: color, valPct: valPct };
+            return { gradient: gradient, color: color, valPct: valPct, zeroPct: zeroPct, spansZero: spansZero };
         } catch (e) {
             return null;
         }
@@ -735,6 +847,22 @@ document.addEventListener('DOMContentLoaded', function () {
                     card.style.setProperty('--dz-range-gradient', rangeResult.gradient);
                     card.style.setProperty('--dz-temp-accent', rangeResult.color);
                     card.style.setProperty('--dz-range-val-pct', rangeResult.valPct.toFixed(1) + '%');
+
+                    // Add/remove zero indicator as a real DOM element
+                    var existingZeroIndicator = card.querySelector('.dz-zero-indicator');
+                    if (rangeResult.spansZero) {
+                        if (!existingZeroIndicator) {
+                            var zeroIndicator = document.createElement('span');
+                            zeroIndicator.className = 'dz-zero-indicator';
+                            card.appendChild(zeroIndicator);
+                        }
+                        card.style.setProperty('--dz-range-zero-pct', rangeResult.zeroPct.toFixed(1) + '%');
+                    } else {
+                        if (existingZeroIndicator) {
+                            existingZeroIndicator.remove();
+                        }
+                    }
+
                     var rangeIcon = card.querySelector('i.dz-fa-device');
                     if (rangeIcon) rangeIcon.style.color = rangeResult.color;
                 } else {

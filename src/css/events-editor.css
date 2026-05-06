@@ -581,6 +581,84 @@
     justify-content: flex-end;
 }
 
+/* ── ACE Editor theme overrides (override blue background) ──────── */
+/* Main editor container background */
+#aw-ace-editor.ace_editor,
+.aw-ace-container.ace_editor,
+.events-editor-file__content .ace_editor {
+    background-color: var(--dz-input-bg) !important;
+}
+
+/* Gutter (line numbers) */
+#aw-ace-editor .ace_gutter,
+.aw-ace-container .ace_gutter,
+.events-editor-file__content .ace_gutter {
+    background-color: var(--dz-surface) !important;
+    color: var(--dz-text-muted) !important;
+}
+
+/* Gutter layer */
+#aw-ace-editor .ace_gutter-layer,
+.aw-ace-container .ace_gutter-layer,
+.events-editor-file__content .ace_gutter-layer {
+    background-color: var(--dz-surface) !important;
+}
+
+/* Gutter cells (line numbers) */
+#aw-ace-editor .ace_gutter-cell,
+.aw-ace-container .ace_gutter-cell,
+.events-editor-file__content .ace_gutter-cell {
+    color: var(--dz-text-muted) !important;
+}
+
+/* Active line in gutter */
+#aw-ace-editor .ace_gutter-active-line,
+.aw-ace-container .ace_gutter-active-line,
+.events-editor-file__content .ace_gutter-active-line {
+    background-color: rgba(var(--dz-accent-rgb), 0.1) !important;
+}
+
+/* Scroller (main content area) */
+#aw-ace-editor .ace_scroller,
+.aw-ace-container .ace_scroller,
+.events-editor-file__content .ace_scroller {
+    background-color: var(--dz-input-bg) !important;
+}
+
+/* Content area */
+#aw-ace-editor .ace_content,
+.aw-ace-container .ace_content,
+.events-editor-file__content .ace_content {
+    background-color: var(--dz-input-bg) !important;
+}
+
+/* Active line highlight */
+#aw-ace-editor .ace_active-line,
+.aw-ace-container .ace_active-line,
+.events-editor-file__content .ace_active-line {
+    background-color: rgba(var(--dz-accent-rgb), 0.08) !important;
+}
+
+/* Print margin */
+#aw-ace-editor .ace_print-margin,
+.aw-ace-container .ace_print-margin,
+.events-editor-file__content .ace_print-margin {
+    background: var(--dz-border) !important;
+}
+
+/* Scrollbars */
+#aw-ace-editor .ace_scrollbar,
+.aw-ace-container .ace_scrollbar,
+.events-editor-file__content .ace_scrollbar {
+    background-color: var(--dz-surface) !important;
+}
+
+#aw-ace-editor .ace_scrollbar-inner,
+.aw-ace-container .ace_scrollbar-inner,
+.events-editor-file__content .ace_scrollbar-inner {
+    background-color: var(--dz-border) !important;
+}
+
 /* ── Device states table ───────────────────────────────────────── */
 .events-editor-file__content-table {
     background: var(--dz-surface) !important;
