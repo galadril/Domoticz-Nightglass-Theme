@@ -250,16 +250,20 @@
 
 /* ══════════════════════════════════════════════════════════════════
    FEATURE 14 — Room Filter Pill-Bar
-   Injected as a strip directly below #topBar (sibling, not child).
-   Drives the hidden #comboroom → Angular handles device filtering.
+   Client-side multi-room filter — no page reloads, multi-select.
    ══════════════════════════════════════════════════════════════════ */
+
+/* ── Filtered-out cards and empty sections ───────────────────────── */
+
+.ng-rf-filtered                            { display: none !important; }
+section.dashCategory.ng-rf-section-hidden  { display: none !important; }
 
 /* ── Toggle button (injected next to command palette) ────────────── */
 
 .ng-rf-toggle-btn {
     display: inline-flex !important;
     align-items: center !important;
-    gap: 6px !important;
+    gap: 5px !important;
     padding: 0 10px !important;
     cursor: pointer !important;
     transition: background 0.15s, color 0.15s !important;
@@ -277,18 +281,42 @@
         color: var(--dz-text) !important;
     }
 
-    .ng-rf-toggle-btn--active {
+    /* Strip is open */
+    .ng-rf-toggle-btn--open {
         color: var(--dz-accent) !important;
         background: rgba(var(--dz-accent-rgb), 0.1) !important;
     }
 
-    .ng-rf-toggle-btn--active:hover {
+    .ng-rf-toggle-btn--open:hover {
         background: rgba(var(--dz-accent-rgb), 0.15) !important;
+    }
+
+    /* A filter is currently active (independent of open/closed state) */
+    .ng-rf-toggle-btn--filtered {
+        color: var(--dz-accent) !important;
     }
 
     .ng-rf-toggle-btn > i { font-size: 13px; }
 
-/* ── Responsive: hide label on narrow screens ────────────────────── */
+/* ── Count badge on toggle button ────────────────────────────────── */
+
+.ng-rf-toggle-count {
+    display: none;                       /* shown by JS when count > 0 */
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    background: var(--dz-accent);
+    color: #fff;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    box-sizing: border-box;
+}
+
+/* ── Responsive: hide label, keep button visible ─────────────────── */
 
 @media (max-width: 768px) {
     .ng-rf-toggle-label { display: none !important; }
@@ -302,23 +330,25 @@
     align-items: center;
     flex-wrap: nowrap;
     gap: 6px;
+    /* Horizontal scroll for long lists — works on mobile too */
     overflow-x: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    -webkit-overflow-scrolling: touch;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;   /* smooth momentum scroll on iOS */
+    scrollbar-width: thin;
+    scrollbar-color: var(--dz-border) transparent;
     /* Collapsed state */
     max-height: 0;
     opacity: 0;
     padding: 0;
     border-bottom: none;
     margin-bottom: 0;
-    overflow-y: hidden;
     transition: max-height 0.3s ease, opacity 0.25s ease,
-                padding 0.3s ease, margin-bottom 0.3s ease,
-                border-color 0.3s ease;
+                padding 0.3s ease, margin-bottom 0.3s ease;
 }
 
-    #ng-room-filter::-webkit-scrollbar { display: none; }
+    #ng-room-filter::-webkit-scrollbar       { height: 3px; }
+    #ng-room-filter::-webkit-scrollbar-track { background: transparent; }
+    #ng-room-filter::-webkit-scrollbar-thumb { background: var(--dz-border); border-radius: 2px; }
 
 #ng-room-filter.ng-rf--open {
     max-height: 60px;
@@ -326,7 +356,6 @@
     padding: 8px 0 10px;
     border-bottom: 1px solid var(--dz-border);
     margin-bottom: 10px;
-    overflow-y: visible;
 }
 
 /* ── Pills ───────────────────────────────────────────────────────── */
@@ -348,6 +377,7 @@
     flex-shrink: 0;
     user-select: none;
     box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;  /* cleaner tap on mobile */
 }
 
     .ng-rf-pill:hover {
@@ -366,9 +396,8 @@
             background: rgba(var(--dz-accent-rgb), 0.22);
         }
 
-/* ── Mobile: hide at very narrow widths ─────────────────────────── */
+/* ── Mobile: bigger tap targets, but always visible ─────────────── */
 
-@media (max-width: 420px) {
-    #ng-room-filter     { display: none !important; }
-    .ng-rf-toggle-btn   { display: none !important; }
+@media (max-width: 480px) {
+    .ng-rf-pill { height: 32px; padding: 0 12px; font-size: 0.82rem; }
 }
