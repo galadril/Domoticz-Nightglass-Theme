@@ -1,0 +1,403 @@
+/* ══════════════════════════════════════════════════════════════════
+   FEATURE 13 — Notification History Panel
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Navbar bell button ─────────────────────────────────────────── */
+
+#ng-notif-li {
+    list-style: none;
+}
+
+#ng-notif-btn {
+    position: relative;
+    display: flex !important;
+    align-items: center;
+    height: 54px;
+    padding: 0 10px !important;
+    color: var(--dz-text-muted) !important;
+    font-size: 1rem;
+    background: transparent !important;
+    border: none !important;
+    text-decoration: none !important;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+    #ng-notif-btn:hover {
+        color: var(--dz-accent) !important;
+    }
+
+.ng-notif-badge {
+    position: absolute;
+    top: 10px;
+    right: 6px;
+    width: 7px;
+    height: 7px;
+    background: var(--dz-danger);
+    border-radius: 50%;
+    pointer-events: none;
+    box-sizing: border-box;
+    animation: ngBadgePop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* dot has no text — textContent set by JS is intentionally ignored */
+    font-size: 0;
+    overflow: hidden;
+}
+
+@keyframes ngBadgePop {
+    from { transform: scale(0); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+}
+
+/* ── Slide-in panel ─────────────────────────────────────────────── */
+
+#ng-notif-panel {
+    position: fixed;
+    top: 54px;
+    right: 0;
+    width: 340px;
+    height: calc(100dvh - 54px);
+    background: var(--dz-surface);
+    border-left: 1px solid var(--dz-surface-3);
+    box-shadow: -4px 0 28px rgba(0, 0, 0, 0.35);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(calc(100% + 1px));
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+    #ng-notif-panel.ng-notif-panel--open {
+        transform: translateX(0);
+    }
+
+.ng-notif-hdr {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--dz-surface-3);
+    flex-shrink: 0;
+}
+
+.ng-notif-title {
+    flex: 1;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--dz-text);
+}
+
+    .ng-notif-title > i {
+        color: var(--dz-accent);
+        margin-right: 6px;
+    }
+
+.ng-notif-clr-btn,
+.ng-notif-x-btn {
+    background: none;
+    border: none;
+    color: var(--dz-text-muted);
+    cursor: pointer;
+    padding: 4px 7px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    line-height: 1;
+    transition: color 0.15s, background 0.15s;
+}
+
+    .ng-notif-clr-btn:hover {
+        color: var(--dz-danger);
+        background: rgba(var(--dz-danger-rgb), 0.1);
+    }
+
+    .ng-notif-x-btn:hover {
+        color: var(--dz-text);
+        background: var(--dz-surface-3);
+    }
+
+.ng-notif-list {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 4px 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--dz-border) transparent;
+}
+
+    .ng-notif-list::-webkit-scrollbar       { width: 4px; }
+    .ng-notif-list::-webkit-scrollbar-track  { background: transparent; }
+    .ng-notif-list::-webkit-scrollbar-thumb  { background: var(--dz-border); border-radius: 2px; }
+
+.ng-notif-empty {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 48px 16px;
+    color: var(--dz-text-faint);
+    font-size: 0.83rem;
+    display: none;
+}
+
+    .ng-notif-empty > i {
+        font-size: 1.6rem;
+        opacity: 0.35;
+    }
+
+.ng-notif-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--dz-border);
+    transition: background 0.12s;
+}
+
+    .ng-notif-item:last-child { border-bottom: none; }
+
+    .ng-notif-item:hover { background: rgba(var(--dz-accent-rgb), 0.05); }
+
+    .ng-notif-item--unread { background: rgba(var(--dz-accent-rgb), 0.06); }
+
+.ng-notif-icon {
+    font-size: 0.9rem;
+    margin-top: 2px;
+    flex-shrink: 0;
+    width: 16px;
+    text-align: center;
+}
+
+.ng-notif-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.ng-notif-name {
+    font-size: 0.83rem;
+    font-weight: 500;
+    color: var(--dz-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ng-notif-status {
+    font-size: 0.75rem;
+    color: var(--dz-text-muted);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ng-notif-time {
+    font-size: 0.7rem;
+    color: var(--dz-text-faint);
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 3px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Hide bell on mobile to reduce navbar clutter ───────────────── */
+
+@media (max-width: 767px) {
+    #ng-notif-li {
+        display: none !important;
+    }
+}
+
+/* ── Mobile portrait: slide up from bottom ──────────────────────── */
+
+@media (max-width: 480px) {
+    #ng-notif-panel {
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 72dvh;
+        border-left: none;
+        border-top: 1px solid var(--dz-surface-3);
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.45);
+        transform: translateY(calc(100% + 1px));
+    }
+
+    #ng-notif-panel.ng-notif-panel--open {
+        transform: translateY(0);
+    }
+
+    /* Drag-handle indicator on mobile */
+    .ng-notif-hdr {
+        position: relative;
+        padding-top: 20px;
+    }
+
+    .ng-notif-hdr::before {
+        content: '';
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 36px;
+        height: 4px;
+        background: var(--dz-border-b);
+        border-radius: 2px;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   FEATURE 14 — Room Filter Pill-Bar
+   Client-side multi-room filter — no page reloads, multi-select.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Filtered-out cards and empty sections ───────────────────────── */
+
+.ng-rf-filtered                            { display: none !important; }
+section.dashCategory.ng-rf-section-hidden  { display: none !important; }
+
+/* ── Toggle button (injected next to command palette) ────────────── */
+
+.ng-rf-toggle-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    padding: 0 10px !important;
+    cursor: pointer !important;
+    transition: background 0.15s, color 0.15s !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: var(--dz-text-muted) !important;
+    white-space: nowrap !important;
+    border: none !important;
+    background: transparent !important;
+    align-self: stretch !important;
+}
+
+    .ng-rf-toggle-btn:hover {
+        background: rgba(var(--dz-accent-rgb), 0.08) !important;
+        color: var(--dz-text) !important;
+    }
+
+    /* Strip is open */
+    .ng-rf-toggle-btn--open {
+        color: var(--dz-accent) !important;
+        background: rgba(var(--dz-accent-rgb), 0.1) !important;
+    }
+
+    .ng-rf-toggle-btn--open:hover {
+        background: rgba(var(--dz-accent-rgb), 0.15) !important;
+    }
+
+    /* A filter is currently active (independent of open/closed state) */
+    .ng-rf-toggle-btn--filtered {
+        color: var(--dz-accent) !important;
+    }
+
+    .ng-rf-toggle-btn > i { font-size: 13px; }
+
+/* ── Count badge on toggle button ────────────────────────────────── */
+
+.ng-rf-toggle-count {
+    display: none;                       /* shown by JS when count > 0 */
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    background: var(--dz-accent);
+    color: #fff;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    box-sizing: border-box;
+}
+
+/* ── Responsive: hide label, keep button visible ─────────────────── */
+
+@media (max-width: 768px) {
+    .ng-rf-toggle-label { display: none !important; }
+    .ng-rf-toggle-btn   { padding: 0 8px !important; }
+}
+
+/* ── Pill strip — collapsed by default, slides open on toggle ─────── */
+
+#ng-room-filter {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 6px;
+    /* Horizontal scroll for long lists — works on mobile too */
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;   /* smooth momentum scroll on iOS */
+    scrollbar-width: thin;
+    scrollbar-color: var(--dz-border) transparent;
+    /* Collapsed state */
+    max-height: 0;
+    opacity: 0;
+    padding: 0;
+    border-bottom: none;
+    margin-bottom: 0;
+    transition: max-height 0.3s ease, opacity 0.25s ease,
+                padding 0.3s ease, margin-bottom 0.3s ease;
+}
+
+    #ng-room-filter::-webkit-scrollbar       { height: 3px; }
+    #ng-room-filter::-webkit-scrollbar-track { background: transparent; }
+    #ng-room-filter::-webkit-scrollbar-thumb { background: var(--dz-border); border-radius: 2px; }
+
+#ng-room-filter.ng-rf--open {
+    max-height: 60px;
+    opacity: 1;
+    padding: 8px 0 10px;
+    border-bottom: 1px solid var(--dz-border);
+    margin-bottom: 10px;
+}
+
+/* ── Pills ───────────────────────────────────────────────────────── */
+
+.ng-rf-pill {
+    display: inline-flex;
+    align-items: center;
+    height: 28px;
+    padding: 0 14px;
+    border-radius: 14px;       /* fully rounded — true pill shape */
+    font-size: 0.78rem;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    background: var(--dz-surface-2);
+    color: var(--dz-text-muted);
+    border: 1px solid var(--dz-border);
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+    user-select: none;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;  /* cleaner tap on mobile */
+}
+
+    .ng-rf-pill:hover {
+        background: rgba(var(--dz-accent-rgb), 0.1);
+        color: var(--dz-text);
+        border-color: var(--dz-accent);
+    }
+
+    .ng-rf-pill--active {
+        background: rgba(var(--dz-accent-rgb), 0.15);
+        color: var(--dz-accent);
+        border-color: var(--dz-accent);
+    }
+
+        .ng-rf-pill--active:hover {
+            background: rgba(var(--dz-accent-rgb), 0.22);
+        }
+
+/* ── Mobile: bigger tap targets, but always visible ─────────────── */
+
+@media (max-width: 480px) {
+    .ng-rf-pill { height: 32px; padding: 0 12px; font-size: 0.82rem; }
+}
