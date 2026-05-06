@@ -1,90 +1,90 @@
 /* ── Feature 14: Room Filter Pill-Bar ──────────────────────────────
-   Replaces the #tbFiltRooms combobox in the topbar with pill buttons
-   that drive the same Angular ctrl.changeRoom() logic.
+   Injects a pill strip directly BELOW #topBar (sibling, not child)
+   so it has its own full row — no topbar crowding.
 
-   Room plans come from #comboroom (populated by Angular).
-   Clicking a pill sets the select value and triggers ng-change —
-   Angular handles all device filtering exactly as with the dropdown.
-   Mobile: scrollable strip, hides at very small widths.
+   Room plans are read from #comboroom (Angular-populated select).
+   #tbFiltRooms is hidden via CSS so it stays hidden across route
+   changes without needing JS re-application.
+
+   Clicking a pill drives #comboroom + triggers ng-change so Angular
+   filters devices exactly as if the user picked from the dropdown.
 ──────────────────────────────────────────────────────────────────── */
 (function () {
     'use strict';
 
-    var _bar         = null;
-    var _pills       = [];
-    var _retries     = 0;
-    var MAX_RETRIES  = 8;
+    var _pills   = [];
+    var _retries = 0;
+    var MAX_RETRIES = 12;
 
-    /* ── Read rooms from the Angular-populated combobox ────────── */
+    /* ── Read room options from the Angular-populated combobox ──── */
 
     function getOptions() {
-        var select = document.getElementById('comboroom');
-        if (!select || !select.options.length) return [];
-        return Array.prototype.slice.call(select.options).map(function (opt, i) {
-            return { label: opt.textContent.trim(), index: i };
+        var sel = document.getElementById('comboroom');
+        if (!sel || !sel.options.length) return [];
+        return Array.prototype.slice.call(sel.options).map(function (o, i) {
+            return { label: o.textContent.trim(), index: i };
         });
     }
 
-    /* ── Select a room by option index ─────────────────────────── */
+    /* ── Drive the hidden combobox → Angular filters devices ────── */
 
     function selectRoom(index) {
-        var select = document.getElementById('comboroom');
-        if (!select) return;
-        select.selectedIndex = index;
-        /* Trigger Angular ng-change via jQuery (Domoticz always has jQuery) */
-        if (window.$) {
-            $(select).trigger('change');
-        } else {
-            try { angular.element(select).triggerHandler('change'); } catch (e) {}
-        }
+        var sel = document.getElementById('comboroom');
+        if (!sel) return;
+        sel.selectedIndex = index;
+        /* jQuery is always present in Domoticz */
+        $(sel).trigger('change');
         syncActive();
     }
 
-    /* ── Sync pill highlight to current combobox selection ──────── */
+    /* ── Keep active pill in sync with select ───────────────────── */
 
     function syncActive() {
-        var select = document.getElementById('comboroom');
-        var idx    = select ? select.selectedIndex : 0;
+        var sel = document.getElementById('comboroom');
+        var cur = sel ? sel.selectedIndex : 0;
         _pills.forEach(function (p, i) {
-            var active = i === idx;
-            p.classList.toggle('ng-rf-pill--active', active);
-            p.setAttribute('aria-selected', active ? 'true' : 'false');
+            var on = (i === cur);
+            p.classList.toggle('ng-rf-pill--active', on);
+            p.setAttribute('aria-selected', String(on));
         });
     }
 
-    /* ── Build pill bar ─────────────────────────────────────────── */
+    /* ── Remove bar from DOM ────────────────────────────────────── */
+
+    function removeBar() {
+        var el = document.getElementById('ng-room-filter');
+        if (el) el.remove();
+        _pills = [];
+    }
+
+    /* ── (Re)build bar ──────────────────────────────────────────── */
 
     function buildBar() {
-        var tbFiltRooms = document.getElementById('tbFiltRooms');
-        var opts        = getOptions();
+        var opts   = getOptions();
+        var topBar = document.getElementById('topBar');
 
-        /* Comboroom not ready yet — retry */
-        if (!tbFiltRooms || opts.length < 2) {
-            if (_retries < MAX_RETRIES) {
-                _retries++;
-                setTimeout(buildBar, 400);
-            }
+        /* Not ready yet — retry */
+        if (!topBar || opts.length < 2) {
+            if (_retries < MAX_RETRIES) { _retries++; setTimeout(buildBar, 400); }
+            else { removeBar(); }   /* page has no room plans */
             return;
         }
         _retries = 0;
 
-        /* Already built with the same options? Just sync. */
-        if (_bar && _pills.length === opts.length) {
+        /* Bar already in DOM with the right number of pills? Just sync. */
+        var existing = document.getElementById('ng-room-filter');
+        if (existing && _pills.length === opts.length) {
             syncActive();
             return;
         }
 
-        /* Remove stale bar */
-        var existing = document.getElementById('ng-room-filter');
-        if (existing) { existing.remove(); }
-        _bar   = null;
-        _pills = [];
+        /* Start fresh */
+        removeBar();
 
-        /* Build new bar */
-        _bar = document.createElement('span');
-        _bar.id = 'ng-room-filter';
-        _bar.setAttribute('role', 'tablist');
-        _bar.setAttribute('aria-label', 'Filter by room');
+        var bar = document.createElement('div');
+        bar.id = 'ng-room-filter';
+        bar.setAttribute('role', 'tablist');
+        bar.setAttribute('aria-label', 'Filter by room');
 
         opts.forEach(function (r) {
             var btn = document.createElement('button');
@@ -95,13 +95,16 @@
             (function (i) {
                 btn.addEventListener('click', function () { selectRoom(i); });
             }(r.index));
-            _bar.appendChild(btn);
+            bar.appendChild(btn);
             _pills.push(btn);
         });
 
-        /* Inject after the original combobox span and hide it */
-        tbFiltRooms.parentNode.insertBefore(_bar, tbFiltRooms.nextSibling);
-        tbFiltRooms.style.display = 'none';
+        /* Inject after the ng-include wrapper that contains #topBar
+           so the pill strip sits between the topbar and page content  */
+        var anchor = topBar.parentNode;   /* the ng-include div */
+        if (anchor && anchor.parentNode) {
+            anchor.parentNode.insertBefore(bar, anchor.nextSibling);
+        }
 
         syncActive();
     }
@@ -117,13 +120,15 @@
         }
         try {
             var $rs = bodyEl.injector().get('$rootScope');
+            /* Route change: old view torn down — remove stale bar immediately */
             $rs.$on('$routeChangeSuccess', function () {
+                removeBar();
                 _retries = 0;
-                setTimeout(buildBar, 500);
             });
+            /* View rendered: rebuild after Angular finishes populating comboroom */
             $rs.$on('$viewContentLoaded', function () {
                 _retries = 0;
-                setTimeout(buildBar, 300);
+                setTimeout(buildBar, 400);
             });
         } catch (e) {
             setTimeout(attachHooks, 600);
@@ -133,7 +138,7 @@
     /* ── Init ───────────────────────────────────────────────────── */
 
     function init() {
-        setTimeout(buildBar, 600);
+        setTimeout(buildBar, 800);   /* first load: give Angular time to render */
         attachHooks();
     }
 
