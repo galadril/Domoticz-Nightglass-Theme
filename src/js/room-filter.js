@@ -15,10 +15,12 @@
 (function () {
     'use strict';
 
-    var _pills       = [];
-    var _retries     = 0;
-    var MAX_RETRIES  = 12;
-    var _safetyTimer = null;
+    var _pills          = [];
+    var _topbarRetries  = 0;   /* waiting for #topBar to appear in DOM */
+    var _comboRetries   = 0;   /* waiting for #comboroom to be populated */
+    var MAX_TOPBAR      = 15;  /* × 100ms = 1.5s max wait for topbar */
+    var MAX_COMBO       = 8;   /* × 300ms = 2.4s max wait for comboroom options */
+    var _safetyTimer    = null;
 
     /* ══ Topbar reveal ══════════════════════════════════════════════ */
 
@@ -122,20 +124,44 @@
     }
 
     function buildBar() {
-        var opts   = getOptions();
         var topBar = document.getElementById('topBar');
 
-        if (!topBar || opts.length < 2) {
-            if (_retries < MAX_RETRIES) {
-                _retries++;
-                setTimeout(buildBar, 400);
+        /* Phase 1: #topBar not in DOM yet — Angular still rendering the view.
+           Retry quickly; reveal if it never appears.                          */
+        if (!topBar) {
+            if (_topbarRetries < MAX_TOPBAR) {
+                _topbarRetries++;
+                setTimeout(buildBar, 100);
             } else {
-                removeBar();
-                revealTopBar();   /* no room plans — still reveal topbar */
+                revealTopBar();
             }
             return;
         }
-        _retries = 0;
+        _topbarRetries = 0;
+
+        var sel = document.getElementById('comboroom');
+
+        /* Phase 2: #topBar ready but no comboroom → page has no room plans.
+           Reveal the topbar immediately — no further retrying needed.         */
+        if (!sel) {
+            removeBar();
+            revealTopBar();
+            return;
+        }
+
+        /* Phase 3: comboroom exists but Angular hasn't populated its options yet */
+        var opts = getOptions();
+        if (opts.length < 2) {
+            if (_comboRetries < MAX_COMBO) {
+                _comboRetries++;
+                setTimeout(buildBar, 300);
+            } else {
+                removeBar();
+                revealTopBar();   /* comboroom stayed empty — reveal anyway */
+            }
+            return;
+        }
+        _comboRetries = 0;
 
         /* Already correct? Sync + ensure topbar visible. */
         var existing = document.getElementById('ng-room-filter');
@@ -192,14 +218,16 @@
 
             $rs.$on('$routeChangeSuccess', function () {
                 removeBar();
-                _retries = 0;
+                _topbarRetries = 0;
+                _comboRetries  = 0;
                 if (_safetyTimer) clearTimeout(_safetyTimer);
             });
 
             $rs.$on('$viewContentLoaded', function () {
-                _retries = 0;
+                _topbarRetries = 0;
+                _comboRetries  = 0;
                 scheduleRevealFallback();
-                setTimeout(buildBar, 400);
+                setTimeout(buildBar, 150);
             });
         } catch (e) {
             setTimeout(attachHooks, 600);
@@ -210,7 +238,7 @@
 
     function init() {
         scheduleRevealFallback();
-        setTimeout(buildBar, 800);
+        setTimeout(buildBar, 300);
         attachHooks();
     }
 
