@@ -999,6 +999,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 var ringEl = document.createElement('div');
                 ringEl.className = 'update-progress-ring';
+                ringEl.setAttribute('role', 'progressbar');
+                ringEl.setAttribute('aria-valuemin', '0');
+                ringEl.setAttribute('aria-valuemax', '100');
+                ringEl.setAttribute('aria-valuenow', '0');
                 ringEl.innerHTML =
                     '<svg viewBox="0 0 160 160" width="160" height="160" xmlns="http://www.w3.org/2000/svg">' +
                         '<circle class="ring-track" cx="80" cy="80" r="70" fill="none" stroke-width="8"/>' +
@@ -1014,10 +1018,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 var ringLabel = ringEl.querySelector('.ring-label');
 
                 function updateRing(label) {
-                    label = Math.min(100, Math.max(0, label | 0));
+                    label = Math.min(100, Math.max(0, parseInt(label, 10) || 0));
                     var offset = (C - (label / 100) * C).toFixed(2);
                     if (ringFill)  ringFill.setAttribute('stroke-dashoffset', offset);
                     if (ringLabel) ringLabel.textContent = label + '\u00a0%';
+                    ringEl.setAttribute('aria-valuenow', label);
                 }
 
                 /* Sync with Angular scope's ProgressData.label (0–100) */
