@@ -101,11 +101,13 @@
                     var id = String(d.devidx || d.idx || '');
                     if (id) set[id] = true;
                 });
+                console.log('[ng-rf] fetchPlan idx=' + planIdx + ' → devidxes:', Object.keys(set));
                 _planCache[planIdx] = set;
                 (_planQueue[planIdx] || []).forEach(function (fn) { fn(); });
                 delete _planQueue[planIdx];
             }
         ).fail(function () {
+            console.warn('[ng-rf] fetchPlan FAILED for idx=' + planIdx);
             _planCache[planIdx] = {};
             (_planQueue[planIdx] || []).forEach(function (fn) { fn(); });
             delete _planQueue[planIdx];
@@ -131,8 +133,13 @@
 
     function applyFilter() {
         var showAll = (_selected.length === 0);
+        var cards   = document.querySelectorAll('.movable');
+        console.log('[ng-rf] applyFilter: selected=', _selected, 'cards=', cards.length);
+        _selected.forEach(function (p) {
+            console.log('[ng-rf]   planCache[' + p + ']:', _planCache[p] ? Object.keys(_planCache[p]) : '(not cached)');
+        });
 
-        document.querySelectorAll('.movable').forEach(function (card) {
+        cards.forEach(function (card) {
             var show = showAll;
             if (!show) {
                 var idx = cardIdx(card);
