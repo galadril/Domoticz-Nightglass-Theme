@@ -50,9 +50,12 @@
                     Temperature
                 </div>
 
-                <!-- device cards -->
-                <div class="devicesList">
-                    <div class="row">
+                <!-- device cards — grouped by room for the Room Filter demo -->
+
+                <!-- ── Indoor ──────────────────────────────────────── -->
+                <section class="dashCategory">
+                  <h2>Indoor</h2>
+                  <div class="devicesList"><div class="row">
 
                         <!-- 1. Living Room -->
                         <div class="item span4 itemBlock statusNormal" id="d1">
@@ -123,6 +126,14 @@
                             </section>
                         </div>
 
+                  </div></div>
+                </section>
+
+                <!-- ── Outdoor ─────────────────────────────────────── -->
+                <section class="dashCategory">
+                  <h2>Outdoor</h2>
+                  <div class="devicesList"><div class="row">
+
                         <!-- 4. Outdoor -->
                         <div class="item span4 itemBlock statusNormal" id="d4">
                             <section>
@@ -145,6 +156,14 @@
                                 </table>
                             </section>
                         </div>
+
+                  </div></div>
+                </section>
+
+                <!-- ── Unheated Spaces ─────────────────────────────── -->
+                <section class="dashCategory">
+                  <h2>Unheated Spaces</h2>
+                  <div class="devicesList"><div class="row">
 
                         <!-- 5. Attic -->
                         <div class="item span4 itemBlock statusNormal" id="d5">
@@ -191,6 +210,14 @@
                                 </table>
                             </section>
                         </div>
+
+                  </div></div>
+                </section>
+
+                <!-- ── Thermostats ─────────────────────────────────── -->
+                <section class="dashCategory">
+                  <h2>Thermostats</h2>
+                  <div class="devicesList"><div class="row">
 
                         <!-- 7. Thermostat — click icon to open setpoint popup -->
                         <div class="item span4 itemBlock statusNormal" id="d7">
@@ -245,6 +272,14 @@
                             </section>
                         </div>
 
+                  </div></div>
+                </section>
+
+                <!-- ── Remote Sensors ──────────────────────────────── -->
+                <section class="dashCategory">
+                  <h2>Remote Sensors</h2>
+                  <div class="devicesList"><div class="row">
+
                         <!-- 8. Basement Sensor — Timeout -->
                         <div class="item span4 itemBlock statusTimeout" id="d8">
                             <section>
@@ -291,8 +326,8 @@
                             </section>
                         </div>
 
-                    </div><!-- /.row -->
-                </div><!-- /.devicesList -->
+                  </div></div>
+                </section>
 
                 <div class="page-bottom"></div>
 
@@ -348,6 +383,17 @@
             }
         };
     })();
+    </script>
+    <script>
+    /* Demo: seed status bar with outdoor temp */
+    setTimeout(function () {
+        if (window.ngStatusBarUpdate) {
+            window.ngStatusBarUpdate({ idx:'10', Type:'Temp+Humidity', Temp:8.2, Data:'8.2 °C' });
+        }
+        if (window.ngNotifRecord) {
+            window.ngNotifRecord({ Name:'Thermostat', Status:'Set to 20.5 °C', Type:'Setpoint' });
+        }
+    }, 800);
     </script>
 </body>
 </html>

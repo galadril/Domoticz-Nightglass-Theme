@@ -193,6 +193,20 @@ body table#itemtabletrippleicon tr td:first-child + td + td + td + td, body tabl
         padding-top: 54px;
     }
 
+/* ── Status bar: sticky just below the fixed navbar ─────────────────────── */
+/* The status bar is injected as the first child of .container-fluid; with
+   position:sticky and top equal to the navbar height it remains pinned
+   just below the navbar while the page content scrolls underneath.
+   We also set --dd-navbar-h so features.css resolves the same value.     */
+#holder > .container-fluid {
+    --dd-navbar-h: 54px;
+}
+
+/* ── dashCategory section spacing (matches real Domoticz) ───────────────── */
+section.dashCategory {
+    margin-bottom: 20px;
+}
+
 /* ── Device card grid ────────────────────────────────────────────────────── */
 .devicesList .row {
     display: flex;
