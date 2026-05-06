@@ -14,11 +14,20 @@
 
     /* ── Room detection ────────────────────────────────────────── */
 
+    function sectionName(sec) {
+        var h2 = sec.querySelector('h2');
+        if (!h2) return '';
+        /* Prefer the i18n span text (avoids picking up the literal ":" text node) */
+        var span = h2.querySelector('[data-i18n]') || h2.querySelector('span');
+        var raw  = (span ? span.textContent : h2.textContent).trim();
+        /* Strip Domoticz i18n fallback prefix ("::") and trailing colon */
+        return raw.replace(/^::/, '').replace(/:+\s*$/, '').trim();
+    }
+
     function getRooms() {
         var rooms = [];
         document.querySelectorAll('section.dashCategory').forEach(function (sec) {
-            var h2 = sec.querySelector('h2');
-            var n  = h2 ? h2.textContent.trim() : '';
+            var n = sectionName(sec);
             if (n && rooms.indexOf(n) === -1) rooms.push(n);
         });
         return rooms;
@@ -29,8 +38,7 @@
     function applyFilter(room) {
         _active = room;
         document.querySelectorAll('section.dashCategory').forEach(function (sec) {
-            var h2 = sec.querySelector('h2');
-            var n  = h2 ? h2.textContent.trim() : '';
+            var n = sectionName(sec);
             sec.classList.toggle('ng-rf-hidden', room !== 'all' && n !== room);
         });
         if (_bar) {
@@ -44,11 +52,21 @@
 
     /* ── Pill-bar DOM ──────────────────────────────────────────── */
 
+    var _buildAttempts = 0;
+
     function buildBar() {
         var rooms    = getRooms();
         var existing = document.getElementById('ng-room-filter');
 
-        /* Remove bar if fewer than 2 rooms on this page */
+        /* Angular's ng-if sections may not be rendered yet — retry up to 5× */
+        if (rooms.length < 2 && _buildAttempts < 5) {
+            _buildAttempts++;
+            setTimeout(buildBar, 400);
+            return;
+        }
+        _buildAttempts = 0;
+
+        /* Remove bar if fewer than 2 sections on this page */
         if (rooms.length < 2) {
             if (existing) { existing.remove(); _bar = null; }
             return;
@@ -103,7 +121,8 @@
         try {
             var $rs = bodyEl.injector().get('$rootScope');
             $rs.$on('$routeChangeSuccess', function () {
-                _active = 'all'; /* reset selection on page navigation */
+                _active = 'all';       /* reset selection on page navigation */
+                _buildAttempts = 0;
                 setTimeout(buildBar, 500);
             });
             $rs.$on('$viewContentLoaded', function () { setTimeout(buildBar, 300); });
