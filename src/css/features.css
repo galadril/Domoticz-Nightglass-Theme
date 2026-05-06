@@ -202,6 +202,14 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* ── Hide bell on mobile to reduce navbar clutter ───────────────── */
+
+@media (max-width: 767px) {
+    #ng-notif-li {
+        display: none !important;
+    }
+}
+
 /* ── Mobile portrait: slide up from bottom ──────────────────────── */
 
 @media (max-width: 480px) {
@@ -244,126 +252,7 @@
 
 
 /* ══════════════════════════════════════════════════════════════════
-   FEATURE 14 — At-a-Glance Status Bar
-   ══════════════════════════════════════════════════════════════════ */
-
-#ng-status-bar {
-    background: var(--dz-surface);
-    border-bottom: 1px solid var(--dz-surface-3);
-    position: sticky;
-    top: var(--dd-navbar-h, 54px);
-    z-index: 1025;
-    overflow: hidden;
-}
-
-.ng-sb-inner {
-    display: flex;
-    align-items: center;
-    padding: 0 20px;
-    height: 32px;
-    gap: 6px;
-    transition: height 0.22s ease;
-}
-
-/* ── Slots ───────────────────────────────────────────────────────── */
-
-.ng-sb-slots {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    transition: opacity 0.2s;
-}
-
-    .ng-sb-slots::-webkit-scrollbar { display: none; }
-
-.ng-sb-slot {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 10px;
-    font-size: 0.76rem;
-    color: var(--dz-text-soft);
-    white-space: nowrap;
-    border-radius: 20px;
-    flex-shrink: 0;
-}
-
-    .ng-sb-slot > i    { font-size: 0.78rem; }
-    .ng-sb-slot > span { font-variant-numeric: tabular-nums; }
-
-.ng-sb-sep {
-    width: 1px;
-    height: 12px;
-    background: var(--dz-border);
-    flex-shrink: 0;
-}
-
-/* ── Live dot ────────────────────────────────────────────────────── */
-
-.ng-sb-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--dz-success);
-    flex-shrink: 0;
-    opacity: 0.35;
-    transition: opacity 0.2s;
-}
-
-.ng-sb-dot--pulse {
-    animation: ngSbPulse 0.7s ease forwards;
-}
-
-@keyframes ngSbPulse {
-    0%   { opacity: 0.35; transform: scale(1);   }
-    35%  { opacity: 1;    transform: scale(1.7); }
-    100% { opacity: 0.35; transform: scale(1);   }
-}
-
-/* ── Collapse toggle ─────────────────────────────────────────────── */
-
-.ng-sb-toggle {
-    background: none;
-    border: none;
-    padding: 2px 5px;
-    color: var(--dz-text-faint);
-    cursor: pointer;
-    font-size: 0.62rem;
-    border-radius: 3px;
-    line-height: 1;
-    transition: color 0.15s;
-    flex-shrink: 0;
-}
-
-    .ng-sb-toggle:hover { color: var(--dz-text-soft); }
-
-/* ── Collapsed state ─────────────────────────────────────────────── */
-
-#ng-status-bar.ng-sb--collapsed .ng-sb-inner {
-    height: 14px;
-    justify-content: flex-end;
-}
-
-#ng-status-bar.ng-sb--collapsed .ng-sb-slots,
-#ng-status-bar.ng-sb--collapsed .ng-sb-dot {
-    opacity: 0;
-    pointer-events: none;
-}
-
-/* ── Mobile ──────────────────────────────────────────────────────── */
-
-@media (max-width: 480px) {
-    .ng-sb-inner { height: 28px; padding: 0 10px; }
-    .ng-sb-slot  { font-size: 0.72rem; padding: 2px 7px; }
-}
-
-
-/* ══════════════════════════════════════════════════════════════════
-   FEATURE 15 — Room Filter Pill-Bar
+   FEATURE 14 — Room Filter Pill-Bar
    ══════════════════════════════════════════════════════════════════ */
 
 #ng-room-filter {
