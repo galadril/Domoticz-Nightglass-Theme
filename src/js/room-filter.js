@@ -101,13 +101,11 @@
                     var id = String(d.devidx || d.idx || '');
                     if (id) set[id] = true;
                 });
-                console.log('[ng-rf] fetchPlan idx=' + planIdx + ' → devidxes:', Object.keys(set));
                 _planCache[planIdx] = set;
                 (_planQueue[planIdx] || []).forEach(function (fn) { fn(); });
                 delete _planQueue[planIdx];
             }
         ).fail(function () {
-            console.warn('[ng-rf] fetchPlan FAILED for idx=' + planIdx);
             _planCache[planIdx] = {};
             (_planQueue[planIdx] || []).forEach(function (fn) { fn(); });
             delete _planQueue[planIdx];
@@ -123,21 +121,32 @@
 
     /* ══ DOM card helpers ═══════════════════════════════════════════ */
 
-    /* Extract device idx from card id: "light_42" → "42" */
+    /* Extract device idx from card element.
+       Dashboard pages:   id="light_42" / "temp_42" → "42"
+       Tab pages (Lights, Scenes, etc.): id="42"    → "42" */
     function cardIdx(card) {
-        var m = (card.id || '').match(/_(\d+)$/);
+        var id = card.id || '';
+        var m  = id.match(/_(\d+)$/) || id.match(/^(\d+)$/);
         return m ? m[1] : null;
+    }
+
+    /* Collect all device card elements on the current page.
+       Dashboard uses .movable wrappers (id="light_42").
+       Tab pages (Lights, Scenes, Temp, etc.) use .item.itemBlock directly (id="42"). */
+    function getCards() {
+        var cards = [];
+        document.querySelectorAll('.movable').forEach(function (el) { cards.push(el); });
+        document.querySelectorAll('.item.itemBlock').forEach(function (el) {
+            if (!el.closest('.movable')) cards.push(el);
+        });
+        return cards;
     }
 
     /* ══ Filter application ═════════════════════════════════════════ */
 
     function applyFilter() {
         var showAll = (_selected.length === 0);
-        var cards   = document.querySelectorAll('.movable');
-        console.log('[ng-rf] applyFilter: selected=', _selected, 'cards=', cards.length);
-        _selected.forEach(function (p) {
-            console.log('[ng-rf]   planCache[' + p + ']:', _planCache[p] ? Object.keys(_planCache[p]) : '(not cached)');
-        });
+        var cards   = getCards();
 
         cards.forEach(function (card) {
             var show = showAll;
@@ -155,7 +164,7 @@
             card.classList.toggle('ng-rf-filtered', !show);
         });
 
-        /* Hide sections that have no visible cards */
+        /* Hide sections that have no visible cards (Dashboard only) */
         document.querySelectorAll('section.dashCategory').forEach(function (sec) {
             var hasVisible = !!sec.querySelector('.movable:not(.ng-rf-filtered)');
             sec.classList.toggle('ng-rf-section-hidden', !hasVisible);
