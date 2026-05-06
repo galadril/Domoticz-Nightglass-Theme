@@ -1,115 +1,112 @@
-/* ── Feature 15: Room Filter Pill-Bar ──────────────────────────────
-   Injects a horizontal pill-bar above the device grid on any page
-   that has two or more room sections (section.dashCategory).
+/* ── Feature 14: Room Filter Pill-Bar ──────────────────────────────
+   Replaces the #tbFiltRooms combobox in the topbar with pill buttons
+   that drive the same Angular ctrl.changeRoom() logic.
 
-   Clicking a pill instantly shows/hides rooms — no page reload.
-   The bar rebuilds on Angular route changes.
-   Mobile: horizontally scrollable, larger touch targets.
+   Room plans come from #comboroom (populated by Angular).
+   Clicking a pill sets the select value and triggers ng-change —
+   Angular handles all device filtering exactly as with the dropdown.
+   Mobile: scrollable strip, hides at very small widths.
 ──────────────────────────────────────────────────────────────────── */
 (function () {
     'use strict';
 
-    var _active = 'all';
-    var _bar    = null;
+    var _bar         = null;
+    var _pills       = [];
+    var _retries     = 0;
+    var MAX_RETRIES  = 8;
 
-    /* ── Room detection ────────────────────────────────────────── */
+    /* ── Read rooms from the Angular-populated combobox ────────── */
 
-    function sectionName(sec) {
-        var h2 = sec.querySelector('h2');
-        if (!h2) return '';
-        /* Prefer the i18n span text (avoids picking up the literal ":" text node) */
-        var span = h2.querySelector('[data-i18n]') || h2.querySelector('span');
-        var raw  = (span ? span.textContent : h2.textContent).trim();
-        /* Strip Domoticz i18n fallback prefix ("::") and trailing colon */
-        return raw.replace(/^::/, '').replace(/:+\s*$/, '').trim();
+    function getOptions() {
+        var select = document.getElementById('comboroom');
+        if (!select || !select.options.length) return [];
+        return Array.prototype.slice.call(select.options).map(function (opt, i) {
+            return { label: opt.textContent.trim(), index: i };
+        });
     }
 
-    function getRooms() {
-        var rooms = [];
-        document.querySelectorAll('section.dashCategory').forEach(function (sec) {
-            var n = sectionName(sec);
-            if (n && rooms.indexOf(n) === -1) rooms.push(n);
-        });
-        return rooms;
-    }
+    /* ── Select a room by option index ─────────────────────────── */
 
-    /* ── Filter application ────────────────────────────────────── */
-
-    function applyFilter(room) {
-        _active = room;
-        document.querySelectorAll('section.dashCategory').forEach(function (sec) {
-            var n = sectionName(sec);
-            sec.classList.toggle('ng-rf-hidden', room !== 'all' && n !== room);
-        });
-        if (_bar) {
-            _bar.querySelectorAll('.ng-rf-pill').forEach(function (p) {
-                var active = p.dataset.room === room;
-                p.classList.toggle('ng-rf-pill--active', active);
-                p.setAttribute('aria-selected', active ? 'true' : 'false');
-            });
+    function selectRoom(index) {
+        var select = document.getElementById('comboroom');
+        if (!select) return;
+        select.selectedIndex = index;
+        /* Trigger Angular ng-change via jQuery (Domoticz always has jQuery) */
+        if (window.$) {
+            $(select).trigger('change');
+        } else {
+            try { angular.element(select).triggerHandler('change'); } catch (e) {}
         }
+        syncActive();
     }
 
-    /* ── Pill-bar DOM ──────────────────────────────────────────── */
+    /* ── Sync pill highlight to current combobox selection ──────── */
 
-    var _buildAttempts = 0;
+    function syncActive() {
+        var select = document.getElementById('comboroom');
+        var idx    = select ? select.selectedIndex : 0;
+        _pills.forEach(function (p, i) {
+            var active = i === idx;
+            p.classList.toggle('ng-rf-pill--active', active);
+            p.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+    }
+
+    /* ── Build pill bar ─────────────────────────────────────────── */
 
     function buildBar() {
-        var rooms    = getRooms();
-        var existing = document.getElementById('ng-room-filter');
+        var tbFiltRooms = document.getElementById('tbFiltRooms');
+        var opts        = getOptions();
 
-        /* Angular's ng-if sections may not be rendered yet — retry up to 5× */
-        if (rooms.length < 2 && _buildAttempts < 5) {
-            _buildAttempts++;
-            setTimeout(buildBar, 400);
-            return;
-        }
-        _buildAttempts = 0;
-
-        /* Remove bar if fewer than 2 sections on this page */
-        if (rooms.length < 2) {
-            if (existing) { existing.remove(); _bar = null; }
-            return;
-        }
-
-        /* If rooms unchanged, reuse existing bar */
-        if (existing) {
-            var pills   = existing.querySelectorAll('.ng-rf-pill[data-room]:not([data-room="all"])');
-            var current = Array.prototype.map.call(pills, function (p) { return p.dataset.room; });
-            if (JSON.stringify(current) === JSON.stringify(rooms)) {
-                _bar = existing;
-                return;
+        /* Comboroom not ready yet — retry */
+        if (!tbFiltRooms || opts.length < 2) {
+            if (_retries < MAX_RETRIES) {
+                _retries++;
+                setTimeout(buildBar, 400);
             }
-            existing.remove();
+            return;
+        }
+        _retries = 0;
+
+        /* Already built with the same options? Just sync. */
+        if (_bar && _pills.length === opts.length) {
+            syncActive();
+            return;
         }
 
-        var firstSection = document.querySelector('section.dashCategory');
-        if (!firstSection || !firstSection.parentNode) return;
+        /* Remove stale bar */
+        var existing = document.getElementById('ng-room-filter');
+        if (existing) { existing.remove(); }
+        _bar   = null;
+        _pills = [];
 
-        _bar = document.createElement('div');
+        /* Build new bar */
+        _bar = document.createElement('span');
         _bar.id = 'ng-room-filter';
         _bar.setAttribute('role', 'tablist');
         _bar.setAttribute('aria-label', 'Filter by room');
 
-        function makePill(label, key) {
+        opts.forEach(function (r) {
             var btn = document.createElement('button');
-            btn.className    = 'ng-rf-pill' + (key === _active ? ' ng-rf-pill--active' : '');
-            btn.dataset.room = key;
+            btn.className = 'ng-rf-pill';
             btn.setAttribute('role', 'tab');
-            btn.setAttribute('aria-selected', key === _active ? 'true' : 'false');
-            btn.textContent  = label;
-            btn.addEventListener('click', function () { applyFilter(key); });
-            return btn;
-        }
+            btn.setAttribute('aria-selected', 'false');
+            btn.textContent = r.label;
+            (function (i) {
+                btn.addEventListener('click', function () { selectRoom(i); });
+            }(r.index));
+            _bar.appendChild(btn);
+            _pills.push(btn);
+        });
 
-        _bar.appendChild(makePill('All', 'all'));
-        rooms.forEach(function (r) { _bar.appendChild(makePill(r, r)); });
+        /* Inject after the original combobox span and hide it */
+        tbFiltRooms.parentNode.insertBefore(_bar, tbFiltRooms.nextSibling);
+        tbFiltRooms.style.display = 'none';
 
-        firstSection.parentNode.insertBefore(_bar, firstSection);
-        applyFilter(_active); /* re-apply current filter to new DOM state */
+        syncActive();
     }
 
-    /* ── Angular route hooks ───────────────────────────────────── */
+    /* ── Angular hooks ──────────────────────────────────────────── */
 
     function attachHooks() {
         if (!window.angular) { setTimeout(attachHooks, 600); return; }
@@ -121,20 +118,22 @@
         try {
             var $rs = bodyEl.injector().get('$rootScope');
             $rs.$on('$routeChangeSuccess', function () {
-                _active = 'all';       /* reset selection on page navigation */
-                _buildAttempts = 0;
+                _retries = 0;
                 setTimeout(buildBar, 500);
             });
-            $rs.$on('$viewContentLoaded', function () { setTimeout(buildBar, 300); });
+            $rs.$on('$viewContentLoaded', function () {
+                _retries = 0;
+                setTimeout(buildBar, 300);
+            });
         } catch (e) {
             setTimeout(attachHooks, 600);
         }
     }
 
-    /* ── Init ──────────────────────────────────────────────────── */
+    /* ── Init ───────────────────────────────────────────────────── */
 
     function init() {
-        setTimeout(buildBar, 500); /* allow Angular to render rooms first */
+        setTimeout(buildBar, 600);
         attachHooks();
     }
 
