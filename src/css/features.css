@@ -253,20 +253,22 @@
 
 /* ══════════════════════════════════════════════════════════════════
    FEATURE 14 — Room Filter Pill-Bar
-   Replaces the #tbFiltRooms combobox in the topbar.
-   Pills match the topbar height anchor (--topbar-h).
+   Injected as a strip directly below #topBar (sibling, not child).
+   Drives the hidden #comboroom → Angular handles device filtering.
    ══════════════════════════════════════════════════════════════════ */
 
 #ng-room-filter {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: 4px;
-    max-width: 340px;       /* cap so pills don't crowd out other topbar items */
+    flex-wrap: nowrap;
+    gap: 6px;
+    padding: 8px 0 10px;
+    border-bottom: 1px solid var(--dz-border);
+    margin-bottom: 10px;
     overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
     -webkit-overflow-scrolling: touch;
-    flex-shrink: 1;
 }
 
     #ng-room-filter::-webkit-scrollbar { display: none; }
@@ -274,10 +276,10 @@
 .ng-rf-pill {
     display: inline-flex;
     align-items: center;
-    height: var(--topbar-h, 26px);
-    padding: 0 10px;
-    border-radius: 8px;
-    font-size: 12px;
+    height: 28px;
+    padding: 0 14px;
+    border-radius: 14px;       /* fully rounded — actual pill shape */
+    font-size: 0.78rem;
     font-weight: 500;
     white-space: nowrap;
     cursor: pointer;
@@ -306,11 +308,7 @@
             background: rgba(var(--dz-accent-rgb), 0.22);
         }
 
-/* ── Responsive ─────────────────────────────────────────────────── */
-
-@media (max-width: 580px) {
-    #ng-room-filter { max-width: 150px; }
-}
+/* ── Mobile: hide at very narrow widths ─────────────────────────── */
 
 @media (max-width: 420px) {
     #ng-room-filter { display: none !important; }

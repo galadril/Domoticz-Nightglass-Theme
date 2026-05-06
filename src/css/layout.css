@@ -839,17 +839,9 @@ i.dz-fa-nav {
 
 #tbFilters { flex: 1 1 auto; }
 
-/* ── Room selector ─────────────────────────────────────────────── */
+/* ── Room selector — hidden; replaced by pill bar (room-filter.js) ── */
 #tbFiltRooms {
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 4px;
-}
-
-#tbFiltRooms #tbIconRoom {
-    color: var(--dz-text-muted);
-    font-size: 12px;
-    pointer-events: none;
+    display: none !important;
 }
 
 /* Target by id to beat Bootstrap/jQuery-UI specificity, no height override */
@@ -972,11 +964,9 @@ i.dz-fa-nav {
     #jsTbTime { display: none !important; }
 }
 
-/* ≤ 580px: hide sun group; shrink room pills */
+/* ≤ 580px: hide sun group */
 @media (max-width: 580px) {
-    #tbSunGroup              { display: none !important; }
-    #tbFiltRooms #tbIconRoom { display: none !important; }
-    #comboroom               { max-width: 100px !important; }
+    #tbSunGroup { display: none !important; }
 }
 
 /* ≤ 420px: hide link buttons entirely */
