@@ -1,26 +1,30 @@
 /* ── Feature 14: Room Filter Pill-Bar ──────────────────────────────
-   Injects a toggle button ("Rooms") next to the command palette
-   trigger inside #tbFiltSearch.  Clicking it slides open a pill
-   strip below #topBar with the Domoticz room plans.
+   Client-side multi-room filter — no page reloads.
 
-   Also acts as topbar reveal coordinator: #topBar starts at opacity:0
-   (CSS) and is made visible once all topbar JS work is done, so the
-   user never sees a half-built topbar on page load or route change.
+   On first build we quietly force #comboroom to "All" so every device
+   is in the DOM, then fetch plan→device mappings from the API.
+   Subsequent pill clicks toggle room selections and filter cards
+   entirely in JS — instant, multi-select, toggle-to-clear.
 
-   Room plans come from #comboroom (Angular-populated select).
-   #tbFiltRooms is hidden via CSS so it stays gone across re-renders.
-   Clicking a pill drives #comboroom + triggers ng-change → Angular
-   filters devices exactly as with the original dropdown.
+   #tbFiltRooms stays hidden via CSS across all route changes.
+   Plan→device maps are cached for the whole session.
 ──────────────────────────────────────────────────────────────────── */
 (function () {
     'use strict';
 
-    var _pills          = [];
-    var _topbarRetries  = 0;   /* waiting for #topBar to appear in DOM */
-    var _comboRetries   = 0;   /* waiting for #comboroom to be populated */
-    var MAX_TOPBAR      = 15;  /* × 100ms = 1.5s max wait for topbar */
-    var MAX_COMBO       = 8;   /* × 300ms = 2.4s max wait for comboroom options */
-    var _safetyTimer    = null;
+    /* ── Module state ───────────────────────────────────────────── */
+
+    var _pills             = [];     /* pill button elements */
+    var _planOptions       = [];     /* [{label, index, planIdx}] from combobox */
+    var _selected          = [];     /* planIdx strings currently active */
+    var _planCache         = {};     /* planIdx → {deviceIdx: true} */
+    var _planQueue         = {};     /* planIdx → [callbacks] while loading */
+    var _topbarRetries     = 0;
+    var _comboRetries      = 0;
+    var MAX_TOPBAR         = 15;     /* × 100ms = 1.5s */
+    var MAX_COMBO          = 8;      /* × 300ms = 2.4s */
+    var _safetyTimer       = null;
+    var _preserveNextRoute = false;  /* suppress bar removal on forced All reload */
 
     /* ══ Topbar reveal ══════════════════════════════════════════════ */
 
@@ -28,12 +32,10 @@
         if (_safetyTimer) { clearTimeout(_safetyTimer); _safetyTimer = null; }
         var tb = document.getElementById('topBar');
         if (tb) tb.classList.add('ng-topbar--ready');
-        /* Pills strip visibility is user-controlled — not revealed here */
     }
 
     function scheduleRevealFallback() {
         if (_safetyTimer) clearTimeout(_safetyTimer);
-        /* Always reveal topbar within 1.2 s even if something goes wrong */
         _safetyTimer = setTimeout(revealTopBar, 1200);
     }
 
@@ -49,68 +51,181 @@
         btn.className = 'ng-rf-toggle-btn';
         btn.setAttribute('aria-label',    'Toggle room filter');
         btn.setAttribute('aria-expanded', 'false');
-        btn.innerHTML = '<i class="fa-solid fa-sliders"></i>' +
-                        '<span class="ng-rf-toggle-label">Rooms</span>';
-        btn.addEventListener('click', toggleFilter);
+        btn.innerHTML =
+            '<i class="fa-solid fa-sliders"></i>' +
+            '<span class="ng-rf-toggle-label">Rooms</span>' +
+            '<span class="ng-rf-toggle-count"></span>';
+        btn.addEventListener('click', toggleStrip);
 
-        /* Insert immediately after the command palette trigger */
         var cmdBtn = searchBar.querySelector('.dz-cmd-palette-trigger');
-        if (cmdBtn && cmdBtn.nextSibling) {
+        if (cmdBtn) {
             searchBar.insertBefore(btn, cmdBtn.nextSibling);
-        } else if (cmdBtn) {
-            searchBar.appendChild(btn);
         } else {
             searchBar.appendChild(btn);
         }
     }
 
-    function toggleFilter() {
+    function toggleStrip() {
         var rf  = document.getElementById('ng-room-filter');
         var btn = document.getElementById('ng-rf-toggle');
         if (!rf || !btn) return;
         var open = rf.classList.toggle('ng-rf--open');
-        btn.classList.toggle('ng-rf-toggle-btn--active', open);
+        btn.classList.toggle('ng-rf-toggle-btn--open', open);
         btn.setAttribute('aria-expanded', String(open));
     }
 
-    function closeFilter() {
-        var rf  = document.getElementById('ng-room-filter');
-        var btn = document.getElementById('ng-rf-toggle');
-        if (rf)  rf.classList.remove('ng-rf--open');
-        if (btn) {
-            btn.classList.remove('ng-rf-toggle-btn--active');
-            btn.setAttribute('aria-expanded', 'false');
-        }
-    }
+    /* ══ Combobox options ═══════════════════════════════════════════ */
 
-    /* ══ Room options ═══════════════════════════════════════════════ */
-
-    function getOptions() {
+    function readOptions() {
         var sel = document.getElementById('comboroom');
         if (!sel || !sel.options.length) return [];
         return Array.prototype.slice.call(sel.options).map(function (o, i) {
-            return { label: o.textContent.trim(), index: i };
+            /* AngularJS serialises ng-value as "number:0" / "string:2" */
+            var planIdx = (o.value || '').replace(/^(?:number|string):/, '');
+            return { label: o.textContent.trim(), index: i, planIdx: planIdx };
         });
     }
 
-    /* ══ Drive Angular combobox ═════════════════════════════════════ */
+    /* ══ Plan → device cache ════════════════════════════════════════ */
 
-    function selectRoom(index) {
-        var sel = document.getElementById('comboroom');
-        if (!sel) return;
-        sel.selectedIndex = index;
-        $(sel).trigger('change');   /* jQuery always present in Domoticz */
-        syncActive();
+    /* Fetch device idxes for one plan; results are cached for the session. */
+    function fetchPlan(planIdx, cb) {
+        if (_planCache.hasOwnProperty(planIdx)) { cb(); return; }
+        if (_planQueue[planIdx]) { _planQueue[planIdx].push(cb); return; }
+        _planQueue[planIdx] = [cb];
+
+        $.getJSON('json.htm?type=command&param=getplandevices&idx=' + planIdx,
+            function (data) {
+                var set = {};
+                (data.result || []).forEach(function (d) {
+                    var id = String(d.devidx || d.idx || '');
+                    if (id) set[id] = true;
+                });
+                _planCache[planIdx] = set;
+                (_planQueue[planIdx] || []).forEach(function (fn) { fn(); });
+                delete _planQueue[planIdx];
+            }
+        ).fail(function () {
+            _planCache[planIdx] = {};
+            (_planQueue[planIdx] || []).forEach(function (fn) { fn(); });
+            delete _planQueue[planIdx];
+        });
     }
 
-    function syncActive() {
-        var sel = document.getElementById('comboroom');
-        var cur = sel ? sel.selectedIndex : 0;
-        _pills.forEach(function (p, i) {
-            var on = (i === cur);
-            p.classList.toggle('ng-rf-pill--active', on);
-            p.setAttribute('aria-selected', String(on));
+    /* Pre-warm cache for all plans in the background */
+    function preFetchAll() {
+        _planOptions.forEach(function (o) {
+            if (o.planIdx !== '0') fetchPlan(o.planIdx, function () {});
         });
+    }
+
+    /* ══ DOM card helpers ═══════════════════════════════════════════ */
+
+    /* Extract device idx from card id: "light_42" → "42" */
+    function cardIdx(card) {
+        var m = (card.id || '').match(/_(\d+)$/);
+        return m ? m[1] : null;
+    }
+
+    /* ══ Filter application ═════════════════════════════════════════ */
+
+    function applyFilter() {
+        var showAll = (_selected.length === 0);
+
+        document.querySelectorAll('.movable').forEach(function (card) {
+            var show = showAll;
+            if (!show) {
+                var idx = cardIdx(card);
+                if (!idx) {
+                    show = true;   /* can't determine — keep visible */
+                } else {
+                    for (var i = 0; i < _selected.length; i++) {
+                        var set = _planCache[_selected[i]];
+                        if (set && set[idx]) { show = true; break; }
+                    }
+                }
+            }
+            card.classList.toggle('ng-rf-filtered', !show);
+        });
+
+        /* Hide sections that have no visible cards */
+        document.querySelectorAll('section.dashCategory').forEach(function (sec) {
+            var hasVisible = !!sec.querySelector('.movable:not(.ng-rf-filtered)');
+            sec.classList.toggle('ng-rf-section-hidden', !hasVisible);
+        });
+
+        syncPills();
+    }
+
+    /* ══ Pill selection logic ════════════════════════════════════════ */
+
+    function onPillClick(planIdx) {
+        if (planIdx === '0') {
+            /* "All" → clear all filters */
+            _selected = [];
+            applyFilter();
+            return;
+        }
+
+        var pos = _selected.indexOf(planIdx);
+        if (pos !== -1) {
+            _selected.splice(pos, 1);   /* deselect */
+        } else {
+            _selected.push(planIdx);    /* select */
+        }
+
+        if (_selected.length === 0) {
+            applyFilter();
+            return;
+        }
+
+        /* Fetch any uncached plans then filter */
+        var uncached = _selected.filter(function (p) {
+            return !_planCache.hasOwnProperty(p);
+        });
+        if (uncached.length === 0) {
+            applyFilter();
+            return;
+        }
+        var pending = uncached.length;
+        uncached.forEach(function (p) {
+            fetchPlan(p, function () {
+                if (--pending === 0) applyFilter();
+            });
+        });
+    }
+
+    function syncPills() {
+        _pills.forEach(function (pill) {
+            var pi     = pill.dataset.planIdx;
+            var active = (pi === '0') ? _selected.length === 0
+                                      : _selected.indexOf(pi) !== -1;
+            pill.classList.toggle('ng-rf-pill--active', active);
+            pill.setAttribute('aria-selected', String(active));
+        });
+
+        /* Update toggle button count badge */
+        var btn   = document.getElementById('ng-rf-toggle');
+        var count = btn && btn.querySelector('.ng-rf-toggle-count');
+        if (count) {
+            count.textContent    = _selected.length > 0 ? String(_selected.length) : '';
+            count.style.display  = _selected.length > 0 ? 'inline-flex' : 'none';
+        }
+        if (btn) {
+            btn.classList.toggle('ng-rf-toggle-btn--filtered', _selected.length > 0);
+        }
+    }
+
+    /* ══ Force "All" in Angular combobox ════════════════════════════ */
+
+    /* Ensures all devices are loaded in the DOM for client-side filtering.
+       Sets a flag so the resulting route change doesn't destroy the pill bar. */
+    function forceAllIfNeeded() {
+        var sel = document.getElementById('comboroom');
+        if (!sel || sel.selectedIndex === 0) return;  /* already "All" */
+        _preserveNextRoute = true;
+        sel.selectedIndex  = 0;
+        $(sel).trigger('change');   /* triggers Angular route change */
     }
 
     /* ══ Build / remove bar ═════════════════════════════════════════ */
@@ -124,51 +239,40 @@
     }
 
     function buildBar() {
+        /* Phase 1: wait for #topBar */
         var topBar = document.getElementById('topBar');
-
-        /* Phase 1: #topBar not in DOM yet — Angular still rendering the view.
-           Retry quickly; reveal if it never appears.                          */
         if (!topBar) {
             if (_topbarRetries < MAX_TOPBAR) {
                 _topbarRetries++;
                 setTimeout(buildBar, 100);
-            } else {
-                revealTopBar();
-            }
+            } else { revealTopBar(); }
             return;
         }
         _topbarRetries = 0;
 
+        /* Phase 2: no comboroom → page has no room plans */
         var sel = document.getElementById('comboroom');
+        if (!sel) { removeBar(); revealTopBar(); return; }
 
-        /* Phase 2: #topBar ready but no comboroom → page has no room plans.
-           Reveal the topbar immediately — no further retrying needed.         */
-        if (!sel) {
-            removeBar();
-            revealTopBar();
-            return;
-        }
-
-        /* Phase 3: comboroom exists but Angular hasn't populated its options yet */
-        var opts = getOptions();
+        /* Phase 3: comboroom exists but not populated yet */
+        var opts = readOptions();
         if (opts.length < 2) {
             if (_comboRetries < MAX_COMBO) {
                 _comboRetries++;
                 setTimeout(buildBar, 300);
-            } else {
-                removeBar();
-                revealTopBar();   /* comboroom stayed empty — reveal anyway */
-            }
+            } else { removeBar(); revealTopBar(); }
             return;
         }
-        _comboRetries = 0;
+        _comboRetries  = 0;
+        _planOptions   = opts;
 
-        /* Already correct? Sync + ensure topbar visible. */
+        /* Already correct number of pills? Sync + reveal. */
         var existing = document.getElementById('ng-room-filter');
         if (existing && _pills.length === opts.length) {
-            syncActive();
+            syncPills();
             injectToggleBtn();
             revealTopBar();
+            forceAllIfNeeded();
             return;
         }
 
@@ -182,26 +286,31 @@
 
         opts.forEach(function (r) {
             var btn = document.createElement('button');
-            btn.className = 'ng-rf-pill';
+            btn.className          = 'ng-rf-pill';
+            btn.dataset.planIdx    = r.planIdx;
             btn.setAttribute('role', 'tab');
             btn.setAttribute('aria-selected', 'false');
             btn.textContent = r.label;
-            (function (i) {
-                btn.addEventListener('click', function () { selectRoom(i); });
-            }(r.index));
+            (function (pi) {
+                btn.addEventListener('click', function () { onPillClick(pi); });
+            }(r.planIdx));
             bar.appendChild(btn);
             _pills.push(btn);
         });
 
-        /* Inject pill strip after the ng-include div that wraps #topBar */
+        /* Inject after ng-include wrapper → between topbar and page content */
         var anchor = topBar.parentNode;
         if (anchor && anchor.parentNode) {
             anchor.parentNode.insertBefore(bar, anchor.nextSibling);
         }
 
-        syncActive();
+        syncPills();
         injectToggleBtn();
         revealTopBar();
+
+        /* Force "All" so all devices are in DOM, then pre-warm plan cache */
+        forceAllIfNeeded();
+        preFetchAll();
     }
 
     /* ══ Angular hooks ══════════════════════════════════════════════ */
@@ -217,7 +326,14 @@
             var $rs = bodyEl.injector().get('$rootScope');
 
             $rs.$on('$routeChangeSuccess', function () {
+                if (_preserveNextRoute) {
+                    /* This route change was triggered by our forceAllIfNeeded —
+                       don't tear down the bar, just let Angular rebuild devices */
+                    _preserveNextRoute = false;
+                    return;
+                }
                 removeBar();
+                _selected      = [];   /* reset selection on real navigation */
                 _topbarRetries = 0;
                 _comboRetries  = 0;
                 if (_safetyTimer) clearTimeout(_safetyTimer);
@@ -229,6 +345,12 @@
                 scheduleRevealFallback();
                 setTimeout(buildBar, 150);
             });
+
+            /* Re-apply active filter after Angular updates device cards */
+            $rs.$on('device_update', function () {
+                if (_selected.length > 0) setTimeout(applyFilter, 80);
+            });
+
         } catch (e) {
             setTimeout(attachHooks, 600);
         }
