@@ -195,6 +195,11 @@
     /* ── Event recording ───────────────────────────────────────── */
 
     function recordEvent(device) {
+        /* Skip devices not marked as Used in Domoticz.
+           The WebSocket broadcasts updates for all devices; we only
+           want the ones the user has explicitly enabled (Used=1).   */
+        if (device.Used !== undefined && Number(device.Used) !== 1) return;
+
         var status = device.Status || device.Data || '';
         _events.push({
             icon:   iconFor(device),

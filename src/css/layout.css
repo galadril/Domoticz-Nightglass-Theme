@@ -825,6 +825,12 @@ i.dz-fa-nav {
     margin-bottom: 10px !important;
     border-bottom: 1px solid var(--dz-border) !important;
     overflow: hidden;                  /* clip instead of wrap */
+    opacity: 0;                        /* hidden until JS is done; room-filter.js reveals */
+    transition: opacity 0.3s ease;
+}
+
+#topBar.ng-topbar--ready {
+    opacity: 1;
 }
 
 /* ── Shared pill mixin applied to the topbar span groups ─────── */
