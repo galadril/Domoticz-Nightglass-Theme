@@ -57,12 +57,7 @@
             '<span class="ng-rf-toggle-count"></span>';
         btn.addEventListener('click', toggleStrip);
 
-        var cmdBtn = searchBar.querySelector('.dz-cmd-palette-trigger');
-        if (cmdBtn) {
-            searchBar.insertBefore(btn, cmdBtn.nextSibling);
-        } else {
-            searchBar.appendChild(btn);
-        }
+        searchBar.appendChild(btn);
     }
 
     function toggleStrip() {
@@ -133,7 +128,7 @@
     /* Collect all device card elements on the current page.
        Dashboard uses .movable wrappers (id="light_42").
        Tab pages use the outer custom element with class "span4 itemBlock" (id="42").
-       This covers Switches, Scenes, Utility, Weather, Temperature, etc.
+       Mobile dashboard uses <tr id="light_42"> rows in table.mobileitem.
        The outer element is preferred over the inner div so that hiding it cleanly
        removes the entire widget including spacing. */
     function getCards() {
@@ -141,6 +136,10 @@
         document.querySelectorAll('.movable').forEach(function (el) { cards.push(el); });
         document.querySelectorAll('.span4.itemBlock').forEach(function (el) {
             if (!el.closest('.movable')) cards.push(el);
+        });
+        /* Mobile dashboard rows */
+        document.querySelectorAll('.dashboardMobile table.mobileitem tbody tr[id]').forEach(function (el) {
+            cards.push(el);
         });
         return cards;
     }
@@ -167,9 +166,11 @@
             card.classList.toggle('ng-rf-filtered', !show);
         });
 
-        /* Hide sections that have no visible cards (Dashboard only) */
+        /* Hide sections that have no visible cards */
         document.querySelectorAll('section.dashCategory').forEach(function (sec) {
-            var hasVisible = !!sec.querySelector('.movable:not(.ng-rf-filtered)');
+            var hasVisible = !!sec.querySelector(
+                '.movable:not(.ng-rf-filtered), tr[id]:not(.ng-rf-filtered)'
+            );
             sec.classList.toggle('ng-rf-section-hidden', !hasVisible);
         });
 
@@ -247,6 +248,37 @@
         $(sel).trigger('change');   /* triggers Angular route change */
     }
 
+    /* ══ Mobile dashboard helpers ════════════════════════════════════ */
+
+    /* Attach a live-search listener that filters mobile <tr> rows.
+       The native WatchLiveSearch targets .itemBlock divs, not <tr> rows,
+       so we handle mobile rows ourselves. */
+    function attachMobileSearch() {
+        var input = document.querySelector('.jsLiveSearch');
+        if (!input || input._ngMobileSearch) return;
+        input._ngMobileSearch = true;
+        input.addEventListener('input', function () {
+            var q = (this.value || '').trim().toLowerCase();
+            document.querySelectorAll('.dashboardMobile table.mobileitem tbody tr[id]')
+                .forEach(function (row) {
+                    var match = !q || (row.textContent || '').toLowerCase().indexOf(q) !== -1;
+                    row.classList.toggle('ng-mobile-search-hidden', !match);
+                });
+        });
+    }
+
+    /* Detect mobile dashboard and set body class so CSS can target it.
+       Also attaches the mobile search handler.
+       Called inside buildBar() once #topBar is confirmed present. */
+    function setupMobilePage() {
+        var isMobile = !!document.querySelector('.dashboardMobile');
+        document.body.classList.toggle('ng-mobile-dashboard', isMobile);
+        if (isMobile) {
+            /* Re-attach on each route load in case the input was recreated */
+            setTimeout(attachMobileSearch, 200);
+        }
+    }
+
     /* ══ Build / remove bar ═════════════════════════════════════════ */
 
     function removeBar() {
@@ -268,6 +300,9 @@
             return;
         }
         _topbarRetries = 0;
+
+        /* Detect mobile dashboard + attach mobile search (independent of comboroom) */
+        setupMobilePage();
 
         /* Phase 2: no comboroom → page has no room plans */
         var sel = document.getElementById('comboroom');
@@ -352,6 +387,7 @@
                     return;
                 }
                 removeBar();
+                document.body.classList.remove('ng-mobile-dashboard');
                 _selected      = [];   /* reset selection on real navigation */
                 _topbarRetries = 0;
                 _comboRetries  = 0;

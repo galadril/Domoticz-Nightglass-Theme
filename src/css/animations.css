@@ -717,6 +717,41 @@ i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
     animation: dz-card-flash-off 0.65s ease-out forwards !important;
 }
 
+/* Mobile dashboard row flash — outline is unreliable on <tr> elements,
+   so use background-color animation instead.                          */
+@keyframes dz-mobile-row-flash-on {
+    0%   { background-color: rgba(78, 154, 241, 0.3); }
+    100% { background-color: transparent; }
+}
+
+@keyframes dz-mobile-row-flash-off {
+    0%   { background-color: rgba(220, 80, 80, 0.3); }
+    100% { background-color: transparent; }
+}
+
+@keyframes dz-mobile-row-search-highlight {
+    0%   { background-color: rgba(78, 154, 241, 0.35); }
+    40%  { background-color: rgba(78, 154, 241, 0.2); }
+    100% { background-color: transparent; }
+}
+
+.dashboardMobile tr.dz-flash-on {
+    animation: dz-mobile-row-flash-on 0.65s ease-out forwards !important;
+    outline: none !important;
+}
+
+.dashboardMobile tr.dz-flash-off {
+    animation: dz-mobile-row-flash-off 0.65s ease-out forwards !important;
+    outline: none !important;
+}
+
+.dashboardMobile tr.dz-search-highlight {
+    animation: dz-mobile-row-search-highlight 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+    outline: none !important;
+    position: static !important;
+    transform: none !important;
+}
+
 /* ══════════════════════════════════════════════════════════════════
    SEARCH HIGHLIGHT - More prominent highlight for page filter results
    ══════════════════════════════════════════════════════════════════ */
