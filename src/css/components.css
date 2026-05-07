@@ -734,6 +734,13 @@ table.mobileitem,
     font-weight: 600;
 }
 
+/* Suppress native jQuery UI .effect("highlight") flash on mobile device names —
+   replaced by Nightglass dz-flash-on/off on the <tr> row itself */
+.dashboardMobile .item-name {
+    background-color: transparent !important;
+    transition: none !important;
+}
+
 /* ── Mobile dashboard: force-show the topbar search/filter strip ── */
 
 /* Angular hides #tbFiltSearch via ng-hide when hideSearch:true is passed.

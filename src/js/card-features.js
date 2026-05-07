@@ -892,11 +892,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (m.attributeName !== 'data-dz-state') return;
                 var icon = m.target;
                 var newState = icon.getAttribute('data-dz-state');
-                // Walk up to card
+                // Walk up to card (desktop: .item.itemBlock; mobile: <tr id="...">)
                 var el = icon;
                 var card = null;
                 while (el && el !== document.body) {
                     if (el.classList && el.classList.contains('item') && el.classList.contains('itemBlock')) {
+                        card = el; break;
+                    }
+                    if (el.tagName === 'TR' && el.id && el.closest && el.closest('.dashboardMobile')) {
                         card = el; break;
                     }
                     el = el.parentElement;

@@ -35,6 +35,15 @@
             var iCls   = icon ? ((icon.className.match(/fa-[\w-]+/) || [])[0] || 'fa-circle') : 'fa-circle';
             out.push({ name: name, card: card, icon: iCls });
         });
+        /* Mobile dashboard: <tr id="..."> rows in table.mobileitem */
+        document.querySelectorAll('.dashboardMobile table.mobileitem tbody tr[id]').forEach(function (row) {
+            var nameEl = row.querySelector('td#name');
+            var name   = nameEl ? (nameEl.textContent || '').trim() : '';
+            if (!name) return;
+            var icon   = row.querySelector('i.dz-fa-device');
+            var iCls   = icon ? ((icon.className.match(/fa-[\w-]+/) || [])[0] || 'fa-circle') : 'fa-circle';
+            out.push({ name: name, card: row, icon: iCls });
+        });
         return out;
     }
 
