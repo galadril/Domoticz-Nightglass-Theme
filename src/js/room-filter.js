@@ -57,12 +57,7 @@
             '<span class="ng-rf-toggle-count"></span>';
         btn.addEventListener('click', toggleStrip);
 
-        var cmdBtn = searchBar.querySelector('.dz-cmd-palette-trigger');
-        if (cmdBtn) {
-            searchBar.insertBefore(btn, cmdBtn.nextSibling);
-        } else {
-            searchBar.appendChild(btn);
-        }
+        searchBar.appendChild(btn);
     }
 
     function toggleStrip() {

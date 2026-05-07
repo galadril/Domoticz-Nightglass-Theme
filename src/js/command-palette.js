@@ -917,7 +917,13 @@
                 openPalette();
             });
 
-            searchBar.appendChild(cmdBtn);
+            // Insert before the Rooms toggle (if present) so it stays rightmost
+            var roomsToggle = searchBar.querySelector('#ng-rf-toggle');
+            if (roomsToggle) {
+                searchBar.insertBefore(cmdBtn, roomsToggle);
+            } else {
+                searchBar.appendChild(cmdBtn);
+            }
             buttonAdded = true;
         }
 
@@ -955,16 +961,24 @@
             return false;
         }
 
+        function isPassthroughClick(e) {
+            // Command palette button handles itself
+            if (e.target.closest('.dz-cmd-palette-trigger')) return true;
+            // Live search input and clear-results button: let native behaviour through
+            if (e.target.closest('.jsLiveSearch') || e.target.closest('#tbResults')) return true;
+            // Rooms toggle button: let room-filter.js handle it
+            if (e.target.closest('#ng-rf-toggle')) return true;
+            // Page filter icon (magnifying glass)
+            if (isPageFilterClick(e.target)) return true;
+            return false;
+        }
+
         // Intercept clicks on the search bar
         document.addEventListener('mousedown', function (e) {
             var searchBar = document.getElementById('tbFiltSearch');
             if (!searchBar || !searchBar.contains(e.target)) return;
 
-            // If clicking on command palette button, let it handle it
-            if (e.target.closest('.dz-cmd-palette-trigger')) return;
-
-            // If clicking on page filter button, let search.js handle it
-            if (isPageFilterClick(e.target)) return;
+            if (isPassthroughClick(e)) return;
 
             // Otherwise prevent default
             e.preventDefault();
@@ -974,8 +988,7 @@
             var searchBar = document.getElementById('tbFiltSearch');
             if (!searchBar || !searchBar.contains(e.target)) return;
 
-            if (e.target.closest('.dz-cmd-palette-trigger')) return;
-            if (isPageFilterClick(e.target)) return;
+            if (isPassthroughClick(e)) return;
 
             e.preventDefault();
         }, true);
