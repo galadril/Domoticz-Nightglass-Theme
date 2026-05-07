@@ -832,9 +832,10 @@ body.ng-mobile-dashboard #tbFiltSearch.ng-hide {
     background-image: none !important;
 }
 
+/* Hide the Angular ng-scope wrapper <span> that surrounds the native
+   round-progress canvas — our SVG ring replaces it entirely */
 #divprogress > span:not(.update-warning) {
-    background-color: var(--dz-danger);
-    border-radius: 8px;
+    display: none !important;
 }
 
 .update-progress-ring span,
