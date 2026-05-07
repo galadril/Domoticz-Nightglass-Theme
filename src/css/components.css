@@ -714,6 +714,46 @@ table.mobileitem,
         color: var(--dz-text);
     }
 
+    /* Section header row */
+    .mobileitem th:first-child {
+        border-radius: 10px 10px 0 0;
+    }
+
+    .mobileitem tr:last-child td {
+        border-bottom: none;
+    }
+
+/* Selector buttons outside .btn-group (mobile dashboard selectorlevels-mobile) */
+.selectorlevels-mobile .btn-selected,
+.selectorlevels-mobile-wrap .btn-selected,
+.btn-selected:not(.btn-group .btn-selected) {
+    background: var(--dz-accent) !important;
+    background-image: none !important;
+    border-color: var(--dz-accent) !important;
+    color: #fff !important;
+    font-weight: 600;
+}
+
+/* ── Mobile dashboard: force-show the topbar search/filter strip ── */
+
+/* Angular hides #tbFiltSearch via ng-hide when hideSearch:true is passed.
+   On the mobile dashboard we still want our injected buttons visible. */
+body.ng-mobile-dashboard #tbFiltSearch.ng-hide {
+    display: flex !important;
+}
+
+/* ── Mobile room filter / search row hiding ──────────────────────── */
+
+.dashboardMobile tr.ng-rf-filtered,
+.dashboardMobile tr.ng-mobile-search-hidden {
+    display: none !important;
+}
+
+/* Hide entire dashCategory sections that have no visible rows */
+.dashboardMobile section.dashCategory.ng-rf-section-hidden {
+    display: none !important;
+}
+
 
 /* ══════════════════════════════════════════════════════════════════
    20. NOTIFICATIONS & MISC
