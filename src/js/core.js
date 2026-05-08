@@ -94,8 +94,8 @@ function applyHighchartsTheme(isDark) {
                 color: c.text
             }
         },
-        title:    { style: { color: c.text } },
-        subtitle: { style: { color: c.textMuted } },
+        title:    { floating: true, margin: 0, style: { color: c.text } },
+        subtitle: { floating: true, margin: 0, style: { color: c.textMuted } },
         xAxis: {
             gridLineColor: c.border,
             lineColor: c.borderB,
@@ -123,8 +123,11 @@ function applyHighchartsTheme(isDark) {
         },
         plotOptions: {
             series: {
-                dataLabels: { color: c.text },
-                marker:     { lineColor: c.surface }
+                dataLabels: {
+                    color: c.text,
+                    style: { textOutline: '2px ' + c.surface }
+                },
+                marker: { lineColor: c.surface }
             },
             pie: { dataLabels: { color: c.textSoft } }
         },
@@ -155,6 +158,42 @@ function applyHighchartsTheme(isDark) {
         }
     });
 }
+
+/* Move Highcharts chart titles outside the SVG into a sibling HTML element */
+(function () {
+    'use strict';
+    function setupExternalChartTitles() {
+        if (typeof Highcharts === 'undefined') return;
+        Highcharts.addEvent(Highcharts.Chart, 'render', function () {
+            var chart      = this;
+            var titleText  = chart.options && chart.options.title && chart.options.title.text;
+            var subtitle   = chart.options && chart.options.subtitle && chart.options.subtitle.text;
+            /* chart.container = .highcharts-container; its parent = .chartcontainer */
+            var chartWrap  = chart.container && chart.container.parentNode;
+            if (!chartWrap) return;
+            var extId = 'ng-ext-title-' + (chart.index || 0);
+            var extEl = document.getElementById(extId);
+            var combinedText = [titleText, subtitle].filter(Boolean).join(' — ');
+            if (combinedText) {
+                if (!extEl) {
+                    extEl = document.createElement('div');
+                    extEl.id = extId;
+                    extEl.className = 'ng-chart-ext-title';
+                    chartWrap.parentNode.insertBefore(extEl, chartWrap);
+                }
+                extEl.textContent = combinedText;
+                extEl.style.display = '';
+            } else if (extEl) {
+                extEl.style.display = 'none';
+            }
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupExternalChartTitles);
+    } else {
+        setupExternalChartTitles();
+    }
+}());
 
 /* Highcharts theme is applied after DOM ready (body may be null in <head>) */
 function _applyHCThemeOnReady() {
