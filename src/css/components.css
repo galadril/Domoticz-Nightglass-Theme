@@ -544,6 +544,13 @@ wind-speed-frequency-chart {
     left: auto !important;
 }
 
+.chart-title-container {
+    position: relative !important;
+    padding-top: 13px;
+    z-index: 1;
+    text-align: center;
+}
+
 .chart-title-center .chart-title-container h2,
 .chart-title-center h2 {
     font-size: 0.92rem !important;
@@ -552,6 +559,7 @@ wind-speed-frequency-chart {
     margin: 0 !important;
     padding: 0 !important;
     letter-spacing: 0.01em;
+    border-bottom: 0px solid var(--dz-surface-3) !important;
 }
 
 .highcharts-background {
