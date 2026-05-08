@@ -525,8 +525,33 @@ wind-speed-frequency-chart {
     color: var(--dz-text-soft);
 }
 
+/* Pull the chart title out of the chart overlay and render it above the chart area */
+.chart {
+    display: flex;
+    flex-direction: column;
+}
+
 .chart-title-center {
+    position: static !important;
+    order: -1;
+    width: 100% !important;
+    text-align: center;
+    padding: 10px 16px 4px;
     color: var(--dz-text);
+    background: transparent;
+    transform: none !important;
+    top: auto !important;
+    left: auto !important;
+}
+
+.chart-title-center .chart-title-container h2,
+.chart-title-center h2 {
+    font-size: 0.92rem !important;
+    font-weight: 600 !important;
+    color: var(--dz-text) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    letter-spacing: 0.01em;
 }
 
 .highcharts-background {
