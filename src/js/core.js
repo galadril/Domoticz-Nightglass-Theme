@@ -94,7 +94,7 @@ function applyHighchartsTheme(isDark) {
                 color: c.text
             }
         },
-        title:    { style: { color: c.text } },
+        title:    { margin: 20, style: { color: c.text } },
         subtitle: { style: { color: c.textMuted } },
         xAxis: {
             gridLineColor: c.border,
@@ -123,8 +123,11 @@ function applyHighchartsTheme(isDark) {
         },
         plotOptions: {
             series: {
-                dataLabels: { color: c.text },
-                marker:     { lineColor: c.surface }
+                dataLabels: {
+                    color: c.text,
+                    style: { textOutline: '2px ' + c.surface }
+                },
+                marker: { lineColor: c.surface }
             },
             pie: { dataLabels: { color: c.textSoft } }
         },

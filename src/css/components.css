@@ -569,6 +569,11 @@ wind-speed-frequency-chart {
     fill: var(--dz-text-soft) !important;
 }
 
+/* Data labels must not block clicks on short/near-zero bars (#142) */
+.highcharts-data-label {
+    pointer-events: none;
+}
+
 .zoom-button {
     color: var(--dz-text-soft);
 }

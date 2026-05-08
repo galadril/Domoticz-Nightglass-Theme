@@ -587,7 +587,8 @@ body table[id^="itemtable"] tr .ui-slider {
 
 dztemperaturewidget table[id^="itemtablenotype"] tr td#status,
 dzweatherwidget table[id^="itemtablenotype"] tr td#status {
-    margin-bottom: 40px !important;
+    /* Use em so the clearance scales with user font-size (#140) */
+    margin-bottom: 3.5em !important;
 }
 
 dztemperaturewidget table[id^="itemtablenotype"] tr td.options,
