@@ -32,7 +32,7 @@ div.item.itemBlock {
     border: 1px solid var(--dz-border);
     border-radius: var(--dz-widget-border-radius);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-    padding: 12px 14px 10px;
+    padding: 12px 14px 19px;
     box-sizing: border-box;
     min-height: 110px;
     transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
@@ -57,7 +57,7 @@ div.item.itemBlock {
     border: 1px solid var(--dz-border);
     border-radius: var(--dz-widget-border-radius);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-    padding: 12px 14px 6px;
+    padding: 12px 14px 10px;
     box-sizing: border-box;
     min-height: 120px;
     height: 100%;
@@ -749,10 +749,12 @@ body table[id^="itemtable"] tr td.options {
     flex-wrap: wrap;
     align-items: center;
     gap: 4px;
-    padding: 6px 0 0 !important;
+    padding: 8px 0 2px !important;
     margin-top: auto !important;
     border-top: 0px solid rgba(var(--dz-overlay-rgb), 0.05) !important;
     clear: both;
+    position: absolute;
+    bottom: -15px;
 }
 
     /* Favorite star icon — FA replacement + PNG fallback */
