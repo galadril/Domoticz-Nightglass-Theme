@@ -129,17 +129,30 @@
         var html = '';
         for (var i = _events.length - 1; i >= 0; i--) {
             var ev = _events[i];
+            var navigable = ev.device ? ' ng-notif-item--navigable' : '';
             html +=
-                '<div class="ng-notif-item' + (ev.unread ? ' ng-notif-item--unread' : '') + '">' +
+                '<div class="ng-notif-item' + (ev.unread ? ' ng-notif-item--unread' : '') + navigable + '"' +
+                    (ev.device ? ' data-ev-idx="' + (_events.length - 1 - i) + '"' : '') + '>' +
                     '<i class="fa-solid ' + ev.icon + ' ng-notif-icon" style="color:' + ev.color + '"></i>' +
                     '<div class="ng-notif-body">' +
                         '<div class="ng-notif-name">' + escHtml(ev.name) + '</div>' +
                         '<div class="ng-notif-status">' + escHtml(ev.status) + '</div>' +
                     '</div>' +
                     '<time class="ng-notif-time">' + ev.time + '</time>' +
+                    (ev.device ? '<i class="fa-solid fa-arrow-right ng-notif-nav-arrow"></i>' : '') +
                 '</div>';
         }
         list.innerHTML = html;
+
+        list.onclick = function (e) {
+            var item = e.target.closest('.ng-notif-item--navigable');
+            if (!item) return;
+            var evIdx = parseInt(item.getAttribute('data-ev-idx'), 10);
+            /* data-ev-idx is stored as (length-1-i) i.e. reversed index; map back */
+            var realIdx = (_events.length - 1) - evIdx;
+            var ev = _events[realIdx];
+            if (ev && ev.device) navigateToDevice(ev.device);
+        };
     }
 
     function updateBadge() {
@@ -194,6 +207,70 @@
 
     /* ── Event recording ───────────────────────────────────────── */
 
+    /* ── Navigation helpers (mirrors command-palette.js) ───────── */
+
+    function deviceRoute(d) {
+        var t  = (d.Type       || '').toLowerCase();
+        var st = (d.SwitchType || '').toLowerCase();
+        if (t === 'scene' || t === 'group')                        return '/Scenes';
+        if (t.indexOf('temp') >= 0 || t.indexOf('humid') >= 0)    return '/Temperature';
+        if (t.indexOf('wind') >= 0 || t.indexOf('rain') >= 0 ||
+            t.indexOf('uv')   >= 0 || t.indexOf('baro') >= 0)     return '/Weather';
+        if (t.indexOf('light')    >= 0 || t.indexOf('color')   >= 0 ||
+            t.indexOf('lighting') >= 0 || t.indexOf('chime')   >= 0 ||
+            st.indexOf('dimmer')  >= 0 || st.indexOf('blind')  >= 0 ||
+            st.indexOf('door')    >= 0 || st.indexOf('motion') >= 0 ||
+            st.indexOf('contact') >= 0 || st.indexOf('smoke')  >= 0)
+                                                                   return '/LightSwitches';
+        return '/Utility';
+    }
+
+    var _pendingHighlight = null;
+
+    function scrollToCard(name) {
+        var attempts = 0;
+        var poll = setInterval(function () {
+            var found = false;
+            document.querySelectorAll('div.item.itemBlock, .itemBlock > div.item').forEach(function (card) {
+                if (found) return;
+                var nameEl = card.querySelector('td#name');
+                if (nameEl && (nameEl.textContent || '').trim() === name) {
+                    found = true;
+                    clearInterval(poll);
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    card.classList.add('dz-search-highlight');
+                    setTimeout(function () { card.classList.remove('dz-search-highlight'); }, 2500);
+                }
+            });
+            if (!found && ++attempts >= 30) clearInterval(poll);
+        }, 100);
+    }
+
+    function navigateToDevice(device) {
+        var route = deviceRoute(device);
+        closePanel();
+
+        setTimeout(function () {
+            try {
+                var injector   = window.angular && angular.element(document.body).injector();
+                var $location  = injector && injector.get('$location');
+                var $rootScope = injector && injector.get('$rootScope');
+                if ($location && $rootScope) {
+                    var alreadyHere = $location.path() === route;
+                    _pendingHighlight = device.Name;
+                    if (!alreadyHere) {
+                        $rootScope.$apply(function () { $location.path(route); });
+                    } else {
+                        scrollToCard(device.Name);
+                        _pendingHighlight = null;
+                    }
+                    return;
+                }
+            } catch (e) {}
+            window.location.hash = route;
+        }, 10);
+    }
+
     function recordEvent(device) {
         /* Skip devices not marked as Used in Domoticz.
            The WebSocket broadcasts updates for all devices; we only
@@ -207,7 +284,14 @@
             name:   device.Name || ('Device ' + (device.idx || '')),
             status: status,
             time:   fmtTime(Date.now()),
-            unread: true
+            unread: true,
+            device: {
+                Name:       device.Name       || '',
+                Type:       device.Type       || '',
+                SubType:    device.SubType    || '',
+                SwitchType: device.SwitchType || '',
+                idx:        device.idx        || ''
+            }
         });
         if (_events.length > MAX_EVENTS) _events.shift();
 
@@ -261,6 +345,13 @@
         try {
             var $rs = bodyEl.injector().get('$rootScope');
             $rs.$on('device_update', function (evt, device) { recordEvent(device); });
+            $rs.$on('$routeChangeSuccess', function () {
+                if (_pendingHighlight) {
+                    var name = _pendingHighlight;
+                    _pendingHighlight = null;
+                    scrollToCard(name);
+                }
+            });
         } catch (e) {
             setTimeout(attachAngularHooks, 600);
         }

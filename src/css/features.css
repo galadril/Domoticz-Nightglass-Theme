@@ -159,6 +159,29 @@
 
     .ng-notif-item--unread { background: rgba(var(--dz-accent-rgb), 0.06); }
 
+    .ng-notif-item--navigable {
+        cursor: pointer;
+    }
+
+    .ng-notif-item--navigable:hover {
+        background: rgba(var(--dz-accent-rgb), 0.09);
+    }
+
+    .ng-notif-item--navigable:hover .ng-notif-nav-arrow {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+.ng-notif-nav-arrow {
+    font-size: 0.7rem;
+    color: var(--dz-accent);
+    flex-shrink: 0;
+    margin-top: 4px;
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity 0.15s, transform 0.15s;
+}
+
 .ng-notif-icon {
     font-size: 0.9rem;
     margin-top: 2px;
