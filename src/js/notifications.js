@@ -248,7 +248,7 @@
 
     function navigateToDevice(device) {
         var route = deviceRoute(device);
-        closePanel();
+        if (_open) closePanel();
 
         setTimeout(function () {
             try {
@@ -270,6 +270,7 @@
             window.location.hash = route;
         }, 10);
     }
+    window.ngNavigateToDevice = navigateToDevice;
 
     function recordEvent(device) {
         /* Skip devices not marked as Used in Domoticz.

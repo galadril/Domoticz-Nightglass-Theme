@@ -1281,6 +1281,27 @@
 .ng-toast--info,
 .ng-toast--alert   { --ng-toast-color: var(--dz-accent);  }
 
+/* ── Clickable / navigable toast ── */
+.ng-toast--clickable {
+    cursor: pointer;
+}
+.ng-toast--clickable:hover {
+    border-left-color: var(--ng-toast-color, var(--dz-accent));
+    background: var(--dz-surface-3, var(--dz-surface-2));
+}
+.ng-toast-nav-arrow {
+    flex-shrink:  0;
+    font-size:    0.75rem;
+    color:        var(--ng-toast-color, var(--dz-accent));
+    opacity:      0.5;
+    margin-top:   3px;
+    transition:   opacity 0.15s, transform 0.15s;
+}
+.ng-toast--clickable:hover .ng-toast-nav-arrow {
+    opacity:   1;
+    transform: translateX(3px);
+}
+
 /* ── Override Domoticz Bootstrap .alerts so intercepted ones are invisible ── */
 .alerts { display: none !important; }
 
