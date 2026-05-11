@@ -130,10 +130,20 @@
             '<div class="ng-toast-title">' + title + '</div>' +
             (body ? '<div class="ng-toast-body">' + body + '</div>' : '') +
             '</div>' +
+            (opts.onClick ? '<i class="fa-solid fa-arrow-right ng-toast-nav-arrow"></i>' : '') +
             '<button class="ng-toast-close" aria-label="Dismiss"><i class="fa-solid fa-xmark"></i></button>' +
             '<div class="ng-toast-progress"></div>';
 
         el.querySelector('.ng-toast-close').addEventListener('click', function () { removeToast(el); });
+
+        if (opts.onClick) {
+            el.classList.add('ng-toast--clickable');
+            el.addEventListener('click', function (e) {
+                if (e.target.closest('.ng-toast-close')) return;
+                removeToast(el);
+                opts.onClick();
+            });
+        }
 
         stack.appendChild(el);
 
@@ -223,11 +233,14 @@
         if (idx) _lastShown[idx] = now;
 
         ngShowToast({
-            icon:  iconFor(device),
-            color: colorFor(device),
-            title: device.Name || ('Device ' + idx),
-            body:  device.Status || device.Data || '',
-            type:  'device'
+            icon:    iconFor(device),
+            color:   colorFor(device),
+            title:   device.Name || ('Device ' + idx),
+            body:    device.Status || device.Data || '',
+            type:    'device',
+            onClick: function () {
+                if (window.ngNavigateToDevice) window.ngNavigateToDevice(device);
+            }
         });
     }
 
