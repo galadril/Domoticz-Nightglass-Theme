@@ -579,3 +579,23 @@
     }
 })();
 
+/* ── Hardware page — scroll to edit panel on row click ──────────────
+   When a hardware table row is clicked, Domoticz populates the edit
+   form below the table. We smooth-scroll there automatically.
+   ─────────────────────────────────────────────────────────────────── */
+(function () {
+    'use strict';
+
+    document.addEventListener('click', function (e) {
+        var table = document.getElementById('hardwaretable');
+        if (!table) return;
+        var tbody = table.querySelector('tbody');
+        if (!tbody || !tbody.contains(e.target)) return;
+        if (!e.target.closest('tr')) return;
+        setTimeout(function () {
+            var panel = document.querySelector('#hardwarecontent .page-content-container');
+            if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 120);
+    });
+})();
+
