@@ -461,6 +461,13 @@
                     _selected      = _savedSelected ? _savedSelected.slice() : [];
                     _savedSelected = null;
                     _savedMainPath = null;
+                    /* Cloak the device grid immediately so devices don't flash
+                       unfiltered while Angular renders; uncloak() is called by applyFilter().
+                       Safety: force-uncloak after 2s in case applyFilter() never fires. */
+                    if (_selected.length > 0) {
+                        document.body.classList.add('ng-rf-reloading');
+                        setTimeout(uncloak, 2000);
+                    }
 
                 } else {
                     /* Real navigation to a different main page — full reset. */
