@@ -27,6 +27,8 @@
     var _preserveNextRoute = false;  /* suppress bar removal on forced All reload */
     var _savedSelected     = null;   /* selection preserved across detail-page navigation */
     var _savedMainPath     = null;   /* main-page hash path that triggered the save */
+    var _cameFromDD        = false;  /* arrived via DD openRoomPlan — show back button */
+    var _$route            = null;   /* cached Angular $route service for reload */
 
     /* ══ Route path helpers ══════════════════════════════════════════ */
 
@@ -323,9 +325,49 @@
     function removeBar() {
         var rf  = document.getElementById('ng-room-filter');
         var btn = document.getElementById('ng-rf-toggle');
+        var bb  = document.getElementById('ng-dd-back-btn');
         if (rf)  rf.remove();
         if (btn) btn.remove();
+        if (bb)  bb.remove();
         _pills = [];
+    }
+
+    /* Inject a "← Dynamic Dashboard" back button into the topbar.
+       Only shown when the user navigated here via DD's openRoomPlan(). */
+    function injectDDBackButton() {
+        if (!_cameFromDD) return;
+        if (document.getElementById('ng-dd-back-btn')) return;
+        var topBar = document.getElementById('topBar');
+        if (!topBar) return;
+
+        /* Verify DD is actually enabled on this Domoticz install */
+        try {
+            var rs = angular.element(document.body).injector().get('$rootScope');
+            if (!rs.config || !rs.config.EnableTabDashboardDynamic) return;
+        } catch (e) { return; }
+
+        var btn = document.createElement('button');
+        btn.id        = 'ng-dd-back-btn';
+        btn.className = 'ng-dd-back-btn';
+        btn.innerHTML = '<i class="fa-solid fa-arrow-left"></i><span>Dashboard</span>';
+        btn.setAttribute('title', 'Back to Dynamic Dashboard');
+        btn.addEventListener('click', function () {
+            if (window.myglobals) { window.myglobals.LastPlanSelected = 0; }
+            _cameFromDD = false;
+            _selected   = [];
+            removeBar();
+            try {
+                /* $route.reload() re-evaluates the templateUrl function;
+                   since _forceClassicDashboard is false, DD renders. */
+                var $rs = angular.element(document.body).injector().get('$rootScope');
+                $rs.$apply(function () { _$route.reload(); });
+            } catch (e) {
+                window.location.hash = '#/Dashboard';
+            }
+        });
+
+        /* Prepend to topbar so it sits left of the search field */
+        topBar.insertBefore(btn, topBar.firstChild);
     }
 
     function buildBar() {
@@ -359,11 +401,28 @@
         _comboRetries  = 0;
         _planOptions   = opts;
 
+        /* If comboroom was pre-selected (e.g. by DD's openRoomPlan) and no pill
+           is active yet, auto-activate the matching pill and force "All" so all
+           device cards are loaded into the DOM for client-side filtering. */
+        if (_selected.length === 0) {
+            var nativeSel = document.getElementById('comboroom');
+            if (nativeSel && nativeSel.selectedIndex > 0) {
+                var nativeOpt    = nativeSel.options[nativeSel.selectedIndex];
+                var nativePlanIdx = (nativeOpt.value || '').replace(/^(?:number|string):/, '');
+                if (nativePlanIdx && nativePlanIdx !== '0') {
+                    _selected   = [nativePlanIdx];
+                    /* Track that we arrived via DD room plan so we can show a back button */
+                    _cameFromDD = !!(window.myglobals && window.myglobals.LastPlanSelected);
+                }
+            }
+        }
+
         /* Already correct number of pills? Sync + reveal. */
         var existing = document.getElementById('ng-room-filter');
         if (existing && _pills.length === opts.length) {
             syncPills();
             injectToggleBtn();
+            injectDDBackButton();
             revealTopBar();
             /* Only reset the native combobox when a pill filter is active;
                otherwise the user's own room selection must be respected. */
@@ -402,6 +461,7 @@
 
         syncPills();
         injectToggleBtn();
+        injectDDBackButton();
         revealTopBar();
 
         /* Only reset the native combobox to "All" when a pill filter is active —
@@ -425,6 +485,7 @@
         }
         try {
             var $rs = bodyEl.injector().get('$rootScope');
+            try { _$route = bodyEl.injector().get('$route'); } catch (e) {}
 
             $rs.$on('$routeChangeStart', function () {
                 /* Save the active selection before leaving a main list page so we
@@ -476,6 +537,7 @@
                     _selected      = [];
                     _savedSelected = null;
                     _savedMainPath = null;
+                    _cameFromDD    = false;
                 }
 
                 _topbarRetries = 0;
