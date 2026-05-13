@@ -396,7 +396,9 @@
         liveToastPosition:  'bottom-right',
         toastBlacklist:     '[]',
 
-        deviceIconOverrides: '{}'
+        deviceIconOverrides: '{}',
+
+        debugLogs:          false   /* session-only — never persisted */
     };
 
     var _settings      = null;
@@ -651,10 +653,17 @@
         });
     }
 
+    /* Keys listed here are session-only: they live only in _settings for the
+       duration of the page session and are never written to localStorage or
+       the Domoticz API.  A hard refresh always resets them to DEFAULTS. */
+    var SESSION_ONLY_KEYS = ['debugLogs'];
+
     function saveSetting(key, value) {
         _settings[key] = value;
-        if (_apiAvailable) saveJsonUvar(); // debounced, batches rapid changes
-        saveToLocalStorage();
+        if (SESSION_ONLY_KEYS.indexOf(key) === -1) {
+            if (_apiAvailable) saveJsonUvar(); // debounced, batches rapid changes
+            saveToLocalStorage();
+        }
         applySettings();
     }
 
@@ -1350,6 +1359,11 @@
             dualColorPicker('surfaceColor', 'surfaceColorLight', 'Card Surface') +
             dualColorPicker('borderColor', 'borderColorLight', 'Borders') +
             dualColorPicker('textColor', 'textColorLight', 'Text') +
+            '</div>' +
+
+            '<div class="ng-settings-section ng-settings-section--full">' +
+            '<div class="ng-section-header"><i class="fa-solid fa-bug"></i> Developer</div>' +
+            toggle('debugLogs', 'Debug Logging', 'Print verbose [RF] room-filter trace logs to the browser console (session only — resets on hard refresh)') +
             '</div>' +
 
             '</div>' + /* grid end */

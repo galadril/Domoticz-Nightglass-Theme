@@ -14,9 +14,15 @@
 
     /* ── Debug logging ──────────────────────────────────────────── */
 
-    var _debug = true; /* flip to false to silence room-filter logs */
+    /* Reads the session toggle from the Nightglass settings panel.
+       Off by default — enable via Settings → Developer → Debug Logging. */
+    function isDebugEnabled() {
+        return !!(window.dzNightglassSettings &&
+                  window.dzNightglassSettings.get('debugLogs'));
+    }
+
     function log() {
-        if (!_debug) return;
+        if (!isDebugEnabled()) return;
         var a = Array.prototype.slice.call(arguments);
         a.unshift('[RF]');
         console.log.apply(console, a);
@@ -318,7 +324,9 @@
 
     /* Remove the reloading cloak after applyFilter() has run */
     function uncloak() {
-        log('uncloak');
+        var cards = getCards();
+        var visible = cards.filter(function (c) { return !c.classList.contains('ng-rf-filtered'); }).length;
+        log('uncloak: showing', visible, 'of', cards.length, 'cards');
         document.body.classList.remove('ng-rf-reloading');
     }
 
@@ -363,7 +371,7 @@
         if (btn) btn.remove();
         if (bb)  bb.remove();
         _pills = [];
-        log('removeBar: bar cleared');
+        log('removeBar: bar cleared (pills:', _pills.length, ')');
     }
 
     /* Inject a "← Dynamic Dashboard" back button into the topbar (#tbFilters),
@@ -426,21 +434,22 @@
        Called from buildBar() so the filter is never applied before the
        API data is ready. */
     function applyWhenCached() {
-        log('applyWhenCached: _selected=', _selected);
+        log('applyWhenCached: _selected=', _selected,
+            '| cached:', Object.keys(_planCache).length, 'plans');
         var missing = _selected.filter(function (p) {
             return !_planCache.hasOwnProperty(p);
         });
         if (!missing.length) {
-            log('applyWhenCached: cache ready, applying now');
+            log('applyWhenCached: all plans cached — applying filter now');
             applyFilter();
             return;
         }
-        log('applyWhenCached: waiting for plans', missing);
+        log('applyWhenCached: waiting for', missing.length, 'uncached plan(s):', missing);
         var done = 0;
         missing.forEach(function (p) {
             fetchPlan(p, function () {
                 if (++done === missing.length) {
-                    log('applyWhenCached: cache now ready, applying');
+                    log('applyWhenCached: all', missing.length, 'plan(s) loaded — applying filter');
                     applyFilter();
                 }
             });
