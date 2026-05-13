@@ -190,6 +190,7 @@
         });
 
         syncPills();
+        uncloak();
     }
 
     /* ══ Pill selection logic ════════════════════════════════════════ */
@@ -214,7 +215,21 @@
             return;
         }
 
-        /* Fetch any uncached plans then filter */
+        /* If the native combobox is not at "All", only the currently-selected
+           room's cards are in the DOM. Force "All" first so Angular loads every
+           device card; applyFilter() will be called by buildBar() after the
+           resulting $viewContentLoaded. */
+        var sel = document.getElementById('comboroom');
+        if (sel && sel.selectedIndex !== 0) {
+            /* Pre-warm cache in background while Angular reloads */
+            _selected.forEach(function (p) {
+                if (!_planCache.hasOwnProperty(p)) fetchPlan(p, function () {});
+            });
+            forceAllIfNeeded();
+            return;
+        }
+
+        /* All devices are already in the DOM — fetch uncached plans then filter */
         var uncached = _selected.filter(function (p) {
             return !_planCache.hasOwnProperty(p);
         });
@@ -254,13 +269,22 @@
     /* ══ Force "All" in Angular combobox ════════════════════════════ */
 
     /* Ensures all devices are loaded in the DOM for client-side filtering.
-       Sets a flag so the resulting route change doesn't destroy the pill bar. */
+       Sets a flag so the resulting route change doesn't destroy the pill bar.
+       Also hides the device grid while Angular reloads to prevent a flash of
+       all-devices before applyFilter() runs. */
     function forceAllIfNeeded() {
         var sel = document.getElementById('comboroom');
         if (!sel || sel.selectedIndex === 0) return;  /* already "All" */
         _preserveNextRoute = true;
+        /* Cloak device grid to avoid a visible flash of unfiltered content */
+        document.body.classList.add('ng-rf-reloading');
         sel.selectedIndex  = 0;
         $(sel).trigger('change');   /* triggers Angular route change */
+    }
+
+    /* Remove the reloading cloak after applyFilter() has run */
+    function uncloak() {
+        document.body.classList.remove('ng-rf-reloading');
     }
 
     /* ══ Mobile dashboard helpers ════════════════════════════════════ */
@@ -341,7 +365,9 @@
             syncPills();
             injectToggleBtn();
             revealTopBar();
-            forceAllIfNeeded();
+            /* Only reset the native combobox when a pill filter is active;
+               otherwise the user's own room selection must be respected. */
+            if (_selected.length > 0) forceAllIfNeeded();
             if (_selected.length > 0) setTimeout(applyFilter, 300);
             return;
         }
@@ -378,8 +404,10 @@
         injectToggleBtn();
         revealTopBar();
 
-        /* Force "All" so all devices are in DOM, then pre-warm plan cache */
-        forceAllIfNeeded();
+        /* Only reset the native combobox to "All" when a pill filter is active —
+           all device cards must be in the DOM for client-side filtering to work.
+           When no pill is active the user's native combobox selection is respected. */
+        if (_selected.length > 0) forceAllIfNeeded();
         preFetchAll();
 
         /* If selection was restored after returning from a detail page, re-apply it */
