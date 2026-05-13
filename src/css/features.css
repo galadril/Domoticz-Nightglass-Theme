@@ -282,7 +282,10 @@
 section.dashCategory.ng-rf-section-hidden  { display: none !important; }
 
 /* Cloak device grid while Angular reloads all devices (forceAllIfNeeded)
-   to prevent a flash of unfiltered content before applyFilter() runs. */
+   to prevent a flash of unfiltered content before applyFilter() runs.
+   [ng-view] covers everything Angular renders (cards, sections, dimmer bars,
+   jQuery UI widgets) so nothing leaks through during the reload. */
+body.ng-rf-reloading [ng-view],
 body.ng-rf-reloading .movable,
 body.ng-rf-reloading .span4.itemBlock,
 body.ng-rf-reloading section.dashCategory { visibility: hidden; }
