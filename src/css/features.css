@@ -292,31 +292,29 @@ body.ng-rf-reloading [ng-view] {
 }
 
 /* ── Dynamic Dashboard back button ─────────────────────────────────
-   Shown in the topbar when the user arrived via DD's openRoomPlan().
-   Allows returning to the dynamic dashboard with one click. */
+   Injected as the first child of #ng-room-filter when the user
+   arrived via DD's openRoomPlan(). Styled as a compact arrow pill
+   visually separated from the room pills by a right border/margin. */
 
 .ng-dd-back-btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
     padding: 4px 10px;
-    margin-right: 8px;
-    background: var(--dz-surface-2);
+    margin-right: 4px;
+    background: transparent;
     border: 1px solid var(--dz-surface-3);
     border-radius: 16px;
     color: var(--dz-accent-color);
-    font-size: 12px;
-    font-weight: 500;
+    font-size: 13px;
     cursor: pointer;
-    white-space: nowrap;
-    transition: background 0.15s, border-color 0.15s;
     flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s;
 }
 .ng-dd-back-btn:hover {
-    background: var(--dz-surface-3);
+    background: var(--dz-surface-2);
     border-color: var(--dz-accent-color);
 }
-.ng-dd-back-btn i { font-size: 11px; }
 
 /* ── Toggle button (injected next to command palette) ────────────── */
 

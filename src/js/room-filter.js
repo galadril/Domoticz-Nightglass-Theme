@@ -332,15 +332,15 @@
         _pills = [];
     }
 
-    /* Inject a "← Dynamic Dashboard" back button into the topbar.
-       Only shown when the user navigated here via DD's openRoomPlan(). */
+    /* Inject a "← DD" back button as the first item of #ng-room-filter.
+       Only shown when the user arrived via DD's openRoomPlan(). */
     function injectDDBackButton() {
         if (!_cameFromDD) return;
         if (document.getElementById('ng-dd-back-btn')) return;
-        var topBar = document.getElementById('topBar');
-        if (!topBar) return;
+        var rf = document.getElementById('ng-room-filter');
+        if (!rf) return;
 
-        /* Verify DD is actually enabled on this Domoticz install */
+        /* Verify DD is enabled on this install */
         try {
             var rs = angular.element(document.body).injector().get('$rootScope');
             if (!rs.config || !rs.config.EnableTabDashboardDynamic) return;
@@ -349,25 +349,51 @@
         var btn = document.createElement('button');
         btn.id        = 'ng-dd-back-btn';
         btn.className = 'ng-dd-back-btn';
-        btn.innerHTML = '<i class="fa-solid fa-arrow-left"></i><span>Dashboard</span>';
+        btn.innerHTML = '<i class="fa-solid fa-arrow-left"></i>';
         btn.setAttribute('title', 'Back to Dynamic Dashboard');
         btn.addEventListener('click', function () {
             if (window.myglobals) { window.myglobals.LastPlanSelected = 0; }
             _cameFromDD = false;
             _selected   = [];
             removeBar();
+            /* Reload the route — since _forceClassicDashboard is false, DD renders.
+               Don't wrap in $apply if a digest is already running. */
             try {
-                /* $route.reload() re-evaluates the templateUrl function;
-                   since _forceClassicDashboard is false, DD renders. */
-                var $rs = angular.element(document.body).injector().get('$rootScope');
-                $rs.$apply(function () { _$route.reload(); });
+                var inj    = angular.element(document.body).injector();
+                var $route = _$route || inj.get('$route');
+                var $rsc   = inj.get('$rootScope');
+                if ($rsc.$$phase) {
+                    $route.reload();
+                } else {
+                    $rsc.$apply(function () { $route.reload(); });
+                }
             } catch (e) {
-                window.location.hash = '#/Dashboard';
+                /* Force a hash round-trip so Angular sees the change even when
+                   we're already at #/Dashboard (same hash = no hashchange event). */
+                var base = window.location.href.replace(/#.*$/, '');
+                window.location.replace(base + '#/');
+                setTimeout(function () { window.location.hash = '#/Dashboard'; }, 30);
             }
         });
 
-        /* Prepend to topbar so it sits left of the search field */
-        topBar.insertBefore(btn, topBar.firstChild);
+        /* Prepend before the room pills inside the filter bar */
+        rf.insertBefore(btn, rf.firstChild);
+    }
+
+    /* Apply the filter once all selected plans are present in the cache.
+       Called from buildBar() instead of raw setTimeout(applyFilter, 300)
+       so the filter is never applied before the API data is ready. */
+    function applyWhenCached() {
+        var missing = _selected.filter(function (p) {
+            return !_planCache.hasOwnProperty(p);
+        });
+        if (!missing.length) { applyFilter(); return; }
+        var done = 0;
+        missing.forEach(function (p) {
+            fetchPlan(p, function () {
+                if (++done === missing.length) applyFilter();
+            });
+        });
     }
 
     function buildBar() {
@@ -427,7 +453,7 @@
             /* Only reset the native combobox when a pill filter is active;
                otherwise the user's own room selection must be respected. */
             if (_selected.length > 0) forceAllIfNeeded();
-            if (_selected.length > 0) setTimeout(applyFilter, 300);
+            if (_selected.length > 0) setTimeout(applyWhenCached, 100);
             return;
         }
 
@@ -471,7 +497,7 @@
         preFetchAll();
 
         /* If selection was restored after returning from a detail page, re-apply it */
-        if (_selected.length > 0) setTimeout(applyFilter, 300);
+        if (_selected.length > 0) setTimeout(applyWhenCached, 100);
     }
 
     /* ══ Angular hooks ══════════════════════════════════════════════ */
@@ -538,6 +564,23 @@
                     _savedSelected = null;
                     _savedMainPath = null;
                     _cameFromDD    = false;
+
+                    /* Detect DD→classic navigation via openRoomPlan():
+                       $routeChangeSuccess fires BEFORE the classic dashboard
+                       controller runs, so we can capture and clear
+                       LastPlanSelected here. The classic dashboard then loads
+                       with All devices (no room pre-selection), which means
+                       forceAllIfNeeded() is unnecessary — one render only.
+                       The cloak hides everything until applyFilter() runs. */
+                    var ddPlan = window.myglobals &&
+                                 Number(window.myglobals.LastPlanSelected);
+                    if (ddPlan) {
+                        window.myglobals.LastPlanSelected = 0;
+                        _selected   = [String(ddPlan)];
+                        _cameFromDD = true;
+                        document.body.classList.add('ng-rf-reloading');
+                        setTimeout(uncloak, 2000);
+                    }
                 }
 
                 _topbarRetries = 0;
