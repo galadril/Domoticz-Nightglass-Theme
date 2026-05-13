@@ -12,6 +12,16 @@
 (function () {
     'use strict';
 
+    /* ── Debug logging ──────────────────────────────────────────── */
+
+    var _debug = true; /* flip to false to silence room-filter logs */
+    function log() {
+        if (!_debug) return;
+        var a = Array.prototype.slice.call(arguments);
+        a.unshift('[RF]');
+        console.log.apply(console, a);
+    }
+
     /* ── Module state ───────────────────────────────────────────── */
 
     var _pills             = [];     /* pill button elements */
@@ -24,7 +34,25 @@
     var MAX_TOPBAR         = 15;     /* × 100ms = 1.5s */
     var MAX_COMBO          = 8;      /* × 300ms = 2.4s */
     var _safetyTimer       = null;
+    var _buildBarTimer     = null;   /* handle for pending buildBar timeout — cancelled on route change */
     var _preserveNextRoute = false;  /* suppress bar removal on forced All reload */
+    var _savedSelected     = null;   /* selection preserved across detail-page navigation */
+    var _savedMainPath     = null;   /* main-page hash path that triggered the save */
+    var _cameFromDD        = false;  /* arrived via DD openRoomPlan — show back button */
+    var _$route            = null;   /* cached Angular $route service for reload */
+
+    /* ══ Route path helpers ══════════════════════════════════════════ */
+
+    /* Returns the current hash path without leading "#/" (e.g. "Switches"). */
+    function currentHashPath() {
+        return (window.location.hash || '').replace(/^#\/?/, '');
+    }
+
+    /* Detail pages have multiple path segments (e.g. "Devices/42/Edit", "LightLog/42").
+       Main list pages are single-segment (e.g. "Switches", "Temperature"). */
+    function isDetailPath(path) {
+        return path.indexOf('/') !== -1;
+    }
 
     /* ══ Topbar reveal ══════════════════════════════════════════════ */
 
@@ -37,6 +65,15 @@
     function scheduleRevealFallback() {
         if (_safetyTimer) clearTimeout(_safetyTimer);
         _safetyTimer = setTimeout(revealTopBar, 1200);
+    }
+
+    /* Schedule a buildBar() call, cancelling any previously pending one.
+       Using this instead of raw setTimeout() ensures stale retry timers
+       from a previous route (e.g. DD view's Phase-1 topbar-wait loop)
+       never fire on the newly loaded page. */
+    function scheduleBuildBar(delay) {
+        if (_buildBarTimer !== null) { clearTimeout(_buildBarTimer); _buildBarTimer = null; }
+        _buildBarTimer = setTimeout(function () { _buildBarTimer = null; buildBar(); }, delay);
     }
 
     /* ══ Toggle button ══════════════════════════════════════════════ */
@@ -78,6 +115,14 @@
             /* AngularJS serialises ng-value as "number:0" / "string:2" */
             var planIdx = (o.value || '').replace(/^(?:number|string):/, '');
             return { label: o.textContent.trim(), index: i, planIdx: planIdx };
+        }).filter(function (r) {
+            /* Exclude AngularJS "unknown option" placeholder (value="? string:0 ?")
+               injected when the model value doesn't match any option yet. */
+            if (r.planIdx.charAt(0) === '?') return false;
+            /* Exclude Dynamic Dashboard layouts (value="dd:…") — navigation
+               shortcuts, not room plans — so they don't appear as pills. */
+            if (r.planIdx.indexOf('dd:') === 0) return false;
+            return true;
         });
     }
 
@@ -175,6 +220,7 @@
         });
 
         syncPills();
+        uncloak();
     }
 
     /* ══ Pill selection logic ════════════════════════════════════════ */
@@ -199,7 +245,21 @@
             return;
         }
 
-        /* Fetch any uncached plans then filter */
+        /* If the native combobox is not at "All", only the currently-selected
+           room's cards are in the DOM. Force "All" first so Angular loads every
+           device card; applyFilter() will be called by buildBar() after the
+           resulting $viewContentLoaded. */
+        var sel = document.getElementById('comboroom');
+        if (sel && sel.selectedIndex !== 0) {
+            /* Pre-warm cache in background while Angular reloads */
+            _selected.forEach(function (p) {
+                if (!_planCache.hasOwnProperty(p)) fetchPlan(p, function () {});
+            });
+            forceAllIfNeeded();
+            return;
+        }
+
+        /* All devices are already in the DOM — fetch uncached plans then filter */
         var uncached = _selected.filter(function (p) {
             return !_planCache.hasOwnProperty(p);
         });
@@ -239,13 +299,27 @@
     /* ══ Force "All" in Angular combobox ════════════════════════════ */
 
     /* Ensures all devices are loaded in the DOM for client-side filtering.
-       Sets a flag so the resulting route change doesn't destroy the pill bar. */
+       Sets a flag so the resulting route change doesn't destroy the pill bar.
+       Also hides the device grid while Angular reloads to prevent a flash of
+       all-devices before applyFilter() runs. */
     function forceAllIfNeeded() {
         var sel = document.getElementById('comboroom');
-        if (!sel || sel.selectedIndex === 0) return;  /* already "All" */
+        if (!sel || sel.selectedIndex === 0) {
+            log('forceAllIfNeeded: already All, no-op');
+            return;
+        }
+        log('forceAllIfNeeded: comboroom at index', sel.selectedIndex, '— forcing All');
         _preserveNextRoute = true;
+        /* Cloak device grid to avoid a visible flash of unfiltered content */
+        document.body.classList.add('ng-rf-reloading');
         sel.selectedIndex  = 0;
         $(sel).trigger('change');   /* triggers Angular route change */
+    }
+
+    /* Remove the reloading cloak after applyFilter() has run */
+    function uncloak() {
+        log('uncloak');
+        document.body.classList.remove('ng-rf-reloading');
     }
 
     /* ══ Mobile dashboard helpers ════════════════════════════════════ */
@@ -284,9 +358,93 @@
     function removeBar() {
         var rf  = document.getElementById('ng-room-filter');
         var btn = document.getElementById('ng-rf-toggle');
+        var bb  = document.getElementById('ng-dd-back-btn');
         if (rf)  rf.remove();
         if (btn) btn.remove();
+        if (bb)  bb.remove();
         _pills = [];
+        log('removeBar: bar cleared');
+    }
+
+    /* Inject a "← Dynamic Dashboard" back button into the topbar (#tbFilters),
+       placed before the room combobox. Only shown when the user arrived here
+       via DD's openRoomPlan(). */
+    function injectDDBackButton() {
+        if (!_cameFromDD) return;
+        if (document.getElementById('ng-dd-back-btn')) return;
+
+        /* Verify DD is enabled on this install */
+        try {
+            var rs = angular.element(document.body).injector().get('$rootScope');
+            if (!rs.config || !rs.config.EnableTabDashboardDynamic) {
+                log('injectDDBackButton: DD not enabled, skipping');
+                return;
+            }
+        } catch (e) { return; }
+
+        var tbFilters = document.getElementById('tbFilters');
+        if (!tbFilters) { log('injectDDBackButton: #tbFilters not found'); return; }
+
+        var btn = document.createElement('button');
+        btn.id        = 'ng-dd-back-btn';
+        btn.className = 'ng-dd-back-btn';
+        btn.innerHTML = '<i class="fa-solid fa-arrow-left"></i>';
+        btn.setAttribute('title', 'Back to Dynamic Dashboard');
+        btn.addEventListener('click', function () {
+            log('DD back button clicked — reloading to DD');
+            if (window.myglobals) { window.myglobals.LastPlanSelected = 0; }
+            _cameFromDD = false;
+            _selected   = [];
+            removeBar();
+            /* Reload the route — since _forceClassicDashboard is false, DD renders.
+               Check $$phase to avoid $apply-already-in-progress errors. */
+            try {
+                var inj    = angular.element(document.body).injector();
+                var $route = _$route || inj.get('$route');
+                var $rsc   = inj.get('$rootScope');
+                if ($rsc.$$phase) {
+                    $route.reload();
+                } else {
+                    $rsc.$apply(function () { $route.reload(); });
+                }
+            } catch (e) {
+                log('DD back: $route.reload failed, using hash round-trip', e);
+                /* Force a hash round-trip so Angular sees the change even when
+                   we're already at #/Dashboard (same hash = no hashchange event). */
+                var base = window.location.href.replace(/#.*$/, '');
+                window.location.replace(base + '#/');
+                setTimeout(function () { window.location.hash = '#/Dashboard'; }, 30);
+            }
+        });
+
+        /* Insert as the first child of #tbFilters so it appears left of the search */
+        tbFilters.insertBefore(btn, tbFilters.firstChild);
+        log('injectDDBackButton: back button injected into #tbFilters');
+    }
+
+    /* Apply the filter once all selected plans are present in the cache.
+       Called from buildBar() so the filter is never applied before the
+       API data is ready. */
+    function applyWhenCached() {
+        log('applyWhenCached: _selected=', _selected);
+        var missing = _selected.filter(function (p) {
+            return !_planCache.hasOwnProperty(p);
+        });
+        if (!missing.length) {
+            log('applyWhenCached: cache ready, applying now');
+            applyFilter();
+            return;
+        }
+        log('applyWhenCached: waiting for plans', missing);
+        var done = 0;
+        missing.forEach(function (p) {
+            fetchPlan(p, function () {
+                if (++done === missing.length) {
+                    log('applyWhenCached: cache now ready, applying');
+                    applyFilter();
+                }
+            });
+        });
     }
 
     function buildBar() {
@@ -295,42 +453,73 @@
         if (!topBar) {
             if (_topbarRetries < MAX_TOPBAR) {
                 _topbarRetries++;
-                setTimeout(buildBar, 100);
+                scheduleBuildBar(100);
             } else { revealTopBar(); }
             return;
         }
         _topbarRetries = 0;
+
+        log('buildBar: _selected=', _selected, '_cameFromDD=', _cameFromDD,
+            '_preserveNextRoute=', _preserveNextRoute);
 
         /* Detect mobile dashboard + attach mobile search (independent of comboroom) */
         setupMobilePage();
 
         /* Phase 2: no comboroom → page has no room plans */
         var sel = document.getElementById('comboroom');
-        if (!sel) { removeBar(); revealTopBar(); return; }
+        if (!sel) {
+            log('buildBar: no comboroom → removeBar');
+            removeBar(); revealTopBar(); return;
+        }
 
         /* Phase 3: comboroom exists but not populated yet */
         var opts = readOptions();
+        log('buildBar: readOptions returned', opts.length, 'options (dd: filtered)',
+            opts.map(function(o){ return o.label + '('+o.planIdx+')'; }));
         if (opts.length < 2) {
             if (_comboRetries < MAX_COMBO) {
                 _comboRetries++;
-                setTimeout(buildBar, 300);
+                scheduleBuildBar(300);
             } else { removeBar(); revealTopBar(); }
             return;
         }
         _comboRetries  = 0;
         _planOptions   = opts;
 
+        /* If comboroom was pre-selected (e.g. by DD's openRoomPlan) and no pill
+           is active yet, auto-activate the matching pill and force "All" so all
+           device cards are loaded into the DOM for client-side filtering. */
+        if (_selected.length === 0) {
+            var nativeSel = document.getElementById('comboroom');
+            if (nativeSel && nativeSel.selectedIndex > 0) {
+                var nativeOpt    = nativeSel.options[nativeSel.selectedIndex];
+                var nativePlanIdx = (nativeOpt.value || '').replace(/^(?:number|string):/, '');
+                if (nativePlanIdx && nativePlanIdx !== '0' &&
+                        nativePlanIdx.indexOf('dd:') !== 0) {
+                    log('buildBar: auto-activating pill from native comboroom', nativePlanIdx);
+                    _selected   = [nativePlanIdx];
+                    _cameFromDD = !!(window.myglobals && window.myglobals.LastPlanSelected);
+                }
+            }
+        }
+
         /* Already correct number of pills? Sync + reveal. */
         var existing = document.getElementById('ng-room-filter');
         if (existing && _pills.length === opts.length) {
+            log('buildBar: pills already built — sync only');
             syncPills();
             injectToggleBtn();
+            injectDDBackButton();
             revealTopBar();
-            forceAllIfNeeded();
+            /* Only reset the native combobox when a pill filter is active;
+               otherwise the user's own room selection must be respected. */
+            if (_selected.length > 0) forceAllIfNeeded();
+            if (_selected.length > 0) setTimeout(applyWhenCached, 100);
             return;
         }
 
         /* Rebuild from scratch */
+        log('buildBar: rebuilding pill bar from scratch');
         removeBar();
 
         var bar = document.createElement('div');
@@ -360,11 +549,17 @@
 
         syncPills();
         injectToggleBtn();
+        injectDDBackButton();
         revealTopBar();
 
-        /* Force "All" so all devices are in DOM, then pre-warm plan cache */
-        forceAllIfNeeded();
+        /* Only reset the native combobox to "All" when a pill filter is active —
+           all device cards must be in the DOM for client-side filtering to work.
+           When no pill is active the user's native combobox selection is respected. */
+        if (_selected.length > 0) forceAllIfNeeded();
         preFetchAll();
+
+        /* If selection was restored after returning from a detail page, re-apply it */
+        if (_selected.length > 0) setTimeout(applyWhenCached, 100);
     }
 
     /* ══ Angular hooks ══════════════════════════════════════════════ */
@@ -378,27 +573,110 @@
         }
         try {
             var $rs = bodyEl.injector().get('$rootScope');
+            try { _$route = bodyEl.injector().get('$route'); } catch (e) {}
+
+            $rs.$on('$routeChangeStart', function () {
+                var path = currentHashPath();
+                log('$routeChangeStart path=', path, '_selected=', _selected);
+
+                /* Cancel any pending buildBar timer so stale retry loops from the
+                   previous page (e.g. DD view's Phase-1 topbar-wait) don't fire
+                   on the newly loaded page and trigger a spurious forceAllIfNeeded. */
+                if (_buildBarTimer !== null) {
+                    clearTimeout(_buildBarTimer);
+                    _buildBarTimer = null;
+                    log('$routeChangeStart: cancelled stale _buildBarTimer');
+                }
+
+                /* Preemptive cloak: if we're about to land on the classic dashboard
+                   via DD's openRoomPlan(), hide the view immediately — before Angular
+                   renders a single card — so the forceAllIfNeeded reload is invisible. */
+                var ddPlan = window.myglobals && Number(window.myglobals.LastPlanSelected);
+                if (ddPlan && !isDetailPath(path)) {
+                    log('$routeChangeStart: DD room plan detected (', ddPlan, ') — preemptive cloak');
+                    document.body.classList.add('ng-rf-reloading');
+                }
+
+                /* Save the active selection before leaving a main list page so we
+                   can restore it if the user returns from a detail sub-page. */
+                if (!isDetailPath(path) && _selected.length > 0) {
+                    _savedMainPath = path;
+                    _savedSelected = _selected.slice();
+                    log('$routeChangeStart: saved selection for', path, _selected);
+                }
+            });
 
             $rs.$on('$routeChangeSuccess', function () {
                 if (_preserveNextRoute) {
-                    /* This route change was triggered by our forceAllIfNeeded —
-                       don't tear down the bar, just let Angular rebuild devices */
+                    log('$routeChangeSuccess: preserveNextRoute — skipping teardown');
                     _preserveNextRoute = false;
                     return;
                 }
-                removeBar();
-                document.body.classList.remove('ng-mobile-dashboard');
-                _selected      = [];   /* reset selection on real navigation */
+
+                var newPath = currentHashPath();
+                log('$routeChangeSuccess path=', newPath,
+                    '_savedMainPath=', _savedMainPath,
+                    'myglobals.LastPlanSelected=',
+                    window.myglobals && window.myglobals.LastPlanSelected);
+
+                if (isDetailPath(newPath)) {
+                    log('$routeChangeSuccess: detail page → remove bar, keep _selected');
+                    removeBar();
+                    document.body.classList.remove('ng-mobile-dashboard');
+
+                } else if (_savedMainPath && newPath === _savedMainPath) {
+                    log('$routeChangeSuccess: returning to', newPath, '— restoring', _savedSelected);
+                    removeBar();
+                    document.body.classList.remove('ng-mobile-dashboard');
+                    _selected      = _savedSelected ? _savedSelected.slice() : [];
+                    _savedSelected = null;
+                    _savedMainPath = null;
+                    if (_selected.length > 0) {
+                        log('$routeChangeSuccess: cloaking for filter restore');
+                        document.body.classList.add('ng-rf-reloading');
+                        setTimeout(uncloak, 2000);
+                    }
+
+                } else {
+                    log('$routeChangeSuccess: new main page — full reset');
+                    removeBar();
+                    document.body.classList.remove('ng-mobile-dashboard');
+                    _selected      = [];
+                    _savedSelected = null;
+                    _savedMainPath = null;
+                    _cameFromDD    = false;
+
+                    /* Detect DD→classic navigation via openRoomPlan():
+                       $routeChangeSuccess fires BEFORE the classic dashboard
+                       controller runs, so we can capture and clear
+                       LastPlanSelected here. The classic dashboard then loads
+                       with All devices (no room pre-selection), which means
+                       forceAllIfNeeded() is unnecessary — one render only.
+                       The cloak hides everything until applyFilter() runs. */
+                    var ddPlan = window.myglobals &&
+                                 Number(window.myglobals.LastPlanSelected);
+                    if (ddPlan) {
+                        log('$routeChangeSuccess: DD room plan detected, planIdx=', ddPlan,
+                            '— cloaking and setting _selected');
+                        window.myglobals.LastPlanSelected = 0;
+                        _selected   = [String(ddPlan)];
+                        _cameFromDD = true;
+                        document.body.classList.add('ng-rf-reloading');
+                        setTimeout(uncloak, 2000);
+                    }
+                }
+
                 _topbarRetries = 0;
                 _comboRetries  = 0;
                 if (_safetyTimer) clearTimeout(_safetyTimer);
             });
 
             $rs.$on('$viewContentLoaded', function () {
+                log('$viewContentLoaded — scheduling buildBar in 150ms');
                 _topbarRetries = 0;
                 _comboRetries  = 0;
                 scheduleRevealFallback();
-                setTimeout(buildBar, 150);
+                scheduleBuildBar(150);
             });
 
             /* Re-apply active filter after Angular updates device cards */
@@ -415,7 +693,7 @@
 
     function init() {
         scheduleRevealFallback();
-        setTimeout(buildBar, 300);
+        scheduleBuildBar(300);
         attachHooks();
     }
 

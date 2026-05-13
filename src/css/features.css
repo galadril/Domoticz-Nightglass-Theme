@@ -281,6 +281,42 @@
 .ng-rf-filtered                            { display: none !important; }
 section.dashCategory.ng-rf-section-hidden  { display: none !important; }
 
+/* Cloak device grid while Angular reloads all devices (forceAllIfNeeded)
+   to prevent a flash of unfiltered content before applyFilter() runs.
+   opacity:0 is used instead of visibility:hidden because opacity cannot be
+   overridden by descendant elements — jQuery UI sliders, dimmer bars, and
+   any element with explicit visibility:visible will still be fully hidden. */
+body.ng-rf-reloading [ng-view] {
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* ── Dynamic Dashboard back button ─────────────────────────────────
+   Injected as the first child of #tbFilters (inside #topBar) when the
+   user arrived via DD's openRoomPlan(). Styled to match the topbar's
+   inline icon/button elements. */
+
+.ng-dd-back-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 8px;
+    margin-right: 6px;
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-surface-3);
+    border-radius: 12px;
+    color: var(--dz-accent-color);
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    vertical-align: middle;
+    transition: background 0.15s, border-color 0.15s;
+}
+.ng-dd-back-btn:hover {
+    background: var(--dz-surface-3);
+    border-color: var(--dz-accent-color);
+}
+
 /* ── Toggle button (injected next to command palette) ────────────── */
 
 .ng-rf-toggle-btn {
