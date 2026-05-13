@@ -34,6 +34,7 @@
     var MAX_TOPBAR         = 15;     /* × 100ms = 1.5s */
     var MAX_COMBO          = 8;      /* × 300ms = 2.4s */
     var _safetyTimer       = null;
+    var _buildBarTimer     = null;   /* handle for pending buildBar timeout — cancelled on route change */
     var _preserveNextRoute = false;  /* suppress bar removal on forced All reload */
     var _savedSelected     = null;   /* selection preserved across detail-page navigation */
     var _savedMainPath     = null;   /* main-page hash path that triggered the save */
@@ -64,6 +65,15 @@
     function scheduleRevealFallback() {
         if (_safetyTimer) clearTimeout(_safetyTimer);
         _safetyTimer = setTimeout(revealTopBar, 1200);
+    }
+
+    /* Schedule a buildBar() call, cancelling any previously pending one.
+       Using this instead of raw setTimeout() ensures stale retry timers
+       from a previous route (e.g. DD view's Phase-1 topbar-wait loop)
+       never fire on the newly loaded page. */
+    function scheduleBuildBar(delay) {
+        if (_buildBarTimer !== null) { clearTimeout(_buildBarTimer); _buildBarTimer = null; }
+        _buildBarTimer = setTimeout(function () { _buildBarTimer = null; buildBar(); }, delay);
     }
 
     /* ══ Toggle button ══════════════════════════════════════════════ */
@@ -440,7 +450,7 @@
         if (!topBar) {
             if (_topbarRetries < MAX_TOPBAR) {
                 _topbarRetries++;
-                setTimeout(buildBar, 100);
+                scheduleBuildBar(100);
             } else { revealTopBar(); }
             return;
         }
@@ -466,7 +476,7 @@
         if (opts.length < 2) {
             if (_comboRetries < MAX_COMBO) {
                 _comboRetries++;
-                setTimeout(buildBar, 300);
+                scheduleBuildBar(300);
             } else { removeBar(); revealTopBar(); }
             return;
         }
@@ -565,6 +575,25 @@
             $rs.$on('$routeChangeStart', function () {
                 var path = currentHashPath();
                 log('$routeChangeStart path=', path, '_selected=', _selected);
+
+                /* Cancel any pending buildBar timer so stale retry loops from the
+                   previous page (e.g. DD view's Phase-1 topbar-wait) don't fire
+                   on the newly loaded page and trigger a spurious forceAllIfNeeded. */
+                if (_buildBarTimer !== null) {
+                    clearTimeout(_buildBarTimer);
+                    _buildBarTimer = null;
+                    log('$routeChangeStart: cancelled stale _buildBarTimer');
+                }
+
+                /* Preemptive cloak: if we're about to land on the classic dashboard
+                   via DD's openRoomPlan(), hide the view immediately — before Angular
+                   renders a single card — so the forceAllIfNeeded reload is invisible. */
+                var ddPlan = window.myglobals && Number(window.myglobals.LastPlanSelected);
+                if (ddPlan && !isDetailPath(path)) {
+                    log('$routeChangeStart: DD room plan detected (', ddPlan, ') — preemptive cloak');
+                    document.body.classList.add('ng-rf-reloading');
+                }
+
                 /* Save the active selection before leaving a main list page so we
                    can restore it if the user returns from a detail sub-page. */
                 if (!isDetailPath(path) && _selected.length > 0) {
@@ -644,7 +673,7 @@
                 _topbarRetries = 0;
                 _comboRetries  = 0;
                 scheduleRevealFallback();
-                setTimeout(buildBar, 150);
+                scheduleBuildBar(150);
             });
 
             /* Re-apply active filter after Angular updates device cards */
@@ -661,7 +690,7 @@
 
     function init() {
         scheduleRevealFallback();
-        setTimeout(buildBar, 300);
+        scheduleBuildBar(300);
         attachHooks();
     }
 
