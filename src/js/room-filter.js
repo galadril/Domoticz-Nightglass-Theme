@@ -25,6 +25,21 @@
     var MAX_COMBO          = 8;      /* × 300ms = 2.4s */
     var _safetyTimer       = null;
     var _preserveNextRoute = false;  /* suppress bar removal on forced All reload */
+    var _savedSelected     = null;   /* selection preserved across detail-page navigation */
+    var _savedMainPath     = null;   /* main-page hash path that triggered the save */
+
+    /* ══ Route path helpers ══════════════════════════════════════════ */
+
+    /* Returns the current hash path without leading "#/" (e.g. "Switches"). */
+    function currentHashPath() {
+        return (window.location.hash || '').replace(/^#\/?/, '');
+    }
+
+    /* Detail pages have multiple path segments (e.g. "Devices/42/Edit", "LightLog/42").
+       Main list pages are single-segment (e.g. "Switches", "Temperature"). */
+    function isDetailPath(path) {
+        return path.indexOf('/') !== -1;
+    }
 
     /* ══ Topbar reveal ══════════════════════════════════════════════ */
 
@@ -327,6 +342,7 @@
             injectToggleBtn();
             revealTopBar();
             forceAllIfNeeded();
+            if (_selected.length > 0) setTimeout(applyFilter, 300);
             return;
         }
 
@@ -365,6 +381,9 @@
         /* Force "All" so all devices are in DOM, then pre-warm plan cache */
         forceAllIfNeeded();
         preFetchAll();
+
+        /* If selection was restored after returning from a detail page, re-apply it */
+        if (_selected.length > 0) setTimeout(applyFilter, 300);
     }
 
     /* ══ Angular hooks ══════════════════════════════════════════════ */
@@ -379,6 +398,16 @@
         try {
             var $rs = bodyEl.injector().get('$rootScope');
 
+            $rs.$on('$routeChangeStart', function () {
+                /* Save the active selection before leaving a main list page so we
+                   can restore it if the user returns from a detail sub-page. */
+                var path = currentHashPath();
+                if (!isDetailPath(path) && _selected.length > 0) {
+                    _savedMainPath = path;
+                    _savedSelected = _selected.slice();
+                }
+            });
+
             $rs.$on('$routeChangeSuccess', function () {
                 if (_preserveNextRoute) {
                     /* This route change was triggered by our forceAllIfNeeded —
@@ -386,9 +415,34 @@
                     _preserveNextRoute = false;
                     return;
                 }
-                removeBar();
-                document.body.classList.remove('ng-mobile-dashboard');
-                _selected      = [];   /* reset selection on real navigation */
+
+                var newPath = currentHashPath();
+
+                if (isDetailPath(newPath)) {
+                    /* Navigating into a detail sub-page (edit / timers / log / etc.).
+                       Remove the bar (it has no place there) but keep _selected so
+                       it can be restored when the user comes back. */
+                    removeBar();
+                    document.body.classList.remove('ng-mobile-dashboard');
+
+                } else if (_savedMainPath && newPath === _savedMainPath) {
+                    /* Returning to the same main page after a detail sub-page visit —
+                       restore the saved selection; applyFilter() runs inside buildBar(). */
+                    removeBar();
+                    document.body.classList.remove('ng-mobile-dashboard');
+                    _selected      = _savedSelected ? _savedSelected.slice() : [];
+                    _savedSelected = null;
+                    _savedMainPath = null;
+
+                } else {
+                    /* Real navigation to a different main page — full reset. */
+                    removeBar();
+                    document.body.classList.remove('ng-mobile-dashboard');
+                    _selected      = [];
+                    _savedSelected = null;
+                    _savedMainPath = null;
+                }
+
                 _topbarRetries = 0;
                 _comboRetries  = 0;
                 if (_safetyTimer) clearTimeout(_safetyTimer);
