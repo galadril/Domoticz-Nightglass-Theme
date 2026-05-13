@@ -824,6 +824,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (date && (Date.now() - date) < STALE_MS) {
             card.classList.remove('dz-stale');
         } else {
+            var nameEl = card.querySelector('td#name');
+            window.ngLog('[Cards]', 'stale:', nameEl ? nameEl.textContent.trim() : card.id);
             card.classList.add('dz-stale');
         }
     }
@@ -831,6 +833,7 @@ document.addEventListener('DOMContentLoaded', function () {
     /* ── Main enhancement loop ───────────────────────────────────── */
     function enhanceCards() {
         var cards = document.querySelectorAll('div.item.itemBlock, .itemBlock > div.item');
+        window.ngLog('[Cards]', 'enhanceCards: processing', cards.length, 'cards');
         for (var i = 0; i < cards.length; i++) {
             var card = cards[i];
             if (!card.querySelector('table[id^="itemtable"]')) continue;
@@ -905,6 +908,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     el = el.parentElement;
                 }
                 if (!card) return;
+
+                var nameEl = card.querySelector('td#name');
+                window.ngLog('[Cards]', 'state flash:', nameEl ? nameEl.textContent.trim() : card.id,
+                    '→', newState);
 
                 // Flash ring
                 card.classList.remove('dz-flash-on', 'dz-flash-off');

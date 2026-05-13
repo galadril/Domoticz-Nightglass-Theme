@@ -396,7 +396,9 @@
         liveToastPosition:  'bottom-right',
         toastBlacklist:     '[]',
 
-        deviceIconOverrides: '{}'
+        deviceIconOverrides: '{}',
+
+        debugLogs:          false   /* session-only — never persisted */
     };
 
     var _settings      = null;
@@ -651,10 +653,18 @@
         });
     }
 
+    /* Keys listed here are session-only: they live only in _settings for the
+       duration of the page session and are never written to localStorage or
+       the Domoticz API.  A hard refresh always resets them to DEFAULTS. */
+    var SESSION_ONLY_KEYS = ['debugLogs'];
+
     function saveSetting(key, value) {
         _settings[key] = value;
-        if (_apiAvailable) saveJsonUvar(); // debounced, batches rapid changes
-        saveToLocalStorage();
+        window.ngLog('[Settings]', 'set', key, '=', value);
+        if (SESSION_ONLY_KEYS.indexOf(key) === -1) {
+            if (_apiAvailable) saveJsonUvar(); // debounced, batches rapid changes
+            saveToLocalStorage();
+        }
         applySettings();
     }
 
@@ -1352,6 +1362,11 @@
             dualColorPicker('textColor', 'textColorLight', 'Text') +
             '</div>' +
 
+            '<div class="ng-settings-section ng-settings-section--full">' +
+            '<div class="ng-section-header"><i class="fa-solid fa-bug"></i> Developer</div>' +
+            toggle('debugLogs', 'Debug Logging', 'Print verbose trace logs to the browser console for all theme modules (session only — resets on hard refresh)') +
+            '</div>' +
+
             '</div>' + /* grid end */
 
             '<div class="ng-settings-footer">' +
@@ -1534,6 +1549,7 @@
         if (!subTabs) return;
 
         _panelInjected = true;
+        window.ngLog('[Settings]', 'panel injected into settings page');
 
         // Pre-create the wrap (hidden) so it's ready when tab is clicked
         var wrap = document.createElement('div');
@@ -3382,6 +3398,7 @@
 
     function init() {
         loadSettings().then(function () {
+            window.ngLog('[Settings]', 'loaded:', JSON.stringify(_settings));
             applySettings();
             injectPanel();
             hookOtherTabs();

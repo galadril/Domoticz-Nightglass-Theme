@@ -147,6 +147,8 @@
 
         stack.appendChild(el);
 
+        window.ngLog('[Toast]', 'show', title, '|', body, '| duration:', duration, 'ms');
+
         // Animate in (needs reflow first)
         el.offsetHeight;
         el.classList.add('ng-toast--visible');
@@ -214,7 +216,10 @@
     function onDeviceUpdate(device) {
         if (!window.dzNightglassSettings || !window.dzNightglassSettings.get('liveToasts')) return;
         var filter = (window.dzNightglassSettings && window.dzNightglassSettings.get('liveToastFilter')) || 'meaningful';
-        if (filter === 'meaningful' && !isMeaningful(device)) return;
+        if (filter === 'meaningful' && !isMeaningful(device)) {
+            window.ngLog('[Toast]', 'skip (not meaningful):', device.Name, '|', device.Type);
+            return;
+        }
 
         // Per-device debounce
         var idx = String(device.idx || device.ID || '');
@@ -222,13 +227,22 @@
         // Blacklist check
         try {
             var bl = JSON.parse(window.dzNightglassSettings.get('toastBlacklist') || '[]');
-            if (bl.indexOf(idx) !== -1) return;
+            if (bl.indexOf(idx) !== -1) {
+                window.ngLog('[Toast]', 'skip (blacklisted):', device.Name, 'idx:', idx);
+                return;
+            }
         } catch (e) {}
         var now = Date.now();
-        if (idx && _lastShown[idx] && (now - _lastShown[idx]) < DEBOUNCE_MS) return;
+        if (idx && _lastShown[idx] && (now - _lastShown[idx]) < DEBOUNCE_MS) {
+            window.ngLog('[Toast]', 'skip (debounce', DEBOUNCE_MS, 'ms):', device.Name, 'idx:', idx);
+            return;
+        }
 
         // Only show a toast if the device has a card on the current page
-        if (!isDeviceVisible(idx)) return;
+        if (!isDeviceVisible(idx)) {
+            window.ngLog('[Toast]', 'skip (not visible on page):', device.Name, 'idx:', idx);
+            return;
+        }
 
         if (idx) _lastShown[idx] = now;
 
@@ -252,6 +266,7 @@
         if (!bodyEl || !bodyEl.injector || !bodyEl.injector()) { setTimeout(attachAngularHooks, 400); return; }
         try {
             var $rootScope = bodyEl.injector().get('$rootScope');
+            window.ngLog('[Toast]', 'Angular hooks attached');
             $rootScope.$on('device_update', function (event, device) { onDeviceUpdate(device); });
             $rootScope.$on('notification',  function (event, notif)  {
                 ngShowToast({
@@ -335,6 +350,7 @@
             if (el) { el.style.display = 'none'; el.style.opacity = '0'; }
         };
         window.ShowNotify._ngHooked = true;
+        window.ngLog('[Toast]', 'hooked ShowNotify');
         return true;
     }
 
@@ -361,6 +377,7 @@
             });
         };
         window.generate_noty._ngHooked = true;
+        window.ngLog('[Toast]', 'hooked generate_noty');
         return true;
     }
 
@@ -378,6 +395,7 @@
             });
         };
         window.ShowUpdateNotification._ngHooked = true;
+        window.ngLog('[Toast]', 'hooked ShowUpdateNotification');
         return true;
     }
 

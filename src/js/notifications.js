@@ -167,6 +167,7 @@
     }
 
     function openPanel() {
+        window.ngLog('[Notif]', 'panel open — events:', _events.length, 'unread:', _unread);
         buildPanel();
         /* Mark all as read when opening */
         for (var i = 0; i < _events.length; i++) _events[i].unread = false;
@@ -179,6 +180,7 @@
     }
 
     function closePanel() {
+        window.ngLog('[Notif]', 'panel closed');
         if (_panel) _panel.classList.remove('ng-notif-panel--open');
         _open = false;
         document.removeEventListener('keydown', _escHandler);
@@ -276,9 +278,14 @@
         /* Skip devices not marked as Used in Domoticz.
            The WebSocket broadcasts updates for all devices; we only
            want the ones the user has explicitly enabled (Used=1).   */
-        if (device.Used !== undefined && Number(device.Used) !== 1) return;
+        if (device.Used !== undefined && Number(device.Used) !== 1) {
+            window.ngLog('[Notif]', 'skip (Used=0):', device.Name);
+            return;
+        }
 
         var status = device.Status || device.Data || '';
+        window.ngLog('[Notif]', 'record:', device.Name, '|', device.Type,
+            '|', status, '| unread total:', _unread + 1);
         _events.push({
             icon:   iconFor(device),
             color:  colorFor(status),
@@ -332,6 +339,7 @@
         /* Insert BEFORE the dark/light toggle */
         themeNav.parentNode.insertBefore(li, themeNav);
         _badge = btn.querySelector('.ng-notif-badge');
+        window.ngLog('[Notif]', 'bell button injected into navbar');
     }
 
     /* ── Angular hooks ─────────────────────────────────────────── */
@@ -345,6 +353,7 @@
         }
         try {
             var $rs = bodyEl.injector().get('$rootScope');
+            window.ngLog('[Notif]', 'Angular hooks attached');
             $rs.$on('device_update', function (evt, device) { recordEvent(device); });
             $rs.$on('$routeChangeSuccess', function () {
                 if (_pendingHighlight) {
