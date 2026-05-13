@@ -292,27 +292,28 @@ body.ng-rf-reloading [ng-view] {
 }
 
 /* ── Dynamic Dashboard back button ─────────────────────────────────
-   Injected as the first child of #ng-room-filter when the user
-   arrived via DD's openRoomPlan(). Styled as a compact arrow pill
-   visually separated from the room pills by a right border/margin. */
+   Injected as the first child of #tbFilters (inside #topBar) when the
+   user arrived via DD's openRoomPlan(). Styled to match the topbar's
+   inline icon/button elements. */
 
 .ng-dd-back-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 4px 10px;
-    margin-right: 4px;
-    background: transparent;
+    padding: 2px 8px;
+    margin-right: 6px;
+    background: var(--dz-surface-2);
     border: 1px solid var(--dz-surface-3);
-    border-radius: 16px;
+    border-radius: 12px;
     color: var(--dz-accent-color);
-    font-size: 13px;
+    font-size: 12px;
+    line-height: 1;
     cursor: pointer;
-    flex-shrink: 0;
+    vertical-align: middle;
     transition: background 0.15s, border-color 0.15s;
 }
 .ng-dd-back-btn:hover {
-    background: var(--dz-surface-2);
+    background: var(--dz-surface-3);
     border-color: var(--dz-accent-color);
 }
 
