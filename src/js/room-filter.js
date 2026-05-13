@@ -116,10 +116,13 @@
             var planIdx = (o.value || '').replace(/^(?:number|string):/, '');
             return { label: o.textContent.trim(), index: i, planIdx: planIdx };
         }).filter(function (r) {
-            /* The comboroom also contains Dynamic Dashboard layouts (value="dd:…").
-               Those are navigation shortcuts, not room plans — exclude them from
-               the pill bar so we don't show a spurious "Dashboard" pill. */
-            return r.planIdx.indexOf('dd:') !== 0;
+            /* Exclude AngularJS "unknown option" placeholder (value="? string:0 ?")
+               injected when the model value doesn't match any option yet. */
+            if (r.planIdx.charAt(0) === '?') return false;
+            /* Exclude Dynamic Dashboard layouts (value="dd:…") — navigation
+               shortcuts, not room plans — so they don't appear as pills. */
+            if (r.planIdx.indexOf('dd:') === 0) return false;
+            return true;
         });
     }
 
