@@ -342,3 +342,18 @@ if (document.readyState === 'loading') {
         injectToggle();
     }
 })();
+
+
+/* ── Shared debug logger ─────────────────────────────────────────
+   All Nightglass modules call window.ngLog(prefix, ...args).
+   Output is silenced unless the "Debug Logging" toggle is on in
+   Settings → Developer.  The check is lazy so the logger works
+   even before search.js has finished loading.
+─────────────────────────────────────────────────────────────────── */
+window.ngLog = function (prefix) {
+    if (!(window.dzNightglassSettings &&
+          window.dzNightglassSettings.get('debugLogs'))) return;
+    var args = Array.prototype.slice.call(arguments, 1);
+    args.unshift(prefix);
+    console.log.apply(console, args);
+};

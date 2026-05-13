@@ -67,6 +67,8 @@
                                  .filter(function (v) { return !isNaN(v); });
                 if (vals.length < 4) { tryNextSensor(idx, wrap, si + 1); return; }
                 cache[idx] = vals;
+                window.ngLog('[Spark]', 'idx:', idx, 'sensor:', SENSORS[si],
+                    'field:', field, 'points:', vals.length);
                 wrap.innerHTML = svgSparkline(vals, idx);
                 wrap.style.display = '';
             })
@@ -95,6 +97,8 @@
 
     function addSparklines() {
         var cards = document.querySelectorAll('div.item.itemBlock, .itemBlock > div.item');
+        window.ngLog('[Spark]', 'addSparklines: scanning', cards.length, 'cards');
+        var added = 0;
         for (var c = 0; c < cards.length; c++) {
             var card = cards[c];
             if (card.querySelector('.dz-sparkline-wrap')) continue;
@@ -104,6 +108,7 @@
             if (!bigtext || !/\d/.test(bigtext.textContent || '')) continue;
             var idx = getCardIdx(card);
             if (!idx) continue;
+            added++;
             // Ensure card is a positioning context for the absolute overlay
             card.style.position = 'relative';
             var wrap = document.createElement('div');
@@ -118,6 +123,7 @@
                 tryNextSensor(idx, wrap, 0);
             }
         }
+        window.ngLog('[Spark]', 'addSparklines: added wraps to', added, 'new cards');
     }
 
     // addSparklines is NOT in _dzExtraProcessors (avoids flooding param=graph calls).
@@ -160,7 +166,10 @@
 
     function refreshSingle(idx) {
         var now = Date.now();
-        if (lastRefresh[idx] && (now - lastRefresh[idx]) < REFRESH_COOLDOWN) return;
+        if (lastRefresh[idx] && (now - lastRefresh[idx]) < REFRESH_COOLDOWN) {
+            window.ngLog('[Spark]', 'refreshSingle idx:', idx, '— cooldown, skip');
+            return;
+        }
         lastRefresh[idx] = now;
 
         // Guard: only fetch for cards that already have a sparkline wrap.
@@ -168,6 +177,8 @@
         // the HTTP request is in flight, leaving those references stale/detached.
         var guardCard = findCardByIdx(idx);
         if (!guardCard || !guardCard.querySelector('.dz-sparkline-wrap')) return;
+
+        window.ngLog('[Spark]', 'refreshSingle idx:', idx, '— fetching hour data');
 
         (function fetchHour(si) {
             if (si >= SENSORS.length) return;
@@ -231,6 +242,7 @@
     var _sparkObs = null;
     function startSparklineObserver() {
         if (_sparkObs || !window.MutationObserver) return;
+        window.ngLog('[Spark]', 'MutationObserver started for bigtext changes');
         _sparkObs = new MutationObserver(function (mutations) {
             for (var i = 0; i < mutations.length; i++) {
                 var target = mutations[i].target;

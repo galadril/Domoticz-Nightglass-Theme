@@ -24,8 +24,7 @@
     function log() {
         if (!isDebugEnabled()) return;
         var a = Array.prototype.slice.call(arguments);
-        a.unshift('[RF]');
-        console.log.apply(console, a);
+        window.ngLog.apply(window, ['[RF]'].concat(a));
     }
 
     /* ── Module state ───────────────────────────────────────────── */
