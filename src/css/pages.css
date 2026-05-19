@@ -1998,6 +1998,12 @@ mark.dz-cmd-mark {
     margin-right: 2px;
 }
 
+/* On touch devices hide the keyboard-only footer entirely.
+   The Esc close button in the palette header remains touchable. */
+@media (pointer: coarse) {
+    #dz-cmd-footer { display: none; }
+}
+
 /* ── Light mode overrides ────────────────────────────────────── */
 
 body.dz-light #dz-cmd-overlay {

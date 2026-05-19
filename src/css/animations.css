@@ -1127,6 +1127,12 @@ div.item.itemBlock:hover .dz-sparkline-wrap,
         color: var(--dz-text-soft);
     }
 
+/* On touch devices the keyboard hints are meaningless — hide the hint
+   bar entirely. The Esc close button lives in the header and stays. */
+@media (pointer: coarse) {
+    .dz-search-hint { display: none; }
+}
+
 
 /* ══════════════════════════════════════════════════════════════════
    UPDATE PAGE
