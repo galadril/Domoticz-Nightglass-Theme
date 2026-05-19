@@ -48,9 +48,15 @@
 
     /* ══ Route path helpers ══════════════════════════════════════════ */
 
-    /* Returns the current hash path without leading "#/" (e.g. "Switches"). */
+    /* Returns the current hash path without leading "#/" and without query
+       string (e.g. "#/Dashboard?room=5" → "Dashboard").
+       Stripping the query string is critical: Domoticz encodes the selected
+       comboroom as ?room=N in the URL.  Without stripping, "Dashboard?room=5"
+       and "Dashboard?room=0" look like different pages to our path comparisons,
+       causing $routeChangeSuccess to treat forceAllIfNeeded()'s own reload as a
+       full page change and incorrectly resetting _selected. */
     function currentHashPath() {
-        return (window.location.hash || '').replace(/^#\/?/, '');
+        return (window.location.hash || '').replace(/^#\/?/, '').replace(/\?.*$/, '');
     }
 
     /* Detail pages have multiple path segments (e.g. "Devices/42/Edit", "LightLog/42").
@@ -306,12 +312,13 @@
     /* Ensures all devices are loaded in the DOM for client-side filtering.
        Sets a flag so the resulting route change doesn't destroy the pill bar.
        Also hides the device grid while Angular reloads to prevent a flash of
-       all-devices before applyFilter() runs. */
+       all-devices before applyFilter() runs.
+       Returns true when a reload was triggered, false when already at "All". */
     function forceAllIfNeeded() {
         var sel = document.getElementById('comboroom');
         if (!sel || sel.selectedIndex === 0) {
             log('forceAllIfNeeded: already All, no-op');
-            return;
+            return false;
         }
         log('forceAllIfNeeded: comboroom at index', sel.selectedIndex, '— forcing All');
         _preserveNextRoute = true;
@@ -319,6 +326,19 @@
         document.body.classList.add('ng-rf-reloading');
         sel.selectedIndex  = 0;
         $(sel).trigger('change');   /* triggers Angular route change */
+        return true;
+    }
+
+    /* Schedule applyWhenCached at multiple offsets so late-rendering Angular
+       cards are caught even when the first pass runs slightly too early.
+       Only call this when no Angular reload is pending — if forceAllIfNeeded()
+       returned true the $viewContentLoaded → buildBar() cycle handles it. */
+    function scheduleFilterPasses() {
+        [100, 350, 700].forEach(function (delay) {
+            setTimeout(function () {
+                if (_selected.length > 0) applyWhenCached();
+            }, delay);
+        });
     }
 
     /* Remove the reloading cloak after applyFilter() has run */
@@ -520,9 +540,13 @@
             injectDDBackButton();
             revealTopBar();
             /* Only reset the native combobox when a pill filter is active;
-               otherwise the user's own room selection must be respected. */
-            if (_selected.length > 0) forceAllIfNeeded();
-            if (_selected.length > 0) setTimeout(applyWhenCached, 100);
+               otherwise the user's own room selection must be respected.
+               Only schedule filter passes when no reload was triggered —
+               if forceAllIfNeeded() returns true the reload's $viewContentLoaded
+               path will call buildBar() again and schedule passes there. */
+            if (!(_selected.length > 0 && forceAllIfNeeded()) && _selected.length > 0) {
+                scheduleFilterPasses();
+            }
             return;
         }
 
@@ -562,12 +586,13 @@
 
         /* Only reset the native combobox to "All" when a pill filter is active —
            all device cards must be in the DOM for client-side filtering to work.
-           When no pill is active the user's native combobox selection is respected. */
-        if (_selected.length > 0) forceAllIfNeeded();
+           When no pill is active the user's native combobox selection is respected.
+           Only schedule filter passes when no reload was triggered — the reload's
+           $viewContentLoaded path will call buildBar() again and handle it. */
+        var reloading = _selected.length > 0 && forceAllIfNeeded();
         preFetchAll();
 
-        /* If selection was restored after returning from a detail page, re-apply it */
-        if (_selected.length > 0) setTimeout(applyWhenCached, 100);
+        if (!reloading && _selected.length > 0) scheduleFilterPasses();
     }
 
     /* ══ Angular hooks ══════════════════════════════════════════════ */
