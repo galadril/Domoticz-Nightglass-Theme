@@ -1265,7 +1265,7 @@
                 { value: 'dark', label: '🌙 Always dark' },
                 { value: 'light', label: '☀️ Always light' }
             ], 'Manual shows a navbar button to switch; Auto follows your OS preference') +
-            slider('fontSize', 'Base Font Size', 80, 130, 5, '%', 'Scale the entire interface') +
+            slider('fontSize', 'Base Font Size', 80, 125, 5, '%', 'Scale the entire interface') +
             slider('iconSize', 'Device Icon Size', 60, 150, 5, '%', 'Scale device icons on cards') +
             toggle('showLastUpdate', 'Show Last Update', 'Show the formatted timestamp footer on device cards') +
             toggle('uppercaseNames', 'Uppercase Device Names', 'Force device names to UPPERCASE on cards') +

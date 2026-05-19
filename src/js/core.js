@@ -171,13 +171,16 @@ function applyHighchartsTheme(isDark) {
             /* chart.container = .highcharts-container; its parent = .chartcontainer */
             var chartWrap  = chart.container && chart.container.parentNode;
             if (!chartWrap) return;
-            var extId = 'ng-ext-title-' + (chart.index || 0);
-            var extEl = document.getElementById(extId);
+            /* Find existing title element as the immediate previous sibling —
+               avoids stale ID lookups when Highcharts recreates the chart
+               (new chart.index) on dashboard refresh, which previously caused
+               a fresh element to be inserted each cycle, stacking up titles. */
+            var prev = chartWrap.previousElementSibling;
+            var extEl = (prev && prev.classList.contains('ng-chart-ext-title')) ? prev : null;
             var combinedText = [titleText, subtitle].filter(Boolean).join(' — ');
             if (combinedText) {
                 if (!extEl) {
                     extEl = document.createElement('div');
-                    extEl.id = extId;
                     extEl.className = 'ng-chart-ext-title';
                     chartWrap.parentNode.insertBefore(extEl, chartWrap);
                 }
