@@ -93,10 +93,15 @@
         var box = document.createElement('div');
         box.id  = 'dz-search-box';
 
-        // Add header with title
+        // Add header with title and touchable close button (mirrors command palette pattern)
         var header = document.createElement('div');
         header.className = 'dz-search-header';
-        header.innerHTML = '<i class="fa-solid fa-filter"></i><span class="dz-search-title">Filter Current Page</span><kbd class="dz-search-kbd">/</kbd>';
+        header.innerHTML = '<i class="fa-solid fa-filter"></i><span class="dz-search-title">Filter Current Page</span>';
+        var escBtn = document.createElement('kbd');
+        escBtn.className = 'dz-cmd-esc';
+        escBtn.textContent = 'Esc';
+        escBtn.addEventListener('click', close);
+        header.appendChild(escBtn);
         box.appendChild(header);
 
         inputEl = document.createElement('input');
@@ -115,8 +120,9 @@
             '<span style="margin-left: auto; display: flex; gap: 14px;">' +
             '<span><kbd>↑↓</kbd> navigate</span>' +
             '<span><kbd>↵</kbd> scroll to</span>' +
-            '<span><kbd>Esc</kbd> close</span>' +
+            '<span class="dz-search-hint-esc" style="cursor:pointer"><kbd>Esc</kbd> close</span>' +
             '</span>';
+        hint.querySelector('.dz-search-hint-esc').addEventListener('click', close);
 
         box.appendChild(inputEl);
         box.appendChild(listEl);
@@ -1275,7 +1281,7 @@
                 { value: 'dark', label: '🌙 Always dark' },
                 { value: 'light', label: '☀️ Always light' }
             ], 'Manual shows a navbar button to switch; Auto follows your OS preference') +
-            slider('fontSize', 'Base Font Size', 80, 130, 5, '%', 'Scale the entire interface') +
+            slider('fontSize', 'Base Font Size', 80, 125, 5, '%', 'Scale the entire interface') +
             slider('iconSize', 'Device Icon Size', 60, 150, 5, '%', 'Scale device icons on cards') +
             toggle('showLastUpdate', 'Show Last Update', 'Show the formatted timestamp footer on device cards') +
             toggle('uppercaseNames', 'Uppercase Device Names', 'Force device names to UPPERCASE on cards') +
