@@ -90,6 +90,10 @@
     margin-bottom: 20px;
 }
 
+.ng-settings-section--full {
+    column-span: all;
+}
+
 /* ── Section-level toggle (enable/disable) ───────────────────── */
 
 .ng-section-toggle {

@@ -37,15 +37,24 @@
         if (!idx) return;
 
         var card = findCard(idx);
-        if (!card) return;
+        if (!card) {
+            window.ngLog('[RT]', 'device_update idx:', idx, '— card not in DOM, skipping');
+            return;
+        }
 
         // Instantly update the card-footer timestamp (.dz-time is injected by
         // us, so Angular's data-binding will not overwrite it).
         var luSpan = card.querySelector('.dz-card-footer .dz-time');
         if (luSpan) {
             var formatted = fmtLastUpdate(device.LastUpdate);
-            if (luSpan.textContent !== formatted) luSpan.textContent = formatted;
+            if (luSpan.textContent !== formatted) {
+                window.ngLog('[RT]', 'timestamp update idx:', idx, '?', formatted);
+                luSpan.textContent = formatted;
+            }
         }
+
+        window.ngLog('[RT]', 'device_update idx:', idx, 'name:', device.Name,
+            'status:', device.Status || device.Data || '(no status)');
 
         // Schedule an icon-replacement burst so on/off state changes rendered
         // by Angular in the same digest cycle are caught immediately.
@@ -58,6 +67,7 @@
         if (!bodyEl || !bodyEl.injector || !bodyEl.injector()) { setTimeout(attachHooks, 400); return; }
         try {
             var $rootScope = bodyEl.injector().get('$rootScope');
+            window.ngLog('[RT]', 'Angular hooks attached');
             $rootScope.$on('device_update', function (evt, device) { onDeviceUpdate(device); });
         } catch (e) {
             setTimeout(attachHooks, 600);
