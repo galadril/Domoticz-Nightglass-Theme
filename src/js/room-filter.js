@@ -238,9 +238,10 @@
 
     function onPillClick(planIdx) {
         if (planIdx === '0') {
-            /* "All" → clear all filters */
+            /* "All" → clear filter; if comboroom was at a specific plan reload to
+               plan 0 so Domoticz restores the all-favourites device set. */
             _selected = [];
-            applyFilter();
+            if (!forceAllIfNeeded()) applyFilter();
             return;
         }
 
@@ -252,25 +253,22 @@
         }
 
         if (_selected.length === 0) {
-            applyFilter();
+            /* Deselected the last room — same as "All" */
+            if (!forceAllIfNeeded()) applyFilter();
             return;
         }
 
-        /* If the native combobox is not at "All", only the currently-selected
-           room's cards are in the DOM. Force "All" first so Angular loads every
-           device card; applyFilter() will be called by buildBar() after the
-           resulting $viewContentLoaded. */
-        var sel = document.getElementById('comboroom');
-        if (sel && sel.selectedIndex !== 0) {
-            /* Pre-warm cache in background while Angular reloads */
-            _selected.forEach(function (p) {
-                if (!_planCache.hasOwnProperty(p)) fetchPlan(p, function () {});
-            });
-            forceAllIfNeeded();
-            return;
-        }
+        /* Pre-warm cache for any newly-selected plans */
+        _selected.forEach(function (p) {
+            if (!_planCache.hasOwnProperty(p)) fetchPlan(p, function () {});
+        });
 
-        /* All devices are already in the DOM — fetch uncached plans then filter */
+        /* ensureDevicesLoaded() sets comboroom to the specific plan (single room,
+           used=all → all devices) or plan 0 (multi-room, used=true → favourites).
+           If a reload was triggered, $viewContentLoaded → buildBar() finishes the job. */
+        if (ensureDevicesLoaded()) return;
+
+        /* No reload needed — all required cards are already in the DOM; filter now. */
         var uncached = _selected.filter(function (p) {
             return !_planCache.hasOwnProperty(p);
         });
@@ -331,7 +329,7 @@
 
     /* Schedule applyWhenCached at multiple offsets so late-rendering Angular
        cards are caught even when the first pass runs slightly too early.
-       Only call this when no Angular reload is pending — if forceAllIfNeeded()
+       Only call this when no Angular reload is pending — if ensureDevicesLoaded()
        returned true the $viewContentLoaded → buildBar() cycle handles it. */
     function scheduleFilterPasses() {
         [100, 350, 700].forEach(function (delay) {
@@ -339,6 +337,46 @@
                 if (_selected.length > 0) applyWhenCached();
             }, delay);
         });
+    }
+
+    /* Helper: return the comboroom <option> index whose planIdx matches. -1 if none. */
+    function comboroomIndexForPlan(planIdx) {
+        var sel = document.getElementById('comboroom');
+        if (!sel) return -1;
+        for (var i = 0; i < sel.options.length; i++) {
+            var pi = (sel.options[i].value || '').replace(/^(?:number|string):/, '');
+            if (pi === planIdx) return i;
+        }
+        return -1;
+    }
+
+    /* Set comboroom so Domoticz loads the right device set, then reload.
+       Single room: set to that plan's option so Domoticz uses used=all →
+         every device in the room is loaded, not just starred ones.
+       Zero or multi-room: delegate to forceAllIfNeeded() (plan 0 = favourites;
+         accepted limitation for multi-room).
+       Returns true when a reload was triggered, false when already correct. */
+    function ensureDevicesLoaded() {
+        if (_selected.length !== 1) {
+            return forceAllIfNeeded();
+        }
+        var sel = document.getElementById('comboroom');
+        if (!sel) return false;
+        var targetIndex = comboroomIndexForPlan(_selected[0]);
+        if (targetIndex < 0) {
+            /* Plan not found in comboroom — fall back to All */
+            return forceAllIfNeeded();
+        }
+        if (sel.selectedIndex === targetIndex) {
+            log('ensureDevicesLoaded: already at plan', _selected[0], '— no reload');
+            return false;
+        }
+        log('ensureDevicesLoaded: setting comboroom to plan', _selected[0]);
+        _preserveNextRoute = true;
+        document.body.classList.add('ng-rf-reloading');
+        sel.selectedIndex = targetIndex;
+        $(sel).trigger('change');
+        return true;
     }
 
     /* Remove the reloading cloak after applyFilter() has run */
@@ -420,9 +458,11 @@
         btn.addEventListener('click', function () {
             log('DD back button clicked — reloading to DD');
             if (window.myglobals) { window.myglobals.LastPlanSelected = 0; }
-            _cameFromDD = false;
-            _selected   = [];
-            removeBar();
+            _cameFromDD    = false;
+            _selected      = [];
+            _savedMainPath = null;   /* clear so next DD navigation hits full-reset */
+            _savedSelected = null;   /* branch, not the restore branch, ensuring    */
+            removeBar();             /* _cameFromDD is properly re-set              */
             /* Reload the route — since _forceClassicDashboard is false, DD renders.
                Check $$phase to avoid $apply-already-in-progress errors. */
             try {
@@ -490,6 +530,15 @@
         log('buildBar: _selected=', _selected, '_cameFromDD=', _cameFromDD,
             '_preserveNextRoute=', _preserveNextRoute);
 
+        /* Clear LastPlanSelected now that the dashboard controller has already
+           read it (controller runs on $viewContentLoaded; buildBar fires after).
+           Keeping it alive through $routeChangeSuccess lets the controller choose
+           used=all (planIdx > 0) instead of used=true (plan 0 = favourites only). */
+        if (window.myglobals && window.myglobals.LastPlanSelected) {
+            log('buildBar: clearing LastPlanSelected (was', window.myglobals.LastPlanSelected, ')');
+            window.myglobals.LastPlanSelected = 0;
+        }
+
         /* Detect mobile dashboard + attach mobile search (independent of comboroom) */
         setupMobilePage();
 
@@ -539,12 +588,11 @@
             injectToggleBtn();
             injectDDBackButton();
             revealTopBar();
-            /* Only reset the native combobox when a pill filter is active;
-               otherwise the user's own room selection must be respected.
-               Only schedule filter passes when no reload was triggered —
-               if forceAllIfNeeded() returns true the reload's $viewContentLoaded
-               path will call buildBar() again and schedule passes there. */
-            if (!(_selected.length > 0 && forceAllIfNeeded()) && _selected.length > 0) {
+            /* Set comboroom to the right plan so Domoticz loads the correct
+               device set (single room → specific plan → used=all → all devices;
+               multi-room → plan 0 → used=true → favourites).
+               Only schedule filter passes when no reload was triggered. */
+            if (!(_selected.length > 0 && ensureDevicesLoaded()) && _selected.length > 0) {
                 scheduleFilterPasses();
             }
             return;
@@ -584,12 +632,11 @@
         injectDDBackButton();
         revealTopBar();
 
-        /* Only reset the native combobox to "All" when a pill filter is active —
-           all device cards must be in the DOM for client-side filtering to work.
-           When no pill is active the user's native combobox selection is respected.
-           Only schedule filter passes when no reload was triggered — the reload's
-           $viewContentLoaded path will call buildBar() again and handle it. */
-        var reloading = _selected.length > 0 && forceAllIfNeeded();
+        /* Set comboroom to the right plan so Domoticz loads the correct device set.
+           Single room → specific plan option → used=all → ALL devices in the room.
+           Multi-room  → plan 0 → used=true → favourites only (accepted limitation).
+           Only schedule filter passes when no reload was triggered. */
+        var reloading = _selected.length > 0 && ensureDevicesLoaded();
         preFetchAll();
 
         if (!reloading && _selected.length > 0) scheduleFilterPasses();
@@ -681,17 +728,16 @@
 
                     /* Detect DD→classic navigation via openRoomPlan():
                        $routeChangeSuccess fires BEFORE the classic dashboard
-                       controller runs, so we can capture and clear
-                       LastPlanSelected here. The classic dashboard then loads
-                       with All devices (no room pre-selection), which means
-                       forceAllIfNeeded() is unnecessary — one render only.
-                       The cloak hides everything until applyFilter() runs. */
+                       controller runs.  We intentionally do NOT clear
+                       LastPlanSelected here — the dashboard controller reads it
+                       to decide whether to use used=all (planIdx > 0, loads every
+                       device in the plan) or used=true (plan 0, favourites only).
+                       buildBar() clears it once the view has loaded. */
                     var ddPlan = window.myglobals &&
                                  Number(window.myglobals.LastPlanSelected);
                     if (ddPlan) {
                         log('$routeChangeSuccess: DD room plan detected, planIdx=', ddPlan,
-                            '— cloaking and setting _selected');
-                        window.myglobals.LastPlanSelected = 0;
+                            '— cloaking and setting _selected (LastPlanSelected kept for controller)');
                         _selected   = [String(ddPlan)];
                         _cameFromDD = true;
                         document.body.classList.add('ng-rf-reloading');
