@@ -1223,3 +1223,101 @@
     font-size: 11px;
     opacity: 0.9;
 }
+
+/* ── Ace search / replace widget ──────────────────────────────── */
+.ace_search {
+    background: var(--dz-surface) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-top: none !important;
+    border-radius: 0 0 8px 8px !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45) !important;
+    color: var(--dz-text) !important;
+    padding: 6px 8px !important;
+}
+
+/* Search and replace input fields */
+.ace_search_field {
+    background: var(--dz-surface-2) !important;
+    color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 5px !important;
+    padding: 3px 7px !important;
+    font-size: 12px !important;
+    outline: none !important;
+    transition: border-color 0.15s;
+}
+
+.ace_search_field:focus {
+    border-color: var(--dz-accent) !important;
+    box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.15) !important;
+}
+
+.ace_search_field::placeholder {
+    color: var(--dz-text-faint) !important;
+    opacity: 1 !important;
+}
+
+/* Next / Prev / All / Replace / Replace All buttons */
+.ace_searchbtn,
+.ace_replacebtn {
+    background: var(--dz-surface-2) !important;
+    color: var(--dz-text-soft) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 5px !important;
+    padding: 3px 8px !important;
+    font-size: 11px !important;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.ace_searchbtn:hover,
+.ace_replacebtn:hover {
+    background: rgba(var(--dz-accent-rgb), 0.15) !important;
+    border-color: var(--dz-accent) !important;
+    color: var(--dz-accent) !important;
+}
+
+/* The next (▸) and prev (◂) arrow buttons */
+.ace_searchbtn.next::after,
+.ace_searchbtn.prev::after {
+    border-color: var(--dz-text-soft) !important;
+}
+
+/* Close (×) button */
+.ace_searchbtn_close {
+    background: none !important;
+    border: none !important;
+    color: var(--dz-text-muted) !important;
+    font-size: 14px !important;
+    opacity: 0.7;
+    transition: color 0.12s, opacity 0.12s;
+}
+
+.ace_searchbtn_close:hover {
+    color: var(--dz-danger) !important;
+    opacity: 1 !important;
+    background: rgba(var(--dz-danger-rgb), 0.12) !important;
+}
+
+/* Option toggle buttons (.*  Aa  \b) */
+.ace_button {
+    background: var(--dz-surface-2) !important;
+    color: var(--dz-text-muted) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 4px !important;
+    padding: 2px 6px !important;
+    font-size: 11px !important;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    cursor: pointer;
+}
+
+.ace_button:hover {
+    background: rgba(var(--dz-accent-rgb), 0.1) !important;
+    color: var(--dz-text) !important;
+}
+
+/* Active / pressed state */
+.ace_button.checked {
+    background: rgba(var(--dz-accent-rgb), 0.18) !important;
+    border-color: var(--dz-accent) !important;
+    color: var(--dz-accent) !important;
+}
