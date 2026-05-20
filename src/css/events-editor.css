@@ -1297,15 +1297,42 @@
     background-color: rgba(var(--dz-danger-rgb), 0.15) !important;
 }
 
-/* Next / Prev arrow icons — Ace draws them as a rotated border box via ::after */
-.ace_searchbtn.next::after,
-.ace_searchbtn.prev::after {
-    border-color: var(--dz-text-soft) !important;
+/* Next / Prev arrow icons — replace Ace's CSS-border triangles with FA icons */
+.ace_searchbtn.next,
+.ace_searchbtn.prev {
+    font-size: 0 !important;        /* hide any leftover text */
+    width: 26px !important;
+    padding: 3px 0 !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
 }
 
-.ace_searchbtn.next:hover::after,
-.ace_searchbtn.prev:hover::after {
-    border-color: var(--dz-accent) !important;
+/* Kill Ace's rotated-border triangle */
+.ace_searchbtn.next::after,
+.ace_searchbtn.prev::after {
+    display: none !important;
+    content: none !important;
+    border: none !important;
+}
+
+/* Inject FA chevrons via ::before */
+.ace_searchbtn.next::before,
+.ace_searchbtn.prev::before {
+    font-family: "Font Awesome 6 Free" !important;
+    font-weight: 900 !important;
+    font-size: 10px !important;
+    color: var(--dz-text-soft);
+    display: inline-block;
+    transition: color 0.12s;
+}
+
+.ace_searchbtn.next::before { content: "\f078"; }  /* fa-chevron-down */
+.ace_searchbtn.prev::before { content: "\f077"; }  /* fa-chevron-up   */
+
+.ace_searchbtn.next:hover::before,
+.ace_searchbtn.prev:hover::before {
+    color: var(--dz-accent);
 }
 
 /* Option toggle buttons (.*  Aa  \b) */
