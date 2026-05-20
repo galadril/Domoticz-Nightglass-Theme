@@ -1223,3 +1223,138 @@
     font-size: 11px;
     opacity: 0.9;
 }
+
+/* ── Ace search / replace widget ──────────────────────────────── */
+.ace_search {
+    background: var(--dz-surface) !important;
+    border: 1px solid var(--dz-border-b) !important;
+    border-top: none !important;
+    border-radius: 0 0 8px 8px !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45) !important;
+    color: var(--dz-text) !important;
+    padding: 6px 8px !important;
+}
+
+/* Search and replace input fields */
+.ace_search_field {
+    background: var(--dz-surface-2) !important;
+    color: var(--dz-text) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 5px !important;
+    padding: 3px 7px !important;
+    font-size: 12px !important;
+    outline: none !important;
+    transition: border-color 0.15s;
+}
+
+.ace_search_field:focus {
+    border-color: var(--dz-accent) !important;
+    box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.15) !important;
+}
+
+.ace_search_field::placeholder {
+    color: var(--dz-text-faint) !important;
+    opacity: 1 !important;
+}
+
+/* Next / Prev / All / Replace / Replace All buttons */
+.ace_searchbtn,
+.ace_replacebtn {
+    background: var(--dz-surface-2) !important;
+    color: var(--dz-text-soft) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 5px !important;
+    padding: 3px 8px !important;
+    font-size: 11px !important;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.ace_searchbtn:hover,
+.ace_replacebtn:hover {
+    background: rgba(var(--dz-accent-rgb), 0.15) !important;
+    border-color: var(--dz-accent) !important;
+    color: var(--dz-accent) !important;
+}
+
+/* The next (▸) and prev (◂) arrow buttons */
+.ace_searchbtn.next::after,
+.ace_searchbtn.prev::after {
+    border-color: var(--dz-text-soft) !important;
+}
+
+/* Close (×) button — Ace uses a base64 background-image for the × icon;
+   override only background-color so the image stays visible */
+.ace_searchbtn_close {
+    background-color: transparent !important;
+    border: none !important;
+    opacity: 0.7;
+    border-radius: 4px !important;
+    transition: opacity 0.12s, background-color 0.12s;
+}
+
+.ace_searchbtn_close:hover {
+    opacity: 1 !important;
+    background-color: rgba(var(--dz-danger-rgb), 0.15) !important;
+}
+
+/* Next / Prev arrow icons — replace Ace's CSS-border triangles with FA icons */
+.ace_searchbtn.next,
+.ace_searchbtn.prev {
+    font-size: 0 !important;        /* hide any leftover text */
+    width: 26px !important;
+    padding: 3px 0 !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Kill Ace's rotated-border triangle */
+.ace_searchbtn.next::after,
+.ace_searchbtn.prev::after {
+    display: none !important;
+    content: none !important;
+    border: none !important;
+}
+
+/* Inject FA chevrons via ::before */
+.ace_searchbtn.next::before,
+.ace_searchbtn.prev::before {
+    font-family: "Font Awesome 7 Free" !important;
+    font-weight: 900 !important;
+    font-size: 10px !important;
+    color: var(--dz-text-soft);
+    display: inline-block;
+    transition: color 0.12s;
+}
+
+.ace_searchbtn.next::before { content: "\f078"; }  /* fa-chevron-down */
+.ace_searchbtn.prev::before { content: "\f077"; }  /* fa-chevron-up   */
+
+.ace_searchbtn.next:hover::before,
+.ace_searchbtn.prev:hover::before {
+    color: var(--dz-accent);
+}
+
+/* Option toggle buttons (.*  Aa  \b) */
+.ace_button {
+    background: var(--dz-surface-2) !important;
+    color: var(--dz-text-muted) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 4px !important;
+    padding: 2px 6px !important;
+    font-size: 11px !important;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    cursor: pointer;
+}
+
+.ace_button:hover {
+    background: rgba(var(--dz-accent-rgb), 0.1) !important;
+    color: var(--dz-text) !important;
+}
+
+/* Active / pressed state */
+.ace_button.checked {
+    background: rgba(var(--dz-accent-rgb), 0.18) !important;
+    border-color: var(--dz-accent) !important;
+    color: var(--dz-accent) !important;
+}
