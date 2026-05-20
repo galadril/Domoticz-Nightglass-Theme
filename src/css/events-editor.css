@@ -1319,7 +1319,7 @@
 /* Inject FA chevrons via ::before */
 .ace_searchbtn.next::before,
 .ace_searchbtn.prev::before {
-    font-family: "Font Awesome 6 Free" !important;
+    font-family: "Font Awesome 7 Free" !important;
     font-weight: 900 !important;
     font-size: 10px !important;
     color: var(--dz-text-soft);
