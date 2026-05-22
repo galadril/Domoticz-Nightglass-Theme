@@ -56,6 +56,7 @@
     var _$route         = null;
     var _stripWasOpen   = false;
     var _svcPatched     = false;
+    var _viewTimers     = [];     /* late-render rebuild timers; cleared on route change */
 
     var _planCacheReady     = false;
     var _planCacheCallbacks = [];
@@ -252,6 +253,71 @@
         return cards;
     }
 
+    /* Return the devices relevant to the current page.
+       First tries DOM cards (most accurate, works when Angular has finished rendering).
+       Falls back to route-based filtering of _deviceMap when the DOM is not ready yet
+       (e.g. immediately after $viewContentLoaded before ng-repeat has painted cards).
+       This ensures filter sections are computed correctly even on first navigation. */
+    function getPageDevices() {
+        /* DOM-based: look up each rendered card in _deviceMap */
+        var cards   = getCards();
+        var domDevs = [];
+        cards.forEach(function (card) {
+            var idx = cardIdx(card);
+            if (idx && _deviceMap[idx]) domDevs.push(_deviceMap[idx]);
+        });
+        if (domDevs.length > 0) return domDevs;
+
+        /* Fallback: filter all known devices by current route */
+        var allDevs = [];
+        Object.keys(_deviceMap).forEach(function (k) { allDevs.push(_deviceMap[k]); });
+        if (!allDevs.length) return [];
+
+        var path = currentHashPath().toLowerCase();
+
+        if (path === 'switches' || path === 'lights') {
+            return allDevs.filter(function (d) {
+                if (d.SwitchType) return true;
+                var t = (d.Type || '').toLowerCase();
+                return t.indexOf('light') === 0 || t.indexOf('blind') === 0 ||
+                       t.indexOf('color switch') === 0 || t.indexOf('curtain') === 0 ||
+                       t.indexOf('security') === 0 || t.indexOf('fan') === 0 ||
+                       t.indexOf('rfy') === 0 || t.indexOf('chime') === 0;
+            });
+        }
+        if (path === 'temperature') {
+            return allDevs.filter(function (d) {
+                return typeof d.Temp !== 'undefined' || typeof d.Humidity !== 'undefined';
+            });
+        }
+        if (path === 'weather') {
+            return allDevs.filter(function (d) {
+                return typeof d.Rain !== 'undefined' || typeof d.Direction !== 'undefined' ||
+                       typeof d.Barometer !== 'undefined' || typeof d.UVI !== 'undefined' ||
+                       typeof d.Visibility !== 'undefined' || typeof d.Radiation !== 'undefined';
+            });
+        }
+        if (path === 'utility') {
+            return allDevs.filter(function (d) {
+                return typeof d.Counter !== 'undefined' ||
+                       d.Type === 'Energy' || d.SubType === 'kWh' ||
+                       d.Type === 'Air Quality' || d.Type === 'Lux' ||
+                       d.Type === 'Usage' || d.Type === 'Power' ||
+                       d.Type === 'Weight' || d.SubType === 'Percentage' ||
+                       d.SubType === 'Voltage' || d.SubType === 'Current' ||
+                       d.SubType === 'Text' || d.SubType === 'Alert';
+            });
+        }
+        if (path === 'scenes') {
+            return allDevs.filter(function (d) {
+                return (d.Type || '').indexOf('Scene') === 0 ||
+                       (d.Type || '').indexOf('Group') === 0;
+            });
+        }
+        /* Dashboard or unknown route — all devices */
+        return allDevs;
+    }
+
     /* ══ Device type label ══════════════════════════════════════════
        Returns a user-friendly label for use in the Type filter.
        Switch devices use SwitchType; sensor devices use Type/SubType. */
@@ -354,16 +420,13 @@
             });
         }
 
-        /* For type / hardware / favourites sections, look at devices
-           currently in the DOM and cross-reference with _deviceMap */
-        var cards   = getCards();
-        var devices = [];
-        cards.forEach(function (card) {
-            var idx = cardIdx(card);
-            if (idx && _deviceMap[idx]) devices.push(_deviceMap[idx]);
-        });
+        /* For type / hardware / favourites sections, use devices on this page.
+           getPageDevices() prefers the live DOM but falls back to route-based
+           _deviceMap filtering so sections are correct even before Angular
+           has finished rendering cards. */
+        var devices = getPageDevices();
 
-        if (!devices.length) return;   /* no device data yet — rooms only */
+        if (!devices.length) return;   /* _deviceMap not ready yet — rooms only */
 
         /* Type section — only shown when 2+ distinct types exist on this page */
         var typeValues = uniqueSortedValues(devices, getDeviceTypeLabel);
@@ -511,6 +574,15 @@
                _activeFilters.favorites;
     }
 
+    function clearAllFilters() {
+        _activeFilters.rooms     = [];
+        _activeFilters.types     = [];
+        _activeFilters.hardware  = [];
+        _activeFilters.favorites = false;
+        syncPills();
+        applyFilter();
+    }
+
     /* Unified pill click handler.
        dim   = 'rooms' | 'types' | 'hardware' | 'favorites'
        value = '' → clear this dimension ("All" pill)
@@ -574,6 +646,12 @@
         }
         if (btn) {
             btn.classList.toggle('ng-rf-toggle-btn--filtered', total > 0);
+        }
+
+        /* Show/hide "Clear all filters" button */
+        var clearBtn = document.getElementById('ng-rf-clear-all');
+        if (clearBtn) {
+            clearBtn.style.display = isAnyFilterActive() ? '' : 'none';
         }
     }
 
@@ -707,6 +785,14 @@
         titleEl.setAttribute('aria-hidden', 'true');
         titleEl.textContent = 'Filters';
         bar.appendChild(titleEl);
+
+        var clearBtn = document.createElement('button');
+        clearBtn.id        = 'ng-rf-clear-all';
+        clearBtn.className = 'ng-rf-clear-all';
+        clearBtn.textContent = '× Clear all filters';
+        clearBtn.style.display = 'none';   /* shown by syncPills when any filter is active */
+        clearBtn.addEventListener('click', clearAllFilters);
+        bar.appendChild(clearBtn);
 
         buildFilterPanel(bar);
         return bar;
@@ -955,6 +1041,8 @@
                     clearTimeout(_buildBarTimer);
                     _buildBarTimer = null;
                 }
+                _viewTimers.forEach(clearTimeout);
+                _viewTimers = [];
 
                 /* Preemptive cloak for DD openRoomPlan() navigation */
                 var ddPlan = window.myglobals && Number(window.myglobals.LastPlanSelected);
@@ -1002,6 +1090,14 @@
                 scheduleRevealFallback();
                 scheduleBuildBar(150);
                 if (!_svcPatched) patchAngularServices();
+
+                /* Schedule late-render rebuilds.  Angular's ng-repeat may need
+                   several digest cycles before all device cards are in the DOM.
+                   These retries pick up type/hardware sections that were missed
+                   on the first 150ms pass.  Timers are cancelled on route change. */
+                _viewTimers = [450, 1100].map(function (delay) {
+                    return setTimeout(buildBar, delay);
+                });
             });
 
             $rs.$on('device_update', function () {

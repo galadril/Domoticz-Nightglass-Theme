@@ -414,6 +414,29 @@ body.ng-rf-reloading [ng-view] {
     #ng-room-filter::-webkit-scrollbar-track { background: transparent; }
     #ng-room-filter::-webkit-scrollbar-thumb { background: var(--dz-border); border-radius: 2px; }
 
+/* ── Clear all filters button (shown by JS when any filter is active) */
+
+.ng-rf-clear-all {
+    display: none;   /* toggled by syncPills() */
+    width: 100%;
+    background: none;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 4px 0 8px;
+    text-align: left;
+    font-size: 0.72rem;
+    color: var(--dz-accent);
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.15s;
+    letter-spacing: 0.01em;
+}
+
+    .ng-rf-clear-all:hover {
+        opacity: 1;
+        text-decoration: underline;
+    }
+
 /* ── Filter sections (one per dimension: Rooms, Type, Hardware, Show) */
 
 .ng-rf-section {
@@ -564,6 +587,12 @@ body.ng-rf-reloading [ng-view] {
         background: var(--dz-body-bg);
         z-index: 1;
         flex-shrink: 0;
+    }
+
+    /* Clear button: larger touch target, slightly more prominent */
+    .ng-rf-clear-all {
+        font-size: 0.82rem !important;
+        padding: 10px 0 12px !important;
     }
 
     /* Sections: stacked vertically, label above pills */
