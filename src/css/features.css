@@ -441,7 +441,7 @@ body.ng-rf-reloading [ng-view] {
 
 .ng-rf-section {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 10px;
     padding: 5px 0;
     border-bottom: 1px solid rgba(var(--dz-border-rgb, 255,255,255), 0.06);
@@ -465,6 +465,7 @@ body.ng-rf-reloading [ng-view] {
     text-align: right;
     line-height: 1.2;
     padding-right: 4px;
+    padding-top: 7px;   /* vertically centre label against first pill row (26px tall) */
     opacity: 0.7;
 }
 

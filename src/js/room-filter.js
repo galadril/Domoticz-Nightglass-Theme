@@ -395,6 +395,16 @@
 
     /* ══ Filter section computation ═════════════════════════════════ */
 
+    /* Returns a string that uniquely identifies the current section structure
+       (which dimensions exist and which values each one contains).
+       Used by buildBar / buildBarFromCache to detect when a rebuild is needed
+       rather than relying on section-count alone (which misses value changes). */
+    function sectionFingerprint() {
+        return _filterSections.map(function (s) {
+            return s.id + ':' + s.values.map(function (v) { return v.value; }).join(',');
+        }).join('|');
+    }
+
     function uniqueSortedValues(devices, fn) {
         var seen = {};
         var result = [];
@@ -741,10 +751,10 @@
         var topBar = document.getElementById('topBar');
         if (!topBar || _filterSections.length === 0) { removeBar(); revealTopBar(); return; }
 
-        /* Check if bar already matches current sections (section count match) */
+        /* Check if bar already matches current sections (full fingerprint match) */
         var existing = document.getElementById('ng-room-filter');
-        var existingSections = existing ? existing.querySelectorAll('.ng-rf-section').length : 0;
-        if (existing && existingSections === _filterSections.length) {
+        var newFp    = sectionFingerprint();
+        if (existing && existing.dataset.ngRfFp === newFp) {
             log('buildBarFromCache: sections match — sync only');
             syncPills();
             injectToggleBtn();
@@ -779,6 +789,7 @@
     function createFilterBar() {
         var bar = document.createElement('div');
         bar.id = 'ng-room-filter';
+        bar.dataset.ngRfFp = sectionFingerprint();
         bar.setAttribute('role', 'tablist');
         bar.setAttribute('aria-label', 'Filter devices');
 
@@ -938,8 +949,8 @@
 
         /* Already correct sections? Sync and apply filter */
         var existing = document.getElementById('ng-room-filter');
-        var existingSections = existing ? existing.querySelectorAll('.ng-rf-section').length : 0;
-        if (existing && existingSections === _filterSections.length) {
+        var newFp    = sectionFingerprint();
+        if (existing && existing.dataset.ngRfFp === newFp) {
             log('buildBar: sections match — sync only');
             syncPills();
             injectToggleBtn();
