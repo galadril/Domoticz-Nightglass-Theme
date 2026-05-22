@@ -702,8 +702,28 @@
             secEl.dataset.dim = section.id;
 
             var labelEl = document.createElement('span');
-            labelEl.className   = 'ng-rf-section-label';
-            labelEl.textContent = section.label;
+            labelEl.className = 'ng-rf-section-label';
+            labelEl.appendChild(document.createTextNode(section.label));
+
+            var chevron = document.createElement('i');
+            chevron.className = 'fa-solid fa-chevron-down ng-rf-section-chevron';
+            chevron.setAttribute('aria-hidden', 'true');
+            labelEl.appendChild(chevron);
+
+            /* Restore + toggle collapse state (mobile drawer only;
+               CSS keeps the chevron hidden on desktop so clicking there
+               has no visible effect and the pills stay visible). */
+            var collapseKey = 'ng-rf-col-' + section.id;
+            if (localStorage.getItem(collapseKey) === '1') {
+                secEl.classList.add('ng-rf-section--collapsed');
+            }
+            (function (el, key) {
+                labelEl.addEventListener('click', function () {
+                    var collapsed = el.classList.toggle('ng-rf-section--collapsed');
+                    localStorage.setItem(key, collapsed ? '1' : '0');
+                });
+            }(secEl, collapseKey));
+
             secEl.appendChild(labelEl);
 
             var pillsEl = document.createElement('div');

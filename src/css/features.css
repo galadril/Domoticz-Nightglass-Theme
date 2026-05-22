@@ -469,6 +469,9 @@ body.ng-rf-reloading [ng-view] {
     opacity: 0.7;
 }
 
+/* Chevron — hidden on desktop (only used in mobile drawer) */
+.ng-rf-section-chevron { display: none; }
+
 /* Wrapping pill row within each section */
 .ng-rf-pills {
     display: flex;
@@ -515,6 +518,7 @@ body.ng-rf-reloading [ng-view] {
 
         .ng-rf-pill--active:hover {
             background: rgba(var(--dz-accent-rgb), 0.22);
+            color: var(--dz-accent);   /* prevent :hover from overriding the active text colour */
         }
 
 /* ── Panel title (hidden on desktop, sticky header in mobile drawer) */
@@ -628,21 +632,51 @@ body.ng-rf-reloading [ng-view] {
         border-bottom: none !important;
     }
 
-    /* Label spans full width above pills */
+    /* Label spans full width above pills — tap target for collapse */
     .ng-rf-section-label {
         width: auto !important;
         text-align: left !important;
         padding-right: 0 !important;
-        padding-bottom: 2px !important;
+        padding-bottom: 6px !important;
+        padding-top: 0 !important;
         font-size: 0.68rem !important;
-        opacity: 0.6 !important;
+        opacity: 0.75 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        cursor: pointer !important;
+        user-select: none !important;
+        -webkit-tap-highlight-color: transparent !important;
     }
 
-    /* Pills: full-width stacked rows */
+    /* Chevron: visible in mobile drawer */
+    .ng-rf-section-chevron {
+        display: inline-block;
+        font-size: 0.65rem;
+        opacity: 0.7;
+        flex-shrink: 0;
+        transition: transform 0.22s ease;
+    }
+
+    /* Rotate chevron when section is collapsed */
+    .ng-rf-section--collapsed .ng-rf-section-chevron {
+        transform: rotate(-90deg);
+    }
+
+    /* Pills: animate open/close with max-height */
     .ng-rf-pills {
         flex-direction: column !important;
-        overflow-x: hidden !important;
+        overflow: hidden !important;
         gap: 4px !important;
+        max-height: 800px;
+        transition: max-height 0.28s ease, opacity 0.22s ease !important;
+        opacity: 1;
+    }
+
+    /* Collapsed state: hide pills */
+    .ng-rf-section--collapsed .ng-rf-pills {
+        max-height: 0 !important;
+        opacity: 0 !important;
     }
 
     .ng-rf-pill {
