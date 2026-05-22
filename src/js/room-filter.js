@@ -61,6 +61,8 @@
     var _planCacheReady     = false;
     var _planCacheCallbacks = [];
 
+    var _pendingDDPlan  = null;   /* plan IDX captured from LastPlanSelected before zeroing */
+
     /* ══ Route path helpers ══════════════════════════════════════════ */
 
     function currentHashPath() {
@@ -255,22 +257,10 @@
         return cards;
     }
 
-    /* Return the devices relevant to the current page.
-       First tries DOM cards (most accurate, works when Angular has finished rendering).
-       Falls back to route-based filtering of _deviceMap when the DOM is not ready yet
-       (e.g. immediately after $viewContentLoaded before ng-repeat has painted cards).
-       This ensures filter sections are computed correctly even on first navigation. */
-    function getPageDevices() {
-        /* DOM-based: look up each rendered card in _deviceMap */
-        var cards   = getCards();
-        var domDevs = [];
-        cards.forEach(function (card) {
-            var idx = cardIdx(card);
-            if (idx && _deviceMap[idx]) domDevs.push(_deviceMap[idx]);
-        });
-        if (domDevs.length > 0) return domDevs;
-
-        /* Fallback: filter all known devices by current route */
+    /* Return all devices from _deviceMap that belong on the current route.
+       Used for computing filter sections (always reflects the full set of
+       available devices, regardless of what is currently rendered in the DOM). */
+    function getRouteDevices() {
         var allDevs = [];
         Object.keys(_deviceMap).forEach(function (k) { allDevs.push(_deviceMap[k]); });
         if (!allDevs.length) return [];
@@ -318,6 +308,20 @@
         }
         /* Dashboard or unknown route — all devices */
         return allDevs;
+    }
+
+    /* Return the devices relevant to the current page for applyFilter() use.
+       Prefers actual DOM cards (needed for show/hide to work); falls back to
+       getRouteDevices() when Angular hasn't finished rendering cards yet. */
+    function getPageDevices() {
+        var cards   = getCards();
+        var domDevs = [];
+        cards.forEach(function (card) {
+            var idx = cardIdx(card);
+            if (idx && _deviceMap[idx]) domDevs.push(_deviceMap[idx]);
+        });
+        if (domDevs.length > 0) return domDevs;
+        return getRouteDevices();
     }
 
     /* ══ Device type label ══════════════════════════════════════════
@@ -395,6 +399,16 @@
 
     /* ══ Filter section computation ═════════════════════════════════ */
 
+    /* Returns a string that uniquely identifies the current section structure
+       (which dimensions exist and which values each one contains).
+       Used by buildBar / buildBarFromCache to detect when a rebuild is needed
+       rather than relying on section-count alone (which misses value changes). */
+    function sectionFingerprint() {
+        return _filterSections.map(function (s) {
+            return s.id + ':' + s.values.map(function (v) { return v.value; }).join(',');
+        }).join('|');
+    }
+
     function uniqueSortedValues(devices, fn) {
         var seen = {};
         var result = [];
@@ -422,11 +436,12 @@
             });
         }
 
-        /* For type / hardware / favourites sections, use devices on this page.
-           getPageDevices() prefers the live DOM but falls back to route-based
-           _deviceMap filtering so sections are correct even before Angular
-           has finished rendering cards. */
-        var devices = getPageDevices();
+        /* For type / hardware / favourites sections, always use _deviceMap filtered
+           by the current route — not DOM cards.  This guarantees filter options
+           reflect ALL devices for this page type regardless of whether Angular has
+           finished rendering and regardless of any prior room pre-selection that
+           may have limited what was loaded into the DOM (e.g. DD → Dashboard flow). */
+        var devices = getRouteDevices();
 
         if (!devices.length) return;   /* _deviceMap not ready yet — rooms only */
 
@@ -692,8 +707,28 @@
             secEl.dataset.dim = section.id;
 
             var labelEl = document.createElement('span');
-            labelEl.className   = 'ng-rf-section-label';
-            labelEl.textContent = section.label;
+            labelEl.className = 'ng-rf-section-label';
+            labelEl.appendChild(document.createTextNode(section.label));
+
+            var chevron = document.createElement('i');
+            chevron.className = 'fa-solid fa-chevron-down ng-rf-section-chevron';
+            chevron.setAttribute('aria-hidden', 'true');
+            labelEl.appendChild(chevron);
+
+            /* Restore + toggle collapse state (mobile drawer only;
+               CSS keeps the chevron hidden on desktop so clicking there
+               has no visible effect and the pills stay visible). */
+            var collapseKey = 'ng-rf-col-' + section.id;
+            if (localStorage.getItem(collapseKey) === '1') {
+                secEl.classList.add('ng-rf-section--collapsed');
+            }
+            (function (el, key) {
+                labelEl.addEventListener('click', function () {
+                    var collapsed = el.classList.toggle('ng-rf-section--collapsed');
+                    localStorage.setItem(key, collapsed ? '1' : '0');
+                });
+            }(secEl, collapseKey));
+
             secEl.appendChild(labelEl);
 
             var pillsEl = document.createElement('div');
@@ -741,10 +776,10 @@
         var topBar = document.getElementById('topBar');
         if (!topBar || _filterSections.length === 0) { removeBar(); revealTopBar(); return; }
 
-        /* Check if bar already matches current sections (section count match) */
+        /* Check if bar already matches current sections (full fingerprint match) */
         var existing = document.getElementById('ng-room-filter');
-        var existingSections = existing ? existing.querySelectorAll('.ng-rf-section').length : 0;
-        if (existing && existingSections === _filterSections.length) {
+        var newFp    = sectionFingerprint();
+        if (existing && existing.dataset.ngRfFp === newFp) {
             log('buildBarFromCache: sections match — sync only');
             syncPills();
             injectToggleBtn();
@@ -779,6 +814,7 @@
     function createFilterBar() {
         var bar = document.createElement('div');
         bar.id = 'ng-room-filter';
+        bar.dataset.ngRfFp = sectionFingerprint();
         bar.setAttribute('role', 'tablist');
         bar.setAttribute('aria-label', 'Filter devices');
 
@@ -886,11 +922,6 @@
 
         log('buildBar: _activeFilters.rooms=', _activeFilters.rooms, '_cameFromDD=', _cameFromDD);
 
-        /* Clear LastPlanSelected after the dashboard controller has read it */
-        if (window.myglobals && window.myglobals.LastPlanSelected) {
-            window.myglobals.LastPlanSelected = 0;
-        }
-
         setupMobilePage();
 
         /* Compute filter sections from current page devices */
@@ -925,21 +956,23 @@
         computePageFilterSections();
         pruneActiveFiltersForSections();
 
-        /* Auto-activate room pill from DD's pre-selected comboroom value */
+        /* Auto-activate room pill when comboroom has a non-"All" value but our filter
+           bar has no rooms selected (e.g. hard-reload on a room URL, or comboroom
+           changed natively).  DD → Dashboard flow sets _activeFilters.rooms via
+           $routeChangeSuccess/_pendingDDPlan so this block is skipped in that case. */
         if (_activeFilters.rooms.length === 0 && sel.selectedIndex > 0) {
             var nativeOpt     = sel.options[sel.selectedIndex];
             var nativePlanIdx = (nativeOpt.value || '').replace(/^(?:number|string):/, '');
             if (nativePlanIdx && nativePlanIdx !== '0' && nativePlanIdx.indexOf('dd:') !== 0) {
-                log('buildBar: auto-activating room pill', nativePlanIdx);
+                log('buildBar: auto-activating room pill from comboroom', nativePlanIdx);
                 _activeFilters.rooms = [nativePlanIdx];
-                _cameFromDD = !!(window.myglobals && window.myglobals.LastPlanSelected);
             }
         }
 
         /* Already correct sections? Sync and apply filter */
         var existing = document.getElementById('ng-room-filter');
-        var existingSections = existing ? existing.querySelectorAll('.ng-rf-section').length : 0;
-        if (existing && existingSections === _filterSections.length) {
+        var newFp    = sectionFingerprint();
+        if (existing && existing.dataset.ngRfFp === newFp) {
             log('buildBar: sections match — sync only');
             syncPills();
             injectToggleBtn();
@@ -977,26 +1010,119 @@
     }
 
     /* ══ Angular service patch ══════════════════════════════════════
-       Always loads all used devices (not just favourites) so every device
-       is in the DOM for client-side filtering.  Keeps device map fresh. */
+       Ensures the Dashboard page always loads all used devices (not just
+       favourites) so every device is in the DOM for client-side filtering.
+
+       Three layers, from lowest to highest level:
+
+       1. domoticzApi.sendRequest — patched first because it is loaded at
+          app bootstrap (never lazy).  Any getdevices call on the Dashboard
+          route gets favorite:0 / plan:0 regardless of caller.  This catches
+          the race where dashboardService is lazy-loaded AFTER the controller
+          already fires its first loadFavorites() call.
+
+       2. dashboardService.loadFavorites — patched when the service becomes
+          available (may be after layer 1).  Replaces the entire method so
+          it always returns all used devices with no plan filter.
+
+       3. livesocket.getJson — URL-level patch for the legacy RefreshFavorites
+          polling path that builds the URL string directly.                  */
 
     function patchAngularServices() {
         if (_svcPatched) return;
         try {
             var inj = angular.element(document.body).injector();
 
+            /* Layer 1: domoticzApi.sendRequest (always available at boot) */
+            var api = inj.get('domoticzApi');
+            if (!api.__ngRfPatched) {
+                var origSendRequest = api.sendRequest.bind(api);
+                api.sendRequest = function (params) {
+                    /* On the Dashboard route, force all-device loading by
+                       removing the favorites and plan filters from any
+                       getdevices request.  Scoped to Dashboard so that
+                       Settings / device-list pages are unaffected. */
+                    if (params && params.param === 'getdevices') {
+                        var path = currentHashPath().toLowerCase();
+                        if (path === 'dashboard' || path === '') {
+                            params = Object.assign({}, params, {
+                                favorite: 0, plan: 0, used: 'true'
+                            });
+                        }
+                    }
+                    return origSendRequest(params);
+                };
+                api.__ngRfPatched = true;
+                log('patchAngularServices: domoticzApi.sendRequest patched');
+            }
+
+            /* Layer 2: dashboardService.loadFavorites (lazy-loaded; may not
+               exist yet — skip silently and catch on next $viewContentLoaded) */
+            try {
+                var svc = inj.get('dashboardService');
+                if (svc && !svc.__ngRfPatched) {
+                    svc.loadFavorites = function () {
+                        log('loadFavorites: patched — loading all used devices');
+                        return api.sendRequest({
+                            type: 'command', param: 'getdevices',
+                            filter: 'all', used: 'true', favorite: 0,
+                            order: '[Order]', plan: 0
+                        }).then(function (data) {
+                            var devices = data.result || [];
+                            buildPlanMapFromDevices(devices);
+                            return {
+                                devices:        devices,
+                                lastUpdateTime: data.ActTime ? parseInt(data.ActTime) : 0,
+                                sunrise:        data.Sunrise,
+                                sunset:         data.Sunset,
+                                serverTime:     data.ServerTime
+                            };
+                        });
+                    };
+                    svc.__ngRfPatched = true;
+                    log('patchAngularServices: dashboardService.loadFavorites patched');
+                }
+            } catch (e) { /* dashboardService not loaded yet — layer 1 covers us */ }
+
+            /* Layer 3: livesocket.getJson URL-level patch */
+            var ls = inj.get('livesocket');
+            if (!ls.__ngRfPatched) {
+                var origGetJson = ls.getJson.bind(ls);
+                ls.getJson = function (url, cb) {
+                    if (typeof url === 'string' && url.indexOf('param=getdevices') !== -1) {
+                        url = url.replace(/\bfavorite=1\b/, 'favorite=0');
+                        url = url.replace(/\bplan=\d+\b/, 'plan=0');
+                    }
+                    return origGetJson.call(this, url, cb);
+                };
+                ls.__ngRfPatched = true;
+                log('patchAngularServices: livesocket.getJson patched');
+            }
+
+            _svcPatched = true;
+            log('patchAngularServices: done');
+        } catch (e) {
+            log('patchAngularServices: failed — will retry', e);
+        }
+    }
+
+    /* Re-apply layer 2 (dashboardService) after a lazy-load.  Called from
+       $viewContentLoaded in case dashboardService wasn't available earlier. */
+    function patchDashboardServiceIfNeeded() {
+        if (!_svcPatched) return;   /* full patch not done yet — don't bother */
+        try {
+            var inj = angular.element(document.body).injector();
             var svc = inj.get('dashboardService');
-            if (!svc.__ngRfPatched) {
-                var api = inj.get('domoticzApi');
+            var api = inj.get('domoticzApi');
+            if (svc && !svc.__ngRfPatched) {
                 svc.loadFavorites = function () {
-                    log('loadFavorites: patched — loading all used devices');
                     return api.sendRequest({
                         type: 'command', param: 'getdevices',
                         filter: 'all', used: 'true', favorite: 0,
                         order: '[Order]', plan: 0
                     }).then(function (data) {
                         var devices = data.result || [];
-                        buildPlanMapFromDevices(devices);   /* keep maps fresh */
+                        buildPlanMapFromDevices(devices);
                         return {
                             devices:        devices,
                             lastUpdateTime: data.ActTime ? parseInt(data.ActTime) : 0,
@@ -1007,32 +1133,9 @@
                     });
                 };
                 svc.__ngRfPatched = true;
+                log('patchDashboardServiceIfNeeded: dashboardService.loadFavorites patched');
             }
-
-            var ls = inj.get('livesocket');
-            if (!ls.__ngRfPatched) {
-                var origGetJson = ls.getJson.bind(ls);
-                ls.getJson = function (url, cb) {
-                    if (typeof url === 'string' && url.indexOf('param=getdevices') !== -1) {
-                        url = url.replace(/\bfavorite=1\b/, 'favorite=0');
-                        /* Always fetch all plans so every device stays in the DOM
-                           for client-side room filtering.  Without this, the periodic
-                           live-update poll in DashboardDesktopController uses
-                           plan=myglobals.LastPlanSelected (set by DD navigation) and
-                           replaces the DOM with only that room's devices, breaking
-                           filter-bar switching between rooms. */
-                        url = url.replace(/\bplan=\d+\b/, 'plan=0');
-                    }
-                    return origGetJson.call(this, url, cb);
-                };
-                ls.__ngRfPatched = true;
-            }
-
-            _svcPatched = true;
-            log('patchAngularServices: done');
-        } catch (e) {
-            log('patchAngularServices: failed — will retry', e);
-        }
+        } catch (e) { /* service still not loaded — layer 1 is active */ }
     }
 
     /* ══ Angular hooks ══════════════════════════════════════════════ */
@@ -1061,10 +1164,18 @@
                 _viewTimers.forEach(clearTimeout);
                 _viewTimers = [];
 
-                /* Preemptive cloak for DD openRoomPlan() navigation */
+                /* Capture and immediately zero LastPlanSelected so the incoming
+                   DashboardDesktopController (which instantiates between
+                   $routeChangeStart and $routeChangeSuccess) sees plan=0 and
+                   loads ALL devices rather than only the selected room's devices.
+                   We store the room in _pendingDDPlan and apply it to the filter
+                   bar ourselves in $routeChangeSuccess. */
                 var ddPlan = window.myglobals && Number(window.myglobals.LastPlanSelected);
                 if (ddPlan && !isDetailPath(path)) {
+                    _pendingDDPlan = String(ddPlan);
+                    window.myglobals.LastPlanSelected = 0;
                     document.body.classList.add('ng-rf-reloading');
+                    log('$routeChangeStart: captured DD plan', _pendingDDPlan, '— zeroed LastPlanSelected');
                 }
             });
 
@@ -1079,17 +1190,20 @@
                     removeBar();
                     document.body.classList.remove('ng-mobile-dashboard');
 
-                    var ddPlan = window.myglobals && Number(window.myglobals.LastPlanSelected);
-                    if (ddPlan) {
-                        log('$routeChangeSuccess: DD room plan', ddPlan);
-                        _activeFilters.rooms = [String(ddPlan)];
+                    /* _pendingDDPlan was captured (and LastPlanSelected zeroed) in
+                       $routeChangeStart so the controller loaded all devices. */
+                    if (_pendingDDPlan) {
+                        log('$routeChangeSuccess: applying DD room filter', _pendingDDPlan);
+                        _activeFilters.rooms = [_pendingDDPlan];
                         _cameFromDD = true;
+                        _pendingDDPlan = null;
                         setTimeout(function () {
                             document.body.classList.remove('ng-rf-reloading');
                         }, 2000);
                     } else {
                         /* Normal navigation — rooms filter persists; type/hardware
                            will be pruned on the next buildBar() call */
+                        _pendingDDPlan = null;
                         _cameFromDD = false;
                         log('$routeChangeSuccess: preserving filters', _activeFilters);
                     }
@@ -1107,6 +1221,10 @@
                 scheduleRevealFallback();
                 scheduleBuildBar(150);
                 if (!_svcPatched) patchAngularServices();
+                /* Layer 2 catch-up: dashboardService is lazy-loaded; it becomes
+                   available after the route resolves.  Apply the loadFavorites
+                   patch now so future calls (refresh, re-renders) use it. */
+                patchDashboardServiceIfNeeded();
 
                 /* Schedule late-render rebuilds.  Angular's ng-repeat may need
                    several digest cycles before all device cards are in the DOM.
