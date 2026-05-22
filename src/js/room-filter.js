@@ -45,6 +45,8 @@
     var _savedMainPath     = null;   /* main-page hash path that triggered the save */
     var _cameFromDD        = false;  /* arrived via DD openRoomPlan — show back button */
     var _$route            = null;   /* cached Angular $route service for reload */
+    var _loadAllMode       = false;  /* true while multi-room mode needs all-devices loaded */
+    var _svcPatched        = false;  /* true after Angular dashboard services have been patched */
 
     /* ══ Route path helpers ══════════════════════════════════════════ */
 
@@ -115,6 +117,37 @@
         var open = rf.classList.toggle('ng-rf--open');
         btn.classList.toggle('ng-rf-toggle-btn--open', open);
         btn.setAttribute('aria-expanded', String(open));
+        /* Mobile drawer: show/hide backdrop */
+        if (open) { showMobileBackdrop(); } else { hideMobileBackdrop(); }
+    }
+
+    /* ── Mobile backdrop helpers ────────────────────────────────── */
+
+    function showMobileBackdrop() {
+        if (window.innerWidth > 768) return;          /* desktop: no-op */
+        if (document.getElementById('ng-rf-backdrop')) return;
+        var bd = document.createElement('div');
+        bd.id = 'ng-rf-backdrop';
+        bd.addEventListener('click', closeDrawer);
+        document.body.appendChild(bd);
+        /* Force reflow so the CSS transition fires */
+        bd.getBoundingClientRect();
+        bd.classList.add('ng-rf-backdrop--visible');
+    }
+
+    function hideMobileBackdrop() {
+        var bd = document.getElementById('ng-rf-backdrop');
+        if (!bd) return;
+        bd.classList.remove('ng-rf-backdrop--visible');
+        setTimeout(function () { if (bd.parentNode) bd.parentNode.removeChild(bd); }, 280);
+    }
+
+    function closeDrawer() {
+        var rf  = document.getElementById('ng-room-filter');
+        var btn = document.getElementById('ng-rf-toggle');
+        if (rf)  rf.classList.remove('ng-rf--open');
+        if (btn) { btn.classList.remove('ng-rf-toggle-btn--open'); btn.setAttribute('aria-expanded', 'false'); }
+        hideMobileBackdrop();
     }
 
     /* ══ Combobox options ═══════════════════════════════════════════ */
@@ -241,6 +274,8 @@
             /* "All" → clear filter; if comboroom was at a specific plan reload to
                plan 0 so Domoticz restores the all-favourites device set. */
             _selected = [];
+            _loadAllMode = false;
+            window._ngRfLoadAllDevices = false;
             if (!forceAllIfNeeded()) applyFilter();
             return;
         }
@@ -254,6 +289,8 @@
 
         if (_selected.length === 0) {
             /* Deselected the last room — same as "All" */
+            _loadAllMode = false;
+            window._ngRfLoadAllDevices = false;
             if (!forceAllIfNeeded()) applyFilter();
             return;
         }
@@ -350,16 +387,89 @@
         return -1;
     }
 
+    /* Patch dashboardService.loadFavorites and livesocket.getJson so that when
+       _loadAllMode is active, the dashboard loads every device (used=all, plan=0,
+       favorite=0) instead of just favourites (used=true, plan=0, favorite=1).
+       Called lazily before the first multi-room reload and idempotent thereafter. */
+    function patchAngularServices() {
+        if (_svcPatched) return;
+        try {
+            var inj = angular.element(document.body).injector();
+
+            /* ── Patch dashboardService.loadFavorites (initial page load) ── */
+            var svc = inj.get('dashboardService');
+            if (!svc.__ngRfPatched) {
+                var api     = inj.get('domoticzApi');
+                var origLoad = svc.loadFavorites.bind(svc);
+                svc.loadFavorites = function (planId) {
+                    if (window._ngRfLoadAllDevices) {
+                        log('loadFavorites: multi-room override — used=all, plan=0');
+                        return api.sendRequest({
+                            type: 'command', param: 'getdevices',
+                            filter: 'all', used: 'all', favorite: 0,
+                            order: '[Order]', plan: 0
+                        }).then(function (data) {
+                            return {
+                                devices:       data.result || [],
+                                lastUpdateTime: data.ActTime ? parseInt(data.ActTime) : 0,
+                                sunrise:        data.Sunrise,
+                                sunset:         data.Sunset,
+                                serverTime:     data.ServerTime
+                            };
+                        });
+                    }
+                    return origLoad(planId);
+                };
+                svc.__ngRfPatched = true;
+            }
+
+            /* ── Patch livesocket.getJson (RefreshFavorites live-update calls) ── */
+            var ls = inj.get('livesocket');
+            if (!ls.__ngRfPatched) {
+                var origGetJson = ls.getJson.bind(ls);
+                ls.getJson = function (url, cb) {
+                    if (window._ngRfLoadAllDevices &&
+                            typeof url === 'string' &&
+                            url.indexOf('param=getdevices') !== -1) {
+                        url = url.replace(/\bused=true\b/,  'used=all')
+                                 .replace(/\bfavorite=1\b/, 'favorite=0');
+                        log('livesocket.getJson: multi-room override applied');
+                    }
+                    return origGetJson.call(this, url, cb);
+                };
+                ls.__ngRfPatched = true;
+            }
+
+            _svcPatched = true;
+            log('patchAngularServices: done');
+        } catch (e) {
+            log('patchAngularServices: failed', e);
+        }
+    }
+
     /* Set comboroom so Domoticz loads the right device set, then reload.
-       Single room: set to that plan's option so Domoticz uses used=all →
-         every device in the room is loaded, not just starred ones.
-       Zero or multi-room: delegate to forceAllIfNeeded() (plan 0 = favourites;
-         accepted limitation for multi-room).
+       Single room  → specific plan option → used=all → ALL devices in the room.
+       Multi-room   → plan 0 with patched service → used=all, plan=0 → ALL devices.
+       Zero rooms   → plan 0 (unpatched) → used=true → favourites (normal "All" view).
        Returns true when a reload was triggered, false when already correct. */
     function ensureDevicesLoaded() {
+        if (_selected.length > 1) {
+            /* Multi-room: activate all-devices mode then force comboroom to All.
+               The patched dashboardService will use used=all + plan=0 on next load. */
+            _loadAllMode = true;
+            window._ngRfLoadAllDevices = true;
+            patchAngularServices();
+            return forceAllIfNeeded();
+        }
+
+        /* Single room or no selection: restore normal favourites mode */
+        _loadAllMode = false;
+        window._ngRfLoadAllDevices = false;
+
         if (_selected.length !== 1) {
             return forceAllIfNeeded();
         }
+
         var sel = document.getElementById('comboroom');
         if (!sel) return false;
         var targetIndex = comboroomIndexForPlan(_selected[0]);
@@ -420,6 +530,63 @@
 
     /* ══ Build / remove bar ═════════════════════════════════════════ */
 
+    /* Build or sync the pill bar using already-cached _planOptions.
+       Used on category pages (Switches, Temperature, etc.) where #comboroom is
+       absent but we still want to show the active room filter.
+       No comboroom manipulation — the page already loaded its own device set. */
+    function buildBarFromCache() {
+        var topBar = document.getElementById('topBar');
+        if (!topBar || _planOptions.length < 2) { removeBar(); revealTopBar(); return; }
+
+        var existing = document.getElementById('ng-room-filter');
+        if (existing && _pills.length === _planOptions.length) {
+            log('buildBarFromCache: pills already built — sync only');
+            syncPills();
+            injectToggleBtn();
+            revealTopBar();
+            if (_selected.length > 0) scheduleFilterPasses();
+            return;
+        }
+
+        removeBar();
+        var bar = document.createElement('div');
+        bar.id = 'ng-room-filter';
+        bar.setAttribute('role', 'tablist');
+        bar.setAttribute('aria-label', 'Filter by room');
+
+        /* Panel title — visible only in mobile drawer (hidden via CSS on desktop) */
+        var titleEl = document.createElement('span');
+        titleEl.className = 'ng-rf-panel-title';
+        titleEl.setAttribute('aria-hidden', 'true');
+        titleEl.textContent = 'Rooms';
+        bar.appendChild(titleEl);
+
+        _planOptions.forEach(function (r) {
+            var btn = document.createElement('button');
+            btn.className       = 'ng-rf-pill';
+            btn.dataset.planIdx = r.planIdx;
+            btn.setAttribute('role', 'tab');
+            btn.setAttribute('aria-selected', 'false');
+            btn.textContent = r.label;
+            (function (pi) {
+                btn.addEventListener('click', function () { onPillClick(pi); });
+            }(r.planIdx));
+            bar.appendChild(btn);
+            _pills.push(btn);
+        });
+
+        var anchor = topBar.parentNode;
+        if (anchor && anchor.parentNode) {
+            anchor.parentNode.insertBefore(bar, anchor.nextSibling);
+        }
+
+        syncPills();
+        injectToggleBtn();
+        revealTopBar();
+
+        if (_selected.length > 0) scheduleFilterPasses();
+    }
+
     function removeBar() {
         var rf  = document.getElementById('ng-room-filter');
         var btn = document.getElementById('ng-rf-toggle');
@@ -427,6 +594,7 @@
         if (rf)  rf.remove();
         if (btn) btn.remove();
         if (bb)  bb.remove();
+        hideMobileBackdrop();
         _pills = [];
         log('removeBar: bar cleared (pills:', _pills.length, ')');
     }
@@ -542,11 +710,19 @@
         /* Detect mobile dashboard + attach mobile search (independent of comboroom) */
         setupMobilePage();
 
-        /* Phase 2: no comboroom → page has no room plans */
+        /* Phase 2: no comboroom.
+           On category pages (Switches, Temperature, etc.) comboroom is absent, but
+           if we already know the room plans we can still show and apply the filter. */
         var sel = document.getElementById('comboroom');
         if (!sel) {
-            log('buildBar: no comboroom → removeBar');
-            removeBar(); revealTopBar(); return;
+            if (_planOptions.length >= 2 && _selected.length > 0) {
+                log('buildBar: no comboroom — category page with active filter, using cache');
+                buildBarFromCache();
+            } else {
+                log('buildBar: no comboroom → removeBar');
+                removeBar(); revealTopBar();
+            }
+            return;
         }
 
         /* Phase 3: comboroom exists but not populated yet */
@@ -606,6 +782,13 @@
         bar.id = 'ng-room-filter';
         bar.setAttribute('role', 'tablist');
         bar.setAttribute('aria-label', 'Filter by room');
+
+        /* Panel title — visible only in mobile drawer (hidden via CSS on desktop) */
+        var titleEl = document.createElement('span');
+        titleEl.className = 'ng-rf-panel-title';
+        titleEl.setAttribute('aria-hidden', 'true');
+        titleEl.textContent = 'Rooms';
+        bar.appendChild(titleEl);
 
         opts.forEach(function (r) {
             var btn = document.createElement('button');
@@ -718,13 +901,10 @@
                     }
 
                 } else {
-                    log('$routeChangeSuccess: new main page — full reset');
                     removeBar();
                     document.body.classList.remove('ng-mobile-dashboard');
-                    _selected      = [];
                     _savedSelected = null;
                     _savedMainPath = null;
-                    _cameFromDD    = false;
 
                     /* Detect DD→classic navigation via openRoomPlan():
                        $routeChangeSuccess fires BEFORE the classic dashboard
@@ -738,10 +918,18 @@
                     if (ddPlan) {
                         log('$routeChangeSuccess: DD room plan detected, planIdx=', ddPlan,
                             '— cloaking and setting _selected (LastPlanSelected kept for controller)');
-                        _selected   = [String(ddPlan)];
-                        _cameFromDD = true;
+                        _selected              = [String(ddPlan)];
+                        _cameFromDD            = true;
+                        _loadAllMode           = false;
+                        window._ngRfLoadAllDevices = false;
                         document.body.classList.add('ng-rf-reloading');
                         setTimeout(uncloak, 2000);
+                    } else {
+                        /* Normal tab navigation — preserve the active room selection
+                           so the filter stays consistent across Switches / Temp / etc. */
+                        log('$routeChangeSuccess: new main page — preserving selection', _selected);
+                        _cameFromDD = false;
+                        /* _selected, _loadAllMode, and window._ngRfLoadAllDevices kept */
                     }
                 }
 

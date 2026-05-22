@@ -455,8 +455,100 @@ body.ng-rf-reloading [ng-view] {
             background: rgba(var(--dz-accent-rgb), 0.22);
         }
 
-/* ── Mobile: bigger tap targets, but always visible ─────────────── */
+/* ── Panel title (hidden on desktop, sticky header in mobile drawer) */
 
-@media (max-width: 480px) {
-    .ng-rf-pill { height: 32px; padding: 0 12px; font-size: 0.82rem; }
+.ng-rf-panel-title { display: none; }
+
+/* ── Backdrop dim layer (injected by JS on mobile) ───────────────── */
+
+#ng-rf-backdrop { display: none; }
+
+/* ── Mobile (≤ 768px): replace horizontal strip with slide-in drawer ──
+   With 32+ rooms a horizontal scroller is unusable on phone.
+   The drawer slides in from the right edge, pills stack vertically.
+   Backdrop and body state class are managed by JS.                   */
+
+@media (max-width: 768px) {
+
+    /* Drawer container — overrides the horizontal strip defaults */
+    #ng-room-filter {
+        position: fixed !important;
+        top: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 260px !important;
+        max-height: none !important;
+        height: 100% !important;
+        height: 100dvh !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        flex-wrap: nowrap !important;
+        gap: 4px !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        border-left: 1px solid var(--dz-border) !important;
+        background: var(--dz-body-bg) !important;
+        z-index: 1045 !important;
+        /* Start off-screen; open state slides it in */
+        transform: translateX(100%) !important;
+        opacity: 1 !important;
+        transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                    box-shadow 0.28s ease !important;
+        box-shadow: none !important;
+    }
+
+    #ng-room-filter.ng-rf--open {
+        transform: translateX(0) !important;
+        box-shadow: -8px 0 40px rgba(0, 0, 0, 0.4) !important;
+        padding: 0 8px 16px !important;
+        border-bottom: none !important;
+        margin-bottom: 0 !important;
+    }
+
+    /* Sticky title row at the top of the drawer */
+    .ng-rf-panel-title {
+        display: flex;
+        align-items: center;
+        padding: 16px 8px 12px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--dz-text-muted);
+        border-bottom: 1px solid var(--dz-border);
+        margin: 0 -8px 8px;
+        position: sticky;
+        top: 0;
+        background: var(--dz-body-bg);
+        z-index: 1;
+        flex-shrink: 0;
+    }
+
+    /* Pills: full-width rows inside the drawer */
+    .ng-rf-pill {
+        width: 100% !important;
+        border-radius: 8px !important;
+        height: 40px !important;
+        padding: 0 14px !important;
+        font-size: 0.875rem !important;
+        justify-content: flex-start !important;
+        flex-shrink: 0 !important;
+    }
+
+    /* Backdrop dim layer */
+    #ng-rf-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0);
+        z-index: 1044;
+        transition: background 0.28s ease;
+    }
+
+    #ng-rf-backdrop.ng-rf-backdrop--visible {
+        background: rgba(0, 0, 0, 0.55);
+    }
 }
