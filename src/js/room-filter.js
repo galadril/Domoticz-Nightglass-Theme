@@ -47,6 +47,7 @@
     var _$route            = null;   /* cached Angular $route service for reload */
     var _loadAllMode       = false;  /* true while multi-room mode needs all-devices loaded */
     var _svcPatched        = false;  /* true after Angular dashboard services have been patched */
+    var _stripWasOpen      = false;  /* strip open-state saved across removeBar() calls */
 
     /* ══ Route path helpers ══════════════════════════════════════════ */
 
@@ -233,6 +234,22 @@
         return cards;
     }
 
+    /* ══ DOM completeness check ═════════════════════════════════════ */
+
+    /* Returns true if every device in the cached plan set is already present
+       as a card in the current DOM.  When true, no Angular reload is needed
+       and the room filter can be applied purely client-side.
+       Returns false when the cache is not yet populated (safe: triggers reload). */
+    function hasAllPlanDevicesInDOM(planIdx) {
+        if (!_planCache.hasOwnProperty(planIdx)) return false;
+        var needed = Object.keys(_planCache[planIdx]);
+        if (!needed.length) return true;   /* empty plan — nothing missing */
+        var cards  = getCards();
+        var inDom  = {};
+        cards.forEach(function (c) { var id = cardIdx(c); if (id) inDom[id] = true; });
+        return needed.every(function (id) { return !!inDom[id]; });
+    }
+
     /* ══ Filter application ═════════════════════════════════════════ */
 
     function applyFilter() {
@@ -276,6 +293,7 @@
             _selected = [];
             _loadAllMode = false;
             window._ngRfLoadAllDevices = false;
+            syncPills();   /* highlight "All" immediately, even before any reload */
             if (!forceAllIfNeeded()) applyFilter();
             return;
         }
@@ -288,9 +306,10 @@
         }
 
         if (_selected.length === 0) {
-            /* Deselected the last room — same as "All" */
+            /* Deselected the last room — auto-switch to "All" */
             _loadAllMode = false;
             window._ngRfLoadAllDevices = false;
+            syncPills();   /* highlight "All" immediately, even before any reload */
             if (!forceAllIfNeeded()) applyFilter();
             return;
         }
@@ -399,18 +418,23 @@
             /* ── Patch dashboardService.loadFavorites (initial page load) ── */
             var svc = inj.get('dashboardService');
             if (!svc.__ngRfPatched) {
-                var api     = inj.get('domoticzApi');
+                var api      = inj.get('domoticzApi');
                 var origLoad = svc.loadFavorites.bind(svc);
                 svc.loadFavorites = function (planId) {
                     if (window._ngRfLoadAllDevices) {
-                        log('loadFavorites: multi-room override — used=all, plan=0');
+                        /* Multi-room: load all USED/active devices (used=true), but
+                           drop the favourite filter (favorite=0) so every configured
+                           device is available for client-side room filtering.
+                           We intentionally keep used=true (not used=all) to avoid
+                           surfacing unconfigured / disabled device slots. */
+                        log('loadFavorites: multi-room override — used=true, favorite=0, plan=0');
                         return api.sendRequest({
                             type: 'command', param: 'getdevices',
-                            filter: 'all', used: 'all', favorite: 0,
+                            filter: 'all', used: 'true', favorite: 0,
                             order: '[Order]', plan: 0
                         }).then(function (data) {
                             return {
-                                devices:       data.result || [],
+                                devices:        data.result || [],
                                 lastUpdateTime: data.ActTime ? parseInt(data.ActTime) : 0,
                                 sunrise:        data.Sunrise,
                                 sunset:         data.Sunset,
@@ -431,9 +455,10 @@
                     if (window._ngRfLoadAllDevices &&
                             typeof url === 'string' &&
                             url.indexOf('param=getdevices') !== -1) {
-                        url = url.replace(/\bused=true\b/,  'used=all')
-                                 .replace(/\bfavorite=1\b/, 'favorite=0');
-                        log('livesocket.getJson: multi-room override applied');
+                        /* Only drop the favourite flag — keep used=true so unconfigured
+                           devices are not surfaced. */
+                        url = url.replace(/\bfavorite=1\b/, 'favorite=0');
+                        log('livesocket.getJson: multi-room override — favorite=0');
                     }
                     return origGetJson.call(this, url, cb);
                 };
@@ -449,13 +474,26 @@
 
     /* Set comboroom so Domoticz loads the right device set, then reload.
        Single room  → specific plan option → used=all → ALL devices in the room.
-       Multi-room   → plan 0 with patched service → used=all, plan=0 → ALL devices.
-       Zero rooms   → plan 0 (unpatched) → used=true → favourites (normal "All" view).
+       Multi-room   → plan 0 with patched service → used=true, favorite=0 → ALL used devices.
+       Zero rooms   → plan 0 (unpatched) → used=true, favorite=1 → favourites (normal view).
+
+       Before triggering any reload, checks whether all required device cards are
+       already present in the DOM — if so, skips the reload entirely so filtering
+       is instant (no visible page refresh).
+
        Returns true when a reload was triggered, false when already correct. */
     function ensureDevicesLoaded() {
         if (_selected.length > 1) {
-            /* Multi-room: activate all-devices mode then force comboroom to All.
-               The patched dashboardService will use used=all + plan=0 on next load. */
+            /* Multi-room: check if all required devices are already in the DOM.
+               This is true after the first multi-room load (all used devices present). */
+            var allInDOM = _selected.every(function (p) { return hasAllPlanDevicesInDOM(p); });
+            if (allInDOM) {
+                log('ensureDevicesLoaded: all multi-room devices already in DOM — no reload');
+                _loadAllMode = true;        /* keep flag set for live-refresh patch */
+                window._ngRfLoadAllDevices = true;
+                return false;
+            }
+            /* Need to load all used devices */
             _loadAllMode = true;
             window._ngRfLoadAllDevices = true;
             patchAngularServices();
@@ -468,6 +506,12 @@
 
         if (_selected.length !== 1) {
             return forceAllIfNeeded();
+        }
+
+        /* Single room: check if all room devices are already in the DOM */
+        if (hasAllPlanDevicesInDOM(_selected[0])) {
+            log('ensureDevicesLoaded: all devices for plan', _selected[0], 'already in DOM — no reload');
+            return false;
         }
 
         var sel = document.getElementById('comboroom');
@@ -583,6 +627,7 @@
         syncPills();
         injectToggleBtn();
         revealTopBar();
+        restoreOpenState();
 
         if (_selected.length > 0) scheduleFilterPasses();
     }
@@ -591,12 +636,25 @@
         var rf  = document.getElementById('ng-room-filter');
         var btn = document.getElementById('ng-rf-toggle');
         var bb  = document.getElementById('ng-dd-back-btn');
+        /* Save open state so the next buildBar() can restore it */
+        _stripWasOpen = !!(rf && rf.classList.contains('ng-rf--open'));
         if (rf)  rf.remove();
         if (btn) btn.remove();
         if (bb)  bb.remove();
         hideMobileBackdrop();
         _pills = [];
         log('removeBar: bar cleared (pills:', _pills.length, ')');
+    }
+
+    /* Restore strip open state after a rebuild and manage mobile backdrop. */
+    function restoreOpenState() {
+        if (!_stripWasOpen) return;
+        _stripWasOpen = false;
+        var rf  = document.getElementById('ng-room-filter');
+        var btn = document.getElementById('ng-rf-toggle');
+        if (rf)  rf.classList.add('ng-rf--open');
+        if (btn) { btn.classList.add('ng-rf-toggle-btn--open'); btn.setAttribute('aria-expanded', 'true'); }
+        showMobileBackdrop();
     }
 
     /* Inject a "← Dynamic Dashboard" back button into the topbar (#tbFilters),
@@ -814,10 +872,11 @@
         injectToggleBtn();
         injectDDBackButton();
         revealTopBar();
+        restoreOpenState();
 
         /* Set comboroom to the right plan so Domoticz loads the correct device set.
            Single room → specific plan option → used=all → ALL devices in the room.
-           Multi-room  → plan 0 → used=true → favourites only (accepted limitation).
+           Multi-room  → plan 0 + patched service → used=all, plan=0 → ALL devices.
            Only schedule filter passes when no reload was triggered. */
         var reloading = _selected.length > 0 && ensureDevicesLoaded();
         preFetchAll();
@@ -858,6 +917,15 @@
                 if (ddPlan && !isDetailPath(path)) {
                     log('$routeChangeStart: DD room plan detected (', ddPlan, ') — preemptive cloak');
                     document.body.classList.add('ng-rf-reloading');
+                }
+
+                /* If no rooms are active, ensure the all-devices flag is cleared BEFORE
+                   the incoming route's controller calls loadFavorites.  This prevents
+                   leftover _ngRfLoadAllDevices=true from a previous multi-room session
+                   from causing the new page to load all (including unused) devices. */
+                if (_selected.length === 0) {
+                    _loadAllMode = false;
+                    window._ngRfLoadAllDevices = false;
                 }
 
                 /* Save the active selection before leaving a main list page so we
