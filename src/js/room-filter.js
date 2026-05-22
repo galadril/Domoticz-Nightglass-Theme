@@ -1010,26 +1010,119 @@
     }
 
     /* ══ Angular service patch ══════════════════════════════════════
-       Always loads all used devices (not just favourites) so every device
-       is in the DOM for client-side filtering.  Keeps device map fresh. */
+       Ensures the Dashboard page always loads all used devices (not just
+       favourites) so every device is in the DOM for client-side filtering.
+
+       Three layers, from lowest to highest level:
+
+       1. domoticzApi.sendRequest — patched first because it is loaded at
+          app bootstrap (never lazy).  Any getdevices call on the Dashboard
+          route gets favorite:0 / plan:0 regardless of caller.  This catches
+          the race where dashboardService is lazy-loaded AFTER the controller
+          already fires its first loadFavorites() call.
+
+       2. dashboardService.loadFavorites — patched when the service becomes
+          available (may be after layer 1).  Replaces the entire method so
+          it always returns all used devices with no plan filter.
+
+       3. livesocket.getJson — URL-level patch for the legacy RefreshFavorites
+          polling path that builds the URL string directly.                  */
 
     function patchAngularServices() {
         if (_svcPatched) return;
         try {
             var inj = angular.element(document.body).injector();
 
+            /* Layer 1: domoticzApi.sendRequest (always available at boot) */
+            var api = inj.get('domoticzApi');
+            if (!api.__ngRfPatched) {
+                var origSendRequest = api.sendRequest.bind(api);
+                api.sendRequest = function (params) {
+                    /* On the Dashboard route, force all-device loading by
+                       removing the favorites and plan filters from any
+                       getdevices request.  Scoped to Dashboard so that
+                       Settings / device-list pages are unaffected. */
+                    if (params && params.param === 'getdevices') {
+                        var path = currentHashPath().toLowerCase();
+                        if (path === 'dashboard' || path === '') {
+                            params = Object.assign({}, params, {
+                                favorite: 0, plan: 0, used: 'true'
+                            });
+                        }
+                    }
+                    return origSendRequest(params);
+                };
+                api.__ngRfPatched = true;
+                log('patchAngularServices: domoticzApi.sendRequest patched');
+            }
+
+            /* Layer 2: dashboardService.loadFavorites (lazy-loaded; may not
+               exist yet — skip silently and catch on next $viewContentLoaded) */
+            try {
+                var svc = inj.get('dashboardService');
+                if (svc && !svc.__ngRfPatched) {
+                    svc.loadFavorites = function () {
+                        log('loadFavorites: patched — loading all used devices');
+                        return api.sendRequest({
+                            type: 'command', param: 'getdevices',
+                            filter: 'all', used: 'true', favorite: 0,
+                            order: '[Order]', plan: 0
+                        }).then(function (data) {
+                            var devices = data.result || [];
+                            buildPlanMapFromDevices(devices);
+                            return {
+                                devices:        devices,
+                                lastUpdateTime: data.ActTime ? parseInt(data.ActTime) : 0,
+                                sunrise:        data.Sunrise,
+                                sunset:         data.Sunset,
+                                serverTime:     data.ServerTime
+                            };
+                        });
+                    };
+                    svc.__ngRfPatched = true;
+                    log('patchAngularServices: dashboardService.loadFavorites patched');
+                }
+            } catch (e) { /* dashboardService not loaded yet — layer 1 covers us */ }
+
+            /* Layer 3: livesocket.getJson URL-level patch */
+            var ls = inj.get('livesocket');
+            if (!ls.__ngRfPatched) {
+                var origGetJson = ls.getJson.bind(ls);
+                ls.getJson = function (url, cb) {
+                    if (typeof url === 'string' && url.indexOf('param=getdevices') !== -1) {
+                        url = url.replace(/\bfavorite=1\b/, 'favorite=0');
+                        url = url.replace(/\bplan=\d+\b/, 'plan=0');
+                    }
+                    return origGetJson.call(this, url, cb);
+                };
+                ls.__ngRfPatched = true;
+                log('patchAngularServices: livesocket.getJson patched');
+            }
+
+            _svcPatched = true;
+            log('patchAngularServices: done');
+        } catch (e) {
+            log('patchAngularServices: failed — will retry', e);
+        }
+    }
+
+    /* Re-apply layer 2 (dashboardService) after a lazy-load.  Called from
+       $viewContentLoaded in case dashboardService wasn't available earlier. */
+    function patchDashboardServiceIfNeeded() {
+        if (!_svcPatched) return;   /* full patch not done yet — don't bother */
+        try {
+            var inj = angular.element(document.body).injector();
             var svc = inj.get('dashboardService');
-            if (!svc.__ngRfPatched) {
-                var api = inj.get('domoticzApi');
+            var api = inj.get('domoticzApi');
+            if (svc && !svc.__ngRfPatched) {
                 svc.loadFavorites = function () {
-                    log('loadFavorites: patched — loading all used devices');
                     return api.sendRequest({
                         type: 'command', param: 'getdevices',
                         filter: 'all', used: 'true', favorite: 0,
                         order: '[Order]', plan: 0
                     }).then(function (data) {
                         var devices = data.result || [];
-                        buildPlanMapFromDevices(devices);   /* keep maps fresh */
+                        buildPlanMapFromDevices(devices);
                         return {
                             devices:        devices,
                             lastUpdateTime: data.ActTime ? parseInt(data.ActTime) : 0,
@@ -1040,32 +1133,9 @@
                     });
                 };
                 svc.__ngRfPatched = true;
+                log('patchDashboardServiceIfNeeded: dashboardService.loadFavorites patched');
             }
-
-            var ls = inj.get('livesocket');
-            if (!ls.__ngRfPatched) {
-                var origGetJson = ls.getJson.bind(ls);
-                ls.getJson = function (url, cb) {
-                    if (typeof url === 'string' && url.indexOf('param=getdevices') !== -1) {
-                        url = url.replace(/\bfavorite=1\b/, 'favorite=0');
-                        /* Always fetch all plans so every device stays in the DOM
-                           for client-side room filtering.  Without this, the periodic
-                           live-update poll in DashboardDesktopController uses
-                           plan=myglobals.LastPlanSelected (set by DD navigation) and
-                           replaces the DOM with only that room's devices, breaking
-                           filter-bar switching between rooms. */
-                        url = url.replace(/\bplan=\d+\b/, 'plan=0');
-                    }
-                    return origGetJson.call(this, url, cb);
-                };
-                ls.__ngRfPatched = true;
-            }
-
-            _svcPatched = true;
-            log('patchAngularServices: done');
-        } catch (e) {
-            log('patchAngularServices: failed — will retry', e);
-        }
+        } catch (e) { /* service still not loaded — layer 1 is active */ }
     }
 
     /* ══ Angular hooks ══════════════════════════════════════════════ */
@@ -1151,6 +1221,10 @@
                 scheduleRevealFallback();
                 scheduleBuildBar(150);
                 if (!_svcPatched) patchAngularServices();
+                /* Layer 2 catch-up: dashboardService is lazy-loaded; it becomes
+                   available after the route resolves.  Apply the loadFavorites
+                   patch now so future calls (refresh, re-renders) use it. */
+                patchDashboardServiceIfNeeded();
 
                 /* Schedule late-render rebuilds.  Angular's ng-repeat may need
                    several digest cycles before all device cards are in the DOM.
