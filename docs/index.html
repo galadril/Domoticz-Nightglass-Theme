@@ -1,0 +1,2648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nightglass — Dark Theme for Domoticz</title>
+    <meta name="description" content="A modern dark/light theme for Domoticz with Font Awesome icons, command palette, sparkline charts, 16 built-in presets, and cloud-synced settings.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <style>
+        :root {
+            --sidebar-w: 258px;
+            --topbar-h:  54px;
+            --bg:        #0d1017;
+            --surface:   #1b1d25;
+            --surface-2: #23252f;
+            --surface-3: #2a2b35;
+            --border:    #2e3040;
+            --border-2:  #3a3b4a;
+            --text:      #e2e4ed;
+            --muted:     #6e7a9a;
+            --muted-2:   #9099b8;
+            --accent:    #4e9af1;
+            --accent-2:  #2a7de1;
+            --accent-dim:#1a2a4a;
+            --green:     #4caf7d;
+            --green-dim: #1d3a28;
+            --amber:     #f0a832;
+            --amber-dim: #3a2800;
+            --red:       #e05555;
+            --red-dim:   #3a1010;
+            --purple:    #a855f7;
+            --purple-dim:#2a1040;
+            --code-bg:   #080a10;
+            --radius:    8px;
+            --radius-lg: 12px;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; scroll-padding-top: calc(var(--topbar-h) + 32px); }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.65;
+            font-size: 15px;
+            -webkit-font-smoothing: antialiased;
+        }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        code {
+            font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+            font-size: 0.86em;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            padding: 1px 6px;
+            border-radius: 4px;
+            color: var(--accent);
+        }
+
+        /* ── Topbar ────────────────────────────────────────────── */
+        #topbar {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 300;
+            height: var(--topbar-h);
+            background: rgba(13,16,23,0.96);
+            backdrop-filter: blur(14px);
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center;
+            padding: 0 22px; gap: 14px;
+        }
+        .logo {
+            display: flex; align-items: center; gap: 11px;
+            text-decoration: none; flex-shrink: 0;
+        }
+        .logo:hover { text-decoration: none; }
+        .logo-icon {
+            width: 34px; height: 34px; flex-shrink: 0;
+            border-radius: 9px;
+            background: linear-gradient(145deg, var(--accent), var(--accent-2));
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 14px rgba(78,154,241,0.32);
+            font-size: 1rem; color: #fff;
+        }
+        .logo-text-wrap { display: flex; flex-direction: column; line-height: 1.1; }
+        .logo-name { font-size: 0.97rem; font-weight: 800; color: var(--text); letter-spacing: -0.01em; }
+        .logo-name span { color: var(--accent); }
+        .logo-sub  { font-size: 0.66rem; color: var(--muted); font-weight: 400; letter-spacing: 0.02em; }
+        #topbar-nav { margin-left: auto; display: flex; gap: 2px; align-items: center; }
+        #topbar-nav a {
+            padding: 5px 12px; border-radius: var(--radius);
+            font-size: 0.81rem; color: var(--muted);
+            transition: background 0.14s, color 0.14s;
+        }
+        #topbar-nav a:hover { background: var(--surface); color: var(--text); text-decoration: none; }
+        #topbar-nav a.cta {
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: #fff; font-weight: 600; margin-left: 6px;
+            box-shadow: 0 2px 10px rgba(78,154,241,0.28);
+        }
+        #topbar-nav a.cta:hover { opacity: 0.88; text-decoration: none; }
+        #topbar-donate {
+            background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+            color: #fff !important; font-weight: 600; margin-left: 4px;
+            box-shadow: 0 2px 8px rgba(245,158,11,0.3);
+        }
+        #topbar-donate:hover { opacity: 0.9; text-decoration: none !important; }
+        #hamburger {
+            display: none; background: none;
+            border: 1px solid var(--border); color: var(--muted);
+            cursor: pointer; padding: 5px 10px; border-radius: var(--radius);
+            font-size: 1rem; line-height: 1;
+        }
+        #hamburger:hover { color: var(--text); }
+
+        /* ── Layout ────────────────────────────────────────────── */
+        #layout { display: flex; padding-top: var(--topbar-h); min-height: 100vh; }
+
+        /* ── Sidebar ───────────────────────────────────────────── */
+        #sidebar {
+            width: var(--sidebar-w); flex-shrink: 0;
+            position: sticky; top: var(--topbar-h);
+            height: calc(100vh - var(--topbar-h));
+            overflow-y: auto; overflow-x: hidden;
+            padding: 24px 0 48px;
+            border-right: 1px solid var(--border);
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+        #sidebar::-webkit-scrollbar { width: 4px; }
+        #sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+        .nav-group { margin-bottom: 6px; }
+        .nav-label {
+            display: block; padding: 10px 22px 4px;
+            font-size: 0.64rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.13em;
+            color: var(--muted);
+        }
+        .nav-link {
+            display: flex; align-items: center; gap: 8px;
+            padding: 5px 18px 5px 22px;
+            font-size: 0.82rem; color: var(--muted);
+            border-left: 2px solid transparent;
+            transition: color 0.12s, background 0.12s;
+        }
+        .nav-link:hover { color: var(--text); text-decoration: none; border-left-color: var(--border); background: rgba(78,154,241,0.04); }
+        .nav-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(78,154,241,0.08); }
+        .nav-link .ni { font-size: 0.78rem; width: 14px; text-align: center; opacity: 0.75; }
+
+        /* ── Content ───────────────────────────────────────────── */
+        #content {
+            flex: 1; min-width: 0;
+            max-width: 900px;
+            padding: 52px 60px 110px;
+        }
+
+        /* ── Typography ────────────────────────────────────────── */
+        h1 { font-size: 2.0rem; font-weight: 800; line-height: 1.13; margin-bottom: 14px; letter-spacing: -0.025em; }
+        h2 {
+            font-size: 1.22rem; font-weight: 700;
+            margin: 0 0 18px; padding: 26px 0 16px;
+            border-top: 1px solid var(--border);
+            letter-spacing: -0.01em;
+        }
+        section:first-child h2 { border-top: none; padding-top: 4px; }
+        h3 { font-size: 0.97rem; font-weight: 700; margin: 28px 0 10px; letter-spacing: -0.005em; }
+        h4 { font-size: 0.75rem; font-weight: 700; margin: 20px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+        p { margin-bottom: 14px; color: var(--muted-2); }
+        p strong { color: var(--text); }
+        ul, ol { margin: 0 0 16px 22px; }
+        li { margin-bottom: 6px; color: var(--muted-2); }
+        li strong { color: var(--text); }
+        .lead { font-size: 1.0rem; color: var(--muted-2); margin-bottom: 24px; line-height: 1.7; }
+
+        /* ── Hero ──────────────────────────────────────────────── */
+        .hero-layout {
+            display: flex; align-items: flex-start; gap: 36px;
+            margin-bottom: 36px; padding-bottom: 36px;
+            border-bottom: 1px solid var(--border);
+        }
+        .hero-text { flex: 1; min-width: 0; }
+        .hero-card { flex-shrink: 0; width: 230px; }
+        .gradient-text {
+            background: linear-gradient(135deg, #8bbff8 0%, var(--accent) 45%, #6db3f8 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .title-sub {
+            font-size: 1.05rem; font-weight: 400; color: var(--muted);
+            display: block; margin-top: 3px; -webkit-text-fill-color: var(--muted);
+        }
+        .page-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+
+        /* ── Mock device card (hero) ────────────────────────────── */
+        .mock-card {
+            background: var(--surface-2);
+            border: 1px solid var(--border-2);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(78,154,241,0.08);
+            font-size: 0.78rem;
+        }
+        .mock-card-name {
+            background: var(--surface-3);
+            padding: 7px 11px 6px;
+            font-size: 0.78rem; font-weight: 600; color: var(--text);
+            border-bottom: 1px solid var(--border);
+            border-top: 2px solid var(--accent);
+        }
+        .mock-card-body {
+            padding: 12px 11px 8px;
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        }
+        .mock-card-value { font-size: 1.55rem; font-weight: 700; color: var(--text); line-height: 1.1; }
+        .mock-card-sub { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+        .mock-card-icon { font-size: 2rem; }
+        .mock-card-footer {
+            background: rgba(0,0,0,0.2);
+            padding: 5px 11px;
+            font-size: 0.68rem; color: var(--muted);
+            border-top: 1px solid rgba(255,255,255,0.04);
+            display: flex; gap: 6px; align-items: center;
+        }
+        .mock-card-footer i { font-size: 0.6rem; }
+        .mock-sparkline { padding: 0 11px 8px; }
+        .mock-sparkline svg { display: block; width: 100%; }
+
+        /* ── Badges ────────────────────────────────────────────── */
+        .badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            font-size: 0.68rem; font-weight: 700;
+            padding: 3px 9px; border-radius: 20px; line-height: 1.6;
+        }
+        .badge.blue   { background: rgba(78,154,241,0.12); color: #7db8f8; border: 1px solid rgba(78,154,241,0.3); }
+        .badge.green  { background: rgba(76,175,125,0.1);  color: #6fcf97; border: 1px solid rgba(76,175,125,0.28); }
+        .badge.amber  { background: rgba(240,168,50,0.1);  color: #f0c060; border: 1px solid rgba(240,168,50,0.28); }
+        .badge.purple { background: rgba(168,85,247,0.1);  color: #d8b4fe; border: 1px solid rgba(168,85,247,0.3); }
+        .badge.red    { background: rgba(224,85,85,0.1);   color: #f09090; border: 1px solid rgba(224,85,85,0.28); }
+
+        /* ── Callouts ──────────────────────────────────────────── */
+        .callout {
+            border-radius: var(--radius); padding: 14px 16px;
+            margin: 20px 0; display: flex; gap: 12px;
+            font-size: 0.87rem; line-height: 1.58;
+        }
+        .callout .ci { font-size: 0.95rem; flex-shrink: 0; margin-top: 2px; }
+        .callout.tip  { background: rgba(76,175,125,0.07);  border: 1px solid rgba(76,175,125,0.22);  color: #a7f3c4; }
+        .callout.note { background: rgba(78,154,241,0.07);  border: 1px solid rgba(78,154,241,0.22);  color: #96c8fc; }
+        .callout.warn { background: rgba(240,168,50,0.07);  border: 1px solid rgba(240,168,50,0.22);  color: #fde68a; }
+        .callout p    { color: inherit; margin: 0; }
+        .callout strong { color: inherit; }
+        .callout a    { color: inherit; text-decoration: underline; }
+
+        /* ── Steps ─────────────────────────────────────────────── */
+        .steps { margin: 6px 0 22px; }
+        .step  { display: grid; grid-template-columns: 34px 1fr; gap: 0 16px; margin-bottom: 26px; align-items: start; }
+        .step-n {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: var(--accent-dim); color: var(--accent);
+            border: 1.5px solid rgba(78,154,241,0.45);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 0.8rem; flex-shrink: 0; margin-top: 2px;
+        }
+        .step-body h3 { margin-top: 4px; margin-bottom: 8px; }
+        .step-body p  { margin-bottom: 8px; font-size: 0.93rem; }
+
+        /* ── Code blocks ───────────────────────────────────────── */
+        .code-wrap {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin: 14px 0 22px; overflow: hidden;
+        }
+        .code-header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 7px 14px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .code-lang {
+            font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.09em; color: var(--muted);
+        }
+        .copy-btn {
+            font-size: 0.68rem; color: var(--muted); background: none;
+            border: 1px solid var(--border); cursor: pointer;
+            padding: 2px 9px; border-radius: 4px; font-family: inherit;
+            transition: color 0.14s, border-color 0.14s;
+        }
+        .copy-btn:hover { color: var(--text); border-color: var(--muted); }
+        .copy-btn.ok { color: var(--green); border-color: rgba(76,175,125,0.45); }
+        pre {
+            padding: 18px 20px; overflow-x: auto;
+            font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+            font-size: 0.82rem; line-height: 1.72; color: #c4cce8;
+        }
+        pre code { background: none; border: none; padding: 0; font-size: inherit; border-radius: 0; color: #c4cce8; }
+        .kw  { color: #7db8f8; }
+        .str { color: #98d8a0; }
+        .cm  { color: #3a4060; font-style: italic; }
+        .fn  { color: #e2a3f0; }
+        .num { color: #fda082; }
+        .punc { color: #7080a8; }
+
+        /* ── Tables ────────────────────────────────────────────── */
+        .tbl-wrap { overflow-x: auto; margin: 14px 0 22px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+        th {
+            text-align: left; padding: 9px 14px;
+            background: var(--surface-2); border: 1px solid var(--border);
+            font-size: 0.71rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted);
+        }
+        td { padding: 9px 14px; border: 1px solid var(--border); vertical-align: top; color: var(--muted-2); }
+        tr:nth-child(even) td { background: rgba(255,255,255,0.015); }
+        td strong { color: var(--text); }
+        td code { font-size: 0.82em; }
+
+        /* ── Keyboard key badges ────────────────────────────────── */
+        .key {
+            display: inline-flex; align-items: center; justify-content: center;
+            background: var(--surface-3); border: 1px solid var(--border-2);
+            border-bottom: 2px solid var(--border-2);
+            border-radius: 5px; padding: 1px 7px;
+            font-family: "JetBrains Mono", Consolas, monospace;
+            font-size: 0.78em; font-weight: 600; color: var(--text);
+            box-shadow: inset 0 -1px 0 rgba(0,0,0,0.3);
+            white-space: nowrap;
+        }
+
+        /* ── Feature grid ───────────────────────────────────────── */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(248px, 1fr));
+            gap: 12px; margin: 18px 0 26px;
+        }
+        .feature-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 18px 16px;
+            display: flex; flex-direction: column; gap: 8px;
+            transition: border-color 0.18s, transform 0.15s;
+        }
+        .feature-card:hover { border-color: var(--border-2); transform: translateY(-1px); }
+        .feature-card.accent { border-color: rgba(78,154,241,0.32); background: linear-gradient(160deg, var(--surface), rgba(78,154,241,0.04)); }
+        .fc-icon {
+            font-size: 1.25rem; margin-bottom: 2px;
+        }
+        .fc-title { font-size: 0.93rem; font-weight: 700; color: var(--text); }
+        .fc-desc  { font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+
+        /* ── Theme preset grid (matches real settings panel) ───── */
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+            gap: 10px; margin: 18px 0 26px;
+        }
+        .ng-preset-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 0;
+            cursor: default;
+            transition: all 0.25s ease;
+            overflow: hidden;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+        }
+        .ng-preset-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+        }
+        .ng-preset-preview {
+            height: 80px;
+            border-radius: 11px 11px 0 0;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        .ng-preset-preview-bar { height: 14px; flex-shrink: 0; }
+        .ng-preset-preview-body {
+            flex: 1; display: flex; gap: 6px;
+            padding: 6px 8px; align-items: stretch;
+        }
+        .ng-preset-preview-card {
+            flex: 1; border-radius: 4px; padding: 6px;
+            display: flex; flex-direction: column;
+            align-items: flex-start; gap: 4px;
+        }
+        .ng-preset-preview-lines { display: flex; flex-direction: column; gap: 3px; width: 100%; }
+        .ng-preset-info { padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+        .ng-preset-name { font-size: 0.82rem; font-weight: 600; color: var(--text); }
+        .ng-preset-desc { font-size: 0.72rem; color: var(--muted); line-height: 1.3; }
+
+        /* ── Screenshot gallery ────────────────────────────────── */
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px; margin: 18px 0 28px;
+        }
+        .gal-item {
+            aspect-ratio: 16/10; overflow: hidden;
+            border-radius: var(--radius); cursor: pointer; position: relative;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            transition: border-color 0.18s, box-shadow 0.18s;
+        }
+        .gal-item:hover {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(78,154,241,0.14);
+        }
+        .gal-item img {
+            width: 100%; height: 100%; object-fit: cover;
+            transition: transform 0.28s ease; display: block;
+        }
+        .gal-item:hover img { transform: scale(1.06); }
+        .gal-overlay {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.8));
+            padding: 28px 10px 9px;
+            font-size: 0.74rem; color: #fff; font-weight: 500;
+            opacity: 0; transition: opacity 0.2s; pointer-events: none;
+        }
+        .gal-item:hover .gal-overlay { opacity: 1; }
+        .gal-placeholder {
+            width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 8px; color: var(--muted);
+            font-size: 0.72rem;
+        }
+        .gal-placeholder i { font-size: 1.6rem; opacity: 0.35; }
+
+        /* ── Lightbox ──────────────────────────────────────────── */
+        #lightbox {
+            display: none; position: fixed; inset: 0; z-index: 1000;
+            background: rgba(5,8,14,0.95); backdrop-filter: blur(8px);
+            align-items: center; justify-content: center;
+            flex-direction: column; gap: 14px;
+        }
+        #lightbox.open { display: flex; }
+        #lb-img {
+            max-width: 90vw; max-height: 80vh;
+            border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);
+            box-shadow: 0 28px 80px rgba(0,0,0,0.75);
+        }
+        #lb-caption { font-size: 0.85rem; color: rgba(255,255,255,0.45); text-align: center; }
+        #lb-counter { position: fixed; top: 22px; left: 50%; transform: translateX(-50%); font-size: 0.73rem; color: rgba(255,255,255,0.3); }
+        .lb-close {
+            position: fixed; top: 18px; right: 22px;
+            background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14);
+            color: rgba(255,255,255,0.65); width: 38px; height: 38px; border-radius: 50%;
+            cursor: pointer; font-size: 1.1rem;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s;
+        }
+        .lb-close:hover { background: rgba(255,255,255,0.15); color: #fff; }
+        .lb-nav {
+            position: fixed; top: 50%; transform: translateY(-50%);
+            background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14);
+            color: rgba(255,255,255,0.65); width: 42px; height: 42px; border-radius: 50%;
+            cursor: pointer; font-size: 1.1rem;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s; user-select: none;
+        }
+        .lb-nav:hover { background: rgba(255,255,255,0.15); color: #fff; }
+        #lb-prev { left: 18px; } #lb-next { right: 18px; }
+
+        /* ── Buttons ────────────────────────────────────────────── */
+        .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 20px 0; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 7px;
+            padding: 9px 18px; border-radius: var(--radius);
+            font-size: 0.85rem; font-weight: 600;
+            text-decoration: none; border: 1px solid var(--border);
+            background: var(--surface-2); color: var(--text);
+            transition: border-color 0.15s, transform 0.12s;
+        }
+        .btn:hover { text-decoration: none; border-color: var(--accent); transform: translateY(-1px); }
+        .btn.primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: #fff; border-color: transparent;
+            box-shadow: 0 2px 12px rgba(78,154,241,0.28);
+        }
+        .btn.primary:hover { opacity: 0.9; }
+
+        /* ── Settings reference rows ────────────────────────────── */
+        .setting-row {
+            padding: 11px 0; border-bottom: 1px solid var(--border);
+            display: grid; grid-template-columns: 1fr 72px;
+            gap: 8px; align-items: start;
+        }
+        .setting-row:last-child { border-bottom: none; }
+        .setting-name { font-size: 0.88rem; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+        .setting-desc { font-size: 0.81rem; color: var(--muted); line-height: 1.45; }
+        .setting-default { font-size: 0.74rem; color: var(--muted); text-align: right; padding-top: 3px; }
+
+        /* ── Changelog entries ──────────────────────────────────── */
+        .cl-entry { margin-bottom: 24px; }
+        .cl-version {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+        }
+        .cl-ver-tag {
+            font-size: 0.82rem; font-weight: 700;
+            background: var(--accent-dim); color: var(--accent);
+            border: 1px solid rgba(78,154,241,0.3);
+            padding: 2px 10px; border-radius: 20px;
+        }
+        .cl-date { font-size: 0.78rem; color: var(--muted); }
+        .cl-items { list-style: none; margin: 0; padding: 0; }
+        .cl-items li {
+            padding: 4px 0 4px 22px; position: relative;
+            font-size: 0.87rem; color: var(--muted-2);
+            border-left: 2px solid var(--border); margin: 0 0 0 8px;
+        }
+        .cl-items li::before {
+            content: ''; position: absolute;
+            left: -5px; top: 50%; transform: translateY(-50%);
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--border-2); border: 1.5px solid var(--surface);
+        }
+        .cl-items li.feat::before { background: var(--accent); }
+        .cl-items li.fix::before  { background: var(--green); }
+        .cl-items li.imp::before  { background: var(--amber); }
+
+        /* ── Footer ────────────────────────────────────────────── */
+        footer {
+            border-top: 1px solid var(--border); padding: 24px 60px;
+            font-size: 0.78rem; color: var(--muted);
+            display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+        }
+        footer a { color: var(--muted); }
+        footer a:hover { color: var(--text); }
+
+        /* ── Misc ───────────────────────────────────────────────── */
+        section { margin-bottom: 6px; }
+        .section-intro { font-size: 0.95rem; color: var(--muted-2); margin-bottom: 24px; line-height: 1.65; }
+        hr { border: none; border-top: 1px solid var(--border); margin: 8px 0 0; }
+
+        /* ── Responsive ────────────────────────────────────────── */
+        @media (max-width: 980px) { #content { padding: 40px 32px 80px; max-width: none; } }
+        @media (max-width: 720px) {
+            #hamburger { display: block; }
+            #sidebar {
+                position: fixed; z-index: 200;
+                top: var(--topbar-h); left: 0;
+                height: calc(100vh - var(--topbar-h));
+                background: var(--bg);
+                transform: translateX(-100%);
+                transition: transform 0.22s ease;
+                box-shadow: 4px 0 28px rgba(0,0,0,0.55);
+            }
+            #sidebar.open { transform: translateX(0); }
+            #overlay {
+                display: none; position: fixed; inset: 0; z-index: 150;
+                background: rgba(0,0,0,0.55); top: var(--topbar-h);
+            }
+            #overlay.show { display: block; }
+            #topbar-nav { display: none; }
+            #content { padding: 26px 18px 80px; }
+            h1 { font-size: 1.5rem; }
+            .hero-layout { flex-direction: column; }
+            .hero-card { display: none; }
+            .gallery { grid-template-columns: repeat(2, 1fr); }
+            .feature-grid { grid-template-columns: 1fr; }
+            .preset-grid { grid-template-columns: repeat(2, 1fr); }
+            footer { padding: 20px 18px; }
+        }
+        @media (max-width: 420px) {
+            .gallery { grid-template-columns: 1fr 1fr; gap: 6px; }
+            .preset-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ── Top bar ─────────────────────────────────────────────────── -->
+<header id="topbar">
+    <button id="hamburger" onclick="toggleSidebar()" aria-label="Toggle navigation">&#9776;</button>
+
+    <a href="#overview" class="logo">
+        <div class="logo-icon">
+            <i class="fa-solid fa-moon"></i>
+        </div>
+        <div class="logo-text-wrap">
+            <span class="logo-name">Night<span>glass</span></span>
+            <span class="logo-sub">for Domoticz</span>
+        </div>
+    </a>
+
+    <nav id="topbar-nav">
+        <a href="https://github.com/galadril/Domoticz-Nightglass-Theme/releases">Releases</a>
+        <a href="https://github.com/galadril/Domoticz-Nightglass-Theme/issues">Issues</a>
+        <a href="https://github.com/galadril/Domoticz-Nightglass-Theme" class="cta"><i class="fa-brands fa-github"></i> GitHub &rarr;</a>
+        <a href="https://www.paypal.me/markheinis" target="_blank" rel="noopener" id="topbar-donate">&#9749; Donate</a>
+    </nav>
+</header>
+
+<div id="overlay" onclick="closeSidebar()"></div>
+
+<div id="layout">
+
+<!-- ═══════════════════════════════════════════════ SIDEBAR ═══ -->
+<nav id="sidebar">
+    <div class="nav-group">
+        <span class="nav-label">Getting Started</span>
+        <a class="nav-link active" href="#overview"><span class="ni"><i class="fa-solid fa-star"></i></span> Overview</a>
+        <a class="nav-link" href="#screenshots"><span class="ni"><i class="fa-solid fa-sparkles"></i></span> Showcase</a>
+        <a class="nav-link" href="#installation"><span class="ni"><i class="fa-solid fa-download"></i></span> Installation</a>
+    </div>
+    <div class="nav-group">
+        <span class="nav-label">Features</span>
+        <a class="nav-link" href="#visual-design"><span class="ni"><i class="fa-solid fa-palette"></i></span> Visual Design</a>
+        <a class="nav-link" href="#smart-features"><span class="ni"><i class="fa-solid fa-bolt"></i></span> Smart Features</a>
+        <a class="nav-link" href="#icons"><span class="ni"><i class="fa-solid fa-icons"></i></span> Icon System</a>
+        <a class="nav-link" href="#keyboard"><span class="ni"><i class="fa-solid fa-keyboard"></i></span> Keyboard Shortcuts</a>
+        <a class="nav-link" href="#filter-bar"><span class="ni"><i class="fa-solid fa-filter"></i></span> Filter Bar</a>
+    </div>
+    <div class="nav-group">
+        <span class="nav-label">Customization</span>
+        <a class="nav-link" href="#presets"><span class="ni"><i class="fa-solid fa-swatchbook"></i></span> Theme Presets</a>
+        <a class="nav-link" href="#color-editor"><span class="ni"><i class="fa-solid fa-droplet"></i></span> Color Editor</a>
+        <a class="nav-link" href="#per-device"><span class="ni"><i class="fa-solid fa-pen-to-square"></i></span> Per-Device Overrides</a>
+        <a class="nav-link" href="#sync"><span class="ni"><i class="fa-solid fa-cloud-arrow-up"></i></span> Sync &amp; Export</a>
+    </div>
+    <div class="nav-group">
+        <span class="nav-label">Reference</span>
+        <a class="nav-link" href="#settings-ref"><span class="ni"><i class="fa-solid fa-sliders"></i></span> Settings Reference</a>
+        <a class="nav-link" href="#dark-light"><span class="ni"><i class="fa-solid fa-circle-half-stroke"></i></span> Dark / Light Mode</a>
+    </div>
+    <div class="nav-group">
+        <span class="nav-label">Help</span>
+        <a class="nav-link" href="#troubleshooting"><span class="ni"><i class="fa-solid fa-circle-question"></i></span> Troubleshooting</a>
+        <a class="nav-link" href="#updating"><span class="ni"><i class="fa-solid fa-arrows-rotate"></i></span> Updating</a>
+        <a class="nav-link" href="#support"><span class="ni"><i class="fa-solid fa-mug-hot"></i></span> Support &amp; Donate</a>
+    </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════ CONTENT ═══ -->
+<main id="content">
+
+<!-- ── Overview ─────────────────────────────────────────────── -->
+<section id="overview">
+    <div class="hero-layout">
+        <div class="hero-text">
+            <div class="page-tags">
+                <span class="badge blue"><i class="fa-solid fa-moon"></i> Dark + Light</span>
+                <span class="badge green"><i class="fa-solid fa-layer-group"></i> CSS + JS</span>
+                <span class="badge amber"><i class="fa-solid fa-house-signal"></i> Domoticz</span>
+                <span class="badge purple"><i class="fa-brands fa-font-awesome"></i> Font Awesome 7</span>
+            </div>
+            <h1>
+                <span class="gradient-text">Nightglass</span>
+                <span class="title-sub">Premium Dark Theme for Domoticz</span>
+            </h1>
+            <p class="lead">
+                A sophisticated dark/light theme that transforms your Domoticz home automation dashboard
+                into a focused, control-room experience — deep navy surfaces, smart device icons,
+                sparkline charts, and a command palette that puts every device at your fingertips.
+            </p>
+            <div class="btn-row">
+                <a href="https://github.com/galadril/Domoticz-Nightglass-Theme" class="btn primary">
+                    <i class="fa-brands fa-github"></i> View on GitHub
+                </a>
+                <a href="#installation" class="btn">
+                    <i class="fa-solid fa-download"></i> Install
+                </a>
+                <a href="#screenshots" class="btn">
+                    <i class="fa-solid fa-sparkles"></i> Showcase
+                </a>
+            </div>
+        </div>
+        <div class="hero-card">
+            <div class="mock-card">
+                <div class="mock-card-name">Living Room Temp</div>
+                <div class="mock-card-body">
+                    <div>
+                        <div class="mock-card-value">21.4°</div>
+                        <div class="mock-card-sub">65% humidity &nbsp;·&nbsp; feels 22°</div>
+                    </div>
+                    <div class="mock-card-icon" style="color:#4e9af1;">
+                        <i class="fa-solid fa-thermometer-half"></i>
+                    </div>
+                </div>
+                <div class="mock-sparkline">
+                    <!-- inline SVG sparkline -->
+                    <svg width="100%" height="32" viewBox="0 0 208 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#4e9af1" stop-opacity="0.28"/>
+                                <stop offset="100%" stop-color="#4e9af1" stop-opacity="0"/>
+                            </linearGradient>
+                        </defs>
+                        <path d="M0 24 C16 22, 32 20, 48 18 C64 16, 80 19, 96 16 C112 13, 128 10, 144 9 C160 8, 176 12, 192 10 L208 8 L208 32 L0 32 Z" fill="url(#sg)"/>
+                        <path d="M0 24 C16 22, 32 20, 48 18 C64 16, 80 19, 96 16 C112 13, 128 10, 144 9 C160 8, 176 12, 192 10 L208 8" stroke="#4e9af1" stroke-width="1.5" fill="none"/>
+                    </svg>
+                </div>
+                <div class="mock-card-footer">
+                    <i class="fa-regular fa-clock"></i> today 14:22
+                </div>
+            </div>
+            <div style="margin-top:8px; font-size:0.7rem; color:var(--muted); text-align:center; letter-spacing:0.02em;">
+                Device card with sparkline &amp; timestamp
+            </div>
+        </div>
+    </div>
+
+    <h2>What is Nightglass?</h2>
+    <p>
+        Nightglass is a drop-in theme for <a href="https://www.domoticz.com/">Domoticz</a>. Clone the
+        repository into Domoticz's <code>www/styles/</code> directory — <code>custom.css</code> and
+        <code>custom.js</code> are thin loaders that pull in the full theme from the <code>src/css/</code>
+        and <code>src/js/</code> modules — and your dashboard is transformed.
+    </p>
+    <p>
+        The CSS layer handles all visual styling: color tokens, card layout, glassmorphism login,
+        responsive navbar, and full dark/light mode support via a single <code>body.dz-light</code>
+        class toggle. The JS layer adds intelligence: automatic Font Awesome icon replacement for
+        every device type, live sparkline micro-charts, a command palette, keyboard shortcuts,
+        cloud-synced settings, and more.
+    </p>
+
+    <div class="feature-grid">
+        <div class="feature-card accent">
+            <div class="fc-icon" style="color:var(--accent);"><i class="fa-solid fa-palette"></i></div>
+            <div class="fc-title">16 Theme Presets</div>
+            <div class="fc-desc">One-click palettes from Nightglass to Cyberpunk, Nord, Dracula, and more. Full dark &amp; light color systems for each.</div>
+        </div>
+        <div class="feature-card">
+            <div class="fc-icon" style="color:var(--purple);"><i class="fa-solid fa-magnifying-glass"></i></div>
+            <div class="fc-title">Command Palette</div>
+            <div class="fc-desc"><span class="key">Ctrl</span><span style="margin:0 2px;">+</span><span class="key">K</span> — global fuzzy search and device control from any page, like Spotlight for your home.</div>
+        </div>
+        <div class="feature-card">
+            <div class="fc-icon" style="color:var(--green);"><i class="fa-solid fa-chart-area"></i></div>
+            <div class="fc-title">Sparkline Charts</div>
+            <div class="fc-desc">Inline SVG micro-charts on every sensor card showing the last 24h trend — temperature, humidity, rain, wind, and more.</div>
+        </div>
+        <div class="feature-card">
+            <div class="fc-icon" style="color:var(--amber);"><i class="fa-brands fa-font-awesome"></i></div>
+            <div class="fc-title">Smart Icon System</div>
+            <div class="fc-desc">90+ device types automatically mapped to Font Awesome icons with correct on/off colors, glow effects, and wind rotation.</div>
+        </div>
+        <div class="feature-card">
+            <div class="fc-icon" style="color:#f06060;"><i class="fa-solid fa-circle-half-stroke"></i></div>
+            <div class="fc-title">Dark / Light Mode</div>
+            <div class="fc-desc">Full peer dark and light color systems. One-click toggle, OS auto-detection, and per-mode color customization.</div>
+        </div>
+        <div class="feature-card">
+            <div class="fc-icon" style="color:var(--accent);"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+            <div class="fc-title">Cloud Sync</div>
+            <div class="fc-desc">Settings stored as Domoticz user variables — your theme follows you across every browser and device automatically.</div>
+        </div>
+    </div>
+</section>
+
+<!-- ── Showcase ──────────────────────────────────────────────── -->
+<section id="screenshots">
+    <h2><i class="fa-solid fa-sparkles" style="color:var(--accent);margin-right:8px;opacity:.7;"></i>Showcase</h2>
+    <p class="section-intro">
+        Live rendered examples of Nightglass UI components — the same CSS tokens and
+        design language as your Domoticz dashboard.
+    </p>
+
+    <!-- ── Showcase CSS ──────────────────────────────────────── -->
+    <style>
+        /* ── Shared showcase frame ── */
+        .sc-frame {
+            background: #1b1d25;
+            border: 1px solid #2e3040;
+            border-radius: 14px;
+            overflow: hidden;
+            margin: 0 0 24px;
+            position: relative;
+        }
+        .sc-label {
+            font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.1em; color: var(--muted);
+            padding: 0 0 10px;
+        }
+
+        /* ── Device card grid ── */
+        .sc-card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+            gap: 8px; padding: 20px;
+        }
+        .sc-card {
+            background: #23252f;
+            border: 1px solid #2e3040;
+            border-radius: 12px;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            transition: border-color 0.15s;
+            cursor: default;
+        }
+        .sc-card:hover { border-color: #4e9af1; }
+        .sc-card-name {
+            background: #2a2b35;
+            padding: 7px 10px 6px;
+            font-size: 0.73rem; font-weight: 600; color: #e2e4ed;
+            border-top: 2px solid transparent;
+            border-bottom: 1px solid #2e3040;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .sc-card-name.on  { border-top-color: #4e9af1; }
+        .sc-card-name.off { border-top-color: #3a3b47; }
+        .sc-card-name.warn { border-top-color: #f0a832; }
+        .sc-card-name.stale { border-top-color: #e05555; }
+        .sc-card-body {
+            padding: 12px 10px 6px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .sc-card-val { font-size: 1.25rem; font-weight: 700; color: #e2e4ed; line-height: 1.1; }
+        .sc-card-sub { font-size: 0.68rem; color: #6e7a9a; margin-top: 2px; }
+        .sc-card-icon { font-size: 1.7rem; }
+        .sc-card-footer {
+            padding: 5px 10px 7px;
+            font-size: 0.65rem; color: #6e7a9a;
+            display: flex; align-items: center; gap: 5px;
+            border-top: 1px solid rgba(255,255,255,0.03);
+            background: rgba(0,0,0,0.15);
+        }
+        .sc-sparkline { padding: 0 10px 6px; }
+        .sc-sparkline svg { display: block; width: 100%; }
+
+        /* ── Navbar ── */
+        .sc-navbar {
+            background: #23252f;
+            border-bottom: 1px solid #2e3040;
+            padding: 0 16px;
+            display: flex; align-items: center; gap: 2px;
+            height: 52px; overflow: hidden;
+        }
+        .sc-brand {
+            display: flex; align-items: center; gap: 8px;
+            margin-right: 14px;
+        }
+        .sc-brand-icon {
+            width: 30px; height: 30px; border-radius: 8px;
+            background: linear-gradient(145deg, #4e9af1, #2a7de1);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem; color: #fff;
+            box-shadow: 0 2px 8px rgba(78,154,241,0.3);
+        }
+        .sc-brand-name { font-size: 0.88rem; font-weight: 700; color: #e2e4ed; }
+        .sc-nav-item {
+            padding: 6px 13px;
+            font-size: 0.8rem; color: #6e7a9a;
+            border-radius: 6px;
+            position: relative; cursor: default;
+            white-space: nowrap;
+        }
+        .sc-nav-item.active { color: #e2e4ed; background: rgba(78,154,241,0.1); }
+        .sc-nav-item.active::after {
+            content: '';
+            position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%);
+            width: 60%; height: 2px; background: #4e9af1; border-radius: 2px 2px 0 0;
+        }
+        .sc-nav-indicator {
+            position: absolute; bottom: 0;
+            height: 2px; background: #4e9af1; border-radius: 2px 2px 0 0;
+            transition: all 0.22s ease;
+        }
+        .sc-nav-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+        .sc-theme-btn {
+            width: 30px; height: 30px; border-radius: 8px;
+            background: #2a2b35; border: 1px solid #3a3b47;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem; color: #f0a832; cursor: default;
+        }
+
+        /* ── Command palette ── */
+        .sc-palette-wrap {
+            padding: 20px;
+            display: flex; justify-content: center;
+        }
+        .sc-palette {
+            background: #1b1d25;
+            border: 1px solid #3a3b47;
+            border-radius: 14px;
+            width: 100%; max-width: 420px;
+            overflow: hidden;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(78,154,241,0.08);
+        }
+        .sc-palette-header {
+            display: flex; align-items: center; gap: 10px;
+            padding: 13px 14px;
+            border-bottom: 1px solid #2e3040;
+        }
+        .sc-palette-header i { font-size: 0.9rem; color: #6e7a9a; }
+        .sc-palette-input {
+            flex: 1; font-size: 0.9rem; color: #e2e4ed;
+            background: none; border: none; outline: none;
+            font-family: inherit;
+            pointer-events: none;
+        }
+        .sc-palette-shortcut {
+            font-size: 0.68rem; color: #6e7a9a;
+            background: #23252f; border: 1px solid #3a3b47;
+            border-radius: 4px; padding: 1px 6px; white-space: nowrap;
+        }
+        .sc-pal-item {
+            display: flex; align-items: center; gap: 11px;
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            cursor: default;
+        }
+        .sc-pal-item.active { background: rgba(78,154,241,0.09); }
+        .sc-pal-icon {
+            width: 34px; height: 34px; border-radius: 9px;
+            background: #23252f; border: 1px solid #3a3b47;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .sc-pal-info { flex: 1; min-width: 0; }
+        .sc-pal-name { font-size: 0.84rem; font-weight: 600; color: #e2e4ed; }
+        .sc-pal-sub  { font-size: 0.72rem; color: #6e7a9a; }
+        .sc-pal-state {
+            font-size: 0.72rem; font-weight: 700; padding: 2px 8px;
+            border-radius: 10px; white-space: nowrap;
+        }
+        .sc-pal-state.on  { background: rgba(76,175,125,0.14); color: #6fcf97; }
+        .sc-pal-state.off { background: rgba(255,255,255,0.05); color: #6e7a9a; }
+        .sc-pal-state.val { background: rgba(78,154,241,0.12); color: #7db8f8; }
+
+        /* ── Toast notifications ── */
+        .sc-toast-stack {
+            padding: 18px 20px;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .sc-toast {
+            background: #23252f;
+            border: 1px solid #2e3040;
+            border-radius: 10px;
+            padding: 11px 14px;
+            display: flex; align-items: flex-start; gap: 10px;
+            font-size: 0.82rem; position: relative; overflow: hidden;
+        }
+        .sc-toast::before {
+            content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+            width: 3px;
+        }
+        .sc-toast.success::before { background: #4caf7d; }
+        .sc-toast.warn::before    { background: #f0a832; }
+        .sc-toast.info::before    { background: #4e9af1; }
+        .sc-toast.error::before   { background: #e05555; }
+        .sc-toast-icon { font-size: 0.9rem; margin-top: 1px; flex-shrink: 0; }
+        .sc-toast.success .sc-toast-icon { color: #4caf7d; }
+        .sc-toast.warn    .sc-toast-icon { color: #f0a832; }
+        .sc-toast.info    .sc-toast-icon { color: #4e9af1; }
+        .sc-toast.error   .sc-toast-icon { color: #e05555; }
+        .sc-toast-body { flex: 1; min-width: 0; }
+        .sc-toast-title { font-weight: 700; color: #e2e4ed; margin-bottom: 2px; }
+        .sc-toast-msg   { color: #9099b8; line-height: 1.4; }
+        .sc-toast-time  { font-size: 0.68rem; color: #6e7a9a; flex-shrink: 0; margin-top: 2px; }
+
+        /* ── Filter bar ── */
+        .sc-filter-bar {
+            background: #23252f;
+            border: 1px solid #2e3040;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin: 0 20px 20px;
+        }
+        .sc-filter-title {
+            font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.08em; color: #6e7a9a; margin-bottom: 12px;
+        }
+        .sc-filter-section { margin-bottom: 12px; }
+        .sc-filter-dim {
+            font-size: 0.68rem; font-weight: 700; color: #6e7a9a;
+            text-transform: uppercase; letter-spacing: 0.07em;
+            margin-bottom: 6px;
+        }
+        .sc-pill-row { display: flex; flex-wrap: wrap; gap: 6px; }
+        .sc-pill {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 4px 12px; border-radius: 20px;
+            font-size: 0.76rem; font-weight: 600;
+            border: 1px solid #3a3b47; background: #2a2b35; color: #9099b8;
+            cursor: default; white-space: nowrap;
+        }
+        .sc-pill.active {
+            background: rgba(78,154,241,0.14); color: #7db8f8;
+            border-color: rgba(78,154,241,0.35);
+        }
+        .sc-pill.all { background: #1b1d25; }
+
+        /* ── Modal ── */
+        .sc-modal-wrap { padding: 20px; }
+        .sc-modal {
+            background: #23252f;
+            border: 1px solid #3a3b47;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.55);
+        }
+        .sc-modal-header {
+            background: #2a2b35;
+            padding: 14px 18px;
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid #2e3040;
+        }
+        .sc-modal-title { font-size: 0.95rem; font-weight: 700; color: #e2e4ed; }
+        .sc-modal-close {
+            width: 26px; height: 26px; border-radius: 6px;
+            background: rgba(255,255,255,0.06);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem; color: #6e7a9a; cursor: default;
+        }
+        .sc-modal-body { padding: 16px 18px; }
+        .sc-form-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+            gap: 12px;
+        }
+        .sc-form-row:last-child { border-bottom: none; padding-bottom: 0; }
+        .sc-form-label { font-size: 0.83rem; color: #9099b8; }
+        .sc-form-val   { font-size: 0.83rem; color: #e2e4ed; font-weight: 500; }
+        .sc-toggle {
+            width: 36px; height: 20px; border-radius: 10px;
+            background: #4e9af1; position: relative; cursor: default;
+        }
+        .sc-toggle::after {
+            content: '';
+            position: absolute; top: 3px; right: 4px;
+            width: 14px; height: 14px; border-radius: 50%; background: #fff;
+        }
+        .sc-toggle.off { background: #3a3b47; }
+        .sc-toggle.off::after { right: auto; left: 4px; }
+        .sc-modal-footer {
+            padding: 12px 18px;
+            border-top: 1px solid #2e3040;
+            display: flex; justify-content: flex-end; gap: 8px;
+            background: rgba(0,0,0,0.1);
+        }
+        .sc-btn {
+            padding: 7px 16px; border-radius: 7px;
+            font-size: 0.8rem; font-weight: 600; cursor: default;
+        }
+        .sc-btn.primary { background: #4e9af1; color: #fff; }
+        .sc-btn.ghost   { background: #2a2b35; color: #9099b8; border: 1px solid #3a3b47; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+
+    <!-- ── Showcase: Navbar ─────────────────────────────────── -->
+    <div class="sc-label">Navbar with sliding indicator</div>
+    <div class="sc-frame">
+        <div class="sc-navbar">
+            <div class="sc-brand">
+                <div class="sc-brand-icon"><i class="fa-solid fa-moon"></i></div>
+                <span class="sc-brand-name">Nightglass</span>
+            </div>
+            <div class="sc-nav-item">Dashboard</div>
+            <div class="sc-nav-item active">Switches</div>
+            <div class="sc-nav-item">Temperature</div>
+            <div class="sc-nav-item">Weather</div>
+            <div class="sc-nav-item">Utility</div>
+            <div class="sc-nav-right">
+                <div class="sc-theme-btn"><i class="fa-solid fa-sun"></i></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Showcase: Device cards ───────────────────────────── -->
+    <div class="sc-label">Device cards — on/off states, temperature reactive, stale indicator</div>
+    <div class="sc-frame">
+        <div class="sc-card-grid">
+
+            <!-- Light ON -->
+            <div class="sc-card">
+                <div class="sc-card-name on">Living Room Light</div>
+                <div class="sc-card-body">
+                    <div>
+                        <div class="sc-card-val">On</div>
+                        <div class="sc-card-sub">100%</div>
+                    </div>
+                    <div class="sc-card-icon" style="color:#f0a832;text-shadow:0 0 12px rgba(240,168,50,.5);">
+                        <i class="fa-solid fa-lightbulb"></i>
+                    </div>
+                </div>
+                <div class="sc-card-footer">
+                    <i class="fa-regular fa-clock"></i> today 20:14
+                </div>
+            </div>
+
+            <!-- Light OFF -->
+            <div class="sc-card">
+                <div class="sc-card-name off">Kitchen Light</div>
+                <div class="sc-card-body">
+                    <div>
+                        <div class="sc-card-val" style="color:#6e7a9a;">Off</div>
+                    </div>
+                    <div class="sc-card-icon" style="color:#3a3b47;">
+                        <i class="fa-solid fa-lightbulb"></i>
+                    </div>
+                </div>
+                <div class="sc-card-footer">
+                    <i class="fa-regular fa-clock"></i> today 18:30
+                </div>
+            </div>
+
+            <!-- Temp with sparkline -->
+            <div class="sc-card">
+                <div class="sc-card-name on">Outdoor Temp</div>
+                <div class="sc-card-body">
+                    <div>
+                        <div class="sc-card-val" style="color:#4caf7d;">8.6°</div>
+                        <div class="sc-card-sub">78% hum</div>
+                    </div>
+                    <div class="sc-card-icon" style="color:#4caf7d;">
+                        <i class="fa-solid fa-thermometer-half"></i>
+                    </div>
+                </div>
+                <div class="sc-sparkline">
+                    <svg width="100%" height="26" viewBox="0 0 130 26" fill="none">
+                        <defs>
+                            <linearGradient id="sg2" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#4caf7d" stop-opacity="0.25"/>
+                                <stop offset="100%" stop-color="#4caf7d" stop-opacity="0"/>
+                            </linearGradient>
+                        </defs>
+                        <path d="M0 20 C15 18,30 15,45 16 C60 17,75 14,90 11 C105 8,120 9,130 8 L130 26 L0 26 Z" fill="url(#sg2)"/>
+                        <path d="M0 20 C15 18,30 15,45 16 C60 17,75 14,90 11 C105 8,120 9,130 8" stroke="#4caf7d" stroke-width="1.5" fill="none"/>
+                    </svg>
+                </div>
+                <div class="sc-card-footer">
+                    <i class="fa-regular fa-clock"></i> today 21:00
+                </div>
+            </div>
+
+            <!-- Warning state -->
+            <div class="sc-card">
+                <div class="sc-card-name warn">Smoke Detector</div>
+                <div class="sc-card-body">
+                    <div>
+                        <div class="sc-card-val" style="color:#f0a832;">Alert!</div>
+                        <div class="sc-card-sub">Low battery</div>
+                    </div>
+                    <div class="sc-card-icon" style="color:#f0a832;text-shadow:0 0 10px rgba(240,168,50,.4);">
+                        <i class="fa-solid fa-fire-flame-curved"></i>
+                    </div>
+                </div>
+                <div class="sc-card-footer">
+                    <i class="fa-regular fa-clock"></i> today 09:12
+                </div>
+            </div>
+
+            <!-- Stale -->
+            <div class="sc-card" style="opacity:0.65;">
+                <div class="sc-card-name stale">Garden Sensor</div>
+                <div class="sc-card-body">
+                    <div>
+                        <div class="sc-card-val" style="color:#6e7a9a;">–</div>
+                        <div class="sc-card-sub">offline</div>
+                    </div>
+                    <div class="sc-card-icon" style="color:#3a3b47;">
+                        <i class="fa-solid fa-wifi"></i>
+                    </div>
+                </div>
+                <div class="sc-card-footer" style="color:#e05555;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> 3 days ago
+                </div>
+            </div>
+
+            <!-- Energy meter -->
+            <div class="sc-card">
+                <div class="sc-card-name on">Energy Meter</div>
+                <div class="sc-card-body">
+                    <div>
+                        <div class="sc-card-val">1.24</div>
+                        <div class="sc-card-sub">kWh · 312 W</div>
+                    </div>
+                    <div class="sc-card-icon" style="color:#4e9af1;text-shadow:0 0 10px rgba(78,154,241,.4);">
+                        <i class="fa-solid fa-bolt"></i>
+                    </div>
+                </div>
+                <div class="sc-sparkline">
+                    <svg width="100%" height="26" viewBox="0 0 130 26" fill="none">
+                        <defs>
+                            <linearGradient id="sg3" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#4e9af1" stop-opacity="0.22"/>
+                                <stop offset="100%" stop-color="#4e9af1" stop-opacity="0"/>
+                            </linearGradient>
+                        </defs>
+                        <path d="M0 22 C10 20,20 16,30 18 C40 20,50 12,60 10 C70 8,80 14,90 16 C100 18,115 10,130 7 L130 26 L0 26 Z" fill="url(#sg3)"/>
+                        <path d="M0 22 C10 20,20 16,30 18 C40 20,50 12,60 10 C70 8,80 14,90 16 C100 18,115 10,130 7" stroke="#4e9af1" stroke-width="1.5" fill="none"/>
+                    </svg>
+                </div>
+                <div class="sc-card-footer">
+                    <i class="fa-regular fa-clock"></i> today 21:05
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ── Showcase: Command palette ────────────────────────── -->
+    <div class="sc-label">Command palette — Ctrl+K global device control</div>
+    <div class="sc-frame">
+        <div class="sc-palette-wrap">
+            <div class="sc-palette">
+                <div class="sc-palette-header">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input class="sc-palette-input" value="living" readonly>
+                    <span class="sc-palette-shortcut">Esc to close</span>
+                </div>
+                <div class="sc-pal-item active">
+                    <div class="sc-pal-icon"><i class="fa-solid fa-lightbulb" style="color:#f0a832;"></i></div>
+                    <div class="sc-pal-info">
+                        <div class="sc-pal-name">Living Room Light</div>
+                        <div class="sc-pal-sub">Switches · Dimmer</div>
+                    </div>
+                    <span class="sc-pal-state on">On · 80%</span>
+                </div>
+                <div class="sc-pal-item">
+                    <div class="sc-pal-icon"><i class="fa-solid fa-thermometer-half" style="color:#4caf7d;"></i></div>
+                    <div class="sc-pal-info">
+                        <div class="sc-pal-name">Living Room Temp</div>
+                        <div class="sc-pal-sub">Temperature</div>
+                    </div>
+                    <span class="sc-pal-state val">21.4°</span>
+                </div>
+                <div class="sc-pal-item">
+                    <div class="sc-pal-icon"><i class="fa-solid fa-tv" style="color:#6e7a9a;"></i></div>
+                    <div class="sc-pal-info">
+                        <div class="sc-pal-name">Living Room TV</div>
+                        <div class="sc-pal-sub">Switches · On/Off</div>
+                    </div>
+                    <span class="sc-pal-state off">Off</span>
+                </div>
+                <div class="sc-pal-item">
+                    <div class="sc-pal-icon"><i class="fa-solid fa-fan" style="color:#4e9af1;"></i></div>
+                    <div class="sc-pal-info">
+                        <div class="sc-pal-name">Living Room Fan</div>
+                        <div class="sc-pal-sub">Switches · Speed</div>
+                    </div>
+                    <span class="sc-pal-state on">On · 2</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Showcase: Filter bar + notifications side by side ── -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px;">
+
+        <!-- Filter bar -->
+        <div>
+            <div class="sc-label">Room filter bar</div>
+            <div class="sc-frame">
+                <div style="padding:14px 16px 0;">
+                    <div class="sc-filter-title"><i class="fa-solid fa-sliders" style="margin-right:5px;"></i>Filters</div>
+                </div>
+                <div class="sc-filter-bar">
+                    <div class="sc-filter-section">
+                        <div class="sc-filter-dim">Rooms</div>
+                        <div class="sc-pill-row">
+                            <span class="sc-pill all">All</span>
+                            <span class="sc-pill active">Living Room</span>
+                            <span class="sc-pill">Bedroom</span>
+                            <span class="sc-pill">Kitchen</span>
+                            <span class="sc-pill">Garden</span>
+                        </div>
+                    </div>
+                    <div class="sc-filter-section">
+                        <div class="sc-filter-dim">Type</div>
+                        <div class="sc-pill-row">
+                            <span class="sc-pill all">All</span>
+                            <span class="sc-pill active">Dimmer</span>
+                            <span class="sc-pill">On/Off</span>
+                        </div>
+                    </div>
+                    <div class="sc-filter-section" style="margin-bottom:0;">
+                        <div class="sc-filter-dim">Show</div>
+                        <div class="sc-pill-row">
+                            <span class="sc-pill all">All</span>
+                            <span class="sc-pill"><i class="fa-solid fa-star" style="color:#f0a832;font-size:.7em;"></i> Favourites</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast notifications -->
+        <div>
+            <div class="sc-label">Toast notifications</div>
+            <div class="sc-frame">
+                <div class="sc-toast-stack">
+                    <div class="sc-toast success">
+                        <i class="fa-solid fa-circle-check sc-toast-icon"></i>
+                        <div class="sc-toast-body">
+                            <div class="sc-toast-title">Scene activated</div>
+                            <div class="sc-toast-msg">Evening mood — 4 devices updated</div>
+                        </div>
+                        <span class="sc-toast-time">just now</span>
+                    </div>
+                    <div class="sc-toast info">
+                        <i class="fa-solid fa-circle-info sc-toast-icon"></i>
+                        <div class="sc-toast-body">
+                            <div class="sc-toast-title">Bedroom Light</div>
+                            <div class="sc-toast-msg">Dimmed to 45%</div>
+                        </div>
+                        <span class="sc-toast-time">1 min</span>
+                    </div>
+                    <div class="sc-toast warn">
+                        <i class="fa-solid fa-triangle-exclamation sc-toast-icon"></i>
+                        <div class="sc-toast-body">
+                            <div class="sc-toast-title">Low battery</div>
+                            <div class="sc-toast-msg">Smoke Detector — 15% remaining</div>
+                        </div>
+                        <span class="sc-toast-time">8 min</span>
+                    </div>
+                    <div class="sc-toast error">
+                        <i class="fa-solid fa-circle-xmark sc-toast-icon"></i>
+                        <div class="sc-toast-body">
+                            <div class="sc-toast-title">Device offline</div>
+                            <div class="sc-toast-msg">Garden Sensor — no response</div>
+                        </div>
+                        <span class="sc-toast-time">3 h</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Showcase: Device dialogs ──────────────────────── -->
+    <div class="sc-label">Device dialogs</div>
+    <div class="sc-frame" style="display:flex;flex-wrap:wrap;gap:16px;padding:20px;align-items:flex-start;">
+
+        <!-- Light dimmer dialog -->
+        <div class="sc-modal" style="flex:1;min-width:220px;max-width:280px;">
+            <div class="sc-modal-header">
+                <span class="sc-modal-title"><i class="fa-solid fa-lightbulb" style="margin-right:7px;color:#f5c542;"></i>Ceiling Light</span>
+                <div class="sc-modal-close"><i class="fa-solid fa-xmark"></i></div>
+            </div>
+            <div class="sc-modal-body">
+                <div style="text-align:center;padding:8px 0 14px;">
+                    <div style="font-size:2.2rem;color:#f5c542;margin-bottom:4px;"><i class="fa-solid fa-lightbulb"></i></div>
+                    <div style="font-size:0.75rem;color:#8891aa;margin-bottom:12px;">Living Room · ON</div>
+                    <div style="position:relative;height:6px;background:#2e3040;border-radius:3px;margin:0 4px 6px;">
+                        <div style="position:absolute;left:0;top:0;height:100%;width:72%;background:linear-gradient(90deg,#4e9af1,#f5c542);border-radius:3px;"></div>
+                        <div style="position:absolute;top:50%;left:72%;transform:translate(-50%,-50%);width:14px;height:14px;background:#fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.4);"></div>
+                    </div>
+                    <div style="font-size:0.75rem;color:#6e7a9a;">Brightness — 72%</div>
+                </div>
+                <div class="sc-form-row">
+                    <span class="sc-form-label">Colour temp</span>
+                    <div style="display:flex;gap:5px;">
+                        <div style="width:16px;height:16px;border-radius:50%;background:#ffefc0;border:2px solid #4e9af1;cursor:default;"></div>
+                        <div style="width:16px;height:16px;border-radius:50%;background:#fff4d6;cursor:default;"></div>
+                        <div style="width:16px;height:16px;border-radius:50%;background:#cce4ff;cursor:default;"></div>
+                    </div>
+                </div>
+                <div class="sc-form-row">
+                    <span class="sc-form-label">Timer</span>
+                    <div class="sc-toggle off"></div>
+                </div>
+            </div>
+            <div class="sc-modal-footer">
+                <div class="sc-btn ghost">Off</div>
+                <div class="sc-btn primary">Apply</div>
+            </div>
+        </div>
+
+        <!-- RGB light dialog -->
+        <div class="sc-modal" style="flex:1;min-width:220px;max-width:280px;">
+            <div class="sc-modal-header">
+                <span class="sc-modal-title"><i class="fa-solid fa-circle-half-stroke" style="margin-right:7px;color:#c97bff;"></i>LED Strip</span>
+                <div class="sc-modal-close"><i class="fa-solid fa-xmark"></i></div>
+            </div>
+            <div class="sc-modal-body">
+                <div style="text-align:center;padding:8px 0 10px;">
+                    <div style="width:64px;height:64px;border-radius:50%;margin:0 auto 8px;background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);box-shadow:0 0 20px rgba(200,100,255,0.4);"></div>
+                    <div style="font-size:0.75rem;color:#8891aa;">Hue 270° · Sat 88% · Bri 100%</div>
+                </div>
+                <div class="sc-form-row" style="margin-top:6px;">
+                    <span class="sc-form-label">R</span>
+                    <div style="flex:1;margin-left:10px;height:5px;background:linear-gradient(90deg,#1a1d25,#ff3333);border-radius:3px;position:relative;">
+                        <div style="position:absolute;top:50%;left:65%;transform:translate(-50%,-50%);width:12px;height:12px;background:#fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.4);"></div>
+                    </div>
+                </div>
+                <div class="sc-form-row">
+                    <span class="sc-form-label">G</span>
+                    <div style="flex:1;margin-left:10px;height:5px;background:linear-gradient(90deg,#1a1d25,#33cc44);border-radius:3px;position:relative;">
+                        <div style="position:absolute;top:50%;left:20%;transform:translate(-50%,-50%);width:12px;height:12px;background:#fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.4);"></div>
+                    </div>
+                </div>
+                <div class="sc-form-row">
+                    <span class="sc-form-label">B</span>
+                    <div style="flex:1;margin-left:10px;height:5px;background:linear-gradient(90deg,#1a1d25,#4477ff);border-radius:3px;position:relative;">
+                        <div style="position:absolute;top:50%;left:80%;transform:translate(-50%,-50%);width:12px;height:12px;background:#fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.4);"></div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+                    <div style="width:22px;height:22px;border-radius:50%;background:#ff3333;cursor:default;box-shadow:0 0 6px rgba(255,50,50,0.5);"></div>
+                    <div style="width:22px;height:22px;border-radius:50%;background:#ff9900;cursor:default;"></div>
+                    <div style="width:22px;height:22px;border-radius:50%;background:#33cc44;cursor:default;"></div>
+                    <div style="width:22px;height:22px;border-radius:50%;background:#4477ff;cursor:default;border:2px solid #4e9af1;"></div>
+                    <div style="width:22px;height:22px;border-radius:50%;background:#c97bff;cursor:default;"></div>
+                    <div style="width:22px;height:22px;border-radius:50%;background:#fff;cursor:default;"></div>
+                </div>
+            </div>
+            <div class="sc-modal-footer">
+                <div class="sc-btn ghost">Off</div>
+                <div class="sc-btn primary">Apply</div>
+            </div>
+        </div>
+
+        <!-- Ventilation / fan dialog -->
+        <div class="sc-modal" style="flex:1;min-width:220px;max-width:280px;">
+            <div class="sc-modal-header">
+                <span class="sc-modal-title"><i class="fa-solid fa-fan" style="margin-right:7px;color:#4e9af1;"></i>Ventilation</span>
+                <div class="sc-modal-close"><i class="fa-solid fa-xmark"></i></div>
+            </div>
+            <div class="sc-modal-body">
+                <div style="text-align:center;padding:8px 0 14px;">
+                    <div style="font-size:2rem;color:#4e9af1;margin-bottom:6px;animation:spin 2s linear infinite;display:inline-block;"><i class="fa-solid fa-fan"></i></div>
+                    <div style="font-size:0.75rem;color:#8891aa;">Speed — Medium</div>
+                </div>
+                <div style="display:flex;gap:6px;margin-bottom:14px;">
+                    <div style="flex:1;text-align:center;padding:8px 4px;border-radius:8px;background:#2e3040;font-size:0.72rem;color:#6e7a9a;cursor:default;">Off</div>
+                    <div style="flex:1;text-align:center;padding:8px 4px;border-radius:8px;background:#2e3040;font-size:0.72rem;color:#6e7a9a;cursor:default;">Low</div>
+                    <div style="flex:1;text-align:center;padding:8px 4px;border-radius:8px;background:#4e9af1;font-size:0.72rem;color:#fff;cursor:default;font-weight:600;">Medium</div>
+                    <div style="flex:1;text-align:center;padding:8px 4px;border-radius:8px;background:#2e3040;font-size:0.72rem;color:#6e7a9a;cursor:default;">High</div>
+                </div>
+                <div class="sc-form-row">
+                    <span class="sc-form-label">CO₂</span>
+                    <span class="sc-form-val" style="color:#4ec97b;">612 ppm ✓</span>
+                </div>
+                <div class="sc-form-row">
+                    <span class="sc-form-label">Humidity</span>
+                    <span class="sc-form-val">58%</span>
+                </div>
+                <div class="sc-form-row">
+                    <span class="sc-form-label">Auto mode</span>
+                    <div class="sc-toggle"></div>
+                </div>
+            </div>
+            <div class="sc-modal-footer">
+                <div class="sc-btn ghost">Cancel</div>
+                <div class="sc-btn primary">Apply</div>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<!-- ── Installation ──────────────────────────────────────────── -->
+<section id="installation">
+    <h2><i class="fa-solid fa-download" style="color:var(--accent);margin-right:8px;opacity:.7;"></i>Installation</h2>
+    <p class="section-intro">
+        Nightglass is a drop-in theme. No build step, no Node, no dependencies —
+        clone it once and activate in Domoticz settings.
+    </p>
+
+    <div class="steps">
+        <div class="step">
+            <div class="step-n">1</div>
+            <div class="step-body">
+                <h3>Navigate to your Domoticz styles directory</h3>
+                <p>Domoticz loads custom themes from <code>www/styles/</code> inside its install directory.</p>
+                <div class="code-wrap">
+                    <div class="code-header">
+                        <span class="code-lang">bash</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code>cd /home/pi/domoticz/www/styles/</code></pre>
+                </div>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-n">2</div>
+            <div class="step-body">
+                <h3>Clone the repository into a theme folder</h3>
+                <p>The folder name determines the theme name shown in Domoticz. You can call it anything — <code>nightglass</code> is the conventional name.</p>
+                <div class="code-wrap">
+                    <div class="code-header">
+                        <span class="code-lang">bash</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code>git clone https://github.com/galadril/Domoticz-Nightglass-Theme.git nightglass</code></pre>
+                </div>
+                <p>Or update an existing installation:</p>
+                <div class="code-wrap">
+                    <div class="code-header">
+                        <span class="code-lang">bash</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code>cd nightglass &amp;&amp; git pull</code></pre>
+                </div>
+                <div class="callout note">
+                    <span class="ci"><i class="fa-solid fa-circle-info"></i></span>
+                    <p>The theme ships as <code>custom.css</code>, <code>custom.js</code>, and the full <code>src/</code> directory. All CSS lives in <code>src/css/</code> and all JS modules in <code>src/js/</code> — the root files are thin loaders that import them. You need the entire repository, not just the two root files.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-n">3</div>
+            <div class="step-body">
+                <h3>Restart Domoticz <em>(first-time install only)</em></h3>
+                <p>Domoticz needs a restart to detect the new theme directory. Not required for updates.</p>
+                <div class="code-wrap">
+                    <div class="code-header">
+                        <span class="code-lang">bash</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code>sudo systemctl restart domoticz</code></pre>
+                </div>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-n">4</div>
+            <div class="step-body">
+                <h3>Activate in Domoticz</h3>
+                <p>Go to <strong>Setup &rarr; Settings &rarr; Interface</strong> and set the theme to <strong>Nightglass</strong>. Save and reload.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="callout note">
+        <span class="ci"><i class="fa-solid fa-circle-info"></i></span>
+        <p>
+            <strong>Note:</strong> Nightglass overrides the Default theme CSS. The folder name
+            you choose is what appears in the Domoticz theme dropdown — it does not have to be
+            <code>nightglass</code>.
+        </p>
+    </div>
+</section>
+
+<!-- ── Visual Design ─────────────────────────────────────────── -->
+<section id="visual-design">
+    <h2><i class="fa-solid fa-palette" style="color:var(--accent);margin-right:8px;opacity:.7;"></i>Visual Design</h2>
+    <p class="section-intro">
+        Nightglass uses a deep navy color palette with a single cool-blue accent that carries
+        all interactive meaning — links, focus rings, active borders, and on-state icon color.
+        Surface depth is created by stepping through surface-container levels, not by varying hue.
+    </p>
+
+    <div class="feature-grid">
+        <div class="feature-card">
+            <div class="fc-icon" style="color:var(--accent);"><i class="fa-solid fa-layer-group"></i></div>
+            <div class="fc-title">Elevation System</div>
+            <div class="fc-desc">Four elevation levels using surface-container tokens. Glassmorphism reserved for modals &amp; login — never on live device cards.</div>
+        </div>
+        <div class="feature-card">
+            <div class="fc-icon" style="color:var(--green);"><i class="fa-solid fa-circle-nodes"></i></div>
+            <div class="fc-title">Smooth Animations</div>
+            <div class="fc-desc">State-change flash, 3D card tilt, ambient device glow, and staggered navbar entrance. All respect <code>prefers-reduced-motion</code>.</div>
+        </div>
+        <div class="feature-card">
+            <div class="fc-icon" style="color:var(--amber);"><i class="fa-solid fa-temperature-half"></i></div>
+            <div class="fc-title">Temperature Accents</div>
+            <div class="fc-desc">Cards automatically pick up a color accent from the device's temperature reading — ice-blue at 0°C, warm red at 35°C+.</div>
+        </div>
+        <div class="feature-card">
+            <div class="fc-icon" style="color:var(--purple);"><i class="fa-solid fa-mobile-screen"></i></div>
+            <div class="fc-title">Fully Responsive</div>
+            <div class="fc-desc">Navbar collapses to a hamburger, cards reflow to single column, filter drawer becomes mobile-optimized. Works on tablets and phones.</div>
+        </div>
+        <div class="feature-card">
+            <div class="fc-icon" style="color:var(--red);"><i class="fa-solid fa-clock-rotate-left"></i></div>
+            <div class="fc-title">Staleness Indicator</div>
+            <div class="fc-desc">Devices with no update for a configurable time period get a visual stale marker — instantly spot offline or stuck sensors.</div>
+        </div>
+        <div class="feature-card">
+            <div class="fc-icon" style="color:var(--accent);"><i class="fa-solid fa-font"></i></div>
+            <div class="fc-title">System Font Stack</div>
+            <div class="fc-desc">Zero web fonts. Text renders in the OS typeface — zero latency, zero layout shift, beautifully anti-aliased on every platform.</div>
+        </div>
+    </div>
+
+    <h3>Color Token Reference</h3>
+    <p>All colors are CSS custom properties defined in <code>:root</code> (dark) and overridden in <code>body.dz-light</code> (light). Never hardcode hex values.</p>
+    <div class="tbl-wrap">
+        <table>
+            <thead><tr><th>Token</th><th>Dark default</th><th>Role</th></tr></thead>
+            <tbody>
+                <tr><td><code>--dz-body-bg</code></td><td><code>#1b1d25</code></td><td>Page background</td></tr>
+                <tr><td><code>--dz-card-bg</code></td><td><code>#23252f</code></td><td>Device card fill</td></tr>
+                <tr><td><code>--dz-accent-color</code></td><td><code>#4e9af1</code></td><td>Primary accent — links, focus, on-state</td></tr>
+                <tr><td><code>--dz-text-color</code></td><td><code>#e2e4ed</code></td><td>Primary text</td></tr>
+                <tr><td><code>--dz-text-muted</code></td><td><code>#b0b3c6</code></td><td>Secondary / label text</td></tr>
+                <tr><td><code>--dz-border-color</code></td><td><code>#3a3b47</code></td><td>Card and panel borders</td></tr>
+                <tr><td><code>--dz-success-color</code></td><td><code>#4caf7d</code></td><td>Success / on-state green</td></tr>
+                <tr><td><code>--dz-warning-color</code></td><td><code>#f0a832</code></td><td>Warning / low battery amber</td></tr>
+                <tr><td><code>--dz-danger-color</code></td><td><code>#e05555</code></td><td>Error / timeout red</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ── Smart Features ────────────────────────────────────────── -->
+<section id="smart-features">
+    <h2><i class="fa-solid fa-bolt" style="color:var(--accent);margin-right:8px;opacity:.7;"></i>Smart Features</h2>
+    <p class="section-intro">
+        The JS layer adds a layer of intelligence on top of the Domoticz AngularJS application
+        without modifying any Domoticz files.
+    </p>
+
+    <h3>Live WebSocket Updates</h3>
+    <p>
+        Real-time card updates via Angular's <code>device_update</code> events — device values,
+        icons, and timestamps update without any page refresh. State changes trigger a brief
+        <strong>flash animation</strong> to draw your eye to what just changed.
+    </p>
+
+    <h3>Sparkline Micro-Charts</h3>
+    <p>
+        Every sensor card that supports history (temperature, humidity, rain, wind speed, counters,
+        UV index) gets an inline SVG area chart injected beneath the value. Data is fetched from
+        the Domoticz JSON API and rendered as a 24-hour trend.
+    </p>
+
+    <h3>Timestamp Formatting</h3>
+    <p>
+        Raw Domoticz timestamps are reformatted to human-readable relative labels:
+        <strong>today 3:42 pm</strong>, <strong>yesterday 10:15 am</strong>, <strong>Apr 3, 2:00 pm</strong>.
+        Each card gets a pinned footer bar with the formatted timestamp.
+    </p>
+
+    <h3>Ace Editor &amp; Highcharts Theming</h3>
+    <p>
+        The Events page Ace editor automatically applies and persists your chosen theme.
+        Highcharts panels (device history, reports) get a full dark or light palette applied
+        globally — no chart looks out of place.
+    </p>
+</section>
+
+<!-- ── Icon System ───────────────────────────────────────────── -->
+<section id="icons">
+    <h2><i class="fa-brands fa-font-awesome" style="color:var(--accent);margin-right:8px;opacity:.7;"></i>Icon System</h2>
+    <p class="section-intro">
+        Every Domoticz PNG device image is automatically replaced with a Font Awesome 7 icon
+        using a two-pass replacement strategy: initial scan on load, then delta updates via
+        <code>MutationObserver</code> watching image <code>src</code> attribute changes.
+    </p>
+
+    <h3>Device Map</h3>
+    <p>
+        90+ device types are mapped in <code>DEVICE_MAP</code> inside <code>src/js/icons.js</code>.
+        Each entry specifies an icon class, an on-state color, and an off-state color:
+    </p>
+    <div class="code-wrap">
+        <div class="code-header">
+            <span class="code-lang">javascript</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre><code><span class="cm">// Add a new device type to DEVICE_MAP:</span>
+<span class="str">"ChargingStation48"</span><span class="punc">: {</span>
+    icon<span class="punc">:</span>     <span class="str">"fa-solid fa-charging-station"</span><span class="punc">,</span>
+    colorOn<span class="punc">:</span>  <span class="str">"#4e9af1"</span><span class="punc">,</span>
+    colorOff<span class="punc">:</span> <span class="str">"#6c757d"</span>
+<span class="punc">}</span></code></pre>
+    </div>
+
+    <h3>Per-Device Overrides</h3>
+    <p>
+        Individual devices can override their icon and color from the Nightglass Settings panel
+        in Domoticz — no code changes needed. See <a href="#per-device">Per-Device Overrides</a>.
+    </p>
+
+    <h3>Special Behaviors</h3>
+    <div class="tbl-wrap">
+        <table>
+            <thead><tr><th>Feature</th><th>How it works</th></tr></thead>
+            <tbody>
+                <tr><td><strong>Wind direction</strong></td><td>Compass direction filenames (N, NE, E, …) apply a CSS <code>transform: rotate(Ndeg)</code> to the arrow icon</td></tr>
+                <tr><td><strong>Temperature ranges</strong></td><td>Thermometer icon color shifts from ice-blue (&le;0°C) through green (18–22°C) to red (&ge;35°C)</td></tr>
+                <tr><td><strong>Alert levels</strong></td><td>Alert icons adapt color to the device's alert level (0–4) from green to red</td></tr>
+                <tr><td><strong>Favorite stars</strong></td><td>Filled/outline star based on the device's favorite state</td></tr>
+                <tr><td><strong>Ambient glow</strong></td><td>On-state icons emit a soft <code>box-shadow</code> in <code>colorOn</code> tint</td></tr>
+                <tr><td><strong>Skip patterns</strong></td><td>Camera defaults, RGB color picker, and evohome folder images are never replaced</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ── Keyboard Shortcuts ────────────────────────────────────── -->
+<section id="keyboard">
+    <h2><i class="fa-solid fa-keyboard" style="color:var(--accent);margin-right:8px;opacity:.7;"></i>Keyboard Shortcuts</h2>
+    <p class="section-intro">
+        Nightglass turns your keyboard into a dashboard remote.
+        Three distinct shortcut systems cover navigation, search, and device control.
+    </p>
+
+    <h3>Quick Navigation — Number Keys</h3>
+    <p>Press a number key (when no input is focused) to instantly jump to a section:</p>
+    <div class="tbl-wrap">
+        <table>
+            <thead><tr><th>Key</th><th>Section</th></tr></thead>
+            <tbody>
+                <tr><td><span class="key">1</span></td><td>Dashboard</td></tr>
+                <tr><td><span class="key">2</span></td><td>Switches &amp; Lights</td></tr>
+                <tr><td><span class="key">3</span></td><td>Scenes &amp; Groups</td></tr>
+                <tr><td><span class="key">4</span></td><td>Temperature</td></tr>
+                <tr><td><span class="key">5</span></td><td>Weather</td></tr>
+                <tr><td><span class="key">6</span></td><td>Utility</td></tr>
+                <tr><td><span class="key">7</span></td><td>Cameras</td></tr>
+                <tr><td><span class="key">8</span></td><td>Log</td></tr>
+                <tr><td><span class="key">9</span></td><td>Setup</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>Page Filter — <span class="key">/</span></h3>
+    <p>
+        Quickly find a device <em>on the current page</em>. Type to filter, navigate with
+        <span class="key">↑</span> <span class="key">↓</span>, press <span class="key">Enter</span>
+        to scroll to and flash-highlight the device. Press <span class="key">Esc</span> to close.
+    </p>
+    <div class="callout note">
+        <span class="ci"><i class="fa-solid fa-circle-info"></i></span>
+        <p><strong>Use this when</strong> you're already on the right page (e.g., Switches) and want to find one device among many without scrolling.</p>
+    </div>
+
+    <h3>Command Palette — <span class="key">Ctrl</span> + <span class="key">K</span></h3>
+    <p>
+        A Spotlight-style overlay for <strong>global device control</strong> from any page.
+        Press <span class="key">Ctrl</span>&thinsp;+&thinsp;<span class="key">K</span> (or
+        <span class="key">⌘K</span> on Mac) anywhere to open it.
+    </p>
+    <div class="tbl-wrap">
+        <table>
+            <thead><tr><th>Shortcut</th><th>Action</th></tr></thead>
+            <tbody>
+                <tr><td><span class="key">Ctrl</span> + <span class="key">K</span></td><td>Open / close the command palette</td></tr>
+                <tr><td><span class="key">↑</span> / <span class="key">↓</span></td><td>Navigate the device list</td></tr>
+                <tr><td><span class="key">Enter</span></td><td>Toggle device on/off (or expand dimmer)</td></tr>
+                <tr><td><span class="key">Shift</span> + <span class="key">Enter</span></td><td>Navigate to the device's page and highlight it</td></tr>
+                <tr><td><span class="key">Esc</span></td><td>Close palette</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <h4>Command Palette Features</h4>
+    <ul>
+        <li><strong>Fuzzy search</strong> — type <code>lvng lght</code> to find "Living Room Light"</li>
+        <li><strong>Favorites first</strong> — shows starred devices by default</li>
+        <li><strong>Live state</strong> — current on/off/level/temp with color coding</li>
+        <li><strong>Dimmer slider</strong> — inline 0–100% brightness control</li>
+        <li><strong>Smart routing</strong> — auto-navigates to the correct page for each device type</li>
+    </ul>
+</section>
+
+<!-- ── Filter Bar ────────────────────────────────────────────── -->
+<section id="filter-bar">
+    <h2><i class="fa-solid fa-filter" style="color:var(--accent);margin-right:8px;opacity:.7;"></i>Filter Bar</h2>
+    <p class="section-intro">
+        A multi-dimensional filter panel that replaces Domoticz's native room selector on
+        every device page — pure client-side, zero page reloads.
+    </p>
+
+    <p>
+        The filter bar appears below the top bar on all category pages (Dashboard, Switches,
+        Temperature, etc.). It offers four filter dimensions that can be combined:
+    </p>
+    <div class="tbl-wrap">
+        <table>
+            <thead><tr><th>Dimension</th><th>Options</th><th>Behavior</th></tr></thead>
+            <tbody>
+                <tr><td><strong>Rooms</strong></td><td>All plans from Domoticz</td><td>Persists across page navigation</td></tr>
+                <tr><td><strong>Type</strong></td><td>Switch types &amp; sensor types on current page</td><td>Pruned when navigating to a new page</td></tr>
+                <tr><td><strong>Hardware</strong></td><td>Hardware names on current page</td><td>Pruned when navigating to a new page</td></tr>
+                <tr><td><strong>Favourites</strong></td><td>On / Off toggle</td><td>Pruned when not relevant on new page</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <p>
+        All filtering is AND-ed across dimensions and OR-ed within each dimension. The filter bar
+        patches Angular's <code>dashboardService.loadFavorites</code> and <code>livesocket.getJson</code>
+        to always fetch all devices (not just the current room's subset), so every device is in
+        the DOM for instant client-side show/hide.
+    </p>
+    <div class="callout tip">
+        <span class="ci"><i class="fa-solid fa-lightbulb"></i></span>
+        <p>Open or close the filter panel with the <strong>Filters</strong> button in the search bar. On mobile it slides in as a full-height drawer with a backdrop.</p>
+    </div>
+</section>
+
+<!-- ── Theme Presets ─────────────────────────────────────────── -->
+<section id="presets">
+    <h2><i class="fa-solid fa-swatchbook" style="color:var(--accent);margin-right:8px;opacity:.7;"></i>Theme Presets</h2>
+    <p class="section-intro">
+        16 built-in palettes selectable with a single click in the Nightglass settings panel.
+        Each preset defines a complete dark <em>and</em> light color system.
+    </p>
+
+    <div class="preset-grid">
+
+        <!-- Nightglass -->
+        <div class="ng-preset-card">
+            <div class="ng-preset-preview" style="background:#1b1d25;">
+                <div class="ng-preset-preview-bar" style="background:#23252f;border-bottom:2px solid #4e9af1;"></div>
+                <div class="ng-preset-preview-body">
+                    <div class="ng-preset-preview-card" style="background:#23252f;border:1px solid #4e9af130;">
+                        <i class="fa-solid fa-moon" style="color:#4e9af1;font-size:14px;"></i>
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#e2e4ed;width:70%;height:3px;border-radius:2px;opacity:0.7;"></div>
+                            <div style="background:#4e9af1;width:45%;height:3px;border-radius:2px;opacity:0.6;"></div>
+                        </div>
+                    </div>
+                    <div class="ng-preset-preview-card" style="background:#23252f;border:1px solid #4e9af130;">
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#e2e4ed;width:55%;height:3px;border-radius:2px;opacity:0.5;"></div>
+                            <div style="background:#4e9af1;width:35%;height:3px;border-radius:2px;opacity:0.4;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="ng-preset-info">
+                <span class="ng-preset-name">Nightglass</span>
+                <span class="ng-preset-desc">The original dark theme — deep navy surfaces with cool blue accents</span>
+            </div>
+        </div>
+
+        <!-- Emerald Forest -->
+        <div class="ng-preset-card">
+            <div class="ng-preset-preview" style="background:#1a2420;">
+                <div class="ng-preset-preview-bar" style="background:#212e28;border-bottom:2px solid #4caf7d;"></div>
+                <div class="ng-preset-preview-body">
+                    <div class="ng-preset-preview-card" style="background:#212e28;border:1px solid #4caf7d30;">
+                        <i class="fa-solid fa-leaf" style="color:#4caf7d;font-size:14px;"></i>
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#d8e8df;width:70%;height:3px;border-radius:2px;opacity:0.7;"></div>
+                            <div style="background:#4caf7d;width:45%;height:3px;border-radius:2px;opacity:0.6;"></div>
+                        </div>
+                    </div>
+                    <div class="ng-preset-preview-card" style="background:#212e28;border:1px solid #4caf7d30;">
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#d8e8df;width:55%;height:3px;border-radius:2px;opacity:0.5;"></div>
+                            <div style="background:#4caf7d;width:35%;height:3px;border-radius:2px;opacity:0.4;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="ng-preset-info">
+                <span class="ng-preset-name">Emerald Forest</span>
+                <span class="ng-preset-desc">Lush greens on charcoal — nature-inspired and easy on the eyes</span>
+            </div>
+        </div>
+
+        <!-- Solar Flare -->
+        <div class="ng-preset-card">
+            <div class="ng-preset-preview" style="background:#1f1a15;">
+                <div class="ng-preset-preview-bar" style="background:#2a2218;border-bottom:2px solid #f0a832;"></div>
+                <div class="ng-preset-preview-body">
+                    <div class="ng-preset-preview-card" style="background:#2a2218;border:1px solid #f0a83230;">
+                        <i class="fa-solid fa-sun" style="color:#f0a832;font-size:14px;"></i>
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#f0e6d6;width:70%;height:3px;border-radius:2px;opacity:0.7;"></div>
+                            <div style="background:#f0a832;width:45%;height:3px;border-radius:2px;opacity:0.6;"></div>
+                        </div>
+                    </div>
+                    <div class="ng-preset-preview-card" style="background:#2a2218;border:1px solid #f0a83230;">
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#f0e6d6;width:55%;height:3px;border-radius:2px;opacity:0.5;"></div>
+                            <div style="background:#f0a832;width:35%;height:3px;border-radius:2px;opacity:0.4;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="ng-preset-info">
+                <span class="ng-preset-name">Solar Flare</span>
+                <span class="ng-preset-desc">Warm amber and burnt orange on deep brown — sunset dashboard vibes</span>
+            </div>
+        </div>
+
+        <!-- Arctic Ice -->
+        <div class="ng-preset-card">
+            <div class="ng-preset-preview" style="background:#171c22;">
+                <div class="ng-preset-preview-bar" style="background:#1e2530;border-bottom:2px solid #29b6f6;"></div>
+                <div class="ng-preset-preview-body">
+                    <div class="ng-preset-preview-card" style="background:#1e2530;border:1px solid #29b6f630;">
+                        <i class="fa-solid fa-snowflake" style="color:#29b6f6;font-size:14px;"></i>
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#e0eaf2;width:70%;height:3px;border-radius:2px;opacity:0.7;"></div>
+                            <div style="background:#29b6f6;width:45%;height:3px;border-radius:2px;opacity:0.6;"></div>
+                        </div>
+                    </div>
+                    <div class="ng-preset-preview-card" style="background:#1e2530;border:1px solid #29b6f630;">
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#e0eaf2;width:55%;height:3px;border-radius:2px;opacity:0.5;"></div>
+                            <div style="background:#29b6f6;width:35%;height:3px;border-radius:2px;opacity:0.4;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="ng-preset-info">
+                <span class="ng-preset-name">Arctic Ice</span>
+                <span class="ng-preset-desc">Crisp cyan and white on slate — clean, clinical, and modern</span>
+            </div>
+        </div>
+
+        <!-- Violet Nebula -->
+        <div class="ng-preset-card">
+            <div class="ng-preset-preview" style="background:#1a1525;">
+                <div class="ng-preset-preview-bar" style="background:#221e30;border-bottom:2px solid #c8a0ff;"></div>
+                <div class="ng-preset-preview-body">
+                    <div class="ng-preset-preview-card" style="background:#221e30;border:1px solid #c8a0ff30;">
+                        <i class="fa-solid fa-star" style="color:#c8a0ff;font-size:14px;"></i>
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#e4ddf0;width:70%;height:3px;border-radius:2px;opacity:0.7;"></div>
+                            <div style="background:#c8a0ff;width:45%;height:3px;border-radius:2px;opacity:0.6;"></div>
+                        </div>
+                    </div>
+                    <div class="ng-preset-preview-card" style="background:#221e30;border:1px solid #c8a0ff30;">
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#e4ddf0;width:55%;height:3px;border-radius:2px;opacity:0.5;"></div>
+                            <div style="background:#c8a0ff;width:35%;height:3px;border-radius:2px;opacity:0.4;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="ng-preset-info">
+                <span class="ng-preset-name">Violet Nebula</span>
+                <span class="ng-preset-desc">Rich purples and magentas on deep space — a cosmic palette</span>
+            </div>
+        </div>
+
+        <!-- Rose Gold -->
+        <div class="ng-preset-card">
+            <div class="ng-preset-preview" style="background:#201a1e;">
+                <div class="ng-preset-preview-bar" style="background:#2a2226;border-bottom:2px solid #e8a0b0;"></div>
+                <div class="ng-preset-preview-body">
+                    <div class="ng-preset-preview-card" style="background:#2a2226;border:1px solid #e8a0b030;">
+                        <i class="fa-solid fa-gem" style="color:#e8a0b0;font-size:14px;"></i>
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#f0e4e8;width:70%;height:3px;border-radius:2px;opacity:0.7;"></div>
+                            <div style="background:#e8a0b0;width:45%;height:3px;border-radius:2px;opacity:0.6;"></div>
+                        </div>
+                    </div>
+                    <div class="ng-preset-preview-card" style="background:#2a2226;border:1px solid #e8a0b030;">
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#f0e4e8;width:55%;height:3px;border-radius:2px;opacity:0.5;"></div>
+                            <div style="background:#e8a0b0;width:35%;height:3px;border-radius:2px;opacity:0.4;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="ng-preset-info">
+                <span class="ng-preset-name">Rose Gold</span>
+                <span class="ng-preset-desc">Soft pink-copper tones on warm gray — elegant and refined</span>
+            </div>
+        </div>
+
+        <!-- Monochrome -->
+        <div class="ng-preset-card">
+            <div class="ng-preset-preview" style="background:#181818;">
+                <div class="ng-preset-preview-bar" style="background:#222222;border-bottom:2px solid #b0b0b0;"></div>
+                <div class="ng-preset-preview-body">
+                    <div class="ng-preset-preview-card" style="background:#222222;border:1px solid #b0b0b030;">
+                        <i class="fa-solid fa-circle-half-stroke" style="color:#b0b0b0;font-size:14px;"></i>
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#e8e8e8;width:70%;height:3px;border-radius:2px;opacity:0.7;"></div>
+                            <div style="background:#b0b0b0;width:45%;height:3px;border-radius:2px;opacity:0.6;"></div>
+                        </div>
+                    </div>
+                    <div class="ng-preset-preview-card" style="background:#222222;border:1px solid #b0b0b030;">
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#e8e8e8;width:55%;height:3px;border-radius:2px;opacity:0.5;"></div>
+                            <div style="background:#b0b0b0;width:35%;height:3px;border-radius:2px;opacity:0.4;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="ng-preset-info">
+                <span class="ng-preset-name">Monochrome</span>
+                <span class="ng-preset-desc">Pure grayscale — minimal, distraction-free, and timeless</span>
+            </div>
+        </div>
+
+        <!-- Crimson Ember -->
+        <div class="ng-preset-card">
+            <div class="ng-preset-preview" style="background:#1a1517;">
+                <div class="ng-preset-preview-bar" style="background:#251c1f;border-bottom:2px solid #e05555;"></div>
+                <div class="ng-preset-preview-body">
+                    <div class="ng-preset-preview-card" style="background:#251c1f;border:1px solid #e0555530;">
+                        <i class="fa-solid fa-fire" style="color:#e05555;font-size:14px;"></i>
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#f0e0e2;width:70%;height:3px;border-radius:2px;opacity:0.7;"></div>
+                            <div style="background:#e05555;width:45%;height:3px;border-radius:2px;opacity:0.6;"></div>
+                        </div>
+                    </div>
+                    <div class="ng-preset-preview-card" style="background:#251c1f;border:1px solid #e0555530;">
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#f0e0e2;width:55%;height:3px;border-radius:2px;opacity:0.5;"></div>
+                            <div style="background:#e05555;width:35%;height:3px;border-radius:2px;opacity:0.4;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="ng-preset-info">
+                <span class="ng-preset-name">Crimson Ember</span>
+                <span class="ng-preset-desc">Bold reds on dark charcoal — intense, dramatic, and powerful</span>
+            </div>
+        </div>
+
+        <!-- Matrix -->
+        <div class="ng-preset-card">
+            <div class="ng-preset-preview" style="background:#0a0f0a;">
+                <div class="ng-preset-preview-bar" style="background:#0f1a0f;border-bottom:2px solid #00e676;"></div>
+                <div class="ng-preset-preview-body">
+                    <div class="ng-preset-preview-card" style="background:#0f1a0f;border:1px solid #00e67630;">
+                        <i class="fa-solid fa-terminal" style="color:#00e676;font-size:14px;"></i>
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#b9f6ca;width:70%;height:3px;border-radius:2px;opacity:0.7;"></div>
+                            <div style="background:#00e676;width:45%;height:3px;border-radius:2px;opacity:0.6;"></div>
+                        </div>
+                    </div>
+                    <div class="ng-preset-preview-card" style="background:#0f1a0f;border:1px solid #00e67630;">
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#b9f6ca;width:55%;height:3px;border-radius:2px;opacity:0.5;"></div>
+                            <div style="background:#00e676;width:35%;height:3px;border-radius:2px;opacity:0.4;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="ng-preset-info">
+                <span class="ng-preset-name">Matrix</span>
+                <span class="ng-preset-desc">Green phosphor on black — follow the white rabbit</span>
+            </div>
+        </div>
+
+        <!-- Cyberpunk -->
+        <div class="ng-preset-card">
+            <div class="ng-preset-preview" style="background:#0a0a12;">
+                <div class="ng-preset-preview-bar" style="background:#12121f;border-bottom:2px solid #ff2d95;"></div>
+                <div class="ng-preset-preview-body">
+                    <div class="ng-preset-preview-card" style="background:#12121f;border:1px solid #ff2d9530;">
+                        <i class="fa-solid fa-bolt" style="color:#ff2d95;font-size:14px;"></i>
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#e8e0f0;width:70%;height:3px;border-radius:2px;opacity:0.7;"></div>
+                            <div style="background:#ff2d95;width:45%;height:3px;border-radius:2px;opacity:0.6;"></div>
+                        </div>
+                    </div>
+                    <div class="ng-preset-preview-card" style="background:#12121f;border:1px solid #ff2d9530;">
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#e8e0f0;width:55%;height:3px;border-radius:2px;opacity:0.5;"></div>
+                            <div style="background:#ff2d95;width:35%;height:3px;border-radius:2px;opacity:0.4;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="ng-preset-info">
+                <span class="ng-preset-name">Cyberpunk</span>
+                <span class="ng-preset-desc">Neon magenta and electric cyan on pitch black — Night City awaits</span>
+            </div>
+        </div>
+
+        <!-- Dracula -->
+        <div class="ng-preset-card">
+            <div class="ng-preset-preview" style="background:#21222c;">
+                <div class="ng-preset-preview-bar" style="background:#282a36;border-bottom:2px solid #bd93f9;"></div>
+                <div class="ng-preset-preview-body">
+                    <div class="ng-preset-preview-card" style="background:#282a36;border:1px solid #bd93f930;">
+                        <i class="fa-solid fa-ghost" style="color:#bd93f9;font-size:14px;"></i>
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#f8f8f2;width:70%;height:3px;border-radius:2px;opacity:0.7;"></div>
+                            <div style="background:#bd93f9;width:45%;height:3px;border-radius:2px;opacity:0.6;"></div>
+                        </div>
+                    </div>
+                    <div class="ng-preset-preview-card" style="background:#282a36;border:1px solid #bd93f930;">
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#f8f8f2;width:55%;height:3px;border-radius:2px;opacity:0.5;"></div>
+                            <div style="background:#bd93f9;width:35%;height:3px;border-radius:2px;opacity:0.4;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="ng-preset-info">
+                <span class="ng-preset-name">Dracula</span>
+                <span class="ng-preset-desc">The beloved Dracula color scheme — purple, pink, green and cyan on dark</span>
+            </div>
+        </div>
+
+        <!-- Solarized -->
+        <div class="ng-preset-card">
+            <div class="ng-preset-preview" style="background:#002028;">
+                <div class="ng-preset-preview-bar" style="background:#002b36;border-bottom:2px solid #268bd2;"></div>
+                <div class="ng-preset-preview-body">
+                    <div class="ng-preset-preview-card" style="background:#002b36;border:1px solid #268bd230;">
+                        <i class="fa-solid fa-sun" style="color:#268bd2;font-size:14px;"></i>
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#93a1a1;width:70%;height:3px;border-radius:2px;opacity:0.7;"></div>
+                            <div style="background:#268bd2;width:45%;height:3px;border-radius:2px;opacity:0.6;"></div>
+                        </div>
+                    </div>
+                    <div class="ng-preset-preview-card" style="background:#002b36;border:1px solid #268bd230;">
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#93a1a1;width:55%;height:3px;border-radius:2px;opacity:0.5;"></div>
+                            <div style="background:#268bd2;width:35%;height:3px;border-radius:2px;opacity:0.4;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="ng-preset-info">
+                <span class="ng-preset-name">Solarized</span>
+                <span class="ng-preset-desc">Precision colors designed for readability and reduced eye strain</span>
+            </div>
+        </div>
+
+        <!-- Synthwave -->
+        <div class="ng-preset-card">
+            <div class="ng-preset-preview" style="background:#13091f;">
+                <div class="ng-preset-preview-bar" style="background:#1a1030;border-bottom:2px solid #f772d0;"></div>
+                <div class="ng-preset-preview-body">
+                    <div class="ng-preset-preview-card" style="background:#1a1030;border:1px solid #f772d030;">
+                        <i class="fa-solid fa-music" style="color:#f772d0;font-size:14px;"></i>
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#e8d0f0;width:70%;height:3px;border-radius:2px;opacity:0.7;"></div>
+                            <div style="background:#f772d0;width:45%;height:3px;border-radius:2px;opacity:0.6;"></div>
+                        </div>
+                    </div>
+                    <div class="ng-preset-preview-card" style="background:#1a1030;border:1px solid #f772d030;">
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#e8d0f0;width:55%;height:3px;border-radius:2px;opacity:0.5;"></div>
+                            <div style="background:#f772d0;width:35%;height:3px;border-radius:2px;opacity:0.4;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="ng-preset-info">
+                <span class="ng-preset-name">Synthwave</span>
+                <span class="ng-preset-desc">Retro 80s neon — nostalgic vibes with electric pinks and purples</span>
+            </div>
+        </div>
+
+        <!-- Nord -->
+        <div class="ng-preset-card">
+            <div class="ng-preset-preview" style="background:#242933;">
+                <div class="ng-preset-preview-bar" style="background:#2e3440;border-bottom:2px solid #88c0d0;"></div>
+                <div class="ng-preset-preview-body">
+                    <div class="ng-preset-preview-card" style="background:#2e3440;border:1px solid #88c0d030;">
+                        <i class="fa-solid fa-mountain" style="color:#88c0d0;font-size:14px;"></i>
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#d8dee9;width:70%;height:3px;border-radius:2px;opacity:0.7;"></div>
+                            <div style="background:#88c0d0;width:45%;height:3px;border-radius:2px;opacity:0.6;"></div>
+                        </div>
+                    </div>
+                    <div class="ng-preset-preview-card" style="background:#2e3440;border:1px solid #88c0d030;">
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#d8dee9;width:55%;height:3px;border-radius:2px;opacity:0.5;"></div>
+                            <div style="background:#88c0d0;width:35%;height:3px;border-radius:2px;opacity:0.4;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="ng-preset-info">
+                <span class="ng-preset-name">Nord</span>
+                <span class="ng-preset-desc">Arctic-inspired pastels — calm, minimal, and easy on the eyes</span>
+            </div>
+        </div>
+
+        <!-- Hacker -->
+        <div class="ng-preset-card">
+            <div class="ng-preset-preview" style="background:#0a0800;">
+                <div class="ng-preset-preview-bar" style="background:#121008;border-bottom:2px solid #ffb300;"></div>
+                <div class="ng-preset-preview-body">
+                    <div class="ng-preset-preview-card" style="background:#121008;border:1px solid #ffb30030;">
+                        <i class="fa-solid fa-code" style="color:#ffb300;font-size:14px;"></i>
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#e8d8a0;width:70%;height:3px;border-radius:2px;opacity:0.7;"></div>
+                            <div style="background:#ffb300;width:45%;height:3px;border-radius:2px;opacity:0.6;"></div>
+                        </div>
+                    </div>
+                    <div class="ng-preset-preview-card" style="background:#121008;border:1px solid #ffb30030;">
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#e8d8a0;width:55%;height:3px;border-radius:2px;opacity:0.5;"></div>
+                            <div style="background:#ffb300;width:35%;height:3px;border-radius:2px;opacity:0.4;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="ng-preset-info">
+                <span class="ng-preset-name">Hacker</span>
+                <span class="ng-preset-desc">Terminal amber on pitch black — command-line inspired</span>
+            </div>
+        </div>
+
+        <!-- Ocean Depth -->
+        <div class="ng-preset-card">
+            <div class="ng-preset-preview" style="background:#0a1820;">
+                <div class="ng-preset-preview-bar" style="background:#0f2030;border-bottom:2px solid #4dd0e1;"></div>
+                <div class="ng-preset-preview-body">
+                    <div class="ng-preset-preview-card" style="background:#0f2030;border:1px solid #4dd0e130;">
+                        <i class="fa-solid fa-water" style="color:#4dd0e1;font-size:14px;"></i>
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#d0ecf0;width:70%;height:3px;border-radius:2px;opacity:0.7;"></div>
+                            <div style="background:#4dd0e1;width:45%;height:3px;border-radius:2px;opacity:0.6;"></div>
+                        </div>
+                    </div>
+                    <div class="ng-preset-preview-card" style="background:#0f2030;border:1px solid #4dd0e130;">
+                        <div class="ng-preset-preview-lines">
+                            <div style="background:#d0ecf0;width:55%;height:3px;border-radius:2px;opacity:0.5;"></div>
+                            <div style="background:#4dd0e1;width:35%;height:3px;border-radius:2px;opacity:0.4;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="ng-preset-info">
+                <span class="ng-preset-name">Ocean Depth</span>
+                <span class="ng-preset-desc">Deep blues and teals — underwater serenity</span>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="callout tip">
+        <span class="ci"><i class="fa-solid fa-lightbulb"></i></span>
+        <p>Select any preset in <strong>Setup &rarr; Settings &rarr; Nightglass</strong>. Presets instantly apply with a live preview. You can then further fine-tune individual colors with the color editor.</p>
+    </div>
+</section>
+
+<!-- ── Color Editor ──────────────────────────────────────────── -->
+<section id="color-editor">
+    <h2><i class="fa-solid fa-droplet" style="color:var(--accent);margin-right:8px;opacity:.7;"></i>Color Editor</h2>
+    <p class="section-intro">
+        Fine-tune every color role with a live preview. Changes take effect instantly on the
+        Domoticz interface behind the settings panel.
+    </p>
+
+    <p>The color editor exposes these categories independently for <strong>dark</strong> and <strong>light</strong> mode:</p>
+    <ul>
+        <li><strong>Accent colors</strong> — primary accent, danger, warning, success</li>
+        <li><strong>Background &amp; surfaces</strong> — page background, navbar, card fill, elevated surfaces</li>
+        <li><strong>Borders</strong> — card borders, divider lines</li>
+        <li><strong>Text</strong> — primary, secondary, and muted text hierarchy</li>
+    </ul>
+
+    <div class="callout warn">
+        <span class="ci"><i class="fa-solid fa-triangle-exclamation"></i></span>
+        <p>Always update <strong>both</strong> dark and light color slots when changing a color role — each mode has separate storage.</p>
+    </div>
+</section>
+
+<!-- ── Per-Device Overrides ──────────────────────────────────── -->
+<section id="per-device">
+    <h2><i class="fa-solid fa-pen-to-square" style="color:var(--accent);margin-right:8px;opacity:.7;"></i>Per-Device Icon Overrides</h2>
+    <p class="section-intro">
+        Assign a custom Font Awesome icon, on-color, and off-color to any individual device —
+        no code changes required.
+    </p>
+    <p>
+        Open the Nightglass settings panel, navigate to <strong>Per-Device Icons</strong>, search for
+        your device by name or idx, then pick any Font Awesome 7 icon from the visual picker and
+        choose your colors. The override is stored as a Domoticz user variable and syncs across browsers.
+    </p>
+    <ul>
+        <li>Visual icon picker with <strong>live search</strong> across all Font Awesome icons</li>
+        <li>Color pickers for on-state and off-state colors with live preview</li>
+        <li>Overrides take effect immediately without page reload</li>
+        <li>Remove any override to revert to the automatic icon from <code>DEVICE_MAP</code></li>
+    </ul>
+</section>
+
+<!-- ── Sync & Export ─────────────────────────────────────────── -->
+<section id="sync">
+    <h2><i class="fa-solid fa-cloud-arrow-up" style="color:var(--accent);margin-right:8px;opacity:.7;"></i>Sync &amp; Export</h2>
+    <p class="section-intro">
+        Nightglass settings are stored as Domoticz user variables (<code>ngTheme_*</code>)
+        via the JSON API — your theme automatically follows you to any browser or device
+        connected to the same Domoticz server.
+    </p>
+
+    <h3>Import / Export</h3>
+    <p>
+        The settings panel has one-click <strong>Export</strong> and <strong>Import</strong> buttons.
+        Export saves your full color theme, feature flags, and icon overrides as a single JSON file
+        that can be shared with the community or backed up.
+    </p>
+
+    <div class="tbl-wrap">
+        <table>
+            <thead><tr><th>Storage</th><th>What</th><th>When</th></tr></thead>
+            <tbody>
+                <tr><td><strong>Domoticz user variables</strong></td><td>All settings (primary store)</td><td>On every change</td></tr>
+                <tr><td><strong>localStorage</strong></td><td>Dark/light mode preference</td><td>Instant toggle (fast)</td></tr>
+                <tr><td><strong>JSON export file</strong></td><td>Full settings snapshot</td><td>Manual export</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="callout note">
+        <span class="ci"><i class="fa-solid fa-circle-info"></i></span>
+        <p>Settings are accessed via <code>window.dzNightglassSettings.get(key)</code> and <code>.set(key, value)</code>. All feature flags are gated on these settings, making it easy to add new settings-controlled behaviors.</p>
+    </div>
+</section>
+
+<!-- ── Settings Reference ────────────────────────────────────── -->
+<section id="settings-ref">
+    <h2><i class="fa-solid fa-sliders" style="color:var(--accent);margin-right:8px;opacity:.7;"></i>Settings Reference</h2>
+    <p class="section-intro">
+        All settings are accessible at <strong>Setup &rarr; Settings &rarr; Nightglass</strong>.
+    </p>
+
+    <h3>Display</h3>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Default color scheme</div>
+            <div class="setting-desc">Starting mode on first load: dark, light, or follow OS <code>prefers-color-scheme</code>.</div>
+        </div>
+        <div class="setting-default">dark</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Show last-update timestamps</div>
+            <div class="setting-desc">Show or hide the formatted timestamp footer on each device card.</div>
+        </div>
+        <div class="setting-default">on</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Uppercase device names</div>
+            <div class="setting-desc">Apply <code>text-transform: uppercase</code> to device name bars.</div>
+        </div>
+        <div class="setting-default">off</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Icon size</div>
+            <div class="setting-desc">Scale all device icons globally: small, default, large.</div>
+        </div>
+        <div class="setting-default">default</div>
+    </div>
+
+    <h3>Card Features</h3>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Sparkline charts</div>
+            <div class="setting-desc">Show inline SVG micro-charts on sensor cards. Fetches from the Domoticz history API.</div>
+        </div>
+        <div class="setting-default">on</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">3D card tilt</div>
+            <div class="setting-desc">Apply a subtle ±3° perspective tilt on device cards as you move your mouse over them.</div>
+        </div>
+        <div class="setting-default">off</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Temperature-reactive accent</div>
+            <div class="setting-desc">Cards pick up a color accent from the device's temperature value.</div>
+        </div>
+        <div class="setting-default">on</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Ambient icon glow</div>
+            <div class="setting-desc">On-state device icons emit a soft colored glow matching <code>colorOn</code>.</div>
+        </div>
+        <div class="setting-default">on</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">State-change flash</div>
+            <div class="setting-desc">Brief flash animation when a device icon changes state (on → off or off → on).</div>
+        </div>
+        <div class="setting-default">on</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Staleness indicator</div>
+            <div class="setting-desc">Show a visual marker on device cards that haven't updated in a configurable time period.</div>
+        </div>
+        <div class="setting-default">on</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Staleness threshold (hours)</div>
+            <div class="setting-desc">How many hours without an update before a card is considered stale.</div>
+        </div>
+        <div class="setting-default">24</div>
+    </div>
+
+    <h3>Icons</h3>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Font Awesome icon replacement</div>
+            <div class="setting-desc">Enable or disable the entire icon replacement system. Disabling restores original Domoticz PNG images.</div>
+        </div>
+        <div class="setting-default">on</div>
+    </div>
+
+    <h3>Advanced</h3>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Debug logging</div>
+            <div class="setting-desc">Enable verbose <code>[RF]</code>, <code>[IC]</code>, etc. logging to the browser console.</div>
+        </div>
+        <div class="setting-default">off</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Ace Editor theme</div>
+            <div class="setting-desc">Preferred Ace theme for the Events page code editor. Persists in <code>localStorage</code>.</div>
+        </div>
+        <div class="setting-default">monokai</div>
+    </div>
+</section>
+
+<!-- ── Dark / Light Mode ─────────────────────────────────────── -->
+<section id="dark-light">
+    <h2><i class="fa-solid fa-circle-half-stroke" style="color:var(--accent);margin-right:8px;opacity:.7;"></i>Dark / Light Mode</h2>
+    <p class="section-intro">
+        Nightglass ships with a full peer dark and light color system — light mode is not an
+        afterthought, every color token has a light-mode counterpart.
+    </p>
+    <p>
+        The sun/moon button injected into the navbar cycles between <strong>dark → light → auto</strong>.
+        In <em>auto</em> mode the OS <code>prefers-color-scheme</code> is respected and live OS
+        theme changes are applied without a reload. The preference is stored in
+        <code>localStorage</code> under the key <code>dz-theme-style</code>.
+    </p>
+    <p>
+        Light mode is implemented as a single <code>body.dz-light</code> class override —
+        all dark-mode tokens in <code>:root</code> are re-declared in <code>body.dz-light</code>
+        with light-palette values. This means any third-party CSS targeting Domoticz elements
+        will also respond correctly if it uses the <code>--dz-*</code> variables.
+    </p>
+    <div class="callout note">
+        <span class="ci"><i class="fa-solid fa-circle-info"></i></span>
+        <p>The color editor lets you set <strong>separate accent, surface, and text colors</strong> for dark and light modes independently.</p>
+    </div>
+</section>
+
+<!-- ── Troubleshooting ───────────────────────────────────────── -->
+<section id="troubleshooting">
+    <h2><i class="fa-solid fa-circle-question" style="color:var(--accent);margin-right:8px;opacity:.7;"></i>Troubleshooting</h2>
+
+    <h3>Theme not showing after installation</h3>
+    <p>
+        Make sure the theme folder is directly inside <code>www/styles/</code> and contains
+        both <code>custom.css</code> and <code>custom.js</code> plus the <code>src/</code>
+        directory. Restart Domoticz once after cloning, then select the theme by folder name
+        in <em>Setup &rarr; Settings &rarr; Interface &rarr; Theme</em>.
+    </p>
+
+    <h3>Icons not replacing / showing broken images</h3>
+    <p>
+        The icon replacement patches into Angular's rendering cycle. If icons appear as broken
+        PNGs, check the browser console for JS errors. Make sure Font Awesome is loading —
+        it ships with Domoticz but can be blocked by ad-blockers. Try disabling extensions.
+    </p>
+
+    <h3>Sparklines not appearing</h3>
+    <p>
+        Sparklines require a successful call to <code>json.htm?type=graph</code>. If the Domoticz
+        API is unreachable from the client, they silently skip. Enable debug logging in the
+        Nightglass settings panel and check the browser console for <code>[SP]</code> log lines.
+    </p>
+
+    <h3>Settings not saving</h3>
+    <p>
+        Nightglass saves settings as Domoticz user variables. Ensure the Domoticz user account
+        has write access. If the API call fails, settings fall back to <code>localStorage</code>
+        for the current session but won't sync to other browsers.
+    </p>
+
+    <h3>Filter bar not showing all rooms</h3>
+    <p>
+        Room pills are built from the Domoticz plans API. If a plan has no devices, it won't
+        appear. The filter bar fetches plan data once on init — if it was loaded before plans
+        were ready, reload the page.
+    </p>
+</section>
+
+<!-- ── Updating ──────────────────────────────────────────────── -->
+<section id="updating">
+    <h2><i class="fa-solid fa-arrows-rotate" style="color:var(--accent);margin-right:8px;opacity:.7;"></i>Updating</h2>
+    <p>To update Nightglass to the latest version:</p>
+    <div class="code-wrap">
+        <div class="code-header">
+            <span class="code-lang">bash</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre><code>cd /home/pi/domoticz/www/styles/nightglass
+git pull</code></pre>
+    </div>
+    <p>
+        No Domoticz restart required for updates — the browser loads the new files on next
+        page visit. Hard-refresh (<span class="key">Ctrl</span>+<span class="key">Shift</span>+<span class="key">R</span>)
+        if you see stale CSS or JS due to browser caching.
+    </p>
+    <div class="callout tip">
+        <span class="ci"><i class="fa-solid fa-lightbulb"></i></span>
+        <p>Your custom settings and per-device icon overrides are stored as Domoticz user variables — they are never touched by <code>git pull</code>.</p>
+    </div>
+</section>
+
+<!-- ── Support & Donate ──────────────────────────────────────── -->
+<section id="support">
+    <h2><i class="fa-solid fa-mug-hot" style="color:var(--accent);margin-right:8px;opacity:.7;"></i>Support &amp; Donate</h2>
+    <p>
+        Found a bug? Have a feature request? Open an issue on GitHub —
+        pull requests are very welcome.
+    </p>
+    <div class="btn-row">
+        <a href="https://github.com/galadril/Domoticz-Nightglass-Theme/issues" class="btn">
+            <i class="fa-solid fa-bug"></i> Report an Issue
+        </a>
+        <a href="https://github.com/galadril/Domoticz-Nightglass-Theme/pulls" class="btn">
+            <i class="fa-solid fa-code-pull-request"></i> Submit a PR
+        </a>
+        <a href="https://github.com/galadril/Domoticz-Nightglass-Theme" class="btn">
+            <i class="fa-brands fa-github"></i> GitHub
+        </a>
+    </div>
+
+    <h3>Buy me a coffee</h3>
+    <p>
+        If Nightglass has made your Domoticz experience better, a small donation is always
+        appreciated. It keeps the project going and the coffee warm.
+    </p>
+    <div class="btn-row">
+        <a href="https://www.paypal.me/markheinis" target="_blank" rel="noopener"
+           class="btn primary" style="background: linear-gradient(135deg, #f59e0b, #d97706); border-color: transparent; box-shadow: 0 2px 12px rgba(245,158,11,0.3);">
+            <i class="fa-brands fa-paypal"></i> Donate via PayPal
+        </a>
+    </div>
+</section>
+
+</main>
+</div><!-- /#layout -->
+
+<!-- ── Footer ─────────────────────────────────────────────────── -->
+<footer>
+    <span>
+        &copy; 2025 <a href="https://github.com/galadril">Mark Heinis</a> &nbsp;&middot;&nbsp;
+        Nightglass Theme for <a href="https://www.domoticz.com/">Domoticz</a> &nbsp;&middot;&nbsp;
+        <a href="https://github.com/galadril/Domoticz-Nightglass-Theme/blob/main/LICENSE">MIT License</a>
+    </span>
+    <span>
+        <a href="https://github.com/galadril/Domoticz-Nightglass-Theme">GitHub</a> &nbsp;&middot;&nbsp;
+        <a href="https://github.com/galadril/Domoticz-Nightglass-Theme/releases">Releases</a> &nbsp;&middot;&nbsp;
+        <a href="https://github.com/galadril/Domoticz-Nightglass-Theme/issues">Issues</a>
+    </span>
+</footer>
+
+<!-- ── Lightbox ───────────────────────────────────────────────── -->
+<div id="lightbox" onclick="closeLightboxOnBg(event)">
+    <span class="lb-close" onclick="closeLightbox()">&times;</span>
+    <button class="lb-nav" id="lb-prev" onclick="lbNav(-1)">&#8249;</button>
+    <button class="lb-nav" id="lb-next" onclick="lbNav(+1)">&#8250;</button>
+    <span id="lb-counter"></span>
+    <img id="lb-img" src="" alt="">
+    <p id="lb-caption"></p>
+</div>
+
+<script>
+/* ── Sidebar toggle ─────────────────────────────────────────── */
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('overlay').classList.toggle('show');
+}
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('overlay').classList.remove('show');
+}
+
+/* ── Copy button ────────────────────────────────────────────── */
+function copyCode(btn) {
+    var pre = btn.closest('.code-wrap').querySelector('pre');
+    var text = pre.innerText || pre.textContent;
+    navigator.clipboard.writeText(text.trim()).then(function () {
+        btn.textContent = 'Copied!';
+        btn.classList.add('ok');
+        setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('ok'); }, 1800);
+    });
+}
+
+/* ── Lightbox ───────────────────────────────────────────────── */
+var lbImages = [
+    { src: '../images/banner.png',   caption: 'Dashboard overview — dark mode' },
+    { src: null, caption: 'Lights & Switches page' },
+    { src: null, caption: 'Temperature sensors with sparkline micro-charts' },
+    { src: null, caption: 'Ctrl+K command palette — global device control' },
+    { src: null, caption: 'Full light mode' },
+    { src: null, caption: 'Nightglass settings panel — theme customization' }
+];
+var lbIdx = 0;
+
+function openLightbox(i) {
+    var item = lbImages[i];
+    if (!item || !item.src) return;
+    lbIdx = i;
+    document.getElementById('lb-img').src = item.src;
+    document.getElementById('lb-caption').textContent = item.caption;
+    document.getElementById('lb-counter').textContent = (i + 1) + ' / ' + lbImages.filter(function(x){return x.src;}).length;
+    document.getElementById('lightbox').classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
+    document.body.style.overflow = '';
+}
+function closeLightboxOnBg(e) {
+    if (e.target === document.getElementById('lightbox')) closeLightbox();
+}
+function lbNav(dir) {
+    var next = lbIdx + dir;
+    while (next >= 0 && next < lbImages.length) {
+        if (lbImages[next].src) { openLightbox(next); return; }
+        next += dir;
+    }
+}
+document.addEventListener('keydown', function (e) {
+    var lb = document.getElementById('lightbox');
+    if (!lb.classList.contains('open')) return;
+    if (e.key === 'Escape')     closeLightbox();
+    if (e.key === 'ArrowLeft')  lbNav(-1);
+    if (e.key === 'ArrowRight') lbNav(+1);
+});
+
+/* ── Active nav link on scroll ──────────────────────────────── */
+var sections = document.querySelectorAll('section[id]');
+var navLinks  = document.querySelectorAll('.nav-link');
+
+var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+            var id = entry.target.id;
+            navLinks.forEach(function (a) {
+                a.classList.toggle('active', a.getAttribute('href') === '#' + id);
+            });
+        }
+    });
+}, { rootMargin: '-' + (54 + 40) + 'px 0px -60% 0px' });
+
+sections.forEach(function (s) { io.observe(s); });
+
+/* ── Close sidebar on nav link click (mobile) ───────────────── */
+navLinks.forEach(function (a) {
+    a.addEventListener('click', function () {
+        if (window.innerWidth <= 720) closeSidebar();
+    });
+});
+</script>
+</body>
+</html>

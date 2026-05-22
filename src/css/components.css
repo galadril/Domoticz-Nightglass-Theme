@@ -886,10 +886,24 @@ body.ng-mobile-dashboard #tbFiltSearch.ng-hide {
     display: none !important;
 }
 
-.update-progress-ring span,
-.update-warning,
-.update-warning i {
-    background-color: transparent;
+/* Override common.css "#divprogress span" (specificity 101) which applies
+   background-color: var(--dz-status-timeout) (red), padding: 20px, and
+   display: block to every span inside #divprogress.  This hits both our
+   .ring-label (overlaid on the SVG) and the .update-warning span below it.
+   Selectors with #divprogress prefix give specificity 121 which beats 101. */
+#divprogress .update-progress-ring .ring-label {
+    background-color: transparent !important;
+    padding: 0 !important;
+    display: flex !important;
+    font-size: inherit !important;
+    color: var(--dz-text) !important;
+}
+
+#divprogress .update-warning,
+#divprogress .update-warning i {
+    background-color: transparent !important;
+    padding: 0 !important;
+    font-size: inherit !important;
 }
 
 /* Z-Wave labels */

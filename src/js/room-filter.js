@@ -1,21 +1,26 @@
-/* ── Feature 14: Room Filter Pill-Bar ──────────────────────────────
-   Client-side multi-room filter — no page reloads.
+/* ── Feature 14: Filter Bar ─────────────────────────────────────────
+   Multi-dimensional device filter: Rooms, Type, Hardware, Favourites.
 
-   On first build we quietly force #comboroom to "All" so every device
-   is in the DOM, then fetch plan→device mappings from the API.
-   Subsequent pill clicks toggle room selections and filter cards
-   entirely in JS — instant, multi-select, toggle-to-clear.
+   On init, fetches all used devices (with PlanIDs) once and builds
+   a device map and plan cache.  All filtering is pure DOM show/hide —
+   no comboroom manipulation, no Angular route reloads.
 
-   #tbFiltRooms stays hidden via CSS across all route changes.
-   Plan→device maps are cached for the whole session.
+   Angular's dashboardService.loadFavorites is patched to always return
+   all used devices so every device is in the DOM for client-side filtering.
+
+   Filter dimensions are computed from what's on the current page:
+     Rooms    — from PlanIDs; persists across all page navigations
+     Type     — SwitchType / sensor Type; pruned when not relevant on new page
+     Hardware — HardwareName; pruned when not relevant on new page
+     Show     — Favourites toggle; pruned when not relevant on new page
+
+   Filters are AND-ed across dimensions, OR-ed within each dimension.
 ──────────────────────────────────────────────────────────────────── */
 (function () {
     'use strict';
 
     /* ── Debug logging ──────────────────────────────────────────── */
 
-    /* Reads the session toggle from the Nightglass settings panel.
-       Off by default — enable via Settings → Developer → Debug Logging. */
     function isDebugEnabled() {
         return !!(window.dzNightglassSettings &&
                   window.dzNightglassSettings.get('debugLogs'));
@@ -29,38 +34,39 @@
 
     /* ── Module state ───────────────────────────────────────────── */
 
-    var _pills             = [];     /* pill button elements */
-    var _planOptions       = [];     /* [{label, index, planIdx}] from combobox */
-    var _selected          = [];     /* planIdx strings currently active */
-    var _planCache         = {};     /* planIdx → {deviceIdx: true} */
-    var _planQueue         = {};     /* planIdx → [callbacks] while loading */
-    var _topbarRetries     = 0;
-    var _comboRetries      = 0;
-    var MAX_TOPBAR         = 15;     /* × 100ms = 1.5s */
-    var MAX_COMBO          = 8;      /* × 300ms = 2.4s */
-    var _safetyTimer       = null;
-    var _buildBarTimer     = null;   /* handle for pending buildBar timeout — cancelled on route change */
-    var _preserveNextRoute = false;  /* suppress bar removal on forced All reload */
-    var _savedSelected     = null;   /* selection preserved across detail-page navigation */
-    var _savedMainPath     = null;   /* main-page hash path that triggered the save */
-    var _cameFromDD        = false;  /* arrived via DD openRoomPlan — show back button */
-    var _$route            = null;   /* cached Angular $route service for reload */
+    var _pills          = [];     /* all pill button elements (flat) */
+    var _planOptions    = [];     /* [{label, index, planIdx}] — room options */
+    var _activeFilters  = {       /* currently active filter values per dimension */
+        rooms:     [],
+        types:     [],
+        hardware:  [],
+        favorites: false
+    };
+    var _planCache      = {};     /* planIdx → {deviceIdx: true} */
+    var _deviceMap      = {};     /* idx → device object from API */
+    var _filterSections = [];     /* [{id, label, values:[{value,label}]}] for current page */
+
+    var _topbarRetries  = 0;
+    var _comboRetries   = 0;
+    var MAX_TOPBAR      = 15;     /* × 100ms = 1.5s */
+    var MAX_COMBO       = 8;      /* × 300ms = 2.4s */
+    var _safetyTimer    = null;
+    var _buildBarTimer  = null;
+    var _cameFromDD     = false;
+    var _$route         = null;
+    var _stripWasOpen   = false;
+    var _svcPatched     = false;
+    var _viewTimers     = [];     /* late-render rebuild timers; cleared on route change */
+
+    var _planCacheReady     = false;
+    var _planCacheCallbacks = [];
 
     /* ══ Route path helpers ══════════════════════════════════════════ */
 
-    /* Returns the current hash path without leading "#/" and without query
-       string (e.g. "#/Dashboard?room=5" → "Dashboard").
-       Stripping the query string is critical: Domoticz encodes the selected
-       comboroom as ?room=N in the URL.  Without stripping, "Dashboard?room=5"
-       and "Dashboard?room=0" look like different pages to our path comparisons,
-       causing $routeChangeSuccess to treat forceAllIfNeeded()'s own reload as a
-       full page change and incorrectly resetting _selected. */
     function currentHashPath() {
         return (window.location.hash || '').replace(/^#\/?/, '').replace(/\?.*$/, '');
     }
 
-    /* Detail pages have multiple path segments (e.g. "Devices/42/Edit", "LightLog/42").
-       Main list pages are single-segment (e.g. "Switches", "Temperature"). */
     function isDetailPath(path) {
         return path.indexOf('/') !== -1;
     }
@@ -78,10 +84,6 @@
         _safetyTimer = setTimeout(revealTopBar, 1200);
     }
 
-    /* Schedule a buildBar() call, cancelling any previously pending one.
-       Using this instead of raw setTimeout() ensures stale retry timers
-       from a previous route (e.g. DD view's Phase-1 topbar-wait loop)
-       never fire on the newly loaded page. */
     function scheduleBuildBar(delay) {
         if (_buildBarTimer !== null) { clearTimeout(_buildBarTimer); _buildBarTimer = null; }
         _buildBarTimer = setTimeout(function () { _buildBarTimer = null; buildBar(); }, delay);
@@ -97,14 +99,13 @@
         var btn = document.createElement('button');
         btn.id        = 'ng-rf-toggle';
         btn.className = 'ng-rf-toggle-btn';
-        btn.setAttribute('aria-label',    'Toggle room filter');
+        btn.setAttribute('aria-label',    'Toggle filters');
         btn.setAttribute('aria-expanded', 'false');
         btn.innerHTML =
             '<i class="fa-solid fa-sliders"></i>' +
-            '<span class="ng-rf-toggle-label">Rooms</span>' +
+            '<span class="ng-rf-toggle-label">Filters</span>' +
             '<span class="ng-rf-toggle-count"></span>';
         btn.addEventListener('click', toggleStrip);
-
         searchBar.appendChild(btn);
     }
 
@@ -115,6 +116,108 @@
         var open = rf.classList.toggle('ng-rf--open');
         btn.classList.toggle('ng-rf-toggle-btn--open', open);
         btn.setAttribute('aria-expanded', String(open));
+        if (open) { showMobileBackdrop(); } else { hideMobileBackdrop(); }
+    }
+
+    /* ── Mobile backdrop helpers ────────────────────────────────── */
+
+    function showMobileBackdrop() {
+        /* No viewport-width guard — the CSS media query controls visibility,
+           so the backdrop is display:none on desktop even if it exists in the DOM.
+           This avoids mismatches between JS innerWidth and CSS breakpoints. */
+        if (document.getElementById('ng-rf-backdrop')) return;
+        var bd = document.createElement('div');
+        bd.id = 'ng-rf-backdrop';
+        bd.addEventListener('click', closeDrawer);
+        document.body.appendChild(bd);
+        bd.getBoundingClientRect();
+        bd.classList.add('ng-rf-backdrop--visible');
+    }
+
+    function hideMobileBackdrop() {
+        var bd = document.getElementById('ng-rf-backdrop');
+        if (!bd) return;
+        bd.classList.remove('ng-rf-backdrop--visible');
+        setTimeout(function () { if (bd.parentNode) bd.parentNode.removeChild(bd); }, 280);
+    }
+
+    function closeDrawer() {
+        var rf  = document.getElementById('ng-room-filter');
+        var btn = document.getElementById('ng-rf-toggle');
+        if (rf)  rf.classList.remove('ng-rf--open');
+        if (btn) { btn.classList.remove('ng-rf-toggle-btn--open'); btn.setAttribute('aria-expanded', 'false'); }
+        hideMobileBackdrop();
+    }
+
+    /* ══ Plan cache + device map ════════════════════════════════════ */
+
+    /* Build planIdx → {deviceIdx: true} map and idx → device object map. */
+    function buildPlanMapFromDevices(devices) {
+        var planMap = {};
+        var devMap  = {};
+        (devices || []).forEach(function (d) {
+            var idx = String(d.idx);
+            devMap[idx] = d;
+            (d.PlanIDs || []).forEach(function (planId) {
+                var key = String(planId);
+                if (!planMap[key]) planMap[key] = {};
+                planMap[key][idx] = true;
+            });
+        });
+        _planCache = planMap;
+        _deviceMap = devMap;
+
+        if (!_planCacheReady) {
+            _planCacheReady = true;
+            var cbs = _planCacheCallbacks;
+            _planCacheCallbacks = [];
+            log('buildPlanMapFromDevices: cache ready —',
+                Object.keys(planMap).length, 'plans,', (devices || []).length, 'devices');
+            cbs.forEach(function (fn) { fn(); });
+
+            /* Trigger bar rebuild in case it was already shown without device data */
+            var existingBar = document.getElementById('ng-room-filter');
+            if (existingBar) scheduleBuildBar(50);
+        } else {
+            log('buildPlanMapFromDevices: cache refreshed');
+        }
+    }
+
+    /* Call cb immediately if cache is ready, otherwise queue it. */
+    function whenPlanCacheReady(cb) {
+        if (_planCacheReady) { cb(); return; }
+        _planCacheCallbacks.push(cb);
+    }
+
+    /* Fetch all used devices and plan list once on module init. */
+    function initDeviceData() {
+        $.getJSON('json.htm?type=command&param=getdevices&filter=all&used=true&order=Name')
+            .done(function (data) {
+                buildPlanMapFromDevices(data.result || []);
+            })
+            .fail(function () {
+                _planCacheReady = true;
+                var cbs = _planCacheCallbacks;
+                _planCacheCallbacks = [];
+                log('initDeviceData: device fetch failed — caches empty');
+                cbs.forEach(function (fn) { fn(); });
+            });
+
+        if (_planOptions.length < 2) {
+            $.getJSON('json.htm?type=command&param=getplans&order=name&used=true')
+                .done(function (data) {
+                    if (!data.result || !data.result.length) return;
+                    var opts = [{ label: 'All', index: 0, planIdx: '0' }];
+                    data.result.forEach(function (plan, i) {
+                        opts.push({ label: plan.Name, index: i + 1, planIdx: String(plan.idx) });
+                    });
+                    if (opts.length >= 2) {
+                        _planOptions = opts;
+                        log('initDeviceData: loaded', opts.length, 'plan options');
+                        scheduleBuildBar(50);
+                    }
+                });
+        }
     }
 
     /* ══ Combobox options ═══════════════════════════════════════════ */
@@ -123,106 +226,327 @@
         var sel = document.getElementById('comboroom');
         if (!sel || !sel.options.length) return [];
         return Array.prototype.slice.call(sel.options).map(function (o, i) {
-            /* AngularJS serialises ng-value as "number:0" / "string:2" */
             var planIdx = (o.value || '').replace(/^(?:number|string):/, '');
             return { label: o.textContent.trim(), index: i, planIdx: planIdx };
         }).filter(function (r) {
-            /* Exclude AngularJS "unknown option" placeholder (value="? string:0 ?")
-               injected when the model value doesn't match any option yet. */
             if (r.planIdx.charAt(0) === '?') return false;
-            /* Exclude Dynamic Dashboard layouts (value="dd:…") — navigation
-               shortcuts, not room plans — so they don't appear as pills. */
             if (r.planIdx.indexOf('dd:') === 0) return false;
             return true;
         });
     }
 
-    /* ══ Plan → device cache ════════════════════════════════════════ */
-
-    /* Fetch device idxes for one plan; results are cached for the session. */
-    function fetchPlan(planIdx, cb) {
-        if (_planCache.hasOwnProperty(planIdx)) { cb(); return; }
-        if (_planQueue[planIdx]) { _planQueue[planIdx].push(cb); return; }
-        _planQueue[planIdx] = [cb];
-
-        $.getJSON('json.htm?type=command&param=getplandevices&idx=' + planIdx,
-            function (data) {
-                var set = {};
-                (data.result || []).forEach(function (d) {
-                    var id = String(d.devidx || d.idx || '');
-                    if (id) set[id] = true;
-                });
-                _planCache[planIdx] = set;
-                (_planQueue[planIdx] || []).forEach(function (fn) { fn(); });
-                delete _planQueue[planIdx];
-            }
-        ).fail(function () {
-            _planCache[planIdx] = {};
-            (_planQueue[planIdx] || []).forEach(function (fn) { fn(); });
-            delete _planQueue[planIdx];
-        });
-    }
-
-    /* Pre-warm cache for all plans in the background */
-    function preFetchAll() {
-        _planOptions.forEach(function (o) {
-            if (o.planIdx !== '0') fetchPlan(o.planIdx, function () {});
-        });
-    }
-
     /* ══ DOM card helpers ═══════════════════════════════════════════ */
 
-    /* Extract device idx from card element.
-       Dashboard pages:   id="light_42" / "temp_42" → "42"
-       Tab pages (Lights, Scenes, etc.): id="42"    → "42" */
     function cardIdx(card) {
         var id = card.id || '';
         var m  = id.match(/_(\d+)$/) || id.match(/^(\d+)$/);
         return m ? m[1] : null;
     }
 
-    /* Collect all device card elements on the current page.
-       Dashboard uses .movable wrappers (id="light_42").
-       Tab pages use the outer custom element with class "span4 itemBlock" (id="42").
-       Mobile dashboard uses <tr id="light_42"> rows in table.mobileitem.
-       The outer element is preferred over the inner div so that hiding it cleanly
-       removes the entire widget including spacing. */
     function getCards() {
         var cards = [];
         document.querySelectorAll('.movable').forEach(function (el) { cards.push(el); });
         document.querySelectorAll('.span4.itemBlock').forEach(function (el) {
             if (!el.closest('.movable')) cards.push(el);
         });
-        /* Mobile dashboard rows */
         document.querySelectorAll('.dashboardMobile table.mobileitem tbody tr[id]').forEach(function (el) {
             cards.push(el);
         });
         return cards;
     }
 
-    /* ══ Filter application ═════════════════════════════════════════ */
+    /* Return the devices relevant to the current page.
+       First tries DOM cards (most accurate, works when Angular has finished rendering).
+       Falls back to route-based filtering of _deviceMap when the DOM is not ready yet
+       (e.g. immediately after $viewContentLoaded before ng-repeat has painted cards).
+       This ensures filter sections are computed correctly even on first navigation. */
+    function getPageDevices() {
+        /* DOM-based: look up each rendered card in _deviceMap */
+        var cards   = getCards();
+        var domDevs = [];
+        cards.forEach(function (card) {
+            var idx = cardIdx(card);
+            if (idx && _deviceMap[idx]) domDevs.push(_deviceMap[idx]);
+        });
+        if (domDevs.length > 0) return domDevs;
+
+        /* Fallback: filter all known devices by current route */
+        var allDevs = [];
+        Object.keys(_deviceMap).forEach(function (k) { allDevs.push(_deviceMap[k]); });
+        if (!allDevs.length) return [];
+
+        var path = currentHashPath().toLowerCase();
+
+        if (path === 'switches' || path === 'lights') {
+            return allDevs.filter(function (d) {
+                if (d.SwitchType) return true;
+                var t = (d.Type || '').toLowerCase();
+                return t.indexOf('light') === 0 || t.indexOf('blind') === 0 ||
+                       t.indexOf('color switch') === 0 || t.indexOf('curtain') === 0 ||
+                       t.indexOf('security') === 0 || t.indexOf('fan') === 0 ||
+                       t.indexOf('rfy') === 0 || t.indexOf('chime') === 0;
+            });
+        }
+        if (path === 'temperature') {
+            return allDevs.filter(function (d) {
+                return typeof d.Temp !== 'undefined' || typeof d.Humidity !== 'undefined';
+            });
+        }
+        if (path === 'weather') {
+            return allDevs.filter(function (d) {
+                return typeof d.Rain !== 'undefined' || typeof d.Direction !== 'undefined' ||
+                       typeof d.Barometer !== 'undefined' || typeof d.UVI !== 'undefined' ||
+                       typeof d.Visibility !== 'undefined' || typeof d.Radiation !== 'undefined';
+            });
+        }
+        if (path === 'utility') {
+            return allDevs.filter(function (d) {
+                return typeof d.Counter !== 'undefined' ||
+                       d.Type === 'Energy' || d.SubType === 'kWh' ||
+                       d.Type === 'Air Quality' || d.Type === 'Lux' ||
+                       d.Type === 'Usage' || d.Type === 'Power' ||
+                       d.Type === 'Weight' || d.SubType === 'Percentage' ||
+                       d.SubType === 'Voltage' || d.SubType === 'Current' ||
+                       d.SubType === 'Text' || d.SubType === 'Alert';
+            });
+        }
+        if (path === 'scenes') {
+            return allDevs.filter(function (d) {
+                return (d.Type || '').indexOf('Scene') === 0 ||
+                       (d.Type || '').indexOf('Group') === 0;
+            });
+        }
+        /* Dashboard or unknown route — all devices */
+        return allDevs;
+    }
+
+    /* ══ Device type label ══════════════════════════════════════════
+       Returns a user-friendly label for use in the Type filter.
+       Switch devices use SwitchType; sensor devices use Type/SubType. */
+
+    function getDeviceTypeLabel(device) {
+        if (!device) return null;
+
+        /* Switch/light devices — use SwitchType for fine-grained grouping */
+        if (device.SwitchType) {
+            var st = device.SwitchType;
+            if (st === 'On/Off Switch')          return 'Switch';
+            if (st === 'Contact')                return 'Contact';
+            if (st === 'Doorbell')               return 'Doorbell';
+            if (st === 'Motion Sensor')          return 'Motion';
+            if (st === 'Smoke Detector')         return 'Smoke';
+            if (st.indexOf('Door Lock') === 0)   return 'Door Lock';
+            if (st.indexOf('Push') === 0)        return 'Push Button';
+            if (st.indexOf('Blind') !== -1 ||
+                st.indexOf('Venetian') !== -1 ||
+                st.indexOf('Curtain') !== -1 ||
+                st.indexOf('Shutter') !== -1)    return 'Blind / Shutter';
+            return st;   /* Dimmer, Fan, Color Switch, Selector, etc. */
+        }
+
+        var type    = (device.Type    || '').trim();
+        var subtype = (device.SubType || '').trim();
+
+        /* Scenes / Groups */
+        if (type === 'Scene') return 'Scene';
+        if (type === 'Group') return 'Group';
+
+        /* Temperature compound types */
+        if (type.indexOf('Temp') !== -1 && type.indexOf('Humidity') !== -1) return 'Temp + Humidity';
+        if (type.indexOf('Temp') !== -1 && type.indexOf('Baro') !== -1)     return 'Temp + Humidity';
+        if (type.indexOf('Temp') !== -1)     return 'Temperature';
+        if (type.indexOf('Humidity') === 0)  return 'Humidity';
+
+        /* Weather */
+        if (type.indexOf('Wind') === 0)  return 'Wind';
+        if (type.indexOf('Rain') === 0)  return 'Rain';
+        if (type.indexOf('UV') === 0)    return 'UV';
+
+        /* Energy / Utility */
+        if (type === 'P1 Smart Meter')   return 'P1 Meter';
+        if (type === 'Energy' || subtype === 'kWh') return 'Energy';
+        if (type === 'Usage')            return 'Usage';
+        if (type === 'Air Quality')      return 'Air Quality';
+        if (type === 'Lux')              return 'Lux';
+        if (type === 'Weight')           return 'Weight';
+        if (type === 'Current')          return 'Current';
+        if (type === 'Current/Energy')   return 'Energy';
+
+        /* Generic sub-types */
+        var subtypeMap = {
+            'Percentage': 'Percentage',
+            'Voltage':    'Voltage',
+            'Current':    'Current',
+            'Text':       'Text',
+            'Alert':      'Alert',
+            'Sound Level':'Sound Level',
+            'Waterflow':  'Waterflow',
+            'Pressure':   'Pressure',
+            'Distance':   'Distance',
+            'Custom Sensor': 'Custom',
+            'Thermostat Mode': 'Thermostat',
+            'Thermostat Fan Mode': 'Thermostat',
+            'SetPoint':   'Setpoint'
+        };
+        if (subtypeMap[subtype]) return subtypeMap[subtype];
+
+        return subtype || type || null;
+    }
+
+    /* ══ Filter section computation ═════════════════════════════════ */
+
+    function uniqueSortedValues(devices, fn) {
+        var seen = {};
+        var result = [];
+        devices.forEach(function (d) {
+            var v = fn(d);
+            if (v && !seen[v]) { seen[v] = true; result.push(v); }
+        });
+        return result.sort();
+    }
+
+    /* Compute filter sections from devices currently rendered on the page.
+       Called at the start of each buildBar() cycle so sections reflect
+       the actual content of the current route. */
+    function computePageFilterSections() {
+        _filterSections = [];
+
+        /* Rooms section — from _planOptions (always available if plans exist) */
+        if (_planOptions.length >= 2) {
+            _filterSections.push({
+                id:     'rooms',
+                label:  'Rooms',
+                values: _planOptions.slice(1).map(function (o) {
+                    return { value: o.planIdx, label: o.label };
+                })
+            });
+        }
+
+        /* For type / hardware / favourites sections, use devices on this page.
+           getPageDevices() prefers the live DOM but falls back to route-based
+           _deviceMap filtering so sections are correct even before Angular
+           has finished rendering cards. */
+        var devices = getPageDevices();
+
+        if (!devices.length) return;   /* _deviceMap not ready yet — rooms only */
+
+        /* Type section — only shown when 2+ distinct types exist on this page */
+        var typeValues = uniqueSortedValues(devices, getDeviceTypeLabel);
+        if (typeValues.length >= 2) {
+            _filterSections.push({
+                id:     'types',
+                label:  'Type',
+                values: typeValues.map(function (v) { return { value: v, label: v }; })
+            });
+        }
+
+        /* Hardware section — only shown when 2+ distinct hardware sources */
+        var hwValues = uniqueSortedValues(devices, function (d) {
+            return (d.HardwareName || '').trim() || null;
+        });
+        if (hwValues.length >= 2) {
+            _filterSections.push({
+                id:     'hardware',
+                label:  'Hardware',
+                values: hwValues.map(function (v) { return { value: v, label: v }; })
+            });
+        }
+
+        /* Favourites section — only shown when the page has a mix of
+           favourited and non-favourited devices */
+        var hasFavs    = devices.some(function (d) { return d.Favorite == 1; });
+        var hasNonFavs = devices.some(function (d) { return d.Favorite != 1; });
+        if (hasFavs && hasNonFavs) {
+            _filterSections.push({
+                id:     'favorites',
+                label:  'Show',
+                values: [{ value: 'favorites', label: 'Favourites ★' }]
+            });
+        }
+    }
+
+    /* Remove active filter values that no longer exist in the new sections.
+       Called after computePageFilterSections() on each page change.
+       Rooms are never pruned — they persist across all navigations. */
+    function pruneActiveFiltersForSections() {
+        var findSection = function (id) {
+            for (var i = 0; i < _filterSections.length; i++) {
+                if (_filterSections[i].id === id) return _filterSections[i];
+            }
+            return null;
+        };
+
+        var typeSection = findSection('types');
+        if (typeSection) {
+            var validTypes = typeSection.values.map(function (v) { return v.value; });
+            _activeFilters.types = _activeFilters.types.filter(function (t) {
+                return validTypes.indexOf(t) !== -1;
+            });
+        } else {
+            _activeFilters.types = [];
+        }
+
+        var hwSection = findSection('hardware');
+        if (hwSection) {
+            var validHW = hwSection.values.map(function (v) { return v.value; });
+            _activeFilters.hardware = _activeFilters.hardware.filter(function (h) {
+                return validHW.indexOf(h) !== -1;
+            });
+        } else {
+            _activeFilters.hardware = [];
+        }
+
+        if (!findSection('favorites')) {
+            _activeFilters.favorites = false;
+        }
+    }
+
+    /* ══ Filter application ═════════════════════════════════════════
+       AND across dimensions, OR within each dimension.
+       Devices with no _deviceMap entry are kept visible (safe default). */
 
     function applyFilter() {
-        var showAll = (_selected.length === 0);
-        var cards   = getCards();
+        var roomsActive = _activeFilters.rooms.length    > 0;
+        var typesActive = _activeFilters.types.length    > 0;
+        var hwActive    = _activeFilters.hardware.length > 0;
+        var favsActive  = _activeFilters.favorites;
+        var cards       = getCards();
 
         cards.forEach(function (card) {
-            var show = showAll;
-            if (!show) {
-                var idx = cardIdx(card);
-                if (!idx) {
-                    show = true;   /* can't determine — keep visible */
-                } else {
-                    for (var i = 0; i < _selected.length; i++) {
-                        var set = _planCache[_selected[i]];
-                        if (set && set[idx]) { show = true; break; }
+            var idx  = cardIdx(card);
+            var dev  = idx ? _deviceMap[idx] : null;
+            var show = true;
+
+            if (idx) {
+                /* Rooms: device must belong to at least one selected plan */
+                if (roomsActive) {
+                    var inRoom = false;
+                    for (var i = 0; i < _activeFilters.rooms.length; i++) {
+                        var set = _planCache[_activeFilters.rooms[i]];
+                        if (set && set[idx]) { inRoom = true; break; }
                     }
+                    if (!inRoom) show = false;
+                }
+
+                if (show && typesActive && dev) {
+                    if (_activeFilters.types.indexOf(getDeviceTypeLabel(dev)) === -1) show = false;
+                }
+
+                if (show && hwActive && dev) {
+                    var hw = (dev.HardwareName || '').trim();
+                    if (_activeFilters.hardware.indexOf(hw) === -1) show = false;
+                }
+
+                if (show && favsActive && dev) {
+                    if (dev.Favorite != 1) show = false;
                 }
             }
+            /* idx-less cards (can't determine device) are always kept visible */
+
             card.classList.toggle('ng-rf-filtered', !show);
         });
 
-        /* Hide sections that have no visible cards */
+        /* Hide dashboard sections that have no visible cards */
         document.querySelectorAll('section.dashCategory').forEach(function (sec) {
             var hasVisible = !!sec.querySelector(
                 '.movable:not(.ng-rf-filtered), tr[id]:not(.ng-rf-filtered)'
@@ -231,167 +555,110 @@
         });
 
         syncPills();
-        uncloak();
+        document.body.classList.remove('ng-rf-reloading');
     }
 
-    /* ══ Pill selection logic ════════════════════════════════════════ */
-
-    function onPillClick(planIdx) {
-        if (planIdx === '0') {
-            /* "All" → clear filter; if comboroom was at a specific plan reload to
-               plan 0 so Domoticz restores the all-favourites device set. */
-            _selected = [];
-            if (!forceAllIfNeeded()) applyFilter();
-            return;
-        }
-
-        var pos = _selected.indexOf(planIdx);
-        if (pos !== -1) {
-            _selected.splice(pos, 1);   /* deselect */
-        } else {
-            _selected.push(planIdx);    /* select */
-        }
-
-        if (_selected.length === 0) {
-            /* Deselected the last room — same as "All" */
-            if (!forceAllIfNeeded()) applyFilter();
-            return;
-        }
-
-        /* Pre-warm cache for any newly-selected plans */
-        _selected.forEach(function (p) {
-            if (!_planCache.hasOwnProperty(p)) fetchPlan(p, function () {});
-        });
-
-        /* ensureDevicesLoaded() sets comboroom to the specific plan (single room,
-           used=all → all devices) or plan 0 (multi-room, used=true → favourites).
-           If a reload was triggered, $viewContentLoaded → buildBar() finishes the job. */
-        if (ensureDevicesLoaded()) return;
-
-        /* No reload needed — all required cards are already in the DOM; filter now. */
-        var uncached = _selected.filter(function (p) {
-            return !_planCache.hasOwnProperty(p);
-        });
-        if (uncached.length === 0) {
-            applyFilter();
-            return;
-        }
-        var pending = uncached.length;
-        uncached.forEach(function (p) {
-            fetchPlan(p, function () {
-                if (--pending === 0) applyFilter();
-            });
-        });
-    }
-
-    function syncPills() {
-        _pills.forEach(function (pill) {
-            var pi     = pill.dataset.planIdx;
-            var active = (pi === '0') ? _selected.length === 0
-                                      : _selected.indexOf(pi) !== -1;
-            pill.classList.toggle('ng-rf-pill--active', active);
-            pill.setAttribute('aria-selected', String(active));
-        });
-
-        /* Update toggle button count badge */
-        var btn   = document.getElementById('ng-rf-toggle');
-        var count = btn && btn.querySelector('.ng-rf-toggle-count');
-        if (count) {
-            count.textContent    = _selected.length > 0 ? String(_selected.length) : '';
-            count.style.display  = _selected.length > 0 ? 'inline-flex' : 'none';
-        }
-        if (btn) {
-            btn.classList.toggle('ng-rf-toggle-btn--filtered', _selected.length > 0);
-        }
-    }
-
-    /* ══ Force "All" in Angular combobox ════════════════════════════ */
-
-    /* Ensures all devices are loaded in the DOM for client-side filtering.
-       Sets a flag so the resulting route change doesn't destroy the pill bar.
-       Also hides the device grid while Angular reloads to prevent a flash of
-       all-devices before applyFilter() runs.
-       Returns true when a reload was triggered, false when already at "All". */
-    function forceAllIfNeeded() {
-        var sel = document.getElementById('comboroom');
-        if (!sel || sel.selectedIndex === 0) {
-            log('forceAllIfNeeded: already All, no-op');
-            return false;
-        }
-        log('forceAllIfNeeded: comboroom at index', sel.selectedIndex, '— forcing All');
-        _preserveNextRoute = true;
-        /* Cloak device grid to avoid a visible flash of unfiltered content */
-        document.body.classList.add('ng-rf-reloading');
-        sel.selectedIndex  = 0;
-        $(sel).trigger('change');   /* triggers Angular route change */
-        return true;
-    }
-
-    /* Schedule applyWhenCached at multiple offsets so late-rendering Angular
-       cards are caught even when the first pass runs slightly too early.
-       Only call this when no Angular reload is pending — if ensureDevicesLoaded()
-       returned true the $viewContentLoaded → buildBar() cycle handles it. */
+    /* Run applyFilter at staggered intervals to catch late-rendering cards. */
     function scheduleFilterPasses() {
         [100, 350, 700].forEach(function (delay) {
             setTimeout(function () {
-                if (_selected.length > 0) applyWhenCached();
+                if (isAnyFilterActive()) applyFilter();
             }, delay);
         });
     }
 
-    /* Helper: return the comboroom <option> index whose planIdx matches. -1 if none. */
-    function comboroomIndexForPlan(planIdx) {
-        var sel = document.getElementById('comboroom');
-        if (!sel) return -1;
-        for (var i = 0; i < sel.options.length; i++) {
-            var pi = (sel.options[i].value || '').replace(/^(?:number|string):/, '');
-            if (pi === planIdx) return i;
-        }
-        return -1;
+    /* ══ Pill selection logic ════════════════════════════════════════ */
+
+    function isAnyFilterActive() {
+        return _activeFilters.rooms.length    > 0 ||
+               _activeFilters.types.length    > 0 ||
+               _activeFilters.hardware.length > 0 ||
+               _activeFilters.favorites;
     }
 
-    /* Set comboroom so Domoticz loads the right device set, then reload.
-       Single room: set to that plan's option so Domoticz uses used=all →
-         every device in the room is loaded, not just starred ones.
-       Zero or multi-room: delegate to forceAllIfNeeded() (plan 0 = favourites;
-         accepted limitation for multi-room).
-       Returns true when a reload was triggered, false when already correct. */
-    function ensureDevicesLoaded() {
-        if (_selected.length !== 1) {
-            return forceAllIfNeeded();
-        }
-        var sel = document.getElementById('comboroom');
-        if (!sel) return false;
-        var targetIndex = comboroomIndexForPlan(_selected[0]);
-        if (targetIndex < 0) {
-            /* Plan not found in comboroom — fall back to All */
-            return forceAllIfNeeded();
-        }
-        if (sel.selectedIndex === targetIndex) {
-            log('ensureDevicesLoaded: already at plan', _selected[0], '— no reload');
-            return false;
-        }
-        log('ensureDevicesLoaded: setting comboroom to plan', _selected[0]);
-        _preserveNextRoute = true;
-        document.body.classList.add('ng-rf-reloading');
-        sel.selectedIndex = targetIndex;
-        $(sel).trigger('change');
-        return true;
+    function clearAllFilters() {
+        _activeFilters.rooms     = [];
+        _activeFilters.types     = [];
+        _activeFilters.hardware  = [];
+        _activeFilters.favorites = false;
+        syncPills();
+        applyFilter();
     }
 
-    /* Remove the reloading cloak after applyFilter() has run */
-    function uncloak() {
-        var cards = getCards();
-        var visible = cards.filter(function (c) { return !c.classList.contains('ng-rf-filtered'); }).length;
-        log('uncloak: showing', visible, 'of', cards.length, 'cards');
-        document.body.classList.remove('ng-rf-reloading');
+    /* Unified pill click handler.
+       dim   = 'rooms' | 'types' | 'hardware' | 'favorites'
+       value = '' → clear this dimension ("All" pill)
+               specific value → toggle that value on/off */
+    function onPillClick(dim, value) {
+        if (value === '') {
+            /* "All" pill — clear this dimension */
+            if (dim === 'favorites') {
+                _activeFilters.favorites = false;
+            } else {
+                _activeFilters[dim] = [];
+            }
+        } else if (dim === 'favorites') {
+            /* Favourites is a simple toggle: "All" → "Favourites" → "All" */
+            _activeFilters.favorites = true;
+        } else {
+            var arr = _activeFilters[dim];
+            var pos = arr.indexOf(value);
+            if (pos !== -1) {
+                arr.splice(pos, 1);
+            } else {
+                arr.push(value);
+            }
+        }
+
+        syncPills();
+        whenPlanCacheReady(applyFilter);
+    }
+
+    function syncPills() {
+        _pills.forEach(function (pill) {
+            var dim   = pill.dataset.dim;
+            var value = pill.dataset.value;
+            var active;
+
+            if (value === '') {
+                /* "All" pill — active when dimension has no active values */
+                active = (dim === 'favorites')
+                    ? !_activeFilters.favorites
+                    : (_activeFilters[dim] || []).length === 0;
+            } else if (dim === 'favorites') {
+                active = _activeFilters.favorites;
+            } else {
+                active = (_activeFilters[dim] || []).indexOf(value) !== -1;
+            }
+
+            pill.classList.toggle('ng-rf-pill--active', active);
+            pill.setAttribute('aria-selected', String(active));
+        });
+
+        /* Toggle button count badge */
+        var btn   = document.getElementById('ng-rf-toggle');
+        var count = btn && btn.querySelector('.ng-rf-toggle-count');
+        var total = _activeFilters.rooms.length +
+                    _activeFilters.types.length +
+                    _activeFilters.hardware.length +
+                    (_activeFilters.favorites ? 1 : 0);
+        if (count) {
+            count.textContent   = total > 0 ? String(total) : '';
+            count.style.display = total > 0 ? 'inline-flex' : 'none';
+        }
+        if (btn) {
+            btn.classList.toggle('ng-rf-toggle-btn--filtered', total > 0);
+        }
+
+        /* Show/hide "Clear all filters" button */
+        var clearBtn = document.getElementById('ng-rf-clear-all');
+        if (clearBtn) {
+            clearBtn.style.display = isAnyFilterActive() ? 'block' : 'none';
+        }
     }
 
     /* ══ Mobile dashboard helpers ════════════════════════════════════ */
 
-    /* Attach a live-search listener that filters mobile <tr> rows.
-       The native WatchLiveSearch targets .itemBlock divs, not <tr> rows,
-       so we handle mobile rows ourselves. */
     function attachMobileSearch() {
         var input = document.querySelector('.jsLiveSearch');
         if (!input || input._ngMobileSearch) return;
@@ -406,49 +673,176 @@
         });
     }
 
-    /* Detect mobile dashboard and set body class so CSS can target it.
-       Also attaches the mobile search handler.
-       Called inside buildBar() once #topBar is confirmed present. */
     function setupMobilePage() {
         var isMobile = !!document.querySelector('.dashboardMobile');
         document.body.classList.toggle('ng-mobile-dashboard', isMobile);
-        if (isMobile) {
-            /* Re-attach on each route load in case the input was recreated */
-            setTimeout(attachMobileSearch, 200);
-        }
+        if (isMobile) setTimeout(attachMobileSearch, 200);
+    }
+
+    /* ══ Build filter panel DOM ══════════════════════════════════════
+       Called with the #ng-room-filter container; adds one .ng-rf-section
+       per computed filter dimension with an "All" pill + value pills. */
+
+    function buildFilterPanel(bar) {
+        _pills = [];
+
+        _filterSections.forEach(function (section) {
+            var secEl = document.createElement('div');
+            secEl.className  = 'ng-rf-section';
+            secEl.dataset.dim = section.id;
+
+            var labelEl = document.createElement('span');
+            labelEl.className   = 'ng-rf-section-label';
+            labelEl.textContent = section.label;
+            secEl.appendChild(labelEl);
+
+            var pillsEl = document.createElement('div');
+            pillsEl.className = 'ng-rf-pills';
+
+            /* "All" pill clears this dimension */
+            var allBtn = document.createElement('button');
+            allBtn.className = 'ng-rf-pill';
+            allBtn.dataset.dim   = section.id;
+            allBtn.dataset.value = '';
+            allBtn.setAttribute('role', 'tab');
+            allBtn.setAttribute('aria-selected', 'false');
+            allBtn.textContent = 'All';
+            (function (dim) {
+                allBtn.addEventListener('click', function () { onPillClick(dim, ''); });
+            }(section.id));
+            pillsEl.appendChild(allBtn);
+            _pills.push(allBtn);
+
+            /* Value pills */
+            section.values.forEach(function (v) {
+                var btn = document.createElement('button');
+                btn.className = 'ng-rf-pill';
+                btn.dataset.dim   = section.id;
+                btn.dataset.value = v.value;
+                btn.setAttribute('role', 'tab');
+                btn.setAttribute('aria-selected', 'false');
+                btn.textContent = v.label;
+                (function (dim, val) {
+                    btn.addEventListener('click', function () { onPillClick(dim, val); });
+                }(section.id, v.value));
+                pillsEl.appendChild(btn);
+                _pills.push(btn);
+            });
+
+            secEl.appendChild(pillsEl);
+            bar.appendChild(secEl);
+        });
     }
 
     /* ══ Build / remove bar ═════════════════════════════════════════ */
+
+    /* Build from cache — used on category pages without #comboroom */
+    function buildBarFromCache() {
+        var topBar = document.getElementById('topBar');
+        if (!topBar || _filterSections.length === 0) { removeBar(); revealTopBar(); return; }
+
+        /* Check if bar already matches current sections (section count match) */
+        var existing = document.getElementById('ng-room-filter');
+        var existingSections = existing ? existing.querySelectorAll('.ng-rf-section').length : 0;
+        if (existing && existingSections === _filterSections.length) {
+            log('buildBarFromCache: sections match — sync only');
+            syncPills();
+            injectToggleBtn();
+            revealTopBar();
+            if (isAnyFilterActive()) {
+                whenPlanCacheReady(applyFilter);
+                scheduleFilterPasses();
+            }
+            return;
+        }
+
+        removeBar();
+        var bar = createFilterBar();
+
+        var anchor = topBar.parentNode;
+        if (anchor && anchor.parentNode) {
+            anchor.parentNode.insertBefore(bar, anchor.nextSibling);
+        }
+
+        syncPills();
+        injectToggleBtn();
+        revealTopBar();
+        restoreOpenState();
+
+        if (isAnyFilterActive()) {
+            whenPlanCacheReady(applyFilter);
+            scheduleFilterPasses();
+        }
+    }
+
+    /* Create the #ng-room-filter element with panel title + sections */
+    function createFilterBar() {
+        var bar = document.createElement('div');
+        bar.id = 'ng-room-filter';
+        bar.setAttribute('role', 'tablist');
+        bar.setAttribute('aria-label', 'Filter devices');
+
+        var titleEl = document.createElement('span');
+        titleEl.className = 'ng-rf-panel-title';
+        titleEl.setAttribute('aria-hidden', 'true');
+        titleEl.textContent = 'Filters';
+
+        var closeBtn = document.createElement('button');
+        closeBtn.className = 'ng-rf-drawer-close';
+        closeBtn.setAttribute('aria-label', 'Close filters');
+        closeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+        closeBtn.addEventListener('click', closeDrawer);
+        titleEl.appendChild(closeBtn);
+
+        bar.appendChild(titleEl);
+
+        var clearBtn = document.createElement('button');
+        clearBtn.id        = 'ng-rf-clear-all';
+        clearBtn.className = 'ng-rf-clear-all';
+        clearBtn.textContent = '× Clear all filters';
+        clearBtn.style.display = 'none';   /* shown by syncPills when any filter is active */
+        clearBtn.addEventListener('click', clearAllFilters);
+        bar.appendChild(clearBtn);
+
+        buildFilterPanel(bar);
+        return bar;
+    }
 
     function removeBar() {
         var rf  = document.getElementById('ng-room-filter');
         var btn = document.getElementById('ng-rf-toggle');
         var bb  = document.getElementById('ng-dd-back-btn');
+        _stripWasOpen = !!(rf && rf.classList.contains('ng-rf--open'));
         if (rf)  rf.remove();
         if (btn) btn.remove();
         if (bb)  bb.remove();
+        hideMobileBackdrop();
         _pills = [];
-        log('removeBar: bar cleared (pills:', _pills.length, ')');
+        log('removeBar: bar cleared');
     }
 
-    /* Inject a "← Dynamic Dashboard" back button into the topbar (#tbFilters),
-       placed before the room combobox. Only shown when the user arrived here
-       via DD's openRoomPlan(). */
+    function restoreOpenState() {
+        if (!_stripWasOpen) return;
+        _stripWasOpen = false;
+        var rf  = document.getElementById('ng-room-filter');
+        var btn = document.getElementById('ng-rf-toggle');
+        if (rf)  rf.classList.add('ng-rf--open');
+        if (btn) { btn.classList.add('ng-rf-toggle-btn--open'); btn.setAttribute('aria-expanded', 'true'); }
+        showMobileBackdrop();
+    }
+
+    /* Inject a "← Dynamic Dashboard" back button */
     function injectDDBackButton() {
         if (!_cameFromDD) return;
         if (document.getElementById('ng-dd-back-btn')) return;
 
-        /* Verify DD is enabled on this install */
         try {
             var rs = angular.element(document.body).injector().get('$rootScope');
-            if (!rs.config || !rs.config.EnableTabDashboardDynamic) {
-                log('injectDDBackButton: DD not enabled, skipping');
-                return;
-            }
+            if (!rs.config || !rs.config.EnableTabDashboardDynamic) return;
         } catch (e) { return; }
 
         var tbFilters = document.getElementById('tbFilters');
-        if (!tbFilters) { log('injectDDBackButton: #tbFilters not found'); return; }
+        if (!tbFilters) return;
 
         var btn = document.createElement('button');
         btn.id        = 'ng-dd-back-btn';
@@ -456,172 +850,115 @@
         btn.innerHTML = '<i class="fa-solid fa-arrow-left"></i>';
         btn.setAttribute('title', 'Back to Dynamic Dashboard');
         btn.addEventListener('click', function () {
-            log('DD back button clicked — reloading to DD');
             if (window.myglobals) { window.myglobals.LastPlanSelected = 0; }
-            _cameFromDD    = false;
-            _selected      = [];
-            _savedMainPath = null;   /* clear so next DD navigation hits full-reset */
-            _savedSelected = null;   /* branch, not the restore branch, ensuring    */
-            removeBar();             /* _cameFromDD is properly re-set              */
-            /* Reload the route — since _forceClassicDashboard is false, DD renders.
-               Check $$phase to avoid $apply-already-in-progress errors. */
+            _cameFromDD               = false;
+            _activeFilters.rooms      = [];
+            _activeFilters.types      = [];
+            _activeFilters.hardware   = [];
+            _activeFilters.favorites  = false;
+            removeBar();
             try {
                 var inj    = angular.element(document.body).injector();
                 var $route = _$route || inj.get('$route');
                 var $rsc   = inj.get('$rootScope');
-                if ($rsc.$$phase) {
-                    $route.reload();
-                } else {
-                    $rsc.$apply(function () { $route.reload(); });
-                }
+                if ($rsc.$$phase) { $route.reload(); }
+                else { $rsc.$apply(function () { $route.reload(); }); }
             } catch (e) {
-                log('DD back: $route.reload failed, using hash round-trip', e);
-                /* Force a hash round-trip so Angular sees the change even when
-                   we're already at #/Dashboard (same hash = no hashchange event). */
                 var base = window.location.href.replace(/#.*$/, '');
                 window.location.replace(base + '#/');
                 setTimeout(function () { window.location.hash = '#/Dashboard'; }, 30);
             }
         });
 
-        /* Insert as the first child of #tbFilters so it appears left of the search */
         tbFilters.insertBefore(btn, tbFilters.firstChild);
-        log('injectDDBackButton: back button injected into #tbFilters');
-    }
-
-    /* Apply the filter once all selected plans are present in the cache.
-       Called from buildBar() so the filter is never applied before the
-       API data is ready. */
-    function applyWhenCached() {
-        log('applyWhenCached: _selected=', _selected,
-            '| cached:', Object.keys(_planCache).length, 'plans');
-        var missing = _selected.filter(function (p) {
-            return !_planCache.hasOwnProperty(p);
-        });
-        if (!missing.length) {
-            log('applyWhenCached: all plans cached — applying filter now');
-            applyFilter();
-            return;
-        }
-        log('applyWhenCached: waiting for', missing.length, 'uncached plan(s):', missing);
-        var done = 0;
-        missing.forEach(function (p) {
-            fetchPlan(p, function () {
-                if (++done === missing.length) {
-                    log('applyWhenCached: all', missing.length, 'plan(s) loaded — applying filter');
-                    applyFilter();
-                }
-            });
-        });
+        log('injectDDBackButton: injected');
     }
 
     function buildBar() {
         /* Phase 1: wait for #topBar */
         var topBar = document.getElementById('topBar');
         if (!topBar) {
-            if (_topbarRetries < MAX_TOPBAR) {
-                _topbarRetries++;
-                scheduleBuildBar(100);
-            } else { revealTopBar(); }
+            if (_topbarRetries < MAX_TOPBAR) { _topbarRetries++; scheduleBuildBar(100); }
+            else { revealTopBar(); }
             return;
         }
         _topbarRetries = 0;
 
-        log('buildBar: _selected=', _selected, '_cameFromDD=', _cameFromDD,
-            '_preserveNextRoute=', _preserveNextRoute);
+        log('buildBar: _activeFilters.rooms=', _activeFilters.rooms, '_cameFromDD=', _cameFromDD);
 
-        /* Clear LastPlanSelected now that the dashboard controller has already
-           read it (controller runs on $viewContentLoaded; buildBar fires after).
-           Keeping it alive through $routeChangeSuccess lets the controller choose
-           used=all (planIdx > 0) instead of used=true (plan 0 = favourites only). */
+        /* Clear LastPlanSelected after the dashboard controller has read it */
         if (window.myglobals && window.myglobals.LastPlanSelected) {
-            log('buildBar: clearing LastPlanSelected (was', window.myglobals.LastPlanSelected, ')');
             window.myglobals.LastPlanSelected = 0;
         }
 
-        /* Detect mobile dashboard + attach mobile search (independent of comboroom) */
         setupMobilePage();
 
-        /* Phase 2: no comboroom → page has no room plans */
+        /* Compute filter sections from current page devices */
+        computePageFilterSections();
+        pruneActiveFiltersForSections();
+
+        /* Phase 2: no comboroom (category pages) — use plan options from initDeviceData */
         var sel = document.getElementById('comboroom');
         if (!sel) {
-            log('buildBar: no comboroom → removeBar');
-            removeBar(); revealTopBar(); return;
+            if (_filterSections.length > 0) {
+                log('buildBar: no comboroom — building from cache');
+                buildBarFromCache();
+            } else {
+                log('buildBar: no comboroom, no sections → removeBar');
+                removeBar(); revealTopBar();
+            }
+            return;
         }
 
         /* Phase 3: comboroom exists but not populated yet */
         var opts = readOptions();
-        log('buildBar: readOptions returned', opts.length, 'options (dd: filtered)',
-            opts.map(function(o){ return o.label + '('+o.planIdx+')'; }));
+        log('buildBar: readOptions returned', opts.length, 'options');
         if (opts.length < 2) {
-            if (_comboRetries < MAX_COMBO) {
-                _comboRetries++;
-                scheduleBuildBar(300);
-            } else { removeBar(); revealTopBar(); }
+            if (_comboRetries < MAX_COMBO) { _comboRetries++; scheduleBuildBar(300); }
+            else { removeBar(); revealTopBar(); }
             return;
         }
-        _comboRetries  = 0;
-        _planOptions   = opts;
+        _comboRetries = 0;
+        _planOptions  = opts;
 
-        /* If comboroom was pre-selected (e.g. by DD's openRoomPlan) and no pill
-           is active yet, auto-activate the matching pill and force "All" so all
-           device cards are loaded into the DOM for client-side filtering. */
-        if (_selected.length === 0) {
-            var nativeSel = document.getElementById('comboroom');
-            if (nativeSel && nativeSel.selectedIndex > 0) {
-                var nativeOpt    = nativeSel.options[nativeSel.selectedIndex];
-                var nativePlanIdx = (nativeOpt.value || '').replace(/^(?:number|string):/, '');
-                if (nativePlanIdx && nativePlanIdx !== '0' &&
-                        nativePlanIdx.indexOf('dd:') !== 0) {
-                    log('buildBar: auto-activating pill from native comboroom', nativePlanIdx);
-                    _selected   = [nativePlanIdx];
-                    _cameFromDD = !!(window.myglobals && window.myglobals.LastPlanSelected);
-                }
+        /* Re-compute sections now that _planOptions is set from live comboroom */
+        computePageFilterSections();
+        pruneActiveFiltersForSections();
+
+        /* Auto-activate room pill from DD's pre-selected comboroom value */
+        if (_activeFilters.rooms.length === 0 && sel.selectedIndex > 0) {
+            var nativeOpt     = sel.options[sel.selectedIndex];
+            var nativePlanIdx = (nativeOpt.value || '').replace(/^(?:number|string):/, '');
+            if (nativePlanIdx && nativePlanIdx !== '0' && nativePlanIdx.indexOf('dd:') !== 0) {
+                log('buildBar: auto-activating room pill', nativePlanIdx);
+                _activeFilters.rooms = [nativePlanIdx];
+                _cameFromDD = !!(window.myglobals && window.myglobals.LastPlanSelected);
             }
         }
 
-        /* Already correct number of pills? Sync + reveal. */
+        /* Already correct sections? Sync and apply filter */
         var existing = document.getElementById('ng-room-filter');
-        if (existing && _pills.length === opts.length) {
-            log('buildBar: pills already built — sync only');
+        var existingSections = existing ? existing.querySelectorAll('.ng-rf-section').length : 0;
+        if (existing && existingSections === _filterSections.length) {
+            log('buildBar: sections match — sync only');
             syncPills();
             injectToggleBtn();
             injectDDBackButton();
             revealTopBar();
-            /* Set comboroom to the right plan so Domoticz loads the correct
-               device set (single room → specific plan → used=all → all devices;
-               multi-room → plan 0 → used=true → favourites).
-               Only schedule filter passes when no reload was triggered. */
-            if (!(_selected.length > 0 && ensureDevicesLoaded()) && _selected.length > 0) {
+            if (isAnyFilterActive()) {
+                whenPlanCacheReady(applyFilter);
                 scheduleFilterPasses();
             }
             return;
         }
 
-        /* Rebuild from scratch */
-        log('buildBar: rebuilding pill bar from scratch');
+        /* Rebuild */
+        log('buildBar: rebuilding filter bar');
         removeBar();
 
-        var bar = document.createElement('div');
-        bar.id = 'ng-room-filter';
-        bar.setAttribute('role', 'tablist');
-        bar.setAttribute('aria-label', 'Filter by room');
+        if (_filterSections.length === 0) { revealTopBar(); return; }
 
-        opts.forEach(function (r) {
-            var btn = document.createElement('button');
-            btn.className          = 'ng-rf-pill';
-            btn.dataset.planIdx    = r.planIdx;
-            btn.setAttribute('role', 'tab');
-            btn.setAttribute('aria-selected', 'false');
-            btn.textContent = r.label;
-            (function (pi) {
-                btn.addEventListener('click', function () { onPillClick(pi); });
-            }(r.planIdx));
-            bar.appendChild(btn);
-            _pills.push(btn);
-        });
-
-        /* Inject after ng-include wrapper → between topbar and page content */
+        var bar    = createFilterBar();
         var anchor = topBar.parentNode;
         if (anchor && anchor.parentNode) {
             anchor.parentNode.insertBefore(bar, anchor.nextSibling);
@@ -631,15 +968,71 @@
         injectToggleBtn();
         injectDDBackButton();
         revealTopBar();
+        restoreOpenState();
 
-        /* Set comboroom to the right plan so Domoticz loads the correct device set.
-           Single room → specific plan option → used=all → ALL devices in the room.
-           Multi-room  → plan 0 → used=true → favourites only (accepted limitation).
-           Only schedule filter passes when no reload was triggered. */
-        var reloading = _selected.length > 0 && ensureDevicesLoaded();
-        preFetchAll();
+        if (isAnyFilterActive()) {
+            whenPlanCacheReady(applyFilter);
+            scheduleFilterPasses();
+        }
+    }
 
-        if (!reloading && _selected.length > 0) scheduleFilterPasses();
+    /* ══ Angular service patch ══════════════════════════════════════
+       Always loads all used devices (not just favourites) so every device
+       is in the DOM for client-side filtering.  Keeps device map fresh. */
+
+    function patchAngularServices() {
+        if (_svcPatched) return;
+        try {
+            var inj = angular.element(document.body).injector();
+
+            var svc = inj.get('dashboardService');
+            if (!svc.__ngRfPatched) {
+                var api = inj.get('domoticzApi');
+                svc.loadFavorites = function () {
+                    log('loadFavorites: patched — loading all used devices');
+                    return api.sendRequest({
+                        type: 'command', param: 'getdevices',
+                        filter: 'all', used: 'true', favorite: 0,
+                        order: '[Order]', plan: 0
+                    }).then(function (data) {
+                        var devices = data.result || [];
+                        buildPlanMapFromDevices(devices);   /* keep maps fresh */
+                        return {
+                            devices:        devices,
+                            lastUpdateTime: data.ActTime ? parseInt(data.ActTime) : 0,
+                            sunrise:        data.Sunrise,
+                            sunset:         data.Sunset,
+                            serverTime:     data.ServerTime
+                        };
+                    });
+                };
+                svc.__ngRfPatched = true;
+            }
+
+            var ls = inj.get('livesocket');
+            if (!ls.__ngRfPatched) {
+                var origGetJson = ls.getJson.bind(ls);
+                ls.getJson = function (url, cb) {
+                    if (typeof url === 'string' && url.indexOf('param=getdevices') !== -1) {
+                        url = url.replace(/\bfavorite=1\b/, 'favorite=0');
+                        /* Always fetch all plans so every device stays in the DOM
+                           for client-side room filtering.  Without this, the periodic
+                           live-update poll in DashboardDesktopController uses
+                           plan=myglobals.LastPlanSelected (set by DD navigation) and
+                           replaces the DOM with only that room's devices, breaking
+                           filter-bar switching between rooms. */
+                        url = url.replace(/\bplan=\d+\b/, 'plan=0');
+                    }
+                    return origGetJson.call(this, url, cb);
+                };
+                ls.__ngRfPatched = true;
+            }
+
+            _svcPatched = true;
+            log('patchAngularServices: done');
+        } catch (e) {
+            log('patchAngularServices: failed — will retry', e);
+        }
     }
 
     /* ══ Angular hooks ══════════════════════════════════════════════ */
@@ -655,93 +1048,50 @@
             var $rs = bodyEl.injector().get('$rootScope');
             try { _$route = bodyEl.injector().get('$route'); } catch (e) {}
 
+            patchAngularServices();
+
             $rs.$on('$routeChangeStart', function () {
                 var path = currentHashPath();
-                log('$routeChangeStart path=', path, '_selected=', _selected);
+                log('$routeChangeStart path=', path);
 
-                /* Cancel any pending buildBar timer so stale retry loops from the
-                   previous page (e.g. DD view's Phase-1 topbar-wait) don't fire
-                   on the newly loaded page and trigger a spurious forceAllIfNeeded. */
                 if (_buildBarTimer !== null) {
                     clearTimeout(_buildBarTimer);
                     _buildBarTimer = null;
-                    log('$routeChangeStart: cancelled stale _buildBarTimer');
                 }
+                _viewTimers.forEach(clearTimeout);
+                _viewTimers = [];
 
-                /* Preemptive cloak: if we're about to land on the classic dashboard
-                   via DD's openRoomPlan(), hide the view immediately — before Angular
-                   renders a single card — so the forceAllIfNeeded reload is invisible. */
+                /* Preemptive cloak for DD openRoomPlan() navigation */
                 var ddPlan = window.myglobals && Number(window.myglobals.LastPlanSelected);
                 if (ddPlan && !isDetailPath(path)) {
-                    log('$routeChangeStart: DD room plan detected (', ddPlan, ') — preemptive cloak');
                     document.body.classList.add('ng-rf-reloading');
-                }
-
-                /* Save the active selection before leaving a main list page so we
-                   can restore it if the user returns from a detail sub-page. */
-                if (!isDetailPath(path) && _selected.length > 0) {
-                    _savedMainPath = path;
-                    _savedSelected = _selected.slice();
-                    log('$routeChangeStart: saved selection for', path, _selected);
                 }
             });
 
             $rs.$on('$routeChangeSuccess', function () {
-                if (_preserveNextRoute) {
-                    log('$routeChangeSuccess: preserveNextRoute — skipping teardown');
-                    _preserveNextRoute = false;
-                    return;
-                }
-
                 var newPath = currentHashPath();
-                log('$routeChangeSuccess path=', newPath,
-                    '_savedMainPath=', _savedMainPath,
-                    'myglobals.LastPlanSelected=',
-                    window.myglobals && window.myglobals.LastPlanSelected);
+                log('$routeChangeSuccess path=', newPath);
 
                 if (isDetailPath(newPath)) {
-                    log('$routeChangeSuccess: detail page → remove bar, keep _selected');
                     removeBar();
                     document.body.classList.remove('ng-mobile-dashboard');
-
-                } else if (_savedMainPath && newPath === _savedMainPath) {
-                    log('$routeChangeSuccess: returning to', newPath, '— restoring', _savedSelected);
-                    removeBar();
-                    document.body.classList.remove('ng-mobile-dashboard');
-                    _selected      = _savedSelected ? _savedSelected.slice() : [];
-                    _savedSelected = null;
-                    _savedMainPath = null;
-                    if (_selected.length > 0) {
-                        log('$routeChangeSuccess: cloaking for filter restore');
-                        document.body.classList.add('ng-rf-reloading');
-                        setTimeout(uncloak, 2000);
-                    }
-
                 } else {
-                    log('$routeChangeSuccess: new main page — full reset');
                     removeBar();
                     document.body.classList.remove('ng-mobile-dashboard');
-                    _selected      = [];
-                    _savedSelected = null;
-                    _savedMainPath = null;
-                    _cameFromDD    = false;
 
-                    /* Detect DD→classic navigation via openRoomPlan():
-                       $routeChangeSuccess fires BEFORE the classic dashboard
-                       controller runs.  We intentionally do NOT clear
-                       LastPlanSelected here — the dashboard controller reads it
-                       to decide whether to use used=all (planIdx > 0, loads every
-                       device in the plan) or used=true (plan 0, favourites only).
-                       buildBar() clears it once the view has loaded. */
-                    var ddPlan = window.myglobals &&
-                                 Number(window.myglobals.LastPlanSelected);
+                    var ddPlan = window.myglobals && Number(window.myglobals.LastPlanSelected);
                     if (ddPlan) {
-                        log('$routeChangeSuccess: DD room plan detected, planIdx=', ddPlan,
-                            '— cloaking and setting _selected (LastPlanSelected kept for controller)');
-                        _selected   = [String(ddPlan)];
+                        log('$routeChangeSuccess: DD room plan', ddPlan);
+                        _activeFilters.rooms = [String(ddPlan)];
                         _cameFromDD = true;
-                        document.body.classList.add('ng-rf-reloading');
-                        setTimeout(uncloak, 2000);
+                        setTimeout(function () {
+                            document.body.classList.remove('ng-rf-reloading');
+                        }, 2000);
+                    } else {
+                        /* Normal navigation — rooms filter persists; type/hardware
+                           will be pruned on the next buildBar() call */
+                        _cameFromDD = false;
+                        log('$routeChangeSuccess: preserving filters', _activeFilters);
                     }
                 }
 
@@ -751,16 +1101,24 @@
             });
 
             $rs.$on('$viewContentLoaded', function () {
-                log('$viewContentLoaded — scheduling buildBar in 150ms');
+                log('$viewContentLoaded — scheduling buildBar');
                 _topbarRetries = 0;
                 _comboRetries  = 0;
                 scheduleRevealFallback();
                 scheduleBuildBar(150);
+                if (!_svcPatched) patchAngularServices();
+
+                /* Schedule late-render rebuilds.  Angular's ng-repeat may need
+                   several digest cycles before all device cards are in the DOM.
+                   These retries pick up type/hardware sections that were missed
+                   on the first 150ms pass.  Timers are cancelled on route change. */
+                _viewTimers = [450, 1100].map(function (delay) {
+                    return setTimeout(buildBar, delay);
+                });
             });
 
-            /* Re-apply active filter after Angular updates device cards */
             $rs.$on('device_update', function () {
-                if (_selected.length > 0) setTimeout(applyFilter, 80);
+                if (isAnyFilterActive()) setTimeout(applyFilter, 80);
             });
 
         } catch (e) {
@@ -772,6 +1130,7 @@
 
     function init() {
         scheduleRevealFallback();
+        initDeviceData();
         scheduleBuildBar(300);
         attachHooks();
     }
