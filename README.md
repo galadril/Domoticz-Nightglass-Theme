@@ -2,7 +2,7 @@
 
 A clean, modern dark theme for Domoticz dashboards with powerful keyboard shortcuts and real-time features.
 
-**[Documentation →](https://galadril.github.io/Domoticz-Nightglass-Theme/docs/)**
+**[Documentation →](https://galadril.github.io/Domoticz-Nightglass-Theme)**
 
 ---
 
