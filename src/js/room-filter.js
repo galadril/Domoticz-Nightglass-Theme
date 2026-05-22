@@ -1015,6 +1015,13 @@
                 ls.getJson = function (url, cb) {
                     if (typeof url === 'string' && url.indexOf('param=getdevices') !== -1) {
                         url = url.replace(/\bfavorite=1\b/, 'favorite=0');
+                        /* Always fetch all plans so every device stays in the DOM
+                           for client-side room filtering.  Without this, the periodic
+                           live-update poll in DashboardDesktopController uses
+                           plan=myglobals.LastPlanSelected (set by DD navigation) and
+                           replaces the DOM with only that room's devices, breaking
+                           filter-bar switching between rooms. */
+                        url = url.replace(/\bplan=\d+\b/, 'plan=0');
                     }
                     return origGetJson.call(this, url, cb);
                 };
