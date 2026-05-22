@@ -122,7 +122,9 @@
     /* ── Mobile backdrop helpers ────────────────────────────────── */
 
     function showMobileBackdrop() {
-        if (window.innerWidth > 768) return;
+        /* No viewport-width guard — the CSS media query controls visibility,
+           so the backdrop is display:none on desktop even if it exists in the DOM.
+           This avoids mismatches between JS innerWidth and CSS breakpoints. */
         if (document.getElementById('ng-rf-backdrop')) return;
         var bd = document.createElement('div');
         bd.id = 'ng-rf-backdrop';
@@ -784,6 +786,14 @@
         titleEl.className = 'ng-rf-panel-title';
         titleEl.setAttribute('aria-hidden', 'true');
         titleEl.textContent = 'Filters';
+
+        var closeBtn = document.createElement('button');
+        closeBtn.className = 'ng-rf-drawer-close';
+        closeBtn.setAttribute('aria-label', 'Close filters');
+        closeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+        closeBtn.addEventListener('click', closeDrawer);
+        titleEl.appendChild(closeBtn);
+
         bar.appendChild(titleEl);
 
         var clearBtn = document.createElement('button');

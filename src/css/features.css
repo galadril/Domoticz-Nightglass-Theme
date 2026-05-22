@@ -583,6 +583,30 @@ body.ng-rf-reloading [ng-view] {
         flex-shrink: 0;
     }
 
+    /* X close button inside panel title — visible only here (mobile drawer) */
+    .ng-rf-drawer-close {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: auto;
+        width: 32px;
+        height: 32px;
+        background: none;
+        border: 1px solid var(--dz-border);
+        border-radius: 50%;
+        color: var(--dz-text-muted);
+        font-size: 14px;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: background 0.15s, color 0.15s;
+    }
+
+    .ng-rf-drawer-close:hover {
+        background: rgba(var(--dz-accent-rgb), 0.1);
+        color: var(--dz-text);
+        border-color: var(--dz-accent);
+    }
+
     /* Clear button: larger touch target, slightly more prominent */
     .ng-rf-clear-all {
         font-size: 0.82rem !important;
