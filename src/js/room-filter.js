@@ -61,6 +61,8 @@
     var _planCacheReady     = false;
     var _planCacheCallbacks = [];
 
+    var _pendingDDPlan  = null;   /* plan IDX captured from LastPlanSelected before zeroing */
+
     /* ══ Route path helpers ══════════════════════════════════════════ */
 
     function currentHashPath() {
@@ -255,22 +257,10 @@
         return cards;
     }
 
-    /* Return the devices relevant to the current page.
-       First tries DOM cards (most accurate, works when Angular has finished rendering).
-       Falls back to route-based filtering of _deviceMap when the DOM is not ready yet
-       (e.g. immediately after $viewContentLoaded before ng-repeat has painted cards).
-       This ensures filter sections are computed correctly even on first navigation. */
-    function getPageDevices() {
-        /* DOM-based: look up each rendered card in _deviceMap */
-        var cards   = getCards();
-        var domDevs = [];
-        cards.forEach(function (card) {
-            var idx = cardIdx(card);
-            if (idx && _deviceMap[idx]) domDevs.push(_deviceMap[idx]);
-        });
-        if (domDevs.length > 0) return domDevs;
-
-        /* Fallback: filter all known devices by current route */
+    /* Return all devices from _deviceMap that belong on the current route.
+       Used for computing filter sections (always reflects the full set of
+       available devices, regardless of what is currently rendered in the DOM). */
+    function getRouteDevices() {
         var allDevs = [];
         Object.keys(_deviceMap).forEach(function (k) { allDevs.push(_deviceMap[k]); });
         if (!allDevs.length) return [];
@@ -318,6 +308,20 @@
         }
         /* Dashboard or unknown route — all devices */
         return allDevs;
+    }
+
+    /* Return the devices relevant to the current page for applyFilter() use.
+       Prefers actual DOM cards (needed for show/hide to work); falls back to
+       getRouteDevices() when Angular hasn't finished rendering cards yet. */
+    function getPageDevices() {
+        var cards   = getCards();
+        var domDevs = [];
+        cards.forEach(function (card) {
+            var idx = cardIdx(card);
+            if (idx && _deviceMap[idx]) domDevs.push(_deviceMap[idx]);
+        });
+        if (domDevs.length > 0) return domDevs;
+        return getRouteDevices();
     }
 
     /* ══ Device type label ══════════════════════════════════════════
@@ -432,11 +436,12 @@
             });
         }
 
-        /* For type / hardware / favourites sections, use devices on this page.
-           getPageDevices() prefers the live DOM but falls back to route-based
-           _deviceMap filtering so sections are correct even before Angular
-           has finished rendering cards. */
-        var devices = getPageDevices();
+        /* For type / hardware / favourites sections, always use _deviceMap filtered
+           by the current route — not DOM cards.  This guarantees filter options
+           reflect ALL devices for this page type regardless of whether Angular has
+           finished rendering and regardless of any prior room pre-selection that
+           may have limited what was loaded into the DOM (e.g. DD → Dashboard flow). */
+        var devices = getRouteDevices();
 
         if (!devices.length) return;   /* _deviceMap not ready yet — rooms only */
 
@@ -917,11 +922,6 @@
 
         log('buildBar: _activeFilters.rooms=', _activeFilters.rooms, '_cameFromDD=', _cameFromDD);
 
-        /* Clear LastPlanSelected after the dashboard controller has read it */
-        if (window.myglobals && window.myglobals.LastPlanSelected) {
-            window.myglobals.LastPlanSelected = 0;
-        }
-
         setupMobilePage();
 
         /* Compute filter sections from current page devices */
@@ -956,14 +956,16 @@
         computePageFilterSections();
         pruneActiveFiltersForSections();
 
-        /* Auto-activate room pill from DD's pre-selected comboroom value */
+        /* Auto-activate room pill when comboroom has a non-"All" value but our filter
+           bar has no rooms selected (e.g. hard-reload on a room URL, or comboroom
+           changed natively).  DD → Dashboard flow sets _activeFilters.rooms via
+           $routeChangeSuccess/_pendingDDPlan so this block is skipped in that case. */
         if (_activeFilters.rooms.length === 0 && sel.selectedIndex > 0) {
             var nativeOpt     = sel.options[sel.selectedIndex];
             var nativePlanIdx = (nativeOpt.value || '').replace(/^(?:number|string):/, '');
             if (nativePlanIdx && nativePlanIdx !== '0' && nativePlanIdx.indexOf('dd:') !== 0) {
-                log('buildBar: auto-activating room pill', nativePlanIdx);
+                log('buildBar: auto-activating room pill from comboroom', nativePlanIdx);
                 _activeFilters.rooms = [nativePlanIdx];
-                _cameFromDD = !!(window.myglobals && window.myglobals.LastPlanSelected);
             }
         }
 
@@ -1092,10 +1094,18 @@
                 _viewTimers.forEach(clearTimeout);
                 _viewTimers = [];
 
-                /* Preemptive cloak for DD openRoomPlan() navigation */
+                /* Capture and immediately zero LastPlanSelected so the incoming
+                   DashboardDesktopController (which instantiates between
+                   $routeChangeStart and $routeChangeSuccess) sees plan=0 and
+                   loads ALL devices rather than only the selected room's devices.
+                   We store the room in _pendingDDPlan and apply it to the filter
+                   bar ourselves in $routeChangeSuccess. */
                 var ddPlan = window.myglobals && Number(window.myglobals.LastPlanSelected);
                 if (ddPlan && !isDetailPath(path)) {
+                    _pendingDDPlan = String(ddPlan);
+                    window.myglobals.LastPlanSelected = 0;
                     document.body.classList.add('ng-rf-reloading');
+                    log('$routeChangeStart: captured DD plan', _pendingDDPlan, '— zeroed LastPlanSelected');
                 }
             });
 
@@ -1110,17 +1120,20 @@
                     removeBar();
                     document.body.classList.remove('ng-mobile-dashboard');
 
-                    var ddPlan = window.myglobals && Number(window.myglobals.LastPlanSelected);
-                    if (ddPlan) {
-                        log('$routeChangeSuccess: DD room plan', ddPlan);
-                        _activeFilters.rooms = [String(ddPlan)];
+                    /* _pendingDDPlan was captured (and LastPlanSelected zeroed) in
+                       $routeChangeStart so the controller loaded all devices. */
+                    if (_pendingDDPlan) {
+                        log('$routeChangeSuccess: applying DD room filter', _pendingDDPlan);
+                        _activeFilters.rooms = [_pendingDDPlan];
                         _cameFromDD = true;
+                        _pendingDDPlan = null;
                         setTimeout(function () {
                             document.body.classList.remove('ng-rf-reloading');
                         }, 2000);
                     } else {
                         /* Normal navigation — rooms filter persists; type/hardware
                            will be pruned on the next buildBar() call */
+                        _pendingDDPlan = null;
                         _cameFromDD = false;
                         log('$routeChangeSuccess: preserving filters', _activeFilters);
                     }
