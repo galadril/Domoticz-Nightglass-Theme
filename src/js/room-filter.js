@@ -651,7 +651,7 @@
         /* Show/hide "Clear all filters" button */
         var clearBtn = document.getElementById('ng-rf-clear-all');
         if (clearBtn) {
-            clearBtn.style.display = isAnyFilterActive() ? '' : 'none';
+            clearBtn.style.display = isAnyFilterActive() ? 'block' : 'none';
         }
     }
 
