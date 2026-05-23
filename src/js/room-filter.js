@@ -62,6 +62,7 @@
     var _planCacheCallbacks = [];
 
     var _pendingDDPlan  = null;   /* plan IDX captured from LastPlanSelected before zeroing */
+    var _prevWasDetail  = false;  /* true when the route we navigated AWAY from was a detail page */
 
     /* ══ Route path helpers ══════════════════════════════════════════ */
 
@@ -1227,6 +1228,7 @@
 
             $rs.$on('$routeChangeStart', function () {
                 var path = currentHashPath();
+                _prevWasDetail = isDetailPath(path);
                 log('$routeChangeStart path=', path);
 
                 if (_buildBarTimer !== null) {
@@ -1273,11 +1275,18 @@
                             document.body.classList.remove('ng-rf-reloading');
                         }, 2000);
                     } else {
-                        /* Normal navigation — rooms filter persists; type/hardware
-                           will be pruned on the next buildBar() call */
                         _pendingDDPlan = null;
                         _cameFromDD = false;
-                        log('$routeChangeSuccess: preserving filters', _activeFilters);
+                        if (_prevWasDetail) {
+                            /* Returning from a detail page — restore all filters as-is */
+                            log('$routeChangeSuccess: returning from detail, preserving all filters', _activeFilters);
+                        } else {
+                            /* Category → category navigation — keep rooms, reset the rest */
+                            _activeFilters.types     = [];
+                            _activeFilters.hardware  = [];
+                            _activeFilters.favorites = false;
+                            log('$routeChangeSuccess: category nav, reset type/hw/favs, rooms=', _activeFilters.rooms);
+                        }
                     }
                 }
 
