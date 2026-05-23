@@ -591,6 +591,60 @@
                _activeFilters.favorites;
     }
 
+    /* ══ Pill count computation ══════════════════════════════════════
+       Returns how many route devices would be visible if the given
+       pill were the only active value in its dimension, keeping all
+       other currently active filters unchanged.
+       Returns null when device data or plan cache isn't ready yet. */
+    function countForPill(dim, value) {
+        if (!_planCacheReady) return null;
+        var devices = getRouteDevices();
+        if (!devices.length) return null;
+
+        /* Build a hypothetical filter state, overriding only this dim */
+        var hypo = {
+            rooms:     _activeFilters.rooms.slice(),
+            types:     _activeFilters.types.slice(),
+            hardware:  _activeFilters.hardware.slice(),
+            favorites: _activeFilters.favorites
+        };
+        if (dim === 'favorites') {
+            hypo.favorites = (value === 'favorites');
+        } else if (value === '') {
+            hypo[dim] = [];
+        } else {
+            hypo[dim] = [value];
+        }
+
+        return devices.filter(function (dev) {
+            var idx = String(dev.idx);
+
+            if (hypo.rooms.length > 0) {
+                var inRoom = false;
+                for (var i = 0; i < hypo.rooms.length; i++) {
+                    var set = _planCache[hypo.rooms[i]];
+                    if (set && set[idx]) { inRoom = true; break; }
+                }
+                if (!inRoom) return false;
+            }
+
+            if (hypo.types.length > 0) {
+                if (hypo.types.indexOf(getDeviceTypeLabel(dev)) === -1) return false;
+            }
+
+            if (hypo.hardware.length > 0) {
+                var hw = (dev.HardwareName || '').trim();
+                if (hypo.hardware.indexOf(hw) === -1) return false;
+            }
+
+            if (hypo.favorites) {
+                if (dev.Favorite != 1) return false;
+            }
+
+            return true;
+        }).length;
+    }
+
     function clearAllFilters() {
         _activeFilters.rooms     = [];
         _activeFilters.types     = [];
@@ -648,6 +702,22 @@
 
             pill.classList.toggle('ng-rf-pill--active', active);
             pill.setAttribute('aria-selected', String(active));
+
+            /* Count badge — how many devices this pill would show */
+            var badge = pill.querySelector('.ng-rf-pill-count');
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'ng-rf-pill-count';
+                pill.appendChild(badge);
+            }
+            var n = countForPill(dim, value);
+            if (n !== null) {
+                badge.textContent = String(n);
+                badge.style.display = '';
+                pill.classList.toggle('ng-rf-pill--zero', n === 0);
+            } else {
+                badge.style.display = 'none';
+            }
         });
 
         /* Toggle button count badge */

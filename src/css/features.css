@@ -521,6 +521,28 @@ body.ng-rf-reloading [ng-view] {
             color: var(--dz-accent);   /* prevent :hover from overriding the active text colour */
         }
 
+/* ── Pill count badge ─────────────────────────────────────────── */
+
+.ng-rf-pill-count {
+    margin-left: 5px;
+    font-size: 0.68rem;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.5;
+    line-height: 1;
+}
+
+    .ng-rf-pill--active .ng-rf-pill-count {
+        opacity: 0.7;
+    }
+
+    .ng-rf-pill--zero {
+        opacity: 0.4;
+    }
+
+    .ng-rf-pill--zero .ng-rf-pill-count {
+        opacity: 0.6;
+    }
+
 /* ── Panel title (hidden on desktop, sticky header in mobile drawer) */
 
 .ng-rf-panel-title { display: none; }
