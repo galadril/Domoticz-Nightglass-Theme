@@ -267,7 +267,7 @@
 
         var path = currentHashPath().toLowerCase();
 
-        if (path === 'switches' || path === 'lights') {
+        if (path === 'lightswitches' || path === 'switches' || path === 'lights') {
             return allDevs.filter(function (d) {
                 if (d.SwitchType) return true;
                 var t = (d.Type || '').toLowerCase();
