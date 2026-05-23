@@ -703,20 +703,22 @@
             pill.classList.toggle('ng-rf-pill--active', active);
             pill.setAttribute('aria-selected', String(active));
 
-            /* Count badge — how many devices this pill would show */
-            var badge = pill.querySelector('.ng-rf-pill-count');
-            if (!badge) {
-                badge = document.createElement('span');
-                badge.className = 'ng-rf-pill-count';
-                pill.appendChild(badge);
-            }
-            var n = countForPill(dim, value);
-            if (n !== null) {
-                badge.textContent = String(n);
-                badge.style.display = '';
-                pill.classList.toggle('ng-rf-pill--zero', n === 0);
-            } else {
-                badge.style.display = 'none';
+            /* Count badge — only on value pills, not the "All" pill */
+            if (value !== '') {
+                var badge = pill.querySelector('.ng-rf-pill-count');
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'ng-rf-pill-count';
+                    pill.appendChild(badge);
+                }
+                var n = countForPill(dim, value);
+                if (n !== null) {
+                    badge.textContent = String(n);
+                    badge.style.display = '';
+                    pill.classList.toggle('ng-rf-pill--zero', n === 0);
+                } else {
+                    badge.style.display = 'none';
+                }
             }
         });
 
