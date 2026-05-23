@@ -62,7 +62,7 @@
     var _planCacheCallbacks = [];
 
     var _pendingDDPlan  = null;   /* plan IDX captured from LastPlanSelected before zeroing */
-    var _prevWasDetail  = false;  /* true when the route we navigated AWAY from was a detail page */
+    var _prevPath       = null;   /* hash path of the last successfully loaded route */
 
     /* ══ Route path helpers ══════════════════════════════════════════ */
 
@@ -1228,7 +1228,6 @@
 
             $rs.$on('$routeChangeStart', function () {
                 var path = currentHashPath();
-                _prevWasDetail = isDetailPath(path);
                 log('$routeChangeStart path=', path);
 
                 if (_buildBarTimer !== null) {
@@ -1255,7 +1254,8 @@
 
             $rs.$on('$routeChangeSuccess', function () {
                 var newPath = currentHashPath();
-                log('$routeChangeSuccess path=', newPath);
+                var prevWasDetail = isDetailPath(_prevPath);
+                log('$routeChangeSuccess path=', newPath, 'prevPath=', _prevPath);
 
                 if (isDetailPath(newPath)) {
                     removeBar();
@@ -1277,7 +1277,7 @@
                     } else {
                         _pendingDDPlan = null;
                         _cameFromDD = false;
-                        if (_prevWasDetail) {
+                        if (prevWasDetail) {
                             /* Returning from a detail page — restore all filters as-is */
                             log('$routeChangeSuccess: returning from detail, preserving all filters', _activeFilters);
                         } else {
@@ -1290,6 +1290,7 @@
                     }
                 }
 
+                _prevPath      = newPath;
                 _topbarRetries = 0;
                 _comboRetries  = 0;
                 if (_safetyTimer) clearTimeout(_safetyTimer);
