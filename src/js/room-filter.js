@@ -71,7 +71,7 @@
     }
 
     function isDetailPath(path) {
-        return path.indexOf('/') !== -1;
+        return !!path && path.indexOf('/') !== -1;
     }
 
     /* ══ Topbar reveal ══════════════════════════════════════════════ */
