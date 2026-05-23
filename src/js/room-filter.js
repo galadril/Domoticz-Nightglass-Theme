@@ -40,8 +40,10 @@
         rooms:     [],
         types:     [],
         hardware:  [],
-        favorites: false
+        favorites: false,
+        state:     null           /* null = all, 'on' = active, 'off' = inactive */
     };
+
     var _planCache      = {};     /* planIdx → {deviceIdx: true} */
     var _deviceMap      = {};     /* idx → device object from API */
     var _filterSections = [];     /* [{id, label, values:[{value,label}]}] for current page */
@@ -72,6 +74,20 @@
 
     function isDetailPath(path) {
         return !!path && path.indexOf('/') !== -1;
+    }
+
+    /* Returns 'on', 'off', or null (unrecognised / not binary) for a device. */
+    function getDeviceStateLabel(dev) {
+        if (!dev) return null;
+        var s = (dev.Status || '').trim().toLowerCase();
+        if (!s || s === 'unavailable') return null;
+        if (s === 'on'  || s === 'open'   || s === 'unlocked' ||
+            s === 'alert' || s === 'motion' || s === 'opened') return 'on';
+        if (s === 'off' || s === 'closed' || s === 'locked'   ||
+            s === 'normal' || s === 'no motion') return 'off';
+        /* Dimmer/selector — treat non-zero Level as on */
+        if (typeof dev.Level !== 'undefined') return dev.Level > 0 ? 'on' : 'off';
+        return null;
     }
 
     /* ══ Topbar reveal ══════════════════════════════════════════════ */
@@ -410,14 +426,15 @@
         }).join('|');
     }
 
-    function uniqueSortedValues(devices, fn) {
-        var seen = {};
-        var result = [];
+    /* Returns unique values from devices via fn(), sorted by descending device count
+       so the most-populated filter options appear first. */
+    function uniqueValuesByCount(devices, fn) {
+        var counts = {};
         devices.forEach(function (d) {
             var v = fn(d);
-            if (v && !seen[v]) { seen[v] = true; result.push(v); }
+            if (v) counts[v] = (counts[v] || 0) + 1;
         });
-        return result.sort();
+        return Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; });
     }
 
     /* Compute filter sections from devices currently rendered on the page.
@@ -447,7 +464,7 @@
         if (!devices.length) return;   /* _deviceMap not ready yet — rooms only */
 
         /* Type section — only shown when 2+ distinct types exist on this page */
-        var typeValues = uniqueSortedValues(devices, getDeviceTypeLabel);
+        var typeValues = uniqueValuesByCount(devices, getDeviceTypeLabel);
         if (typeValues.length >= 2) {
             _filterSections.push({
                 id:     'types',
@@ -457,7 +474,7 @@
         }
 
         /* Hardware section — only shown when 2+ distinct hardware sources */
-        var hwValues = uniqueSortedValues(devices, function (d) {
+        var hwValues = uniqueValuesByCount(devices, function (d) {
             return (d.HardwareName || '').trim() || null;
         });
         if (hwValues.length >= 2) {
@@ -465,6 +482,20 @@
                 id:     'hardware',
                 label:  'Hardware',
                 values: hwValues.map(function (v) { return { value: v, label: v }; })
+            });
+        }
+
+        /* Status section — only when devices have a recognisable mix of on/off states */
+        var hasOn  = devices.some(function (d) { return getDeviceStateLabel(d) === 'on';  });
+        var hasOff = devices.some(function (d) { return getDeviceStateLabel(d) === 'off'; });
+        if (hasOn && hasOff) {
+            _filterSections.push({
+                id:     'state',
+                label:  'Status',
+                values: [
+                    { value: 'on',  label: 'On / Active'   },
+                    { value: 'off', label: 'Off / Inactive' }
+                ]
             });
         }
 
@@ -512,6 +543,10 @@
             _activeFilters.hardware = [];
         }
 
+        if (!findSection('state')) {
+            _activeFilters.state = null;
+        }
+
         if (!findSection('favorites')) {
             _activeFilters.favorites = false;
         }
@@ -522,11 +557,14 @@
        Devices with no _deviceMap entry are kept visible (safe default). */
 
     function applyFilter() {
-        var roomsActive = _activeFilters.rooms.length    > 0;
-        var typesActive = _activeFilters.types.length    > 0;
-        var hwActive    = _activeFilters.hardware.length > 0;
-        var favsActive  = _activeFilters.favorites;
-        var cards       = getCards();
+        var roomsActive  = _activeFilters.rooms.length    > 0;
+        var typesActive  = _activeFilters.types.length    > 0;
+        var hwActive     = _activeFilters.hardware.length > 0;
+        var favsActive   = _activeFilters.favorites;
+        var stateActive  = _activeFilters.state !== null;
+        var cards        = getCards();
+        var visibleCount = 0;
+        var totalCount   = 0;
 
         cards.forEach(function (card) {
             var idx  = cardIdx(card);
@@ -534,6 +572,8 @@
             var show = true;
 
             if (idx) {
+                totalCount++;
+
                 /* Rooms: device must belong to at least one selected plan */
                 if (roomsActive) {
                     var inRoom = false;
@@ -553,9 +593,15 @@
                     if (_activeFilters.hardware.indexOf(hw) === -1) show = false;
                 }
 
+                if (show && stateActive && dev) {
+                    if (getDeviceStateLabel(dev) !== _activeFilters.state) show = false;
+                }
+
                 if (show && favsActive && dev) {
                     if (dev.Favorite != 1) show = false;
                 }
+
+                if (show) visibleCount++;
             }
             /* idx-less cards (can't determine device) are always kept visible */
 
@@ -569,6 +615,14 @@
             );
             sec.classList.toggle('ng-rf-section-hidden', !hasVisible);
         });
+
+        /* Result summary */
+        var summaryEl = document.getElementById('ng-rf-summary');
+        if (summaryEl && totalCount > 0) {
+            summaryEl.textContent = isAnyFilterActive()
+                ? ('Showing ' + visibleCount + ' of ' + totalCount + ' devices')
+                : (totalCount + ' devices');
+        }
 
         syncPills();
         document.body.classList.remove('ng-rf-reloading');
@@ -589,7 +643,8 @@
         return _activeFilters.rooms.length    > 0 ||
                _activeFilters.types.length    > 0 ||
                _activeFilters.hardware.length > 0 ||
-               _activeFilters.favorites;
+               _activeFilters.favorites                ||
+               _activeFilters.state !== null;
     }
 
     /* ══ Pill count computation ══════════════════════════════════════
@@ -607,10 +662,13 @@
             rooms:     _activeFilters.rooms.slice(),
             types:     _activeFilters.types.slice(),
             hardware:  _activeFilters.hardware.slice(),
-            favorites: _activeFilters.favorites
+            favorites: _activeFilters.favorites,
+            state:     _activeFilters.state
         };
         if (dim === 'favorites') {
             hypo.favorites = (value === 'favorites');
+        } else if (dim === 'state') {
+            hypo.state = (value === '') ? null : value;
         } else if (value === '') {
             hypo[dim] = [];
         } else {
@@ -638,6 +696,10 @@
                 if (hypo.hardware.indexOf(hw) === -1) return false;
             }
 
+            if (hypo.state !== null) {
+                if (getDeviceStateLabel(dev) !== hypo.state) return false;
+            }
+
             if (hypo.favorites) {
                 if (dev.Favorite != 1) return false;
             }
@@ -651,6 +713,7 @@
         _activeFilters.types     = [];
         _activeFilters.hardware  = [];
         _activeFilters.favorites = false;
+        _activeFilters.state     = null;
         syncPills();
         applyFilter();
     }
@@ -664,12 +727,17 @@
             /* "All" pill — clear this dimension */
             if (dim === 'favorites') {
                 _activeFilters.favorites = false;
+            } else if (dim === 'state') {
+                _activeFilters.state = null;
             } else {
                 _activeFilters[dim] = [];
             }
         } else if (dim === 'favorites') {
             /* Favourites is a simple toggle: "All" → "Favourites" → "All" */
             _activeFilters.favorites = true;
+        } else if (dim === 'state') {
+            /* State is exclusive: clicking the active value toggles back to All */
+            _activeFilters.state = (_activeFilters.state === value) ? null : value;
         } else {
             var arr = _activeFilters[dim];
             var pos = arr.indexOf(value);
@@ -692,11 +760,17 @@
 
             if (value === '') {
                 /* "All" pill — active when dimension has no active values */
-                active = (dim === 'favorites')
-                    ? !_activeFilters.favorites
-                    : (_activeFilters[dim] || []).length === 0;
+                if (dim === 'favorites') {
+                    active = !_activeFilters.favorites;
+                } else if (dim === 'state') {
+                    active = _activeFilters.state === null;
+                } else {
+                    active = (_activeFilters[dim] || []).length === 0;
+                }
             } else if (dim === 'favorites') {
                 active = _activeFilters.favorites;
+            } else if (dim === 'state') {
+                active = _activeFilters.state === value;
             } else {
                 active = (_activeFilters[dim] || []).indexOf(value) !== -1;
             }
@@ -714,6 +788,13 @@
                 }
                 var n = countForPill(dim, value);
                 if (n !== null) {
+                    var prev = badge.dataset.prevCount;
+                    if (prev !== undefined && prev !== String(n)) {
+                        badge.classList.remove('ng-rf-count-pulse');
+                        void badge.offsetWidth;  /* reflow to restart animation */
+                        badge.classList.add('ng-rf-count-pulse');
+                    }
+                    badge.dataset.prevCount = String(n);
                     badge.textContent = String(n);
                     badge.style.display = '';
                     pill.classList.toggle('ng-rf-pill--zero', n === 0);
@@ -729,6 +810,7 @@
         var total = _activeFilters.rooms.length +
                     _activeFilters.types.length +
                     _activeFilters.hardware.length +
+                    (_activeFilters.state !== null ? 1 : 0) +
                     (_activeFilters.favorites ? 1 : 0);
         if (count) {
             count.textContent   = total > 0 ? String(total) : '';
@@ -743,6 +825,94 @@
         if (clearBtn) {
             clearBtn.style.display = isAnyFilterActive() ? 'block' : 'none';
         }
+
+        /* Active-filter chip bar */
+        updateChipBar();
+    }
+
+    /* ══ Active filter chip bar ══════════════════════════════════════
+       Compact removable chips shown in the topbar when filters are active
+       and the panel is closed. */
+
+    function getActiveChips() {
+        var chips = [];
+        var i, opt;
+
+        for (i = 0; i < _activeFilters.rooms.length; i++) {
+            var planIdx = _activeFilters.rooms[i];
+            var label   = planIdx;
+            for (var j = 0; j < _planOptions.length; j++) {
+                if (_planOptions[j].planIdx === planIdx) { label = _planOptions[j].label; break; }
+            }
+            chips.push({ dim: 'rooms', value: planIdx, label: label });
+        }
+        for (i = 0; i < _activeFilters.types.length; i++) {
+            chips.push({ dim: 'types', value: _activeFilters.types[i], label: _activeFilters.types[i] });
+        }
+        for (i = 0; i < _activeFilters.hardware.length; i++) {
+            chips.push({ dim: 'hardware', value: _activeFilters.hardware[i], label: _activeFilters.hardware[i] });
+        }
+        if (_activeFilters.state !== null) {
+            chips.push({ dim: 'state', value: _activeFilters.state,
+                         label: _activeFilters.state === 'on' ? 'On / Active' : 'Off / Inactive' });
+        }
+        if (_activeFilters.favorites) {
+            chips.push({ dim: 'favorites', value: 'favorites', label: 'Favourites ★' });
+        }
+        return chips;
+    }
+
+    function updateChipBar() {
+        var toggleBtn = document.getElementById('ng-rf-toggle');
+        if (!toggleBtn) return;
+
+        var bar = document.getElementById('ng-rf-chip-bar');
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.id = 'ng-rf-chip-bar';
+            toggleBtn.parentNode.insertBefore(bar, toggleBtn.nextSibling);
+        }
+
+        /* Clear */
+        while (bar.firstChild) bar.removeChild(bar.firstChild);
+
+        var chips = getActiveChips();
+        chips.forEach(function (chip) {
+            var el    = document.createElement('span');
+            el.className = 'ng-rf-chip';
+
+            var lbl = document.createElement('span');
+            lbl.className   = 'ng-rf-chip-label';
+            lbl.textContent = chip.label;
+
+            var rm = document.createElement('button');
+            rm.className       = 'ng-rf-chip-remove';
+            rm.setAttribute('aria-label', 'Remove filter: ' + chip.label);
+            rm.textContent = '×';
+
+            ;(function (c) {
+                rm.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    if (c.dim === 'favorites') {
+                        _activeFilters.favorites = false;
+                    } else if (c.dim === 'state') {
+                        _activeFilters.state = null;
+                    } else {
+                        var arr = _activeFilters[c.dim];
+                        var pos = arr.indexOf(c.value);
+                        if (pos !== -1) arr.splice(pos, 1);
+                    }
+                    syncPills();
+                    whenPlanCacheReady(applyFilter);
+                });
+            }(chip));
+
+            el.appendChild(lbl);
+            el.appendChild(rm);
+            bar.appendChild(el);
+        });
+
+        bar.style.display = chips.length > 0 ? '' : 'none';
     }
 
     /* ══ Mobile dashboard helpers ════════════════════════════════════ */
@@ -905,6 +1075,11 @@
 
         bar.appendChild(titleEl);
 
+        var summaryEl = document.createElement('div');
+        summaryEl.id        = 'ng-rf-summary';
+        summaryEl.className = 'ng-rf-summary';
+        bar.appendChild(summaryEl);
+
         var clearBtn = document.createElement('button');
         clearBtn.id        = 'ng-rf-clear-all';
         clearBtn.className = 'ng-rf-clear-all';
@@ -921,10 +1096,12 @@
         var rf  = document.getElementById('ng-room-filter');
         var btn = document.getElementById('ng-rf-toggle');
         var bb  = document.getElementById('ng-dd-back-btn');
+        var cb  = document.getElementById('ng-rf-chip-bar');
         _stripWasOpen = !!(rf && rf.classList.contains('ng-rf--open'));
         if (rf)  rf.remove();
         if (btn) btn.remove();
         if (bb)  bb.remove();
+        if (cb)  cb.remove();
         hideMobileBackdrop();
         _pills = [];
         log('removeBar: bar cleared');
@@ -1285,6 +1462,7 @@
                             _activeFilters.types     = [];
                             _activeFilters.hardware  = [];
                             _activeFilters.favorites = false;
+                            _activeFilters.state     = null;
                             log('$routeChangeSuccess: category nav, reset type/hw/favs, rooms=', _activeFilters.rooms);
                         }
                     }

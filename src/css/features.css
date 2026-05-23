@@ -521,6 +521,76 @@ body.ng-rf-reloading [ng-view] {
             color: var(--dz-accent);   /* prevent :hover from overriding the active text colour */
         }
 
+/* ── Result summary ──────────────────────────────────────────── */
+
+.ng-rf-summary {
+    font-size: 0.68rem;
+    color: var(--dz-text-muted);
+    opacity: 0.65;
+    padding: 2px 0 6px;
+    letter-spacing: 0.02em;
+    border-bottom: 1px solid rgba(var(--dz-border-rgb, 255,255,255), 0.06);
+    margin-bottom: 2px;
+}
+
+/* ── Active-filter chip bar (topbar, panel closed) ───────────── */
+
+#ng-rf-chip-bar {
+    display: none;    /* shown by JS when chips exist */
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+    padding: 0 6px;
+}
+
+.ng-rf-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 22px;
+    padding: 0 4px 0 8px;
+    border-radius: 11px;
+    background: rgba(var(--dz-accent-rgb), 0.12);
+    border: 1px solid rgba(var(--dz-accent-rgb), 0.25);
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: var(--dz-accent);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.ng-rf-chip-label {
+    line-height: 1;
+}
+
+.ng-rf-chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: none;
+    border: none;
+    color: inherit;
+    opacity: 0.6;
+    cursor: pointer;
+    font-size: 0.75rem;
+    line-height: 1;
+    padding: 0;
+    flex-shrink: 0;
+    transition: opacity 0.12s, background 0.12s;
+}
+
+    .ng-rf-chip-remove:hover {
+        opacity: 1;
+        background: rgba(var(--dz-accent-rgb), 0.2);
+    }
+
+@media (max-width: 768px) {
+    #ng-rf-chip-bar { display: none !important; }
+}
+
 /* ── Pill count chip ──────────────────────────────────────────── */
 
 .ng-rf-pill-count {
@@ -548,6 +618,18 @@ body.ng-rf-reloading [ng-view] {
 
 body.dz-light .ng-rf-pill-count {
     background: rgba(0, 0, 0, 0.07);
+}
+
+/* ── Count pulse animation (triggered when a count changes via device_update) */
+
+@keyframes ngRfCountPulse {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.4); background: rgba(var(--dz-accent-rgb), 0.45); color: var(--dz-accent); }
+    100% { transform: scale(1); }
+}
+
+.ng-rf-count-pulse {
+    animation: ngRfCountPulse 0.42s ease;
 }
 
 /* ── Panel title (hidden on desktop, sticky header in mobile drawer) */
