@@ -5,8 +5,10 @@
    a device map and plan cache.  All filtering is pure DOM show/hide —
    no comboroom manipulation, no Angular route reloads.
 
-   Angular's dashboardService.loadFavorites is patched to always return
-   all used devices so every device is in the DOM for client-side filtering.
+   Angular's dashboardService.loadFavorites is patched to return all used
+   devices (when Dynamic Dashboard is enabled) so every device is in the DOM
+   for client-side filtering.  When DD is disabled the Dashboard retains its
+   default favorites-only load and filters are scoped to those favorites.
 
    Filter dimensions are computed from what's on the current page:
      Rooms    — from PlanIDs; persists across all page navigations
@@ -283,13 +285,21 @@
 
     /* Return all devices from _deviceMap that belong on the current route.
        Used for computing filter sections (always reflects the full set of
-       available devices, regardless of what is currently rendered in the DOM). */
+       available devices, regardless of what is currently rendered in the DOM).
+       Exception: when the Dynamic Dashboard is disabled and the path is the
+       plain Dashboard, only favorites are loaded into the DOM so sections must
+       be computed from favorites only to keep filters in sync. */
     function getRouteDevices() {
         var allDevs = [];
         Object.keys(_deviceMap).forEach(function (k) { allDevs.push(_deviceMap[k]); });
         if (!allDevs.length) return [];
 
         var path = currentHashPath().toLowerCase();
+
+        /* Plain Dashboard without DD — only favorites are rendered */
+        if ((path === 'dashboard' || path === '') && !isDynamicDashboardEnabled()) {
+            return allDevs.filter(function (d) { return d.Favorite == 1; });
+        }
 
         if (path === 'lightswitches' || path === 'switches' || path === 'lights') {
             return allDevs.filter(function (d) {
