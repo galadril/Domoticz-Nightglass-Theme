@@ -76,6 +76,13 @@
         return !!path && path.indexOf('/') !== -1;
     }
 
+    function isDynamicDashboardEnabled() {
+        try {
+            var rs = angular.element(document.body).injector().get('$rootScope');
+            return !!(rs.config && rs.config.EnableTabDashboardDynamic);
+        } catch (e) { return false; }
+    }
+
     /* Returns 'on', 'off', or null (unrecognised / not binary) for a device. */
     function getDeviceStateLabel(dev) {
         if (!dev) return null;
@@ -1288,13 +1295,14 @@
             if (!api.__ngRfPatched) {
                 var origSendRequest = api.sendRequest.bind(api);
                 api.sendRequest = function (params) {
-                    /* On the Dashboard route, force all-device loading by
-                       removing the favorites and plan filters from any
-                       getdevices request.  Scoped to Dashboard so that
-                       Settings / device-list pages are unaffected. */
+                    /* On the Dashboard route, force all-device loading only when
+                       the Dynamic Dashboard is enabled (so the filter bar can
+                       show all devices for client-side filtering).  When DD is
+                       disabled the plain Dashboard keeps its default
+                       favorites-only behaviour. */
                     if (params && params.param === 'getdevices') {
                         var path = currentHashPath().toLowerCase();
-                        if (path === 'dashboard' || path === '') {
+                        if ((path === 'dashboard' || path === '') && isDynamicDashboardEnabled()) {
                             params = Object.assign({}, params, {
                                 favorite: 0, plan: 0, used: 'true'
                             });
@@ -1311,7 +1319,12 @@
             try {
                 var svc = inj.get('dashboardService');
                 if (svc && !svc.__ngRfPatched) {
+                    var origLoadFavorites = svc.loadFavorites.bind(svc);
                     svc.loadFavorites = function () {
+                        if (!isDynamicDashboardEnabled()) {
+                            log('loadFavorites: DD disabled — using original favorites behaviour');
+                            return origLoadFavorites();
+                        }
                         log('loadFavorites: patched — loading all used devices');
                         return api.sendRequest({
                             type: 'command', param: 'getdevices',
@@ -1339,7 +1352,8 @@
             if (!ls.__ngRfPatched) {
                 var origGetJson = ls.getJson.bind(ls);
                 ls.getJson = function (url, cb) {
-                    if (typeof url === 'string' && url.indexOf('param=getdevices') !== -1) {
+                    if (typeof url === 'string' && url.indexOf('param=getdevices') !== -1 &&
+                            isDynamicDashboardEnabled()) {
                         url = url.replace(/\bfavorite=1\b/, 'favorite=0');
                         url = url.replace(/\bplan=\d+\b/, 'plan=0');
                     }
@@ -1365,7 +1379,12 @@
             var svc = inj.get('dashboardService');
             var api = inj.get('domoticzApi');
             if (svc && !svc.__ngRfPatched) {
+                var origLoadFav = svc.loadFavorites.bind(svc);
                 svc.loadFavorites = function () {
+                    if (!isDynamicDashboardEnabled()) {
+                        log('patchDashboardServiceIfNeeded: DD disabled — using original favorites behaviour');
+                        return origLoadFav();
+                    }
                     return api.sendRequest({
                         type: 'command', param: 'getdevices',
                         filter: 'all', used: 'true', favorite: 0,
