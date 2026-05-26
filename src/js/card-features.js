@@ -392,15 +392,15 @@ document.addEventListener('DOMContentLoaded', function () {
        Northern-hemisphere convention:
          waxing = right outer edge lit  → fa-moon flipped via dz-moon-waxing
          waning = left outer edge lit   → fa-moon as-is
-       fa-circle-half-stroke shows the RIGHT half solid; flip it for last quarter. */
+       In Domoticz/FA rendering here, fa-circle-half-stroke needs flipping for first quarter. */
     var moonPhaseMap = {
         'new':             { icon: 'fa-circle',             cls: 'dz-moon-new'    },
         'waxing-crescent': { icon: 'fa-moon',               cls: 'dz-moon-waxing' },
-        'first-quarter':   { icon: 'fa-circle-half-stroke', cls: ''               },
+        'first-quarter':   { icon: 'fa-circle-half-stroke', cls: 'dz-moon-waxing' },
         'waxing-gibbous':  { icon: 'fa-moon',               cls: 'dz-moon-waxing' },
         'full':            { icon: 'fa-circle',             cls: ''               },
         'waning-gibbous':  { icon: 'fa-moon',               cls: ''               },
-        'last-quarter':    { icon: 'fa-circle-half-stroke', cls: 'dz-moon-waxing' },
+        'last-quarter':    { icon: 'fa-circle-half-stroke', cls: ''               },
         'waning-crescent': { icon: 'fa-moon',               cls: ''               },
     };
 
