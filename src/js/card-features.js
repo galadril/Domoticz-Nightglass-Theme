@@ -1019,7 +1019,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         '<circle class="ring-fill" cx="80" cy="80" r="70" fill="none" stroke-width="8"' +
                         ' stroke-linecap="round" stroke-dasharray="' + C + '" stroke-dashoffset="' + C + '"/>' +
                     '</svg>' +
-                    '<span class="ring-label">0\u00a0%</span>';
+                    '<span class="ring-label">0</span>';
 
                 /* Insert before the hidden native ring */
                 divProg.insertBefore(ringEl, nativeRing);
@@ -1031,7 +1031,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     label = Math.min(100, Math.max(0, parseInt(label, 10) || 0));
                     var offset = (C - (label / 100) * C).toFixed(2);
                     if (ringFill)  ringFill.setAttribute('stroke-dashoffset', offset);
-                    if (ringLabel) ringLabel.textContent = label + '\u00a0%';
+                    if (ringLabel) ringLabel.textContent = label;
                     ringEl.setAttribute('aria-valuenow', label);
                 }
 
