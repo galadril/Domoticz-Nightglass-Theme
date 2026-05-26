@@ -517,15 +517,22 @@
         }
 
         /* Favourites section — only shown when the page has a mix of
-           favourited and non-favourited devices */
-        var hasFavs    = devices.some(function (d) { return d.Favorite == 1; });
-        var hasNonFavs = devices.some(function (d) { return d.Favorite != 1; });
-        if (hasFavs && hasNonFavs) {
-            _filterSections.push({
-                id:     'favorites',
-                label:  'Show',
-                values: [{ value: 'favorites', label: 'Favourites ★' }]
-            });
+           favourited and non-favourited devices.  Skip on the plain Dashboard
+           when DD is disabled: it already shows only favorites, so this filter
+           would be redundant. */
+        var dashPath = currentHashPath().toLowerCase();
+        var isPlainDashboard = (dashPath === 'dashboard' || dashPath === '') &&
+                               !isDynamicDashboardEnabled();
+        if (!isPlainDashboard) {
+            var hasFavs    = devices.some(function (d) { return d.Favorite == 1; });
+            var hasNonFavs = devices.some(function (d) { return d.Favorite != 1; });
+            if (hasFavs && hasNonFavs) {
+                _filterSections.push({
+                    id:     'favorites',
+                    label:  'Show',
+                    values: [{ value: 'favorites', label: 'Favourites ★' }]
+                });
+            }
         }
     }
 
