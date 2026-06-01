@@ -441,11 +441,25 @@
        as Favorite=1 but never appear in the DOM.  Scoping to DOM devices here
        prevents showing filter pills for categories the user cannot see.
        All other routes use getRouteDevices() for pre-render accuracy. */
-    function getFilterableDevices() {
+
+    /* True when the mobile dashboard is a plain favorites-only view.
+       Two scenarios render .dashboardMobile:
+         A) DD enabled + room selection → all devices + room filter pre-applied
+            (_cameFromDD = true)  → NOT plain, use getRouteDevices()
+         B) DD enabled but Domoticz fell back to mobile view (e.g. MobileType
+            setting) without room context (_cameFromDD = false) → favorites only
+         C) DD disabled → always favorites only
+    */
+    function isOnMobileDashboardView() {
         var path = currentHashPath().toLowerCase();
-        var isPlainDash = (path === 'dashboard' || path === '') &&
-                          !isDynamicDashboardEnabled();
-        return isPlainDash ? getPageDevices() : getRouteDevices();
+        if (path !== 'dashboard' && path !== '') return false;
+        if (!isDynamicDashboardEnabled()) return true;
+        // DD on: plain view only when we did NOT arrive via DD room selection
+        return !_cameFromDD && !!document.querySelector('.dashboardMobile');
+    }
+
+    function getFilterableDevices() {
+        return isOnMobileDashboardView() ? getPageDevices() : getRouteDevices();
     }
 
     /* ══ Filter section computation ═════════════════════════════════ */
@@ -535,10 +549,7 @@
            favourited and non-favourited devices.  Skip on the plain Dashboard
            when DD is disabled: it already shows only favorites, so this filter
            would be redundant. */
-        var dashPath = currentHashPath().toLowerCase();
-        var isPlainDashboard = (dashPath === 'dashboard' || dashPath === '') &&
-                               !isDynamicDashboardEnabled();
-        if (!isPlainDashboard) {
+        if (!isOnMobileDashboardView()) {
             var hasFavs    = devices.some(function (d) { return d.Favorite == 1; });
             var hasNonFavs = devices.some(function (d) { return d.Favorite != 1; });
             if (hasFavs && hasNonFavs) {
