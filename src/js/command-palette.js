@@ -15,6 +15,8 @@
     // ── Device data ────────────────────────────────────────────────
 
     function fetchAll() {
+        // filter=all&used=true — Domoticz's API already scopes the result to
+        // devices the logged-in user has permission to access.
         var url = 'json.htm?type=command&param=getdevices&filter=all&used=true&order=Name';
         fetch(url, { credentials: 'same-origin', cache: 'no-store' })
             .then(function (r) { return r.json(); })
@@ -28,13 +30,17 @@
     function patchDevice(d) {
         var idx = String(d.idx || d.ID || '');
         if (!idx) return;
+        var found = false;
         for (var i = 0; i < _allDevices.length; i++) {
             if (String(_allDevices[i].idx) === idx) {
                 var keys = Object.keys(d);
                 for (var k = 0; k < keys.length; k++) _allDevices[i][keys[k]] = d[keys[k]];
+                found = true;
                 break;
             }
         }
+        // Only track recent events for devices the user has access to.
+        if (!found) return;
         _recentMap[idx] = { device: d, ts: Date.now() };
         _recentKeys = Object.keys(_recentMap)
             .sort(function (a, b) { return _recentMap[b].ts - _recentMap[a].ts; })
