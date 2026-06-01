@@ -277,11 +277,9 @@
         document.querySelectorAll('.span4.itemBlock').forEach(function (el) {
             if (!el.closest('.movable')) cards.push(el);
         });
-        /* Lights/Switches: device row is <tbody id="light_NNN"> */
-        document.querySelectorAll('.dashboardMobile table.mobileitem tbody[id]').forEach(function (el) {
-            cards.push(el);
-        });
-        /* Scenes/Temp/Weather/Utility: device row is <tr id="scene_NNN"> etc. */
+        /* Mobile layout: lights use <tbody ng-repeat><tr id="light_NNN">;
+           scenes/temp/weather/utility use <tr id="..."> directly in tbody.
+           Sibling slider rows (no id) are handled via CSS adjacent-sibling rule. */
         document.querySelectorAll('.dashboardMobile table.mobileitem tbody tr[id]').forEach(function (el) {
             cards.push(el);
         });
@@ -640,7 +638,7 @@
         /* Hide dashboard sections that have no visible cards */
         document.querySelectorAll('section.dashCategory').forEach(function (sec) {
             var hasVisible = !!sec.querySelector(
-                '.movable:not(.ng-rf-filtered), tr[id]:not(.ng-rf-filtered), tbody[id]:not(.ng-rf-filtered)'
+                '.movable:not(.ng-rf-filtered), tr[id]:not(.ng-rf-filtered)'
             );
             sec.classList.toggle('ng-rf-section-hidden', !hasVisible);
         });
