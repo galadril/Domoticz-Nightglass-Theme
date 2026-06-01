@@ -434,6 +434,20 @@
         return subtype || type || null;
     }
 
+    /* Returns the device set used for filter sections and pill counts.
+       On the plain Dashboard (no DD) the mobile template only renders the
+       five supported categories (scenes, lights, temp, weather, utility).
+       Favorites of other types (Setpoints, P1 Meter, etc.) are in _deviceMap
+       as Favorite=1 but never appear in the DOM.  Scoping to DOM devices here
+       prevents showing filter pills for categories the user cannot see.
+       All other routes use getRouteDevices() for pre-render accuracy. */
+    function getFilterableDevices() {
+        var path = currentHashPath().toLowerCase();
+        var isPlainDash = (path === 'dashboard' || path === '') &&
+                          !isDynamicDashboardEnabled();
+        return isPlainDash ? getPageDevices() : getRouteDevices();
+    }
+
     /* ══ Filter section computation ═════════════════════════════════ */
 
     /* Returns a string that uniquely identifies the current section structure
@@ -474,12 +488,10 @@
             });
         }
 
-        /* For type / hardware / favourites sections, always use _deviceMap filtered
-           by the current route — not DOM cards.  This guarantees filter options
-           reflect ALL devices for this page type regardless of whether Angular has
-           finished rendering and regardless of any prior room pre-selection that
-           may have limited what was loaded into the DOM (e.g. DD → Dashboard flow). */
-        var devices = getRouteDevices();
+        /* Use getFilterableDevices() which scopes to DOM devices on the plain
+           Dashboard (where the mobile template omits non-category favorites)
+           and to getRouteDevices() everywhere else for pre-render accuracy. */
+        var devices = getFilterableDevices();
 
         if (!devices.length) return;   /* _deviceMap not ready yet — rooms only */
 
@@ -681,7 +693,7 @@
        Returns null when device data or plan cache isn't ready yet. */
     function countForPill(dim, value) {
         if (!_planCacheReady) return null;
-        var devices = getRouteDevices();
+        var devices = getFilterableDevices();
         if (!devices.length) return null;
 
         /* Build a hypothetical filter state, overriding only this dim */
