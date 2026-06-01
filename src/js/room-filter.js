@@ -643,20 +643,6 @@
             sec.classList.toggle('ng-rf-section-hidden', !hasVisible);
         });
 
-        /* Refresh jQuery UI sliders in visible mobile rows.
-           Sliders initialised while their container was display:none (from a prior
-           filter pass or the ng-rf-reloading cloak) get width:0 from jQuery UI;
-           calling refresh() after they become visible restores the correct track width. */
-        if (typeof $ === 'function') {
-            document.querySelectorAll(
-                '.dashboardMobile table.mobileitem .ui-slider'
-            ).forEach(function (sliderEl) {
-                var parent = sliderEl.closest('tbody[id], tr[id]');
-                if (parent && parent.classList.contains('ng-rf-filtered')) return;
-                try { $(sliderEl).slider('refresh'); } catch (e) {}
-            });
-        }
-
         /* Result summary */
         var summaryEl = document.getElementById('ng-rf-summary');
         if (summaryEl && totalCount > 0) {
@@ -972,10 +958,40 @@
         });
     }
 
+    /* Re-apply mobile slider widths using Domoticz's own formula.
+       Domoticz runs ResizeDimSliders() at t+100ms after data loads; at that
+       moment the mobileitem layout may not be finalised and it measures ~64px,
+       giving a 1px track width.  We repeat the measurement at a later time
+       when the layout is stable and the sliders are in the DOM. */
+    function fixMobileSliderWidths() {
+        var tables = document.querySelectorAll('.dashboardMobile .mobileitem');
+        if (!tables.length) return;
+        /* Use the widest rendered mobileitem (ng-rf-section-hidden ones have 0) */
+        var w = 0;
+        tables.forEach(function (t) {
+            var tw = t.offsetWidth;
+            if (tw > w) w = tw;
+        });
+        if (w < 100) return;   /* layout not stable yet — skip silently */
+        var trackW = w - 63;
+        if (trackW <= 0) return;
+        document.querySelectorAll(
+            '.dashboardMobile .mobileitem .dimslidernorm,' +
+            '.dashboardMobile .mobileitem .dimslidersmall'
+        ).forEach(function (el) {
+            el.style.width = trackW + 'px';
+        });
+    }
+
     function setupMobilePage() {
         var isMobile = !!document.querySelector('.dashboardMobile');
         document.body.classList.toggle('ng-mobile-dashboard', isMobile);
-        if (isMobile) setTimeout(attachMobileSearch, 200);
+        if (isMobile) {
+            setTimeout(attachMobileSearch, 200);
+            /* Run at 300ms and 700ms to cover both fast and slow data-load paths */
+            setTimeout(fixMobileSliderWidths, 300);
+            setTimeout(fixMobileSliderWidths, 700);
+        }
     }
 
     /* ══ Build filter panel DOM ══════════════════════════════════════
@@ -1503,17 +1519,7 @@
                         _pendingDDPlan = null;
                         setTimeout(function () {
                             document.body.classList.remove('ng-rf-reloading');
-                            /* Refresh sliders that may have been measured at width:0
-                               while the opacity:0 cloak was active during rendering. */
-                            if (typeof $ === 'function') {
-                                document.querySelectorAll(
-                                    '.dashboardMobile table.mobileitem .ui-slider'
-                                ).forEach(function (sliderEl) {
-                                    var parent = sliderEl.closest('tbody[id], tr[id]');
-                                    if (parent && parent.classList.contains('ng-rf-filtered')) return;
-                                    try { $(sliderEl).slider('refresh'); } catch (e) {}
-                                });
-                            }
+                            fixMobileSliderWidths();
                         }, 2000);
                     } else {
                         _pendingDDPlan = null;
