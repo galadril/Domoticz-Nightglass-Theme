@@ -12,6 +12,38 @@
     var _fetched    = false;
     var _pendingHighlight = null; // idx to scroll+highlight after route change
 
+    // ── Tab config ─────────────────────────────────────────────────
+
+    // Route → GetConfig flag name
+    var ROUTE_TAB = {
+        '/LightSwitches': 'EnableTabLights',
+        '/Scenes':        'EnableTabScenes',
+        '/Temperature':   'EnableTabTemp',
+        '/Weather':       'EnableTabWeather',
+        '/Utility':       'EnableTabUtility',
+        '/Dashboard':     'EnableTabDashboard',
+        '/Floorplans':    'EnableTabFloorplans',
+    };
+
+    function fetchConfig() {
+        var url = 'json.htm?type=command&param=getconfig';
+        fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                // Expose globally so other modules (notifications.js) can read it
+                window._dzTabConfig = (data && data.result) ? data.result : {};
+            })
+            .catch(function () { window._dzTabConfig = {}; });
+    }
+
+    function isTabEnabled(route) {
+        var cfg = window._dzTabConfig;
+        if (!cfg) return true; // not loaded yet — allow navigation
+        var flag = ROUTE_TAB[route];
+        if (!flag) return true; // unknown route — allow
+        return cfg[flag] !== false;
+    }
+
     // ── Device data ────────────────────────────────────────────────
 
     function fetchAll() {
@@ -697,6 +729,13 @@
 
     function navigateToDevice(device) {
         var route = deviceRoute(device);
+
+        if (!isTabEnabled(route)) {
+            // User doesn't have access to this tab — close palette and stop
+            closePalette();
+            return;
+        }
+
         closePalette();
 
         setTimeout(function () {
@@ -846,6 +885,7 @@
         render('');
         requestAnimationFrame(function () { _input && _input.focus(); });
         if (!_fetched) fetchAll();
+        if (!window._dzTabConfig) fetchConfig();
     }
 
     function closePalette() {

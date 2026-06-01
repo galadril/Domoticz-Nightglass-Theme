@@ -249,8 +249,33 @@
         }, 100);
     }
 
+    // Route → GetConfig flag name (mirrors command-palette.js)
+    var ROUTE_TAB = {
+        '/LightSwitches': 'EnableTabLights',
+        '/Scenes':        'EnableTabScenes',
+        '/Temperature':   'EnableTabTemp',
+        '/Weather':       'EnableTabWeather',
+        '/Utility':       'EnableTabUtility',
+        '/Dashboard':     'EnableTabDashboard',
+        '/Floorplans':    'EnableTabFloorplans',
+    };
+
+    function isTabEnabled(route) {
+        var cfg = window._dzTabConfig;
+        if (!cfg) return true; // config not yet loaded — allow navigation
+        var flag = ROUTE_TAB[route];
+        if (!flag) return true;
+        return cfg[flag] !== false;
+    }
+
     function navigateToDevice(device) {
         var route = deviceRoute(device);
+
+        if (!isTabEnabled(route)) {
+            if (_open) closePanel();
+            return;
+        }
+
         if (_open) closePanel();
 
         setTimeout(function () {
@@ -416,6 +441,18 @@
     function init() {
         injectButton();
         attachAngularHooks();
+        fetchAllowedDevices();
+        // Fetch tab config if command-palette.js hasn't done it yet
+        if (!window._dzTabConfig) {
+            fetch('json.htm?type=command&param=getconfig', { credentials: 'same-origin', cache: 'no-store' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (!window._dzTabConfig) {
+                        window._dzTabConfig = (data && data.result) ? data.result : {};
+                    }
+                })
+                .catch(function () { if (!window._dzTabConfig) window._dzTabConfig = {}; });
+        }
     }
 
     if (document.readyState === 'loading') {
