@@ -277,6 +277,11 @@
         document.querySelectorAll('.span4.itemBlock').forEach(function (el) {
             if (!el.closest('.movable')) cards.push(el);
         });
+        /* Lights/Switches: device row is <tbody id="light_NNN"> */
+        document.querySelectorAll('.dashboardMobile table.mobileitem tbody[id]').forEach(function (el) {
+            cards.push(el);
+        });
+        /* Scenes/Temp/Weather/Utility: device row is <tr id="scene_NNN"> etc. */
         document.querySelectorAll('.dashboardMobile table.mobileitem tbody tr[id]').forEach(function (el) {
             cards.push(el);
         });
@@ -635,10 +640,24 @@
         /* Hide dashboard sections that have no visible cards */
         document.querySelectorAll('section.dashCategory').forEach(function (sec) {
             var hasVisible = !!sec.querySelector(
-                '.movable:not(.ng-rf-filtered), tr[id]:not(.ng-rf-filtered)'
+                '.movable:not(.ng-rf-filtered), tr[id]:not(.ng-rf-filtered), tbody[id]:not(.ng-rf-filtered)'
             );
             sec.classList.toggle('ng-rf-section-hidden', !hasVisible);
         });
+
+        /* Refresh jQuery UI sliders in visible mobile rows.
+           Sliders initialised while their container was display:none (from a prior
+           filter pass or the ng-rf-reloading cloak) get width:0 from jQuery UI;
+           calling refresh() after they become visible restores the correct track width. */
+        if (typeof $ === 'function') {
+            document.querySelectorAll(
+                '.dashboardMobile table.mobileitem .ui-slider'
+            ).forEach(function (sliderEl) {
+                var parent = sliderEl.closest('tbody[id], tr[id]');
+                if (parent && parent.classList.contains('ng-rf-filtered')) return;
+                try { $(sliderEl).slider('refresh'); } catch (e) {}
+            });
+        }
 
         /* Result summary */
         var summaryEl = document.getElementById('ng-rf-summary');
@@ -1486,6 +1505,17 @@
                         _pendingDDPlan = null;
                         setTimeout(function () {
                             document.body.classList.remove('ng-rf-reloading');
+                            /* Refresh sliders that may have been measured at width:0
+                               while the opacity:0 cloak was active during rendering. */
+                            if (typeof $ === 'function') {
+                                document.querySelectorAll(
+                                    '.dashboardMobile table.mobileitem .ui-slider'
+                                ).forEach(function (sliderEl) {
+                                    var parent = sliderEl.closest('tbody[id], tr[id]');
+                                    if (parent && parent.classList.contains('ng-rf-filtered')) return;
+                                    try { $(sliderEl).slider('refresh'); } catch (e) {}
+                                });
+                            }
                         }, 2000);
                     } else {
                         _pendingDDPlan = null;

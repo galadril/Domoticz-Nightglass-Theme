@@ -771,6 +771,15 @@ table.mobileitem,
         border-bottom: none;
     }
 
+/* Ensure dimmer sliders in mobile rows always fill the available td width.
+   jQuery UI measures the container on init; if the row was hidden at that
+   moment the slider may render at zero width until refreshed. */
+.dashboardMobile .mobileitem .dimslider,
+.dashboardMobile .mobileitem .ui-slider {
+    width: 100% !important;
+    box-sizing: border-box;
+}
+
 /* Selector buttons outside .btn-group (mobile dashboard selectorlevels-mobile) */
 .selectorlevels-mobile .btn-selected,
 .selectorlevels-mobile-wrap .btn-selected,
@@ -800,7 +809,9 @@ body.ng-mobile-dashboard #tbFiltSearch.ng-hide {
 /* ── Mobile room filter / search row hiding ──────────────────────── */
 
 .dashboardMobile tr.ng-rf-filtered,
-.dashboardMobile tr.ng-mobile-search-hidden {
+.dashboardMobile tbody.ng-rf-filtered,
+.dashboardMobile tr.ng-mobile-search-hidden,
+.dashboardMobile tbody.ng-mobile-search-hidden {
     display: none !important;
 }
 
