@@ -804,6 +804,13 @@ body.ng-mobile-dashboard #tbFiltSearch.ng-hide {
     display: none !important;
 }
 
+/* Dimmer/TPI/Blinds devices have a sibling <tr ng-if> containing the slider.
+   Hide it whenever its preceding device row is filtered or search-hidden. */
+.dashboardMobile .mobileitem tr.ng-rf-filtered ~ tr,
+.dashboardMobile .mobileitem tr.ng-mobile-search-hidden ~ tr {
+    display: none !important;
+}
+
 /* Hide entire dashCategory sections that have no visible rows */
 .dashboardMobile section.dashCategory.ng-rf-section-hidden {
     display: none !important;

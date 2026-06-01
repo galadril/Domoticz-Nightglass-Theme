@@ -277,6 +277,9 @@
         document.querySelectorAll('.span4.itemBlock').forEach(function (el) {
             if (!el.closest('.movable')) cards.push(el);
         });
+        /* Mobile layout: lights use <tbody ng-repeat><tr id="light_NNN">;
+           scenes/temp/weather/utility use <tr id="..."> directly in tbody.
+           Sibling slider rows (no id) are handled via CSS adjacent-sibling rule. */
         document.querySelectorAll('.dashboardMobile table.mobileitem tbody tr[id]').forEach(function (el) {
             cards.push(el);
         });
@@ -431,6 +434,34 @@
         return subtype || type || null;
     }
 
+    /* Returns the device set used for filter sections and pill counts.
+       On the plain Dashboard (no DD) the mobile template only renders the
+       five supported categories (scenes, lights, temp, weather, utility).
+       Favorites of other types (Setpoints, P1 Meter, etc.) are in _deviceMap
+       as Favorite=1 but never appear in the DOM.  Scoping to DOM devices here
+       prevents showing filter pills for categories the user cannot see.
+       All other routes use getRouteDevices() for pre-render accuracy. */
+
+    /* True when the mobile dashboard is a plain favorites-only view.
+       Two scenarios render .dashboardMobile:
+         A) DD enabled + room selection → all devices + room filter pre-applied
+            (_cameFromDD = true)  → NOT plain, use getRouteDevices()
+         B) DD enabled but Domoticz fell back to mobile view (e.g. MobileType
+            setting) without room context (_cameFromDD = false) → favorites only
+         C) DD disabled → always favorites only
+    */
+    function isOnMobileDashboardView() {
+        var path = currentHashPath().toLowerCase();
+        if (path !== 'dashboard' && path !== '') return false;
+        if (!isDynamicDashboardEnabled()) return true;
+        // DD on: plain view only when we did NOT arrive via DD room selection
+        return !_cameFromDD && !!document.querySelector('.dashboardMobile');
+    }
+
+    function getFilterableDevices() {
+        return isOnMobileDashboardView() ? getPageDevices() : getRouteDevices();
+    }
+
     /* ══ Filter section computation ═════════════════════════════════ */
 
     /* Returns a string that uniquely identifies the current section structure
@@ -471,12 +502,10 @@
             });
         }
 
-        /* For type / hardware / favourites sections, always use _deviceMap filtered
-           by the current route — not DOM cards.  This guarantees filter options
-           reflect ALL devices for this page type regardless of whether Angular has
-           finished rendering and regardless of any prior room pre-selection that
-           may have limited what was loaded into the DOM (e.g. DD → Dashboard flow). */
-        var devices = getRouteDevices();
+        /* Use getFilterableDevices() which scopes to DOM devices on the plain
+           Dashboard (where the mobile template omits non-category favorites)
+           and to getRouteDevices() everywhere else for pre-render accuracy. */
+        var devices = getFilterableDevices();
 
         if (!devices.length) return;   /* _deviceMap not ready yet — rooms only */
 
@@ -520,10 +549,7 @@
            favourited and non-favourited devices.  Skip on the plain Dashboard
            when DD is disabled: it already shows only favorites, so this filter
            would be redundant. */
-        var dashPath = currentHashPath().toLowerCase();
-        var isPlainDashboard = (dashPath === 'dashboard' || dashPath === '') &&
-                               !isDynamicDashboardEnabled();
-        if (!isPlainDashboard) {
+        if (!isOnMobileDashboardView()) {
             var hasFavs    = devices.some(function (d) { return d.Favorite == 1; });
             var hasNonFavs = devices.some(function (d) { return d.Favorite != 1; });
             if (hasFavs && hasNonFavs) {
@@ -678,7 +704,7 @@
        Returns null when device data or plan cache isn't ready yet. */
     function countForPill(dim, value) {
         if (!_planCacheReady) return null;
-        var devices = getRouteDevices();
+        var devices = getFilterableDevices();
         if (!devices.length) return null;
 
         /* Build a hypothetical filter state, overriding only this dim */
@@ -955,10 +981,40 @@
         });
     }
 
+    /* Re-apply mobile slider widths using Domoticz's own formula.
+       Domoticz runs ResizeDimSliders() at t+100ms after data loads; at that
+       moment the mobileitem layout may not be finalised and it measures ~64px,
+       giving a 1px track width.  We repeat the measurement at a later time
+       when the layout is stable and the sliders are in the DOM. */
+    function fixMobileSliderWidths() {
+        var tables = document.querySelectorAll('.dashboardMobile .mobileitem');
+        if (!tables.length) return;
+        /* Use the widest rendered mobileitem (ng-rf-section-hidden ones have 0) */
+        var w = 0;
+        tables.forEach(function (t) {
+            var tw = t.offsetWidth;
+            if (tw > w) w = tw;
+        });
+        if (w < 100) return;   /* layout not stable yet — skip silently */
+        var trackW = w - 63;
+        if (trackW <= 0) return;
+        document.querySelectorAll(
+            '.dashboardMobile .mobileitem .dimslidernorm,' +
+            '.dashboardMobile .mobileitem .dimslidersmall'
+        ).forEach(function (el) {
+            el.style.width = trackW + 'px';
+        });
+    }
+
     function setupMobilePage() {
         var isMobile = !!document.querySelector('.dashboardMobile');
         document.body.classList.toggle('ng-mobile-dashboard', isMobile);
-        if (isMobile) setTimeout(attachMobileSearch, 200);
+        if (isMobile) {
+            setTimeout(attachMobileSearch, 200);
+            /* Run at 300ms and 700ms to cover both fast and slow data-load paths */
+            setTimeout(fixMobileSliderWidths, 300);
+            setTimeout(fixMobileSliderWidths, 700);
+        }
     }
 
     /* ══ Build filter panel DOM ══════════════════════════════════════
@@ -1486,6 +1542,7 @@
                         _pendingDDPlan = null;
                         setTimeout(function () {
                             document.body.classList.remove('ng-rf-reloading');
+                            fixMobileSliderWidths();
                         }, 2000);
                     } else {
                         _pendingDDPlan = null;

@@ -10,12 +10,13 @@
 (function () {
     'use strict';
 
-    var MAX_EVENTS = 50;
-    var _events    = [];   // circular buffer, oldest first
-    var _unread    = 0;
-    var _panel     = null;
-    var _badge     = null;
-    var _open      = false;
+    var MAX_EVENTS    = 50;
+    var _events       = [];   // circular buffer, oldest first
+    var _unread       = 0;
+    var _panel        = null;
+    var _badge        = null;
+    var _open         = false;
+    var _allowedIdxs  = null; // null = not yet loaded; object = idx→true for allowed devices
 
     /* ── Icon / color helpers (same palette as toasts.js) ─────── */
 
@@ -248,8 +249,33 @@
         }, 100);
     }
 
+    // Route → GetConfig flag name (mirrors command-palette.js)
+    var ROUTE_TAB = {
+        '/LightSwitches': 'EnableTabLights',
+        '/Scenes':        'EnableTabScenes',
+        '/Temperature':   'EnableTabTemp',
+        '/Weather':       'EnableTabWeather',
+        '/Utility':       'EnableTabUtility',
+        '/Dashboard':     'EnableTabDashboard',
+        '/Floorplans':    'EnableTabFloorplans',
+    };
+
+    function isTabEnabled(route) {
+        var cfg = window._dzTabConfig;
+        if (!cfg) return true; // config not yet loaded — allow navigation
+        var flag = ROUTE_TAB[route];
+        if (!flag) return true;
+        return cfg[flag] !== false;
+    }
+
     function navigateToDevice(device) {
         var route = deviceRoute(device);
+
+        if (!isTabEnabled(route)) {
+            if (_open) closePanel();
+            return;
+        }
+
         if (_open) closePanel();
 
         setTimeout(function () {
@@ -274,7 +300,42 @@
     }
     window.ngNavigateToDevice = navigateToDevice;
 
+    /* ── Access-filtered device list ──────────────────────────── */
+
+    function fetchAllowedDevices() {
+        // filter=all&used=true — Domoticz's API already scopes the result to
+        // devices the logged-in user has permission to access.
+        var url = 'json.htm?type=command&param=getdevices&filter=all&used=true&order=Name';
+        fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                _allowedIdxs = {};
+                if (data && data.result) {
+                    data.result.forEach(function (d) {
+                        _allowedIdxs[String(d.idx)] = true;
+                    });
+                }
+                window.ngLog('[Notif]', 'allowed devices loaded:', Object.keys(_allowedIdxs).length);
+            })
+            .catch(function () {
+                // On error, fail open so notifications still work
+                _allowedIdxs = null;
+                window.ngLog('[Notif]', 'could not load allowed devices — showing all');
+            });
+    }
+
     function recordEvent(device) {
+        /* Skip devices the current user doesn't have access to.
+           device_update fires for every device system-wide; restrict
+           to the favorites list which matches the user's access scope. */
+        if (_allowedIdxs !== null) {
+            var idx = String(device.idx || device.ID || '');
+            if (idx && !_allowedIdxs[idx]) {
+                window.ngLog('[Notif]', 'skip (not in user favorites):', device.Name);
+                return;
+            }
+        }
+
         /* Skip devices not marked as Used in Domoticz.
            The WebSocket broadcasts updates for all devices; we only
            want the ones the user has explicitly enabled (Used=1).   */
@@ -380,6 +441,18 @@
     function init() {
         injectButton();
         attachAngularHooks();
+        fetchAllowedDevices();
+        // Fetch tab config if command-palette.js hasn't done it yet
+        if (!window._dzTabConfig) {
+            fetch('json.htm?type=command&param=getconfig', { credentials: 'same-origin', cache: 'no-store' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (!window._dzTabConfig) {
+                        window._dzTabConfig = (data && data.result) ? data.result : {};
+                    }
+                })
+                .catch(function () { if (!window._dzTabConfig) window._dzTabConfig = {}; });
+        }
     }
 
     if (document.readyState === 'loading') {
