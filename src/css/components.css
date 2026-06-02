@@ -805,9 +805,12 @@ body.ng-mobile-dashboard #tbFiltSearch.ng-hide {
 }
 
 /* Dimmer/TPI/Blinds devices have a sibling <tr ng-if> containing the slider.
-   Hide it whenever its preceding device row is filtered or search-hidden. */
-.dashboardMobile .mobileitem tr.ng-rf-filtered ~ tr,
-.dashboardMobile .mobileitem tr.ng-mobile-search-hidden ~ tr {
+   Hide it whenever its preceding device row is filtered or search-hidden.
+   Only targets tr:not([id]) to avoid hiding subsequent device rows in sections
+   like utility/temp/weather that share a single implicit <tbody>. Slider rows
+   have no id; device rows always have id="utility_N", "temp_N", etc. */
+.dashboardMobile .mobileitem tr.ng-rf-filtered ~ tr:not([id]),
+.dashboardMobile .mobileitem tr.ng-mobile-search-hidden ~ tr:not([id]) {
     display: none !important;
 }
 

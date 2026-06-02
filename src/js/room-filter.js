@@ -349,13 +349,19 @@
 
     /* Return the devices relevant to the current page for applyFilter() use.
        Prefers actual DOM cards (needed for show/hide to work); falls back to
-       getRouteDevices() when Angular hasn't finished rendering cards yet. */
+       getRouteDevices() when Angular hasn't finished rendering cards yet.
+       Deduplicates by idx: a Temp+Hum sensor appears in both temperature[] and
+       weather[] DOM sections but must be counted only once. */
     function getPageDevices() {
         var cards   = getCards();
+        var seen    = {};
         var domDevs = [];
         cards.forEach(function (card) {
             var idx = cardIdx(card);
-            if (idx && _deviceMap[idx]) domDevs.push(_deviceMap[idx]);
+            if (idx && _deviceMap[idx] && !seen[idx]) {
+                seen[idx] = true;
+                domDevs.push(_deviceMap[idx]);
+            }
         });
         if (domDevs.length > 0) return domDevs;
         return getRouteDevices();
@@ -442,19 +448,23 @@
        prevents showing filter pills for categories the user cannot see.
        All other routes use getRouteDevices() for pre-render accuracy. */
 
-    /* True when the mobile dashboard is a plain favorites-only view.
-       Two scenarios render .dashboardMobile:
-         A) DD enabled + room selection → all devices + room filter pre-applied
-            (_cameFromDD = true)  → NOT plain, use getRouteDevices()
+    /* True when the mobile dashboard is a plain favorites-only (or DOM-scoped) view.
+       Two scenarios where we scope to DOM devices:
          B) DD enabled but Domoticz fell back to mobile view (e.g. MobileType
             setting) without room context (_cameFromDD = false) → favorites only
          C) DD disabled → always favorites only
+
+       Scenario A (DD + room selection, _cameFromDD = true) intentionally returns
+       false so that getFilterableDevices() uses getRouteDevices() — the full 86-
+       device set.  This ensures the filter panel shows ALL types and hardware
+       options (with room-adjusted counts), not just those for the selected room,
+       so the user can clear the room filter to reveal all devices.
     */
     function isOnMobileDashboardView() {
         var path = currentHashPath().toLowerCase();
         if (path !== 'dashboard' && path !== '') return false;
         if (!isDynamicDashboardEnabled()) return true;
-        // DD on: plain view only when we did NOT arrive via DD room selection
+        // DD on: use DOM devices only when NOT from a DD room selection
         return !_cameFromDD && !!document.querySelector('.dashboardMobile');
     }
 
@@ -502,9 +512,9 @@
             });
         }
 
-        /* Use getFilterableDevices() which scopes to DOM devices on the plain
-           Dashboard (where the mobile template omits non-category favorites)
-           and to getRouteDevices() everywhere else for pre-render accuracy. */
+        /* Use getFilterableDevices() which scopes to DOM devices on the mobile
+           Dashboard (so only devices actually rendered in the 5 mobile categories
+           are counted) and to getRouteDevices() everywhere else. */
         var devices = getFilterableDevices();
 
         if (!devices.length) return;   /* _deviceMap not ready yet — rooms only */
@@ -607,14 +617,17 @@
        Devices with no _deviceMap entry are kept visible (safe default). */
 
     function applyFilter() {
-        var roomsActive  = _activeFilters.rooms.length    > 0;
-        var typesActive  = _activeFilters.types.length    > 0;
-        var hwActive     = _activeFilters.hardware.length > 0;
-        var favsActive   = _activeFilters.favorites;
-        var stateActive  = _activeFilters.state !== null;
-        var cards        = getCards();
-        var visibleCount = 0;
-        var totalCount   = 0;
+        var roomsActive   = _activeFilters.rooms.length    > 0;
+        var typesActive   = _activeFilters.types.length    > 0;
+        var hwActive      = _activeFilters.hardware.length > 0;
+        var favsActive    = _activeFilters.favorites;
+        var stateActive   = _activeFilters.state !== null;
+        var cards         = getCards();
+        /* Track unique device idx to avoid double-counting devices that appear in
+           multiple mobile sections (e.g. a Temp+Hum sensor in both temperature
+           and weather sections). */
+        var visibleIdxs = {};
+        var totalIdxs   = {};
 
         cards.forEach(function (card) {
             var idx  = cardIdx(card);
@@ -622,7 +635,7 @@
             var show = true;
 
             if (idx) {
-                totalCount++;
+                totalIdxs[idx] = true;
 
                 /* Rooms: device must belong to at least one selected plan */
                 if (roomsActive) {
@@ -651,7 +664,7 @@
                     if (dev.Favorite != 1) show = false;
                 }
 
-                if (show) visibleCount++;
+                if (show) visibleIdxs[idx] = true;
             }
             /* idx-less cards (can't determine device) are always kept visible */
 
@@ -666,7 +679,9 @@
             sec.classList.toggle('ng-rf-section-hidden', !hasVisible);
         });
 
-        /* Result summary */
+        /* Result summary — counts unique devices, not DOM rows */
+        var visibleCount = Object.keys(visibleIdxs).length;
+        var totalCount   = Object.keys(totalIdxs).length;
         var summaryEl = document.getElementById('ng-rf-summary');
         if (summaryEl && totalCount > 0) {
             summaryEl.textContent = isAnyFilterActive()
