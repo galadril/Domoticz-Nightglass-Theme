@@ -349,13 +349,19 @@
 
     /* Return the devices relevant to the current page for applyFilter() use.
        Prefers actual DOM cards (needed for show/hide to work); falls back to
-       getRouteDevices() when Angular hasn't finished rendering cards yet. */
+       getRouteDevices() when Angular hasn't finished rendering cards yet.
+       Deduplicates by idx: a Temp+Hum sensor appears in both temperature[] and
+       weather[] DOM sections but must be counted only once. */
     function getPageDevices() {
         var cards   = getCards();
+        var seen    = {};
         var domDevs = [];
         cards.forEach(function (card) {
             var idx = cardIdx(card);
-            if (idx && _deviceMap[idx]) domDevs.push(_deviceMap[idx]);
+            if (idx && _deviceMap[idx] && !seen[idx]) {
+                seen[idx] = true;
+                domDevs.push(_deviceMap[idx]);
+            }
         });
         if (domDevs.length > 0) return domDevs;
         return getRouteDevices();
@@ -509,8 +515,28 @@
 
         if (!devices.length) return;   /* _deviceMap not ready yet — rooms only */
 
+        /* When a room filter is already active (e.g. set by DD room selection before
+           the bar was built), scope type/hardware/status/favorites sections to only
+           devices in those rooms.  This prevents showing Type or Hardware pills for
+           options that don't exist in the selected room — which would leave the user
+           with visible section headers but no matching devices underneath. */
+        var scopedDevices = devices;
+        if (_activeFilters.rooms.length > 0 && _planCacheReady) {
+            scopedDevices = devices.filter(function (dev) {
+                var idx = String(dev.idx);
+                for (var i = 0; i < _activeFilters.rooms.length; i++) {
+                    var set = _planCache[_activeFilters.rooms[i]];
+                    if (set && set[idx]) return true;
+                }
+                return false;
+            });
+            /* If the room plan cache returns nothing (e.g. cache not yet
+               populated), fall back to all devices to avoid empty sections. */
+            if (!scopedDevices.length) scopedDevices = devices;
+        }
+
         /* Type section — only shown when 2+ distinct types exist on this page */
-        var typeValues = uniqueValuesByCount(devices, getDeviceTypeLabel);
+        var typeValues = uniqueValuesByCount(scopedDevices, getDeviceTypeLabel);
         if (typeValues.length >= 2) {
             _filterSections.push({
                 id:     'types',
@@ -520,7 +546,7 @@
         }
 
         /* Hardware section — only shown when 2+ distinct hardware sources */
-        var hwValues = uniqueValuesByCount(devices, function (d) {
+        var hwValues = uniqueValuesByCount(scopedDevices, function (d) {
             return (d.HardwareName || '').trim() || null;
         });
         if (hwValues.length >= 2) {
@@ -532,8 +558,8 @@
         }
 
         /* Status section — only when devices have a recognisable mix of on/off states */
-        var hasOn  = devices.some(function (d) { return getDeviceStateLabel(d) === 'on';  });
-        var hasOff = devices.some(function (d) { return getDeviceStateLabel(d) === 'off'; });
+        var hasOn  = scopedDevices.some(function (d) { return getDeviceStateLabel(d) === 'on';  });
+        var hasOff = scopedDevices.some(function (d) { return getDeviceStateLabel(d) === 'off'; });
         if (hasOn && hasOff) {
             _filterSections.push({
                 id:     'state',
@@ -550,8 +576,8 @@
            when DD is disabled: it already shows only favorites, so this filter
            would be redundant. */
         if (!isOnMobileDashboardView()) {
-            var hasFavs    = devices.some(function (d) { return d.Favorite == 1; });
-            var hasNonFavs = devices.some(function (d) { return d.Favorite != 1; });
+            var hasFavs    = scopedDevices.some(function (d) { return d.Favorite == 1; });
+            var hasNonFavs = scopedDevices.some(function (d) { return d.Favorite != 1; });
             if (hasFavs && hasNonFavs) {
                 _filterSections.push({
                     id:     'favorites',
@@ -607,14 +633,17 @@
        Devices with no _deviceMap entry are kept visible (safe default). */
 
     function applyFilter() {
-        var roomsActive  = _activeFilters.rooms.length    > 0;
-        var typesActive  = _activeFilters.types.length    > 0;
-        var hwActive     = _activeFilters.hardware.length > 0;
-        var favsActive   = _activeFilters.favorites;
-        var stateActive  = _activeFilters.state !== null;
-        var cards        = getCards();
-        var visibleCount = 0;
-        var totalCount   = 0;
+        var roomsActive   = _activeFilters.rooms.length    > 0;
+        var typesActive   = _activeFilters.types.length    > 0;
+        var hwActive      = _activeFilters.hardware.length > 0;
+        var favsActive    = _activeFilters.favorites;
+        var stateActive   = _activeFilters.state !== null;
+        var cards         = getCards();
+        /* Track unique device idx to avoid double-counting devices that appear in
+           multiple mobile sections (e.g. a Temp+Hum sensor in both temperature
+           and weather sections). */
+        var visibleIdxs = {};
+        var totalIdxs   = {};
 
         cards.forEach(function (card) {
             var idx  = cardIdx(card);
@@ -622,7 +651,7 @@
             var show = true;
 
             if (idx) {
-                totalCount++;
+                totalIdxs[idx] = true;
 
                 /* Rooms: device must belong to at least one selected plan */
                 if (roomsActive) {
@@ -651,7 +680,7 @@
                     if (dev.Favorite != 1) show = false;
                 }
 
-                if (show) visibleCount++;
+                if (show) visibleIdxs[idx] = true;
             }
             /* idx-less cards (can't determine device) are always kept visible */
 
@@ -666,7 +695,9 @@
             sec.classList.toggle('ng-rf-section-hidden', !hasVisible);
         });
 
-        /* Result summary */
+        /* Result summary — counts unique devices, not DOM rows */
+        var visibleCount = Object.keys(visibleIdxs).length;
+        var totalCount   = Object.keys(totalIdxs).length;
         var summaryEl = document.getElementById('ng-rf-summary');
         if (summaryEl && totalCount > 0) {
             summaryEl.textContent = isAnyFilterActive()
