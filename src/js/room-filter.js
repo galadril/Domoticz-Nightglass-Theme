@@ -448,19 +448,23 @@
        prevents showing filter pills for categories the user cannot see.
        All other routes use getRouteDevices() for pre-render accuracy. */
 
-    /* True when the mobile dashboard is a plain favorites-only view.
-       Two scenarios render .dashboardMobile:
-         A) DD enabled + room selection → all devices + room filter pre-applied
-            (_cameFromDD = true)  → NOT plain, use getRouteDevices()
+    /* True when the mobile dashboard is a plain favorites-only (or DOM-scoped) view.
+       Two scenarios where we scope to DOM devices:
          B) DD enabled but Domoticz fell back to mobile view (e.g. MobileType
             setting) without room context (_cameFromDD = false) → favorites only
          C) DD disabled → always favorites only
+
+       Scenario A (DD + room selection, _cameFromDD = true) intentionally returns
+       false so that getFilterableDevices() uses getRouteDevices() — the full 86-
+       device set.  This ensures the filter panel shows ALL types and hardware
+       options (with room-adjusted counts), not just those for the selected room,
+       so the user can clear the room filter to reveal all devices.
     */
     function isOnMobileDashboardView() {
         var path = currentHashPath().toLowerCase();
         if (path !== 'dashboard' && path !== '') return false;
         if (!isDynamicDashboardEnabled()) return true;
-        // DD on: plain view only when we did NOT arrive via DD room selection
+        // DD on: use DOM devices only when NOT from a DD room selection
         return !_cameFromDD && !!document.querySelector('.dashboardMobile');
     }
 
@@ -508,35 +512,15 @@
             });
         }
 
-        /* Use getFilterableDevices() which scopes to DOM devices on the plain
-           Dashboard (where the mobile template omits non-category favorites)
-           and to getRouteDevices() everywhere else for pre-render accuracy. */
+        /* Use getFilterableDevices() which scopes to DOM devices on the mobile
+           Dashboard (so only devices actually rendered in the 5 mobile categories
+           are counted) and to getRouteDevices() everywhere else. */
         var devices = getFilterableDevices();
 
         if (!devices.length) return;   /* _deviceMap not ready yet — rooms only */
 
-        /* When a room filter is already active (e.g. set by DD room selection before
-           the bar was built), scope type/hardware/status/favorites sections to only
-           devices in those rooms.  This prevents showing Type or Hardware pills for
-           options that don't exist in the selected room — which would leave the user
-           with visible section headers but no matching devices underneath. */
-        var scopedDevices = devices;
-        if (_activeFilters.rooms.length > 0 && _planCacheReady) {
-            scopedDevices = devices.filter(function (dev) {
-                var idx = String(dev.idx);
-                for (var i = 0; i < _activeFilters.rooms.length; i++) {
-                    var set = _planCache[_activeFilters.rooms[i]];
-                    if (set && set[idx]) return true;
-                }
-                return false;
-            });
-            /* If the room plan cache returns nothing (e.g. cache not yet
-               populated), fall back to all devices to avoid empty sections. */
-            if (!scopedDevices.length) scopedDevices = devices;
-        }
-
         /* Type section — only shown when 2+ distinct types exist on this page */
-        var typeValues = uniqueValuesByCount(scopedDevices, getDeviceTypeLabel);
+        var typeValues = uniqueValuesByCount(devices, getDeviceTypeLabel);
         if (typeValues.length >= 2) {
             _filterSections.push({
                 id:     'types',
@@ -546,7 +530,7 @@
         }
 
         /* Hardware section — only shown when 2+ distinct hardware sources */
-        var hwValues = uniqueValuesByCount(scopedDevices, function (d) {
+        var hwValues = uniqueValuesByCount(devices, function (d) {
             return (d.HardwareName || '').trim() || null;
         });
         if (hwValues.length >= 2) {
@@ -558,8 +542,8 @@
         }
 
         /* Status section — only when devices have a recognisable mix of on/off states */
-        var hasOn  = scopedDevices.some(function (d) { return getDeviceStateLabel(d) === 'on';  });
-        var hasOff = scopedDevices.some(function (d) { return getDeviceStateLabel(d) === 'off'; });
+        var hasOn  = devices.some(function (d) { return getDeviceStateLabel(d) === 'on';  });
+        var hasOff = devices.some(function (d) { return getDeviceStateLabel(d) === 'off'; });
         if (hasOn && hasOff) {
             _filterSections.push({
                 id:     'state',
@@ -576,8 +560,8 @@
            when DD is disabled: it already shows only favorites, so this filter
            would be redundant. */
         if (!isOnMobileDashboardView()) {
-            var hasFavs    = scopedDevices.some(function (d) { return d.Favorite == 1; });
-            var hasNonFavs = scopedDevices.some(function (d) { return d.Favorite != 1; });
+            var hasFavs    = devices.some(function (d) { return d.Favorite == 1; });
+            var hasNonFavs = devices.some(function (d) { return d.Favorite != 1; });
             if (hasFavs && hasNonFavs) {
                 _filterSections.push({
                     id:     'favorites',
