@@ -887,6 +887,16 @@ body.ng-mobile-dashboard #tbFiltSearch.ng-hide {
     display: none !important;
 }
 
+/* Domoticz's ResizeDimSliders() measures the table at ~64px during scroll events
+   and on filter changes, producing a 1px track width (64 - 63 = 1).  Overriding
+   with 100% via CSS !important beats any inline width set by that JS function,
+   so sliders always fill the available cell width regardless of when Domoticz runs. */
+.dashboardMobile .mobileitem .dimslidernorm,
+.dashboardMobile .mobileitem .dimslidersmall {
+    width: 100% !important;
+    box-sizing: border-box;
+}
+
 
 /* ══════════════════════════════════════════════════════════════════
    20. NOTIFICATIONS & MISC
