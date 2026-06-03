@@ -887,15 +887,6 @@ body.ng-mobile-dashboard #tbFiltSearch.ng-hide {
     display: none !important;
 }
 
-/* Prevent Domoticz's ResizeDimSliders() from ever rendering a bad inline width
-   (e.g. 1px when measured during scroll, or oversize on wide viewports).
-   The slider div has margin-left:24px from Domoticz's template; without an
-   explicit width the element naturally fills the remaining cell width. */
-.dashboardMobile .mobileitem .dimslidernorm,
-.dashboardMobile .mobileitem .dimslidersmall {
-    width: auto !important;
-    min-width: 0 !important;
-}
 
 
 
