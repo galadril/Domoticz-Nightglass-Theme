@@ -555,11 +555,19 @@
             });
         }
 
-        /* Favourites section — only shown when the page has a mix of
-           favourited and non-favourited devices.  Skip on the plain Dashboard
-           when DD is disabled: it already shows only favorites, so this filter
-           would be redundant. */
-        if (!isOnMobileDashboardView()) {
+        /* Favourites section:
+           - DD disabled + mobile: skip — Domoticz already loads only favorites,
+             filter would be redundant.
+           - DD enabled + mobile: always add — favorites is auto-applied as default;
+             this makes the active pill visible and lets the user toggle it off.
+           - All other routes: add only when there is a mix of fav / non-fav devices. */
+        if (isDynamicDashboardEnabled() && isOnMobileDashboardView()) {
+            _filterSections.push({
+                id:     'favorites',
+                label:  'Show',
+                values: [{ value: 'favorites', label: 'Favourites ★' }]
+            });
+        } else if (!isOnMobileDashboardView()) {
             var hasFavs    = devices.some(function (d) { return d.Favorite == 1; });
             var hasNonFavs = devices.some(function (d) { return d.Favorite != 1; });
             if (hasFavs && hasNonFavs) {
