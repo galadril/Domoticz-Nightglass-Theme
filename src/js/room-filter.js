@@ -555,11 +555,19 @@
             });
         }
 
-        /* Favourites section — only shown when the page has a mix of
-           favourited and non-favourited devices.  Skip on the plain Dashboard
-           when DD is disabled: it already shows only favorites, so this filter
-           would be redundant. */
-        if (!isOnMobileDashboardView()) {
+        /* Favourites section:
+           - DD disabled + mobile: skip — Domoticz already loads only favorites,
+             filter would be redundant.
+           - DD enabled + mobile: always add — favorites is auto-applied as default;
+             this makes the active pill visible and lets the user toggle it off.
+           - All other routes: add only when there is a mix of fav / non-fav devices. */
+        if (isDynamicDashboardEnabled() && isOnMobileDashboardView()) {
+            _filterSections.push({
+                id:     'favorites',
+                label:  'Show',
+                values: [{ value: 'favorites', label: 'Favourites ★' }]
+            });
+        } else if (!isOnMobileDashboardView()) {
             var hasFavs    = devices.some(function (d) { return d.Favorite == 1; });
             var hasNonFavs = devices.some(function (d) { return d.Favorite != 1; });
             if (hasFavs && hasNonFavs) {
@@ -607,7 +615,9 @@
             _activeFilters.state = null;
         }
 
-        if (!findSection('favorites')) {
+        /* Don't clear the auto-applied favourites filter on the mobile dashboard
+           (no favorites section is added there by design — it's always active). */
+        if (!findSection('favorites') && !isOnMobileDashboardView()) {
             _activeFilters.favorites = false;
         }
     }
@@ -1000,7 +1010,11 @@
        Domoticz runs ResizeDimSliders() at t+100ms after data loads; at that
        moment the mobileitem layout may not be finalised and it measures ~64px,
        giving a 1px track width.  We repeat the measurement at a later time
-       when the layout is stable and the sliders are in the DOM. */
+       when the layout is stable and the sliders are in the DOM.
+       Note: the CSS rule `width: calc(100% - 24px) !important` on .dimslidernorm
+       / .dimslidersmall overrides any bad inline width set by Domoticz at the
+       paint level, so this JS call is only needed for jQuery UI's handle-position
+       initialisation (which reads offsetWidth). */
     function fixMobileSliderWidths() {
         var tables = document.querySelectorAll('.dashboardMobile .mobileitem');
         if (!tables.length) return;
@@ -1268,6 +1282,14 @@
         log('buildBar: _activeFilters.rooms=', _activeFilters.rooms, '_cameFromDD=', _cameFromDD);
 
         setupMobilePage();
+
+        /* DD is enabled but Domoticz fell back to the mobile classic widget view:
+           auto-apply the favourites filter to reproduce native Domoticz behaviour
+           (mobile dashboard always shows only starred devices). */
+        if (isDynamicDashboardEnabled() && isOnMobileDashboardView()) {
+            _activeFilters.favorites = true;
+            log('buildBar: mobile+DD detected → auto-applying favourites filter');
+        }
 
         /* Compute filter sections from current page devices */
         computePageFilterSections();
