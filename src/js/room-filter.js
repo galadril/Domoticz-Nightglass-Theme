@@ -607,7 +607,9 @@
             _activeFilters.state = null;
         }
 
-        if (!findSection('favorites')) {
+        /* Don't clear the auto-applied favourites filter on the mobile dashboard
+           (no favorites section is added there by design — it's always active). */
+        if (!findSection('favorites') && !isOnMobileDashboardView()) {
             _activeFilters.favorites = false;
         }
     }
@@ -1268,6 +1270,14 @@
         log('buildBar: _activeFilters.rooms=', _activeFilters.rooms, '_cameFromDD=', _cameFromDD);
 
         setupMobilePage();
+
+        /* DD is enabled but Domoticz fell back to the mobile classic widget view:
+           auto-apply the favourites filter to reproduce native Domoticz behaviour
+           (mobile dashboard always shows only starred devices). */
+        if (isDynamicDashboardEnabled() && isOnMobileDashboardView()) {
+            _activeFilters.favorites = true;
+            log('buildBar: mobile+DD detected → auto-applying favourites filter');
+        }
 
         /* Compute filter sections from current page devices */
         computePageFilterSections();
