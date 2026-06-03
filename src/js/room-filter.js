@@ -701,13 +701,6 @@
 
         syncPills();
         document.body.classList.remove('ng-rf-reloading');
-
-        /* After hiding/showing rows the table layout changes, which can
-           trigger Domoticz's ResizeDimSliders with a stale measurement.
-           Re-apply correct widths after the DOM settles. */
-        if (document.querySelector('.dashboardMobile')) {
-            setTimeout(fixMobileSliderWidths, 50);
-        }
     }
 
     /* Run applyFilter at staggered intervals to catch late-rendering cards. */
@@ -1016,20 +1009,22 @@
     /* Re-apply mobile slider widths using Domoticz's own formula.
        Domoticz runs ResizeDimSliders() at t+100ms after data loads; at that
        moment the mobileitem layout may not be finalised and it measures ~64px,
-       giving a 1px track width (64 − 63 = 1).  We re-run with a guard at a
-       later time, and we also override window.ResizeDimSliders so every call
-       (scroll events, filter changes, Angular re-renders) uses the guarded
-       version instead of the raw Domoticz one. */
+       giving a 1px track width.  We repeat the measurement at a later time
+       when the layout is stable and the sliders are in the DOM.
+       Note: the CSS rule `width: calc(100% - 24px) !important` on .dimslidernorm
+       / .dimslidersmall overrides any bad inline width set by Domoticz at the
+       paint level, so this JS call is only needed for jQuery UI's handle-position
+       initialisation (which reads offsetWidth). */
     function fixMobileSliderWidths() {
         var tables = document.querySelectorAll('.dashboardMobile .mobileitem');
         if (!tables.length) return;
-        /* Use the widest visible mobileitem; hidden/filtered ones report 0 */
+        /* Use the widest rendered mobileitem (ng-rf-section-hidden ones have 0) */
         var w = 0;
         tables.forEach(function (t) {
             var tw = t.offsetWidth;
             if (tw > w) w = tw;
         });
-        if (w < 100) return;   /* layout not stable — skip to avoid 1px glitch */
+        if (w < 100) return;   /* layout not stable yet — skip silently */
         var trackW = w - 63;
         if (trackW <= 0) return;
         document.querySelectorAll(
@@ -1040,33 +1035,6 @@
         });
     }
 
-    /* Debounced scroll handler — corrects widths after Domoticz's scroll-triggered
-       ResizeDimSliders() fires with a bad measurement. */
-    var _sliderScrollTimer = null;
-    function onMobileScroll() {
-        if (_sliderScrollTimer) return;
-        _sliderScrollTimer = setTimeout(function () {
-            _sliderScrollTimer = null;
-            fixMobileSliderWidths();
-        }, 80);
-    }
-
-    /* Override window.ResizeDimSliders so every call site (Domoticz's own
-       timers, Angular watchers, etc.) goes through our guard. */
-    function patchResizeDimSliders() {
-        if (window.ResizeDimSliders && !window.ResizeDimSliders._ngPatched) {
-            var _orig = window.ResizeDimSliders;
-            window.ResizeDimSliders = function () {
-                if (document.querySelector('.dashboardMobile')) {
-                    fixMobileSliderWidths();   /* guarded — skips bad measurements */
-                } else {
-                    _orig();                   /* non-mobile: use Domoticz's version */
-                }
-            };
-            window.ResizeDimSliders._ngPatched = true;
-        }
-    }
-
     function setupMobilePage() {
         var isMobile = !!document.querySelector('.dashboardMobile');
         document.body.classList.toggle('ng-mobile-dashboard', isMobile);
@@ -1075,12 +1043,6 @@
             /* Run at 300ms and 700ms to cover both fast and slow data-load paths */
             setTimeout(fixMobileSliderWidths, 300);
             setTimeout(fixMobileSliderWidths, 700);
-            /* Patch Domoticz's ResizeDimSliders and add a scroll listener so the
-               fix persists after scroll events and filter changes */
-            patchResizeDimSliders();
-            window.addEventListener('scroll', onMobileScroll, { passive: true });
-        } else {
-            window.removeEventListener('scroll', onMobileScroll);
         }
     }
 
