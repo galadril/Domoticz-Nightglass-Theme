@@ -887,14 +887,14 @@ body.ng-mobile-dashboard #tbFiltSearch.ng-hide {
     display: none !important;
 }
 
-/* Domoticz's ResizeDimSliders() measures the table at ~64px during scroll /
-   filter events and sets the slider to 1px (64 − 63 = 1).  CSS !important
-   beats any inline width set by JS before the browser ever paints, eliminating
-   the flash entirely.  The slider div has a hardcoded margin-left:24px in
-   Domoticz's template, so calc(100% - 24px) fills the td exactly. */
+/* Prevent Domoticz's ResizeDimSliders() from ever rendering a bad inline width
+   (e.g. 1px when measured during scroll, or oversize on wide viewports).
+   The slider div has margin-left:24px from Domoticz's template; without an
+   explicit width the element naturally fills the remaining cell width. */
 .dashboardMobile .mobileitem .dimslidernorm,
 .dashboardMobile .mobileitem .dimslidersmall {
-    width: calc(100% - 24px) !important;
+    width: auto !important;
+    min-width: 0 !important;
 }
 
 
