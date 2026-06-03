@@ -235,7 +235,7 @@
 }
 
     .dd-library-item-icon i {
-        color: var(--dz-accent);
+        color: var(--dz-accent) !important;
     }
 
 .dd-library-item-label {
