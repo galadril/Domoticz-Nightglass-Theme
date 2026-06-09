@@ -304,11 +304,22 @@
     .highcharts-navigator-outline {
         stroke: var(--dz-border) !important;
     }
-    /* Context menu */
+    /* Context menu (Print, Download, Repair Counter, Reset Prices, …)
+       Fix #184: never clip vertically — Highcharts sets an inline
+       max-height on small charts that hides the last 2-3 items. */
     .highcharts-menu {
         background: var(--dz-surface-2) !important;
         border: 1px solid var(--dz-border) !important;
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+        max-height: none !important;
+        overflow: visible !important;
+        z-index: 9999 !important;
+    }
+
+    .highcharts-contextmenu {
+        max-height: none !important;
+        overflow: visible !important;
+        z-index: 9999 !important;
     }
 
     .highcharts-menu-item {
@@ -1146,7 +1157,12 @@
 .device-log-chart {
     margin-bottom: 20px;
     border-radius: 12px !important;
-    overflow: hidden;
+    /* Fix #184: allow the Highcharts context menu (Print, Download,
+       Repair Counter, Reset Prices, …) to extend past the chart's
+       bottom edge instead of being vertically clipped. The wrapper
+       owns its own background + border, and the inner SVG is
+       transparent, so removing the clip has no visual side-effect. */
+    overflow: visible;
 }
 
 .device-log-chart_sm {

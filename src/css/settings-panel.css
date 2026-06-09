@@ -1155,6 +1155,88 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* ── User Preset Save/Delete UI ─────────────────────────────── */
+
+.ng-user-presets-label {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--dz-text-muted);
+    padding: 12px 0 4px;
+    border-top: 1px solid var(--dz-border);
+    margin-top: 4px;
+}
+
+.ng-preset-card-wrap {
+    position: relative;
+}
+
+    .ng-preset-card-wrap .ng-preset-card {
+        width: 100%;
+        height: 100%;
+    }
+
+.ng-preset-delete-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 1;
+    background: rgba(0, 0, 0, 0.55);
+    border: none;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #fff;
+    font-size: 11px;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+    .ng-preset-card-wrap:hover .ng-preset-delete-btn {
+        opacity: 1;
+    }
+
+    .ng-preset-delete-btn:hover {
+        background: var(--dz-danger, #e05c5c);
+    }
+
+.ng-presets-save-row {
+    margin-top: 12px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.ng-save-preset-btn {
+    background: transparent;
+    border: 1px dashed var(--dz-border);
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--dz-text-muted);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+    .ng-save-preset-btn:hover {
+        border-color: var(--dz-accent);
+        border-style: solid;
+        color: var(--dz-accent);
+    }
+
 
 /* ── Live Toast Stack (Feature 10) ────────────────────────────── */
 

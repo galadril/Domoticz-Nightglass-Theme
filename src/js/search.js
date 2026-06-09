@@ -404,6 +404,8 @@
 
         deviceIconOverrides: '{}',
 
+        userPresets:        '[]',   /* user-saved color presets — JSON array */
+
         debugLogs:          false   /* session-only — never persisted */
     };
 
@@ -1254,7 +1256,12 @@
             '<div class="ng-presets-body" id="ngPresetsBody"' + (opts.presetsOpen ? '' : ' style="display:none;"') + '>' +
             '<div class="ng-presets-grid" id="ngPresetsGrid">' +
             '<div class="ng-preset-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading presets…</div>' +
-            '</div></div></div>' +
+            '</div>' +
+            '<div class="ng-presets-save-row">' +
+            '<button class="ng-save-preset-btn" id="ngSavePresetBtn" type="button">' +
+            '<i class="fa-solid fa-plus"></i> Save current colors as preset</button>' +
+            '</div>' +
+            '</div></div>' +
 
             '<div class="ng-settings-grid">' +
 
@@ -1409,6 +1416,23 @@
 
     var _presetsCache = null;
 
+    var COLOR_SNAPSHOT_KEYS = [
+        'accentColor', 'dangerColor', 'warningColor', 'successColor',
+        'accentColorLight', 'dangerColorLight', 'warningColorLight', 'successColorLight',
+        'bgColor', 'surfaceColor', 'borderColor', 'textColor',
+        'bgColorLight', 'surfaceColorLight', 'borderColorLight', 'textColorLight',
+        'pageBgColor', 'pageBgColorLight'
+    ];
+
+    function loadUserPresets() {
+        if (!_settings) return [];
+        try { return JSON.parse(_settings.userPresets || '[]') || []; } catch (e) { return []; }
+    }
+
+    function saveUserPresets(arr) {
+        saveSetting('userPresets', JSON.stringify(arr));
+    }
+
     function loadPresets(container) {
         var grid = container.querySelector('#ngPresetsGrid');
         if (!grid) return;
@@ -1446,46 +1470,70 @@
         });
     }
 
+    function presetCardHtml(p, idx, isUser) {
+        var pv = p.preview || {};
+        var bg = pv.bg || '#1b1d25';
+        var sf = pv.surface || '#23252f';
+        var ac = pv.accent || '#4e9af1';
+        var tx = pv.text || '#e2e4ed';
+        var icon = p.icon || 'fa-solid fa-palette';
+        var attr = isUser
+            ? 'data-ng-user-preset-idx="' + idx + '"'
+            : 'data-ng-preset-idx="' + idx + '"';
+
+        return '<button class="ng-preset-card" ' + attr + ' title="' + (p.description || p.name) + '">' +
+            '<div class="ng-preset-preview" style="background:' + bg + ';">' +
+            '<div class="ng-preset-preview-bar" style="background:' + sf + ';border-bottom:2px solid ' + ac + ';"></div>' +
+            '<div class="ng-preset-preview-body">' +
+            '<div class="ng-preset-preview-card" style="background:' + sf + ';border:1px solid ' + ac + '30;">' +
+            '<i class="' + icon + '" style="color:' + ac + ';font-size:14px;"></i>' +
+            '<div class="ng-preset-preview-lines">' +
+            '<div style="background:' + tx + ';width:70%;height:3px;border-radius:2px;opacity:0.7;"></div>' +
+            '<div style="background:' + ac + ';width:45%;height:3px;border-radius:2px;opacity:0.6;"></div>' +
+            '</div></div>' +
+            '<div class="ng-preset-preview-card" style="background:' + sf + ';border:1px solid ' + ac + '30;">' +
+            '<div class="ng-preset-preview-lines">' +
+            '<div style="background:' + tx + ';width:55%;height:3px;border-radius:2px;opacity:0.5;"></div>' +
+            '<div style="background:' + ac + ';width:35%;height:3px;border-radius:2px;opacity:0.4;"></div>' +
+            '</div></div>' +
+            '</div></div>' +
+            '<div class="ng-preset-info">' +
+            '<span class="ng-preset-name">' + p.name + '</span>' +
+            '<span class="ng-preset-desc">' + (p.description || '') + '</span>' +
+            '</div></button>';
+    }
+
     function renderPresets(grid, presets) {
-        if (!presets || !presets.length) {
+        var userPresets = loadUserPresets();
+        var hasBuiltin = presets && presets.length;
+
+        if (!hasBuiltin && !userPresets.length) {
             grid.innerHTML = '<div class="ng-preset-loading">No presets found</div>';
             return;
         }
 
         var html = '';
-        for (var i = 0; i < presets.length; i++) {
-            var p = presets[i];
-            var pv = p.preview || {};
-            var bg = pv.bg || '#1b1d25';
-            var sf = pv.surface || '#23252f';
-            var ac = pv.accent || '#4e9af1';
-            var tx = pv.text || '#e2e4ed';
-            var icon = p.icon || 'fa-solid fa-palette';
 
-            html += '<button class="ng-preset-card" data-ng-preset-idx="' + i + '" title="' + (p.description || p.name) + '">' +
-                '<div class="ng-preset-preview" style="background:' + bg + ';">' +
-                '<div class="ng-preset-preview-bar" style="background:' + sf + ';border-bottom:2px solid ' + ac + ';"></div>' +
-                '<div class="ng-preset-preview-body">' +
-                '<div class="ng-preset-preview-card" style="background:' + sf + ';border:1px solid ' + ac + '30;">' +
-                '<i class="' + icon + '" style="color:' + ac + ';font-size:14px;"></i>' +
-                '<div class="ng-preset-preview-lines">' +
-                '<div style="background:' + tx + ';width:70%;height:3px;border-radius:2px;opacity:0.7;"></div>' +
-                '<div style="background:' + ac + ';width:45%;height:3px;border-radius:2px;opacity:0.6;"></div>' +
-                '</div></div>' +
-                '<div class="ng-preset-preview-card" style="background:' + sf + ';border:1px solid ' + ac + '30;">' +
-                '<div class="ng-preset-preview-lines">' +
-                '<div style="background:' + tx + ';width:55%;height:3px;border-radius:2px;opacity:0.5;"></div>' +
-                '<div style="background:' + ac + ';width:35%;height:3px;border-radius:2px;opacity:0.4;"></div>' +
-                '</div></div>' +
-                '</div></div>' +
-                '<div class="ng-preset-info">' +
-                '<span class="ng-preset-name">' + p.name + '</span>' +
-                '<span class="ng-preset-desc">' + (p.description || '') + '</span>' +
-                '</div></button>';
+        if (hasBuiltin) {
+            for (var i = 0; i < presets.length; i++) {
+                html += presetCardHtml(presets[i], i, false);
+            }
         }
+
+        if (userPresets.length) {
+            html += '<span class="ng-user-presets-label"><i class="fa-solid fa-bookmark"></i> My Presets</span>';
+            for (var j = 0; j < userPresets.length; j++) {
+                html += '<div class="ng-preset-card-wrap">' +
+                    presetCardHtml(userPresets[j], j, true) +
+                    '<button class="ng-preset-delete-btn" data-ng-user-idx="' + j + '" title="Delete preset">' +
+                    '<i class="fa-solid fa-xmark"></i></button>' +
+                    '</div>';
+            }
+        }
+
         grid.innerHTML = html;
 
-        grid.querySelectorAll('.ng-preset-card').forEach(function (btn) {
+        grid.querySelectorAll('.ng-preset-card[data-ng-preset-idx]').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var idx = parseInt(this.getAttribute('data-ng-preset-idx'), 10);
                 applyPreset(presets[idx]);
@@ -1495,13 +1543,37 @@
                 this.classList.add('ng-preset-card--active');
             });
         });
+
+        grid.querySelectorAll('.ng-preset-card[data-ng-user-preset-idx]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var idx = parseInt(this.getAttribute('data-ng-user-preset-idx'), 10);
+                applyPreset(userPresets[idx]);
+                grid.querySelectorAll('.ng-preset-card').forEach(function (b) {
+                    b.classList.remove('ng-preset-card--active');
+                });
+                this.classList.add('ng-preset-card--active');
+            });
+        });
+
+        grid.querySelectorAll('.ng-preset-delete-btn').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var idx = parseInt(this.getAttribute('data-ng-user-idx'), 10);
+                if (!confirm('Delete preset "' + userPresets[idx].name + '"?')) return;
+                var arr = loadUserPresets();
+                arr.splice(idx, 1);
+                saveUserPresets(arr);
+                renderPresets(grid, presets);
+            });
+        });
     }
 
-    // Keys that represent personal device/notification data.
+    // Keys that represent personal user data.
     // Presets may never overwrite these — they belong to the user, not to a theme.
     var PRESET_PROTECTED_KEYS = {
         deviceIconOverrides: true,
-        toastBlacklist:      true
+        toastBlacklist:      true,
+        userPresets:         true
     };
 
     function applyPreset(preset) {
@@ -3180,6 +3252,54 @@
         if (saveBtn) {
             saveBtn.addEventListener('click', function () {
                 _saveToDomoticz(this);
+            });
+        }
+
+        // Save current colors as user preset
+        var savePresetBtn = container.querySelector('#ngSavePresetBtn');
+        if (savePresetBtn) {
+            savePresetBtn.addEventListener('click', function () {
+                var name = prompt('Enter a name for this preset:', '');
+                if (name === null || !name.trim()) return;
+                name = name.trim();
+                var colors = {};
+                COLOR_SNAPSHOT_KEYS.forEach(function (key) {
+                    if (_settings[key] !== undefined) colors[key] = _settings[key];
+                });
+                var preset = {
+                    name:        name,
+                    description: 'Custom preset',
+                    icon:        'fa-solid fa-palette',
+                    preview: {
+                        bg:      _settings.bgColor      || '#1b1d25',
+                        surface: _settings.surfaceColor  || '#23252f',
+                        accent:  _settings.accentColor   || '#4e9af1',
+                        text:    _settings.textColor     || '#e2e4ed'
+                    },
+                    colors:      colors,
+                    userDefined: true
+                };
+                var arr = loadUserPresets();
+                arr.push(preset);
+                saveUserPresets(arr);
+                var grid = container.querySelector('#ngPresetsGrid');
+                if (grid) {
+                    if (_presetsCache !== null) {
+                        renderPresets(grid, _presetsCache);
+                    } else {
+                        loadPresets(container);
+                    }
+                }
+                if (window.ngShowToast) {
+                    window.ngShowToast({
+                        icon:     'fa-bookmark',
+                        color:    'var(--dz-accent)',
+                        title:    name,
+                        body:     'Preset saved',
+                        type:     'success',
+                        duration: 3000
+                    });
+                }
             });
         }
 
