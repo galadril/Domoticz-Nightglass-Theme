@@ -294,6 +294,18 @@
         'W': 270, 'WNW': 292, 'NW': 315, 'NNW': 337
     };
 
+    /* Non-English compass abbreviations → English equivalent.
+       Dutch : Z=Zuid(South), O=Oost(East)  e.g. BuienRadar plugin
+       German: O=Ost(East), S already matches                       */
+    var WIND_ALIASES = {
+        'Z': 'S', 'O': 'E',
+        'ZO': 'SE',  'ZW': 'SW',  'NO': 'NE',
+        'NNO': 'NNE', 'ONO': 'ENE', 'OZO': 'ESE',
+        'ZZO': 'SSE', 'ZZW': 'SSW', 'WZW': 'WSW',
+        /* German SE variants */
+        'SO': 'SE', 'OSO': 'ESE', 'SSO': 'SSE'
+    };
+
     /* -- Action-button detector ------------------------------------- */
     /* Returns true when the <img> is an action button (not a toggleable
        state icon).  Action buttons live inside popups/dialogs, in
@@ -631,7 +643,9 @@
         /* Wind direction compass icons */
         var windMatch = /images\/Wind([A-Z]{1,3})\.png/.exec(src);
         if (windMatch) {
-            return { type: 'wind', dir: windMatch[1], cls: 'fa-solid fa-arrow-up dz-fa-device dz-wind', color: '#29b6f6' };
+            var windDir = windMatch[1];
+            windDir = WIND_ALIASES[windDir] || windDir;
+            return { type: 'wind', dir: windDir, cls: 'fa-solid fa-arrow-up dz-fa-device dz-wind', color: '#29b6f6' };
         }
         /* Wind0 / wind48 (calm / generic wind) */
         if (src.indexOf('Wind0.png') !== -1 || src.indexOf('wind48.png') !== -1) {
