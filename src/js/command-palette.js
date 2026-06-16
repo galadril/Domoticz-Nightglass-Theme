@@ -77,7 +77,12 @@
         _recentKeys = Object.keys(_recentMap)
             .sort(function (a, b) { return _recentMap[b].ts - _recentMap[a].ts; })
             .slice(0, 24);
-        if (_overlay && _input && !_input.value.trim()) render('');
+        if (_overlay && _input && !_input.value.trim()) {
+            // Don't re-render while the user is interacting with an expanded control
+            // (e.g. a dimmer slider) — it would collapse it mid-interaction.
+            var hasExpanded = _list && _list.querySelector('.dz-cmd-slider-row--visible');
+            if (!hasExpanded) render('');
+        }
     }
 
     // ── Icon lookup ────────────────────────────────────────────────
@@ -318,7 +323,7 @@
         });
         el.appendChild(navBtn);
 
-        el.addEventListener('mouseenter', function () { setActive(index); });
+        el.addEventListener('mouseenter', function () { setActive(index, false); });
         el.addEventListener('click', function (e) {
             if (e.target.closest('.dz-cmd-controls')) return; // controls handle themselves
             if (e.target.classList.contains('dz-cmd-nav-btn') ||
@@ -479,6 +484,10 @@
                 });
             });
             slider.addEventListener('click', function (e) { e.stopPropagation(); });
+            slider.addEventListener('keydown', function (e) {
+                if (e.key === 'Tab') { e.preventDefault(); if (_input) _input.focus(); }
+                else if (e.key === 'Escape') { closePalette(); }
+            });
             offBtn.addEventListener('click', function (e) {
                 e.stopPropagation();
                 apiCommand(device, 'Off', function () {
@@ -596,11 +605,62 @@
         }
     }
 
+    // ── Domoticz API helpers ────────────────────────────────────────
+
+    function apiToggle(d, cb) {
+        var param = (d.Type === 'Scene' || d.Type === 'Group') ? 'switchscene' : 'switchlight';
+        var cmd;
+        if (d.Type === 'Group') {
+            cmd = isOn(d) ? 'Off' : 'On';
+        } else if (d.Type === 'Scene') {
+            cmd = 'On';
+        } else {
+            cmd = 'Toggle';
+        }
+        fetch('json.htm?type=command&param=' + param +
+              '&idx=' + d.idx + '&switchcmd=' + cmd,
+              { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function () {
+                if (cmd === 'Toggle') {
+                    d.Status = isOn(d) ? 'Off' : 'On';
+                } else {
+                    d.Status = cmd;
+                }
+                if (cb) cb(d);
+            })
+            .catch(function () {});
+    }
+
+    function apiCommand(d, cmd, cb) {
+        var param = (d.Type === 'Scene' || d.Type === 'Group') ? 'switchscene' : 'switchlight';
+        fetch('json.htm?type=command&param=' + param +
+              '&idx=' + d.idx + '&switchcmd=' + encodeURIComponent(cmd),
+              { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function () { d.Status = cmd; if (cb) cb(); })
+            .catch(function () {});
+    }
+
+    function apiSetLevel(d, level, cb) {
+        fetch('json.htm?type=command&param=switchlight&idx=' + d.idx +
+              '&switchcmd=Set+Level&level=' + level,
+              { credentials: 'same-origin' })
+            .then(function () { if (cb) cb(); })
+            .catch(function () {});
+    }
+
+    function apiSetSelector(d, level, cb) {
+        fetch('json.htm?type=command&param=switchlight&idx=' + d.idx +
+              '&switchcmd=Set+Level&level=' + level,
+              { credentials: 'same-origin' })
+            .then(function () { if (cb) cb(); })
+            .catch(function () {});
+    }
+
     function onItemClick(device, el, iconWrap) {
         var cls = deviceClass(device);
-        // For sensors/readonly → navigate
         if (cls === 'sensor' || cls === 'readonly') { navigateToDevice(device); return; }
-        // For toggle → quick toggle
         if (cls === 'toggle') {
             apiToggle(device, function (d) {
                 var nowOn = isOn(d);
@@ -612,8 +672,26 @@
                 }
                 flashCard(d, nowOn);
             });
+            return;
         }
-        // Other types: controls in the row handle interactions, clicking body is no-op
+        if (cls === 'dimmer') {
+            var row = el.querySelector('.dz-cmd-slider-row');
+            if (row) {
+                row.classList.add('dz-cmd-slider-row--visible');
+                var slider = row.querySelector('.dz-cmd-slider');
+                if (slider) slider.focus();
+            }
+            return;
+        }
+        // scene / push: activate primary button immediately
+        if (cls === 'scene' || cls === 'push') {
+            var primaryBtn = el.querySelector('.dz-cmd-action-btn');
+            if (primaryBtn) primaryBtn.click();
+            return;
+        }
+        // group / lock / blinds / selector: focus first control so user can Tab/Space
+        var firstCtrl = el.querySelector('.dz-cmd-controls button');
+        if (firstCtrl) firstCtrl.focus();
     }
 
     // ── Fuzzy search ───────────────────────────────────────────────
@@ -786,16 +864,23 @@
 
     // ── Active item ────────────────────────────────────────────────
 
-    function setActive(index) {
+    // autoExpand=true: auto-show dimmer slider (keyboard nav); false: mouse hover, no expand
+    function setActive(index, autoExpand) {
         if (!_list) return;
         var items = _list.querySelectorAll('.dz-cmd-item');
         if (_activeIdx >= 0 && items[_activeIdx]) {
             items[_activeIdx].classList.remove('dz-cmd-item--active');
+            var prevRow = items[_activeIdx].querySelector('.dz-cmd-slider-row');
+            if (prevRow) prevRow.classList.remove('dz-cmd-slider-row--visible');
         }
         _activeIdx = index;
         if (_activeIdx >= 0 && items[_activeIdx]) {
             items[_activeIdx].classList.add('dz-cmd-item--active');
             items[_activeIdx].scrollIntoView({ block: 'nearest' });
+            if (autoExpand) {
+                var row = items[_activeIdx].querySelector('.dz-cmd-slider-row');
+                if (row) row.classList.add('dz-cmd-slider-row--visible');
+            }
         }
     }
 
@@ -860,10 +945,10 @@
             var n = items.length;
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                setActive((_activeIdx + 1) % Math.max(n, 1));
+                setActive((_activeIdx + 1) % Math.max(n, 1), true);
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
-                setActive((_activeIdx - 1 + n) % Math.max(n, 1));
+                setActive((_activeIdx - 1 + n) % Math.max(n, 1), true);
             } else if (e.key === 'Enter') {
                 e.preventDefault();
                 var target = _activeIdx >= 0 ? items[_activeIdx] : items[0];
@@ -880,6 +965,14 @@
 
         _overlay.addEventListener('click', function (e) {
             if (e.target === _overlay) closePalette();
+        });
+
+        // Keep focus on _input while the user clicks buttons in the list.
+        // preventDefault on mousedown prevents focus transfer; click still fires.
+        // Exception: range sliders need native mousedown for drag interaction.
+        _list.addEventListener('mousedown', function (e) {
+            if (e.target.type === 'range') return;
+            e.preventDefault();
         });
 
         render('');
