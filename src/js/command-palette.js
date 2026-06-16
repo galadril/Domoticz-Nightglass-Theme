@@ -967,6 +967,14 @@
             if (e.target === _overlay) closePalette();
         });
 
+        // Keep focus on _input while the user clicks buttons in the list.
+        // preventDefault on mousedown prevents focus transfer; click still fires.
+        // Exception: range sliders need native mousedown for drag interaction.
+        _list.addEventListener('mousedown', function (e) {
+            if (e.target.type === 'range') return;
+            e.preventDefault();
+        });
+
         render('');
         requestAnimationFrame(function () { _input && _input.focus(); });
         if (!_fetched) fetchAll();
