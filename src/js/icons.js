@@ -469,13 +469,17 @@
         var y      = parseFloat(el.getAttribute('y') || 0);
         var iconPx = Math.round(Math.min(w, h) * 0.72);
 
-        // Visually hide the original but keep it for event bubbling
-        el.style.opacity      = '0';
-        el.style.pointerEvents = 'none';
+        // Visually hide the original but keep it interactive so drag-and-drop
+        // in floorplan edit mode still works (opacity:0 is still hit-testable
+        // in SVG; pointer-events must NOT be none here).
+        el.style.opacity = '0';
         el.setAttribute('data-dz-replaced', 'true');
         el.setAttribute('data-dz-orig-href', src);
 
-        // <foreignObject> hosts an HTML <i> inside SVG
+        // <foreignObject> hosts an HTML <i> inside SVG.
+        // pointer-events:none makes it purely visual so events fall through
+        // to the underlying <image> element (needed for drag-and-drop in
+        // floorplan edit mode).
         var fo = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
         fo.setAttribute('x',       x);
         fo.setAttribute('y',       y);
@@ -483,6 +487,7 @@
         fo.setAttribute('height',  h);
         fo.setAttribute('overflow', 'visible');
         fo.setAttribute('class',   'dz-fp-icon-wrap');
+        fo.style.pointerEvents = 'none';
 
         // Copy interactive attributes so floorplan device popups still trigger
         ['onclick', 'onmouseover', 'onmouseout', 'ontouchstart', 'ontouchend'].forEach(function (a) {
