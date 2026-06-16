@@ -596,6 +596,59 @@
         }
     }
 
+    // ── Domoticz API helpers ────────────────────────────────────────
+
+    function apiToggle(d, cb) {
+        var param = (d.Type === 'Scene' || d.Type === 'Group') ? 'switchscene' : 'switchlight';
+        var cmd;
+        if (d.Type === 'Group') {
+            cmd = isOn(d) ? 'Off' : 'On';
+        } else if (d.Type === 'Scene') {
+            cmd = 'On';
+        } else {
+            cmd = 'Toggle';
+        }
+        fetch('json.htm?type=command&param=' + param +
+              '&idx=' + d.idx + '&switchcmd=' + cmd,
+              { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function () {
+                if (cmd === 'Toggle') {
+                    d.Status = isOn(d) ? 'Off' : 'On';
+                } else {
+                    d.Status = cmd;
+                }
+                if (cb) cb(d);
+            })
+            .catch(function () {});
+    }
+
+    function apiCommand(d, cmd, cb) {
+        var param = (d.Type === 'Scene' || d.Type === 'Group') ? 'switchscene' : 'switchlight';
+        fetch('json.htm?type=command&param=' + param +
+              '&idx=' + d.idx + '&switchcmd=' + encodeURIComponent(cmd),
+              { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function () { d.Status = cmd; if (cb) cb(); })
+            .catch(function () {});
+    }
+
+    function apiSetLevel(d, level, cb) {
+        fetch('json.htm?type=command&param=switchlight&idx=' + d.idx +
+              '&switchcmd=Set+Level&level=' + level,
+              { credentials: 'same-origin' })
+            .then(function () { if (cb) cb(); })
+            .catch(function () {});
+    }
+
+    function apiSetSelector(d, level, cb) {
+        fetch('json.htm?type=command&param=switchlight&idx=' + d.idx +
+              '&switchcmd=Set+Level&level=' + level,
+              { credentials: 'same-origin' })
+            .then(function () { if (cb) cb(); })
+            .catch(function () {});
+    }
+
     function onItemClick(device, el, iconWrap) {
         var cls = deviceClass(device);
         // For sensors/readonly → navigate
