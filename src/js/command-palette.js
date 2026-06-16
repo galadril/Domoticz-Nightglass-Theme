@@ -77,7 +77,12 @@
         _recentKeys = Object.keys(_recentMap)
             .sort(function (a, b) { return _recentMap[b].ts - _recentMap[a].ts; })
             .slice(0, 24);
-        if (_overlay && _input && !_input.value.trim()) render('');
+        if (_overlay && _input && !_input.value.trim()) {
+            // Don't re-render while the user is interacting with an expanded control
+            // (e.g. a dimmer slider) — it would collapse it mid-interaction.
+            var hasExpanded = _list && _list.querySelector('.dz-cmd-slider-row--visible');
+            if (!hasExpanded) render('');
+        }
     }
 
     // ── Icon lookup ────────────────────────────────────────────────
