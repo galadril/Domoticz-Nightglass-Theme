@@ -757,6 +757,20 @@
 
         var src = img.getAttribute('src') || '';
 
+        /* Translate non-English wind direction filenames to English equivalents
+           before any further processing so both the PNG fallback (which must
+           reference a file that actually exists on the Domoticz server) and the
+           FA icon resolution work correctly.
+           e.g. Dutch: WindZ.png → WindS.png, WindNO.png → WindNE.png          */
+        var _windSrcMatch = /Wind([A-Z]{1,3})\.png/.exec(src);
+        if (_windSrcMatch && WIND_ALIASES[_windSrcMatch[1]]) {
+            src = src.replace(
+                'Wind' + _windSrcMatch[1] + '.png',
+                'Wind' + WIND_ALIASES[_windSrcMatch[1]] + '.png'
+            );
+            img.setAttribute('src', src);
+        }
+
         /* Skip unresolved Angular templates */
         if (!src || src.indexOf('{{') !== -1) return false;
 
