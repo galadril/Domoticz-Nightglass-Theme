@@ -15,10 +15,11 @@
         '9': 'Setup'
     };
 
-    var overlay = null;
-    var inputEl = null;
-    var listEl  = null;
-    var activeI = -1;
+    var overlay     = null;
+    var inputEl     = null;
+    var listEl      = null;
+    var activeI     = -1;
+    var _textFilter = null;
 
     function escHtml(s) {
         return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -62,6 +63,17 @@
             el.addEventListener('click', function () { pick(d); });
             listEl.appendChild(el);
         });
+
+        /* Update the "Filter page" button */
+        var filterBtn = document.getElementById('dz-search-filter-btn');
+        if (filterBtn) {
+            if (q && hits.length > 0) {
+                filterBtn.textContent = 'Show ' + hits.length + ' matching device' + (hits.length === 1 ? '' : 's') + ' on this page';
+                filterBtn.style.display = '';
+            } else {
+                filterBtn.style.display = 'none';
+            }
+        }
     }
 
     function highlight(i) {
@@ -113,19 +125,30 @@
         listEl = document.createElement('div');
         listEl.id = 'dz-search-results';
 
+        var filterBtn = document.createElement('button');
+        filterBtn.id        = 'dz-search-filter-btn';
+        filterBtn.className = 'dz-search-filter-btn';
+        filterBtn.style.display = 'none';
+        filterBtn.addEventListener('click', function () {
+            var q = inputEl ? inputEl.value.trim() : '';
+            if (q) applyTextFilter(q);
+        });
+
         var hint = document.createElement('div');
         hint.className = 'dz-search-hint';
         hint.innerHTML =
             '<span style="opacity: 0.75; margin-right: 4px;"><kbd>/</kbd> filters devices on this page &nbsp;·&nbsp; Use <kbd>Ctrl</kbd><kbd>K</kbd> for global search</span>' +
             '<span style="margin-left: auto; display: flex; gap: 14px;">' +
             '<span><kbd>↑↓</kbd> navigate</span>' +
-            '<span><kbd>↵</kbd> scroll to</span>' +
+            '<span><kbd>↵</kbd> go to card</span>' +
+            '<span><kbd>⇧↵</kbd> filter page</span>' +
             '<span class="dz-search-hint-esc" style="cursor:pointer"><kbd>Esc</kbd> close</span>' +
             '</span>';
         hint.querySelector('.dz-search-hint-esc').addEventListener('click', close);
 
         box.appendChild(inputEl);
         box.appendChild(listEl);
+        box.appendChild(filterBtn);
         box.appendChild(hint);
         overlay.appendChild(box);
         document.body.appendChild(overlay);
@@ -138,7 +161,12 @@
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault(); highlight(Math.max(activeI - 1, 0));
             } else if (e.key === 'Enter') {
-                if (activeI >= 0 && items[activeI]) items[activeI].click();
+                if (e.shiftKey) {
+                    var q = inputEl.value.trim();
+                    if (q) { e.preventDefault(); applyTextFilter(q); }
+                } else {
+                    if (activeI >= 0 && items[activeI]) items[activeI].click();
+                }
             } else if (e.key === 'Escape') {
                 close();
             }
@@ -155,6 +183,100 @@
     function close() {
         if (overlay) { overlay.remove(); overlay = null; inputEl = null; listEl = null; }
     }
+
+    /* ── Text filter: hide non-matching cards on the current page ─── */
+
+    function applyTextFilter(q) {
+        if (!q) { clearTextFilter(); return; }
+        _textFilter = q;
+        var qLow = q.toLowerCase();
+        var all = getCards();
+        var matchCount = 0;
+        all.forEach(function (d) {
+            var matches = d.name.toLowerCase().indexOf(qLow) !== -1;
+            d.card.classList.toggle('dz-tf-hidden', !matches);
+            if (matches) matchCount++;
+        });
+
+        /* Hide sections that have no visible cards */
+        document.querySelectorAll('section.dashCategory').forEach(function (sec) {
+            var hasVisible = sec.querySelector(
+                '.movable:not(.ng-rf-filtered):not(.dz-tf-hidden), tr[id]:not(.ng-rf-filtered):not(.dz-tf-hidden)'
+            );
+            sec.classList.toggle('dz-tf-section-hidden', !hasVisible);
+        });
+
+        injectTextFilterChip(q, matchCount);
+        close();
+    }
+
+    function clearTextFilter() {
+        _textFilter = null;
+        document.querySelectorAll('.dz-tf-hidden').forEach(function (el) {
+            el.classList.remove('dz-tf-hidden');
+        });
+        document.querySelectorAll('.dz-tf-section-hidden').forEach(function (sec) {
+            sec.classList.remove('dz-tf-section-hidden');
+        });
+        var bar = document.getElementById('ng-tf-chip-bar');
+        if (bar) bar.remove();
+    }
+
+    function injectTextFilterChip(q, count) {
+        var existing = document.getElementById('ng-tf-chip-bar');
+        if (existing) existing.remove();
+
+        var insertAfter = document.getElementById('ng-rf-chip-bar') ||
+                          document.getElementById('ng-rf-toggle');
+        var parent = insertAfter
+            ? insertAfter.parentNode
+            : document.getElementById('tbFiltSearch');
+        if (!parent) return;
+
+        var bar = document.createElement('div');
+        bar.id        = 'ng-tf-chip-bar';
+        bar.className = 'ng-tf-chip-bar';
+
+        var chip = document.createElement('span');
+        chip.className = 'ng-rf-chip';
+
+        var lbl = document.createElement('span');
+        lbl.className = 'ng-rf-chip-label';
+        lbl.innerHTML =
+            '<i class="fa-solid fa-magnifying-glass" style="margin-right:4px;font-size:0.85em;opacity:0.7;"></i>' +
+            escHtml(q) +
+            '<span style="margin-left:6px;opacity:0.6;font-size:0.85em;">(' + count + ')</span>';
+
+        var rm = document.createElement('button');
+        rm.className = 'ng-rf-chip-remove';
+        rm.setAttribute('aria-label', 'Clear text filter: ' + q);
+        rm.textContent = '×';
+        rm.addEventListener('click', clearTextFilter);
+
+        chip.appendChild(lbl);
+        chip.appendChild(rm);
+        bar.appendChild(chip);
+
+        if (insertAfter) {
+            insertAfter.parentNode.insertBefore(bar, insertAfter.nextSibling);
+        } else {
+            parent.appendChild(bar);
+        }
+    }
+
+    /* Auto-clear text filter when the user navigates to another tab */
+    var _routeHookAttempts = 0;
+    function hookRouteChange() {
+        _routeHookAttempts++;
+        if (_routeHookAttempts > 20) return;
+        try {
+            var $rs = angular.element(document.body).injector().get('$rootScope');
+            $rs.$on('$routeChangeSuccess', function () { clearTextFilter(); });
+        } catch (e) {
+            setTimeout(hookRouteChange, 500);
+        }
+    }
+    hookRouteChange();
 
     function inInputField(target) {
         var tag = (target.tagName || '').toUpperCase();

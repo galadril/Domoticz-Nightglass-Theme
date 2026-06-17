@@ -281,6 +281,10 @@
 .ng-rf-filtered                            { display: none !important; }
 section.dashCategory.ng-rf-section-hidden  { display: none !important; }
 
+/* Text filter (search overlay → Shift+Enter / "Show N on page") */
+.dz-tf-hidden                              { display: none !important; }
+section.dashCategory.dz-tf-section-hidden  { display: none !important; }
+
 /* Cloak device grid during DD openRoomPlan() navigation to prevent
    a flash of unfiltered content before applyFilter() runs.
    opacity:0 is used instead of visibility:hidden because opacity cannot be
