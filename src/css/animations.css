@@ -1133,6 +1133,33 @@ div.item.itemBlock:hover .dz-sparkline-wrap,
     .dz-search-hint { display: none; }
 }
 
+/* "Show N matching devices on this page" button */
+.dz-search-filter-btn {
+    display: block;
+    width: calc(100% - 40px);
+    margin: 0 20px 8px;
+    padding: 9px 16px;
+    background: var(--dz-accent-color);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+    transition: opacity 0.15s;
+}
+.dz-search-filter-btn:hover { opacity: 0.85; }
+
+/* Text-filter active chip bar (next to #ng-rf-chip-bar in the topbar) */
+#ng-tf-chip-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 0 2px;
+}
+
 
 /* ══════════════════════════════════════════════════════════════════
    UPDATE PAGE
