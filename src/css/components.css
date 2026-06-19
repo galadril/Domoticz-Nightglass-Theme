@@ -1560,9 +1560,19 @@ body.dz-light .dd-page {
     min-height: 0;
 }
 
-.dd-library-category-label {
+/* Keep search pinned at top of the scrollable body */
+.dd-library-search {
     position: sticky;
     top: 0;
+    z-index: 2;
+    background: var(--dz-surface);
+    padding: 6px 8px;
+    margin: 0;
+}
+
+.dd-library-category-label {
+    position: sticky;
+    top: 48px; /* below the sticky search bar */
     z-index: 1;
     background: rgba(var(--dz-surface-rgb), 0.94);
     backdrop-filter: blur(8px);
