@@ -344,22 +344,26 @@
         e.preventDefault();
         removeCtxMenu();
 
-        var widgetId = getWidgetId(gsItem);
+        /* Find the actual Angular-wired header buttons and click them directly.
+           Much more reliable than going through callScope / data-widget-id.
+           Buttons are in DOM via ng-show (display:none when hidden). */
+        var configBtn = gsItem.querySelector('[title="Configure widget"]:not(.ng-hide)');
+        var cloneBtn  = gsItem.querySelector('[title="Duplicate widget"]');
+        var removeBtn = gsItem.querySelector('[title="Remove widget"]');
+
         var menu = document.createElement('div');
         menu.id = 'dd-ctx-menu';
 
-        /* Only show actions that require widgetId if we have one */
-        if (widgetId) {
-            var hasConfig = !!gsItem.querySelector('[title="Configure widget"]');
-            if (hasConfig) {
-                menu.appendChild(buildCtxItem(
-                    'fa-solid fa-gear', 'Configure', false,
-                    function () { callScope('configureWidget', [widgetId]); }
-                ));
-            }
+        if (configBtn) {
+            menu.appendChild(buildCtxItem(
+                'fa-solid fa-gear', 'Configure', false,
+                function () { configBtn.click(); }
+            ));
+        }
+        if (cloneBtn) {
             menu.appendChild(buildCtxItem(
                 'fa-solid fa-copy', 'Duplicate', false,
-                function () { callScope('cloneWidget', [widgetId]); }
+                function () { cloneBtn.click(); }
             ));
         }
 
@@ -368,13 +372,13 @@
             function () { expandWidget(gsItem); }
         ));
 
-        if (widgetId) {
+        if (removeBtn) {
             var divider = document.createElement('div');
             divider.className = 'dd-ctx-divider';
             menu.appendChild(divider);
             menu.appendChild(buildCtxItem(
                 'fa-solid fa-trash', 'Remove widget', true,
-                function () { callScope('removeWidget', [widgetId]); }
+                function () { removeBtn.click(); }
             ));
         }
 
@@ -413,6 +417,14 @@
 
     var _expanded = null;
 
+    /* Shorthand: set an important inline style that beats !important in stylesheets */
+    function si(el, prop, val) {
+        el.style.setProperty(prop, val, 'important');
+    }
+
+    var EXPAND_PROPS = ['position', 'top', 'left', 'width', 'height',
+                        'z-index', 'transition', 'border-radius', 'right', 'bottom'];
+
     function expandWidget(gsItem) {
         if (_expanded) { collapseWidget(); return; }
         var content = gsItem && gsItem.querySelector('.grid-stack-item-content');
@@ -432,43 +444,37 @@
         closeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
         document.body.appendChild(closeBtn);
 
-        /* Capture original inline styles for restore */
-        var origStyle = {
-            position: content.style.position, top: content.style.top,
-            left: content.style.left, width: content.style.width,
-            height: content.style.height, zIndex: content.style.zIndex,
-            transition: content.style.transition,
-            borderRadius: content.style.borderRadius
-        };
+        /* Step 1: pin at current position (no transition).
+           All properties use setProperty(..., 'important') to beat
+           Domoticz dashboard.css's  top/left/right/bottom: 0 !important  */
+        si(content, 'position',      'fixed');
+        si(content, 'top',           rect.top    + 'px');
+        si(content, 'left',          rect.left   + 'px');
+        si(content, 'width',         rect.width  + 'px');
+        si(content, 'height',        rect.height + 'px');
+        si(content, 'right',         'auto');
+        si(content, 'bottom',        'auto');
+        si(content, 'z-index',       '9001');
+        si(content, 'transition',    'none');
+        si(content, 'border-radius', '14px');
 
-        /* Step 1: pin at current position with no transition */
-        content.style.cssText +=
-            ';position:fixed!important' +
-            ';top:'    + rect.top    + 'px' +
-            ';left:'   + rect.left   + 'px' +
-            ';width:'  + rect.width  + 'px' +
-            ';height:' + rect.height + 'px' +
-            ';z-index:9001!important' +
-            ';transition:none!important' +
-            ';border-radius:14px!important';
-
-        void content.offsetWidth; // flush
+        void content.offsetWidth; // flush so transition starts from here
 
         /* Step 2: animate to fullscreen */
-        content.style.transition =
+        si(content, 'transition',
             'top 0.35s cubic-bezier(0.22,1,0.36,1),' +
             'left 0.35s cubic-bezier(0.22,1,0.36,1),' +
             'width 0.35s cubic-bezier(0.22,1,0.36,1),' +
             'height 0.35s cubic-bezier(0.22,1,0.36,1),' +
-            'border-radius 0.3s';
-        content.style.top    = '0px';
-        content.style.left   = '0px';
-        content.style.width  = '100vw';
-        content.style.height = '100vh';
-        content.style.borderRadius = '0px';
+            'border-radius 0.3s');
+        si(content, 'top',           '0px');
+        si(content, 'left',          '0px');
+        si(content, 'width',         '100vw');
+        si(content, 'height',        '100vh');
+        si(content, 'border-radius', '0px');
         content.classList.add('dd-widget-expanded');
 
-        _expanded = { content: content, origStyle: origStyle, rect: rect };
+        _expanded = { content: content, rect: rect };
         setTimeout(function () { reflowCharts(content); }, 380);
 
         backdrop.addEventListener('click', collapseWidget);
@@ -477,21 +483,25 @@
 
     function collapseWidget() {
         if (!_expanded) { return; }
-        var content = _expanded.content, orig = _expanded.origStyle,
-            rect = _expanded.rect;
+        var content = _expanded.content, rect = _expanded.rect;
 
-        content.style.top    = rect.top    + 'px';
-        content.style.left   = rect.left   + 'px';
-        content.style.width  = rect.width  + 'px';
-        content.style.height = rect.height + 'px';
-        content.style.borderRadius = '14px';
+        si(content, 'transition',
+            'top 0.35s cubic-bezier(0.22,1,0.36,1),' +
+            'left 0.35s cubic-bezier(0.22,1,0.36,1),' +
+            'width 0.35s cubic-bezier(0.22,1,0.36,1),' +
+            'height 0.35s cubic-bezier(0.22,1,0.36,1),' +
+            'border-radius 0.3s');
+        si(content, 'top',           rect.top    + 'px');
+        si(content, 'left',          rect.left   + 'px');
+        si(content, 'width',         rect.width  + 'px');
+        si(content, 'height',        rect.height + 'px');
+        si(content, 'border-radius', '14px');
 
         content.addEventListener('transitionend', function handler() {
             content.removeEventListener('transitionend', handler);
             content.classList.remove('dd-widget-expanded');
-            Object.keys(orig).forEach(function (k) {
-                content.style[k] = orig[k] || '';
-            });
+            /* Remove all injected important styles — restore CSS sheet values */
+            EXPAND_PROPS.forEach(function (p) { content.style.removeProperty(p); });
             reflowCharts(content);
         }, { once: true });
 
