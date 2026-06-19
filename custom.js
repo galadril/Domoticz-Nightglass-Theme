@@ -40,6 +40,7 @@
         'src/js/notifications.js',  /* Feature 13: notification history panel (N key) */
         'src/js/room-filter.js',    /* Feature 14: room filter pill-bar */
         'src/js/events-editor.js',  /* Events editor: language classes + glyphicon swap */
+        'src/js/dd-enhance.js',     /* Dynamic Dashboard: glass cards, animations, context menu, fullscreen */
     ];
 
     modules.forEach(function (m) {
