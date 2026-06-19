@@ -1,11 +1,10 @@
-. bu/* ══════════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════════
    DASHBOARD 2.0 WIDGETS (dd-* components)
    ══════════════════════════════════════════════════════════════════ */
 
-/* Widget container */
+/* Widget container — border handled by outer .grid-stack-item-content glass card */
 .dd-widget {
-    /*background: var(--dz-surface-2) !important;*/
-    border: 1px solid var(--dz-border) !important;
+    position: relative;
     border-radius: 14px !important;
     color: var(--dz-text) !important;
     overflow: hidden;
