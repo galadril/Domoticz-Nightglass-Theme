@@ -966,7 +966,7 @@
             rm.textContent = '×';
 
             ;(function (c) {
-                rm.addEventListener('click', function (e) {
+                function removeChip(e) {
                     e.stopPropagation();
                     if (c.dim === 'favorites') {
                         _activeFilters.favorites = false;
@@ -979,7 +979,9 @@
                     }
                     syncPills();
                     whenPlanCacheReady(applyFilter);
-                });
+                }
+                rm.addEventListener('click', removeChip);
+                rm.addEventListener('touchend', function (e) { e.preventDefault(); removeChip(e); });
             }(chip));
 
             el.appendChild(lbl);

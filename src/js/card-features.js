@@ -890,6 +890,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /* ── State-Change Flash (Feature 2) ──────────────────────────── */
     (function () {
+        /* Single observer on document.body watching the data-dz-state attribute
+           across all descendants. This avoids the previous pattern of calling
+           stateObs.observe(icon) on every individual <i> element — which
+           accumulated thousands of zombie references over time as icons were
+           replaced on navigation, degrading performance the longer the page
+           stayed open. */
         var stateObs = new MutationObserver(function (mutations) {
             mutations.forEach(function (m) {
                 if (m.attributeName !== 'data-dz-state') return;
@@ -921,22 +927,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     card.removeEventListener('animationend', rm);
                     card.classList.remove('dz-flash-on', 'dz-flash-off');
                 });
-
             });
         });
 
-        function watchIcons() {
-            var icons = document.querySelectorAll('i.dz-fa-device:not([data-dz-watched])');
-            icons.forEach(function (icon) {
-                icon.setAttribute('data-dz-watched', '1');
-                stateObs.observe(icon, { attributes: true, attributeFilter: ['data-dz-state'] });
-            });
-        }
-
-        var domWatch = new MutationObserver(function () { watchIcons(); });
         function start() {
-            watchIcons();
-            domWatch.observe(document.body, { childList: true, subtree: true });
+            if (!document.body) return;
+            stateObs.observe(document.body, {
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['data-dz-state']
+            });
         }
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', start);
