@@ -512,7 +512,7 @@ i.dz-fa-nav {
 
 .navbar .nav .current_page_item > a,
 .navbar .nav .current_page_item > a:hover {
-    color: var(--dz-text) !important;
+    color: var(--dz-accent) !important;
     background: transparent !important;
     border: none !important;
     border-bottom: none !important;
@@ -520,10 +520,6 @@ i.dz-fa-nav {
     box-shadow: none !important;
     text-shadow: none !important;
 }
-
-    .navbar .nav .current_page_item > a:hover {
-        color: var(--dz-text) !important;
-    }
 
 /* ── Sliding indicator pill ──────────────────────────────── */
 .dz-nav-indicator {

@@ -344,8 +344,11 @@
             ind.style.opacity = '1';
         }
 
-        var activeLink = nav.querySelector('.current_page_item > a');
-        positionTo(activeLink, false);
+        function getActiveLink() {
+            return nav.querySelector('.current_page_item > a');
+        }
+
+        positionTo(getActiveLink(), false);
 
         var navItems = nav.querySelectorAll(':scope > li:not(.dropdown) > a');
         for (var i = 0; i < navItems.length; i++) {
@@ -357,11 +360,17 @@
         }
 
         nav.addEventListener('mouseleave', function () {
-            positionTo(activeLink, true);
+            positionTo(getActiveLink(), true);
         });
 
         window.addEventListener('resize', function () {
-            positionTo(activeLink, false);
+            positionTo(getActiveLink(), false);
+        });
+
+        /* Re-position after SPA navigation — Angular updates .current_page_item
+           asynchronously, so a short delay ensures the class has been applied. */
+        window.addEventListener('hashchange', function () {
+            setTimeout(function () { positionTo(getActiveLink(), true); }, 150);
         });
     }
 
