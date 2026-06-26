@@ -252,6 +252,7 @@
         rm.setAttribute('aria-label', 'Clear text filter: ' + q);
         rm.textContent = '×';
         rm.addEventListener('click', clearTextFilter);
+        rm.addEventListener('touchend', function (e) { e.preventDefault(); clearTextFilter(); });
 
         chip.appendChild(lbl);
         chip.appendChild(rm);
