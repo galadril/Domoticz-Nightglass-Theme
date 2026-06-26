@@ -1289,13 +1289,12 @@
         $rootScope.$on('$viewContentLoaded', function () {
             scheduleBurst();
         });
-        /* Watch for digest cycles — when device data refreshes via
-           websocket/polling, Angular re-renders table rows during
-           $digest. Schedule a non-cancellable safety pass after each
-           digest so icons are re-applied even during rapid updates.  */
-        $rootScope.$watch(function () {
-            scheduleSafetyPass();
-        });
+        /* NOTE: Do NOT use $rootScope.$watch here. Angular evaluates the
+           watch expression on every $digest cycle (which fires many times
+           per second in an active Domoticz). Any side-effect in the watch
+           expression runs continuously and degrades performance over time.
+           The MutationObserver on the main view already catches all DOM
+           changes from WebSocket-driven re-renders. */
     }
 
     if (document.readyState === 'loading') {
