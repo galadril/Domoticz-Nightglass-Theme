@@ -346,19 +346,15 @@
 
         var navItems = nav.querySelectorAll(':scope > li:not(.dropdown) > a');
 
-        /* Resolve the active nav link from the URL hash rather than from
-           Angular's .current_page_item class. The hash (e.g. "#Dashboard")
-           updates synchronously on navigation, while Angular applies the
-           class a moment later — relying on the class caused the indicator
-           to briefly snap back to the previously-selected tab (the flash).
-           The route keyword ("dashboard") is matched against each link's
-           href; we fall back to .current_page_item only when the hash points
-           somewhere without a top-level tab (e.g. a Setup sub-page). */
+        /* Resolve a nav link from the URL hash. The route keyword
+           ("dashboard") is matched against each link's href; we fall back to
+           Angular's .current_page_item only when the hash points somewhere
+           without a top-level tab (e.g. a Setup sub-page). */
         function routeKey(h) {
             return (h || '').replace(/^#!?\/?/, '').split(/[\/?#]/)[0].toLowerCase();
         }
 
-        function getActiveLink() {
+        function linkFromHash() {
             var target = routeKey(window.location.hash);
             if (target) {
                 for (var i = 0; i < navItems.length; i++) {
@@ -370,35 +366,47 @@
             return nav.querySelector('.current_page_item > a');
         }
 
-        positionTo(getActiveLink(), false);
+        /* The tab the indicator rests on. It is set the instant a tab is
+           clicked — NOT derived from the hash at that moment — because
+           AngularJS updates window.location.hash asynchronously. Without this
+           an intervening mouseleave (e.g. moving the pointer down into the
+           page after clicking) would read the still-old hash and snap the
+           pill back to the previously-active tab, causing a blue underline
+           flash there before the route settles. It is reconciled from the
+           hash after navigation to also cover keyboard/programmatic nav. */
+        var activeLink = linkFromHash();
+
+        positionTo(activeLink, false);
 
         for (var i = 0; i < navItems.length; i++) {
             (function (link) {
                 link.addEventListener('mouseenter', function () {
                     positionTo(link, true);
                 });
-                /* Position to the clicked tab immediately so there is no
-                   flash window before the hash/route settles. */
                 link.addEventListener('click', function () {
+                    activeLink = link;
                     positionTo(link, true);
                 });
             })(navItems[i]);
         }
 
         nav.addEventListener('mouseleave', function () {
-            positionTo(getActiveLink(), true);
+            positionTo(activeLink, true);
         });
 
         window.addEventListener('resize', function () {
-            positionTo(getActiveLink(), false);
+            positionTo(activeLink, false);
         });
 
-        /* Re-position after SPA navigation. getActiveLink() reads the hash,
-           which is already current, so this is race-free; a short follow-up
-           catches any late layout shift (nav width/offset changes). */
+        /* Reconcile after SPA navigation — covers keyboard/programmatic
+           navigation (no click) and any late layout shift (nav width/offset). */
         window.addEventListener('hashchange', function () {
-            positionTo(getActiveLink(), true);
-            setTimeout(function () { positionTo(getActiveLink(), true); }, 250);
+            activeLink = linkFromHash();
+            positionTo(activeLink, true);
+            setTimeout(function () {
+                activeLink = linkFromHash();
+                positionTo(activeLink, true);
+            }, 250);
         });
     }
 
