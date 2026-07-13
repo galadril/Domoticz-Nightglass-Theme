@@ -344,8 +344,15 @@
             ind.style.opacity = '1';
         }
 
+        /* When a tab is clicked we optimistically treat it as active right
+           away. Angular only applies .current_page_item a moment later, so
+           without this the mouseleave that fires on click/tap would snap the
+           indicator back to the *old* tab, causing a brief flash before the
+           hashchange handler catches up. */
+        var pendingActive = null;
+
         function getActiveLink() {
-            return nav.querySelector('.current_page_item > a');
+            return pendingActive || nav.querySelector('.current_page_item > a');
         }
 
         positionTo(getActiveLink(), false);
@@ -354,6 +361,10 @@
         for (var i = 0; i < navItems.length; i++) {
             (function (link) {
                 link.addEventListener('mouseenter', function () {
+                    positionTo(link, true);
+                });
+                link.addEventListener('click', function () {
+                    pendingActive = link;
                     positionTo(link, true);
                 });
             })(navItems[i]);
@@ -368,9 +379,14 @@
         });
 
         /* Re-position after SPA navigation — Angular updates .current_page_item
-           asynchronously, so a short delay ensures the class has been applied. */
+           asynchronously, so a short delay ensures the class has been applied.
+           Clear the optimistic pendingActive now that Angular is the source of
+           truth again. */
         window.addEventListener('hashchange', function () {
-            setTimeout(function () { positionTo(getActiveLink(), true); }, 150);
+            setTimeout(function () {
+                pendingActive = null;
+                positionTo(getActiveLink(), true);
+            }, 150);
         });
     }
 
