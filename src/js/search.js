@@ -533,6 +533,16 @@
     var UVAR_NAME  = 'ngTheme_settings'; // legacy user-variable name
     var UVAR_TYPE  = 2;                  // Domoticz "string" type
 
+    // User-saved color presets are stored in their own Domoticz user variable
+    // rather than inside the ThemeSettings blob.  A single preset is ~660 chars
+    // (full dark+light color sets + preview + metadata), so a handful would blow
+    // past the 2500-char Preferences cap (issue #203).  User variables live in
+    // the UserVariables table — no size cap, and still server-side so presets
+    // sync across browsers.  Bounded scalar config stays in ThemeSettings;
+    // unbounded user data lives here.
+    var PRESETS_UVAR = 'ngTheme_presets';
+    var PRESETS_KEY  = 'userPresets';    // the _settings key held externally
+
     // Base path for API calls
     var BASE = (function () {
         return window.location.pathname.replace(/\/[^/]*$/, '/');
@@ -604,7 +614,17 @@
     var _useNewApi     = false; // true when build ≥ 17806 (ThemeSettings in getsettings)
     var _saveTimer     = null;  // debounce handle for API writes
     var _dirty         = false; // true when in-memory changes not yet saved to DB
+    var _presetsUvarIdx  = null; // Domoticz idx of the ngTheme_presets variable
+    var _presetsSaveTimer = null; // debounce handle for preset writes
     var LS_KEY         = 'ngThemeSettings';
+
+    /* Collection fields are held in _settings as JSON *strings* (the shape the
+       get/set API and every caller expects), but persisted as native
+       objects/arrays so their quotes are NOT double-escaped inside the
+       ThemeSettings blob.  Combined with diff-from-defaults persistence and
+       pruning of empty override fields, this keeps the stored value well under
+       Domoticz's hard 2500-char Preferences cap (issue #203). */
+    var COLLECTION_FIELDS = ['deviceIconOverrides', 'userPresets', 'toastBlacklist'];
 
     /* ── Domoticz API helper ──────────────────────────────────────── */
 
@@ -673,7 +693,7 @@
             if (!scope) return;
             scope.$apply(function () {
                 scope.ThemeSettings = scope.ThemeSettings || {};
-                scope.ThemeSettings[THEME_NAME] = _settings;
+                scope.ThemeSettings[THEME_NAME] = serializeSettings();
             });
         } catch (e) {}
         _dirty = true;
@@ -694,7 +714,7 @@
             }
             scope.$apply(function () {
                 scope.ThemeSettings = scope.ThemeSettings || {};
-                scope.ThemeSettings[THEME_NAME] = _settings;
+                scope.ThemeSettings[THEME_NAME] = serializeSettings();
             });
             scope.StoreSettings();
             _dirty = false;
@@ -731,7 +751,8 @@
             var migrated = {};
             var oldPrefix = 'ngTheme_';
             data.result.forEach(function (uv) {
-                if (uv.Name.indexOf(oldPrefix) === 0 && uv.Name !== UVAR_NAME) {
+                if (uv.Name.indexOf(oldPrefix) === 0 && uv.Name !== UVAR_NAME &&
+                    uv.Name !== PRESETS_UVAR) {
                     var key = uv.Name.slice(oldPrefix.length);
                     if (key in DEFAULTS) {
                         var raw = uv.Value;
@@ -757,8 +778,9 @@
                 _updateAngularScope();
                 return;
             }
-            // Legacy path: store as a JSON user variable
-            var json = JSON.stringify(_settings);
+            // Legacy path: store as a JSON user variable (compact form too, so
+            // the user-variable value stays small and round-trips identically).
+            var json = JSON.stringify(serializeSettings());
             if (_uvarIdx) {
                 apiCall({
                     type: 'command', param: 'updateuservariable',
@@ -781,7 +803,106 @@
         }, 400);
     }
 
+    // Persist userPresets to their dedicated ngTheme_presets user variable
+    // (debounced so rapid save/delete clicks coalesce into one write).  This is
+    // a targeted, safe API call on both old and new builds — unlike the blob it
+    // never clobbers other Domoticz settings, so there's no need to defer it to
+    // the "Save to Domoticz" button the way the ThemeSettings blob is.
+    function savePresetsUvar() {
+        clearTimeout(_presetsSaveTimer);
+        _presetsSaveTimer = setTimeout(function () {
+            if (!_apiAvailable) return;
+            var json = _settings ? (_settings[PRESETS_KEY] || '[]') : '[]';
+            if (_presetsUvarIdx) {
+                apiCall({
+                    type: 'command', param: 'updateuservariable',
+                    idx: _presetsUvarIdx, vname: PRESETS_UVAR, vtype: UVAR_TYPE, vvalue: json
+                });
+            } else {
+                apiCall({
+                    type: 'command', param: 'adduservariable',
+                    vname: PRESETS_UVAR, vtype: UVAR_TYPE, vvalue: json
+                }).then(function () {
+                    // Re-fetch so we have the idx for future update calls
+                    return apiCall({ type: 'command', param: 'getuservariables' });
+                }).then(function (data) {
+                    if (!data || !data.result) return;
+                    data.result.forEach(function (uv) {
+                        if (uv.Name === PRESETS_UVAR) _presetsUvarIdx = uv.idx;
+                    });
+                }).catch(function () {});
+            }
+        }, 400);
+    }
+
     /* ── Settings persistence ─────────────────────────────────────── */
+
+    /* Strip empty/default fields from each device-icon override.  A stored
+       entry can carry up to 10 fields (icon, iconOn/Off/Open/Close/Stop,
+       keepColor, on, off, name) but most are blank — keeping only the set
+       ones cuts a typical entry from ~230 to ~90 chars, the single biggest
+       contributor to ThemeSettings bloat (issue #203). */
+    function pruneOverrides(ov) {
+        if (!ov || typeof ov !== 'object') return {};
+        var KEEP = ['icon', 'iconOn', 'iconOff', 'iconOpen', 'iconClose',
+                    'iconStop', 'on', 'off', 'name'];
+        var out = {};
+        Object.keys(ov).forEach(function (idx) {
+            var s = ov[idx] || {};
+            var e = {};
+            KEEP.forEach(function (f) { if (s[f]) e[f] = s[f]; });
+            if (s.keepColor) e.keepColor = true; // only store when enabled
+            if (Object.keys(e).length) out[idx] = e;
+        });
+        return out;
+    }
+
+    /* Build the compact object actually written to storage: only settings that
+       differ from DEFAULTS, collection fields as pruned NATIVE objects/arrays
+       (omitted entirely when empty), and session-only keys excluded.  Keeping
+       this small is what prevents the ThemeSettings sValue from exceeding
+       Domoticz's 2500-char cap (issue #203). */
+    function serializeSettings() {
+        var out = {};
+        if (!_settings) return out;
+        Object.keys(_settings).forEach(function (key) {
+            if (SESSION_ONLY_KEYS.indexOf(key) !== -1) return;
+            if (key === PRESETS_KEY) return; // persisted in its own user variable
+            var v = _settings[key];
+            if (COLLECTION_FIELDS.indexOf(key) !== -1) {
+                var parsed;
+                try { parsed = (typeof v === 'string') ? JSON.parse(v || 'null') : v; }
+                catch (e) { parsed = null; }
+                if (key === 'deviceIconOverrides') { parsed = pruneOverrides(parsed); }
+                if (!parsed || typeof parsed !== 'object') { return; }
+                if (Array.isArray(parsed) ? !parsed.length : !Object.keys(parsed).length) { return; }
+                out[key] = parsed; // native form — no double-escaping in the blob
+                return;
+            }
+            if (!(key in DEFAULTS) || v !== DEFAULTS[key]) { out[key] = v; }
+        });
+        return out;
+    }
+
+    /* Inverse of serializeSettings: layer stored values over DEFAULTS and
+       convert collection fields back to the JSON-string form callers expect.
+       Accepts both the new compact form (native collections, diff only) and
+       the legacy form (collections already strings, every key present), so
+       existing installs upgrade transparently. */
+    function deserializeSettings(stored) {
+        var norm = {};
+        if (stored && typeof stored === 'object') {
+            Object.keys(stored).forEach(function (key) {
+                var v = stored[key];
+                if (COLLECTION_FIELDS.indexOf(key) !== -1 && v != null && typeof v !== 'string') {
+                    norm[key] = JSON.stringify(v);
+                } else {
+                    norm[key] = v;
+                }
+            });
+        }
+        return Object.assign({}, DEFAULTS, norm);
+    }
 
     function loadFromLocalStorage() {
         try {
@@ -805,16 +926,16 @@
                 return loadFromGetsettings().then(function (stored) {
                     if (stored) {
                         // Settings already persisted via new API — use them.
-                        _settings = Object.assign({}, DEFAULTS, stored);
+                        _settings = deserializeSettings(stored);
                     } else {
                         // Nothing in ThemeSettings yet; pull from user variables
                         // as a one-time migration source (read-only — saves will
                         // now go through the new API).
                         return loadJsonUvar().then(function (migrated) {
-                            _settings = Object.assign({}, DEFAULTS, migrated || {});
+                            _settings = deserializeSettings(migrated);
                             return _settings;
                         }).catch(function () {
-                            _settings = Object.assign({}, DEFAULTS);
+                            _settings = deserializeSettings(null);
                             return _settings;
                         });
                     }
@@ -822,10 +943,10 @@
                 }).catch(function () {
                     // getsettings failed — degrade to user variables.
                     return loadJsonUvar().then(function (stored) {
-                        _settings = Object.assign({}, DEFAULTS, stored || {});
+                        _settings = deserializeSettings(stored);
                         return _settings;
                     }).catch(function () {
-                        _settings = Object.assign({}, DEFAULTS, loadFromLocalStorage() || {});
+                        _settings = deserializeSettings(loadFromLocalStorage());
                         return _settings;
                     });
                 }).then(function (s) {
@@ -838,15 +959,52 @@
             _useNewApi    = false;
             return loadJsonUvar().then(function (stored) {
                 _apiAvailable = true;
-                _settings = Object.assign({}, DEFAULTS, stored || {});
+                _settings = deserializeSettings(stored);
                 saveToLocalStorage();
                 return _settings;
             }).catch(function () {
                 _apiAvailable = false;
-                _settings = Object.assign({}, DEFAULTS, loadFromLocalStorage() || {});
+                _settings = deserializeSettings(loadFromLocalStorage());
                 return _settings;
             });
         });
+    }
+
+    /* Reconcile userPresets with their dedicated ngTheme_presets user variable.
+       Runs once after loadSettings() has populated _settings:
+         • If the variable exists, it is authoritative — use its value and
+           ignore any (legacy) copy still sitting in the ThemeSettings blob.
+         • If it does NOT exist but the blob carried presets (users upgrading
+           from a build that stored them inline), migrate transparently by
+           writing the variable from _settings.userPresets — nothing is lost.
+       Either way _settings[PRESETS_KEY] ends up as the JSON string every caller
+       expects, and serializeSettings() no longer writes presets into the blob,
+       so the blob shrinks on its next save.  Best-effort — resolves to
+       _settings even if the API is unreachable (localStorage cache stands in). */
+    function reconcilePresets() {
+        if (!_apiAvailable) { return Promise.resolve(_settings); }
+        return apiCall({ type: 'command', param: 'getuservariables' }).then(function (data) {
+            var found = null;
+            if (data && data.result) {
+                data.result.forEach(function (uv) {
+                    if (uv.Name === PRESETS_UVAR) { found = uv; }
+                });
+            }
+            if (found) {
+                _presetsUvarIdx = found.idx;
+                _settings[PRESETS_KEY] = found.Value || '[]';
+            } else {
+                var legacy = (_settings && _settings[PRESETS_KEY]) || '[]';
+                var hasLegacy = false;
+                try { hasLegacy = (JSON.parse(legacy) || []).length > 0; } catch (e) {}
+                if (hasLegacy) {
+                    window.ngLog('[Settings]', 'migrating userPresets → ' + PRESETS_UVAR);
+                    savePresetsUvar(); // creates the variable from the legacy value
+                }
+            }
+            saveToLocalStorage();
+            return _settings;
+        }).catch(function () { return _settings; });
     }
 
     /* Keys listed here are session-only: they live only in _settings for the
@@ -858,7 +1016,12 @@
         _settings[key] = value;
         window.ngLog('[Settings]', 'set', key, '=', value);
         if (SESSION_ONLY_KEYS.indexOf(key) === -1) {
-            if (_apiAvailable) saveJsonUvar(); // debounced, batches rapid changes
+            if (key === PRESETS_KEY) {
+                // Presets have their own user variable, outside the blob.
+                if (_apiAvailable) savePresetsUvar();
+            } else if (_apiAvailable) {
+                saveJsonUvar(); // debounced, batches rapid changes
+            }
             saveToLocalStorage();
         }
         applySettings();
@@ -3711,7 +3874,7 @@
     }
 
     function init() {
-        loadSettings().then(function () {
+        loadSettings().then(reconcilePresets).then(function () {
             window.ngLog('[Settings]', 'loaded:', JSON.stringify(_settings));
             applySettings();
             injectPanel();
