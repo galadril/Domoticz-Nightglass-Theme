@@ -18,8 +18,19 @@
             var stText = (status.textContent  || '').replace(/\s+/g, ' ').trim();
 
             if (!btText && stText) {
-                bigtext.innerHTML = status.innerHTML;
-                status.innerHTML  = '';
+                /* Move the status cell's LIVE nodes into bigtext instead of
+                   copying via innerHTML.  The status value is rendered by an
+                   Angular `ng-bind-html` <span>; copying the markup destroyed
+                   that span and left a detached original that Angular kept
+                   writing new text into — so device updates never reached the
+                   screen and the card showed stale text (issue #197).  Both
+                   the classic and dynamic dashboards mutate the device object
+                   in place (angular.extend + `track by idx`) and rely on that
+                   binding staying attached, so we relocate the actual node and
+                   keep Angular's reference valid → live updates keep working. */
+                while (status.firstChild) {
+                    bigtext.appendChild(status.firstChild);
+                }
             }
         }
     }
