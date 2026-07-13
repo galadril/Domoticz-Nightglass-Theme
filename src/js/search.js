@@ -344,27 +344,42 @@
             ind.style.opacity = '1';
         }
 
-        /* When a tab is clicked we optimistically treat it as active right
-           away. Angular only applies .current_page_item a moment later, so
-           without this the mouseleave that fires on click/tap would snap the
-           indicator back to the *old* tab, causing a brief flash before the
-           hashchange handler catches up. */
-        var pendingActive = null;
+        var navItems = nav.querySelectorAll(':scope > li:not(.dropdown) > a');
+
+        /* Resolve the active nav link from the URL hash rather than from
+           Angular's .current_page_item class. The hash (e.g. "#Dashboard")
+           updates synchronously on navigation, while Angular applies the
+           class a moment later — relying on the class caused the indicator
+           to briefly snap back to the previously-selected tab (the flash).
+           The route keyword ("dashboard") is matched against each link's
+           href; we fall back to .current_page_item only when the hash points
+           somewhere without a top-level tab (e.g. a Setup sub-page). */
+        function routeKey(h) {
+            return (h || '').replace(/^#!?\/?/, '').split(/[\/?#]/)[0].toLowerCase();
+        }
 
         function getActiveLink() {
-            return pendingActive || nav.querySelector('.current_page_item > a');
+            var target = routeKey(window.location.hash);
+            if (target) {
+                for (var i = 0; i < navItems.length; i++) {
+                    if (routeKey(navItems[i].getAttribute('href')) === target) {
+                        return navItems[i];
+                    }
+                }
+            }
+            return nav.querySelector('.current_page_item > a');
         }
 
         positionTo(getActiveLink(), false);
 
-        var navItems = nav.querySelectorAll(':scope > li:not(.dropdown) > a');
         for (var i = 0; i < navItems.length; i++) {
             (function (link) {
                 link.addEventListener('mouseenter', function () {
                     positionTo(link, true);
                 });
+                /* Position to the clicked tab immediately so there is no
+                   flash window before the hash/route settles. */
                 link.addEventListener('click', function () {
-                    pendingActive = link;
                     positionTo(link, true);
                 });
             })(navItems[i]);
@@ -378,15 +393,12 @@
             positionTo(getActiveLink(), false);
         });
 
-        /* Re-position after SPA navigation — Angular updates .current_page_item
-           asynchronously, so a short delay ensures the class has been applied.
-           Clear the optimistic pendingActive now that Angular is the source of
-           truth again. */
+        /* Re-position after SPA navigation. getActiveLink() reads the hash,
+           which is already current, so this is race-free; a short follow-up
+           catches any late layout shift (nav width/offset changes). */
         window.addEventListener('hashchange', function () {
-            setTimeout(function () {
-                pendingActive = null;
-                positionTo(getActiveLink(), true);
-            }, 150);
+            positionTo(getActiveLink(), true);
+            setTimeout(function () { positionTo(getActiveLink(), true); }, 250);
         });
     }
 
