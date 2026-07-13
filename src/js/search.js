@@ -346,35 +346,39 @@
 
         var navItems = nav.querySelectorAll(':scope > li:not(.dropdown) > a');
 
-        /* Resolve a nav link from the URL hash. The route keyword
-           ("dashboard") is matched against each link's href; we fall back to
-           Angular's .current_page_item only when the hash points somewhere
-           without a top-level tab (e.g. a Setup sub-page). */
+        /* Authoritative active tab: the <a> inside the <li> that AngularJS has
+           marked .current_page_item. This is the single source of truth and,
+           because it is only read AFTER the class is committed, can never
+           resolve to the previously-active tab. */
+        function activeFromDom() {
+            var li = nav.querySelector(':scope > li.current_page_item');
+            return li ? li.querySelector('a') : null;
+        }
+
+        /* Hash-based resolve, used before Angular commits the class (initial
+           load) and for keyboard/programmatic navigation. The route keyword
+           ("dashboard") is matched against each link's href. */
         function routeKey(h) {
             return (h || '').replace(/^#!?\/?/, '').split(/[\/?#]/)[0].toLowerCase();
         }
-
         function linkFromHash() {
             var target = routeKey(window.location.hash);
-            if (target) {
-                for (var i = 0; i < navItems.length; i++) {
-                    if (routeKey(navItems[i].getAttribute('href')) === target) {
-                        return navItems[i];
-                    }
+            if (!target) return null;
+            for (var i = 0; i < navItems.length; i++) {
+                if (routeKey(navItems[i].getAttribute('href')) === target) {
+                    return navItems[i];
                 }
             }
-            return nav.querySelector('.current_page_item > a');
+            return null;
         }
 
-        /* The tab the indicator rests on. It is set the instant a tab is
-           clicked — NOT derived from the hash at that moment — because
-           AngularJS updates window.location.hash asynchronously. Without this
-           an intervening mouseleave (e.g. moving the pointer down into the
-           page after clicking) would read the still-old hash and snap the
-           pill back to the previously-active tab, causing a blue underline
-           flash there before the route settles. It is reconciled from the
-           hash after navigation to also cover keyboard/programmatic nav. */
-        var activeLink = linkFromHash();
+        /* Where the pill rests when the pointer is not on the navbar. It is
+           set the instant a tab is clicked (optimistic) so a mouseleave during
+           the async route change can never snap the pill back to the old tab
+           — the blue underline flash reported in #192 — and reconciled from
+           the DOM once AngularJS commits .current_page_item. */
+        var activeLink = activeFromDom() || linkFromHash();
+        var overNav = false;
 
         positionTo(activeLink, false);
 
@@ -390,7 +394,9 @@
             })(navItems[i]);
         }
 
+        nav.addEventListener('mouseenter', function () { overNav = true; });
         nav.addEventListener('mouseleave', function () {
+            overNav = false;
             positionTo(activeLink, true);
         });
 
@@ -398,15 +404,29 @@
             positionTo(activeLink, false);
         });
 
-        /* Reconcile after SPA navigation — covers keyboard/programmatic
-           navigation (no click) and any late layout shift (nav width/offset). */
+        /* Follow the tab AngularJS actually marks active. The observer fires
+           the moment .current_page_item is committed on the NEW tab, so the
+           resting position is always correct and never stale. While the
+           pointer is on the navbar, hover owns the pill, so we only move it
+           here when the user is not hovering. */
+        if (typeof MutationObserver !== 'undefined') {
+            var mo = new MutationObserver(function () {
+                var a = activeFromDom();
+                if (!a || a === activeLink) return;
+                activeLink = a;
+                if (!overNav) positionTo(activeLink, true);
+            });
+            mo.observe(nav, { subtree: true, attributes: true, attributeFilter: ['class'] });
+        }
+
+        /* Keyboard/programmatic navigation (e.g. the 1-9 shortcuts) changes
+           the hash without a click; reconcile from it as a fallback. */
         window.addEventListener('hashchange', function () {
-            activeLink = linkFromHash();
-            positionTo(activeLink, true);
-            setTimeout(function () {
-                activeLink = linkFromHash();
-                positionTo(activeLink, true);
-            }, 250);
+            var a = linkFromHash();
+            if (a) {
+                activeLink = a;
+                if (!overNav) positionTo(activeLink, true);
+            }
         });
     }
 
