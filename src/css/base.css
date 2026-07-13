@@ -3,7 +3,11 @@
    ══════════════════════════════════════════════════════════════════ */
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    /* Roboto intentionally omitted: when only "Roboto Medium" is installed
+       (not Roboto Regular) some widgets — e.g. the dimmer value — resolved to
+       Roboto while switches fell back to Arial, giving mismatched glyph
+       heights. Dropping Roboto keeps every widget on the same fallback. #175 */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif !important;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background: var(--dz-bg) !important;

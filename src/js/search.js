@@ -344,33 +344,89 @@
             ind.style.opacity = '1';
         }
 
-        function getActiveLink() {
-            return nav.querySelector('.current_page_item > a');
+        var navItems = nav.querySelectorAll(':scope > li:not(.dropdown) > a');
+
+        /* Authoritative active tab: the <a> inside the <li> that AngularJS has
+           marked .current_page_item. This is the single source of truth and,
+           because it is only read AFTER the class is committed, can never
+           resolve to the previously-active tab. */
+        function activeFromDom() {
+            var li = nav.querySelector(':scope > li.current_page_item');
+            return li ? li.querySelector('a') : null;
         }
 
-        positionTo(getActiveLink(), false);
+        /* Hash-based resolve, used before Angular commits the class (initial
+           load) and for keyboard/programmatic navigation. The route keyword
+           ("dashboard") is matched against each link's href. */
+        function routeKey(h) {
+            return (h || '').replace(/^#!?\/?/, '').split(/[\/?#]/)[0].toLowerCase();
+        }
+        function linkFromHash() {
+            var target = routeKey(window.location.hash);
+            if (!target) return null;
+            for (var i = 0; i < navItems.length; i++) {
+                if (routeKey(navItems[i].getAttribute('href')) === target) {
+                    return navItems[i];
+                }
+            }
+            return null;
+        }
 
-        var navItems = nav.querySelectorAll(':scope > li:not(.dropdown) > a');
+        /* Where the pill rests when the pointer is not on the navbar. It is
+           set the instant a tab is clicked (optimistic) so a mouseleave during
+           the async route change can never snap the pill back to the old tab
+           — the blue underline flash reported in #192 — and reconciled from
+           the DOM once AngularJS commits .current_page_item. */
+        var activeLink = activeFromDom() || linkFromHash();
+        var overNav = false;
+
+        positionTo(activeLink, false);
+
         for (var i = 0; i < navItems.length; i++) {
             (function (link) {
                 link.addEventListener('mouseenter', function () {
                     positionTo(link, true);
                 });
+                link.addEventListener('click', function () {
+                    activeLink = link;
+                    positionTo(link, true);
+                });
             })(navItems[i]);
         }
 
+        nav.addEventListener('mouseenter', function () { overNav = true; });
         nav.addEventListener('mouseleave', function () {
-            positionTo(getActiveLink(), true);
+            overNav = false;
+            positionTo(activeLink, true);
         });
 
         window.addEventListener('resize', function () {
-            positionTo(getActiveLink(), false);
+            positionTo(activeLink, false);
         });
 
-        /* Re-position after SPA navigation — Angular updates .current_page_item
-           asynchronously, so a short delay ensures the class has been applied. */
+        /* Follow the tab AngularJS actually marks active. The observer fires
+           the moment .current_page_item is committed on the NEW tab, so the
+           resting position is always correct and never stale. While the
+           pointer is on the navbar, hover owns the pill, so we only move it
+           here when the user is not hovering. */
+        if (typeof MutationObserver !== 'undefined') {
+            var mo = new MutationObserver(function () {
+                var a = activeFromDom();
+                if (!a || a === activeLink) return;
+                activeLink = a;
+                if (!overNav) positionTo(activeLink, true);
+            });
+            mo.observe(nav, { subtree: true, attributes: true, attributeFilter: ['class'] });
+        }
+
+        /* Keyboard/programmatic navigation (e.g. the 1-9 shortcuts) changes
+           the hash without a click; reconcile from it as a fallback. */
         window.addEventListener('hashchange', function () {
-            setTimeout(function () { positionTo(getActiveLink(), true); }, 150);
+            var a = linkFromHash();
+            if (a) {
+                activeLink = a;
+                if (!overNav) positionTo(activeLink, true);
+            }
         });
     }
 
