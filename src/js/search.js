@@ -606,6 +606,14 @@
     var _dirty         = false; // true when in-memory changes not yet saved to DB
     var LS_KEY         = 'ngThemeSettings';
 
+    /* Collection fields are held in _settings as JSON *strings* (the shape the
+       get/set API and every caller expects), but persisted as native
+       objects/arrays so their quotes are NOT double-escaped inside the
+       ThemeSettings blob.  Combined with diff-from-defaults persistence and
+       pruning of empty override fields, this keeps the stored value well under
+       Domoticz's hard 2500-char Preferences cap (issue #203). */
+    var COLLECTION_FIELDS = ['deviceIconOverrides', 'userPresets', 'toastBlacklist'];
+
     /* ── Domoticz API helper ──────────────────────────────────────── */
 
     function apiCall(params) {
@@ -673,7 +681,7 @@
             if (!scope) return;
             scope.$apply(function () {
                 scope.ThemeSettings = scope.ThemeSettings || {};
-                scope.ThemeSettings[THEME_NAME] = _settings;
+                scope.ThemeSettings[THEME_NAME] = serializeSettings();
             });
         } catch (e) {}
         _dirty = true;
@@ -694,7 +702,7 @@
             }
             scope.$apply(function () {
                 scope.ThemeSettings = scope.ThemeSettings || {};
-                scope.ThemeSettings[THEME_NAME] = _settings;
+                scope.ThemeSettings[THEME_NAME] = serializeSettings();
             });
             scope.StoreSettings();
             _dirty = false;
@@ -757,8 +765,9 @@
                 _updateAngularScope();
                 return;
             }
-            // Legacy path: store as a JSON user variable
-            var json = JSON.stringify(_settings);
+            // Legacy path: store as a JSON user variable (compact form too, so
+            // the user-variable value stays small and round-trips identically).
+            var json = JSON.stringify(serializeSettings());
             if (_uvarIdx) {
                 apiCall({
                     type: 'command', param: 'updateuservariable',
@@ -783,6 +792,72 @@
 
     /* ── Settings persistence ─────────────────────────────────────── */
 
+    /* Strip empty/default fields from each device-icon override.  A stored
+       entry can carry up to 10 fields (icon, iconOn/Off/Open/Close/Stop,
+       keepColor, on, off, name) but most are blank — keeping only the set
+       ones cuts a typical entry from ~230 to ~90 chars, the single biggest
+       contributor to ThemeSettings bloat (issue #203). */
+    function pruneOverrides(ov) {
+        if (!ov || typeof ov !== 'object') return {};
+        var KEEP = ['icon', 'iconOn', 'iconOff', 'iconOpen', 'iconClose',
+                    'iconStop', 'on', 'off', 'name'];
+        var out = {};
+        Object.keys(ov).forEach(function (idx) {
+            var s = ov[idx] || {};
+            var e = {};
+            KEEP.forEach(function (f) { if (s[f]) e[f] = s[f]; });
+            if (s.keepColor) e.keepColor = true; // only store when enabled
+            if (Object.keys(e).length) out[idx] = e;
+        });
+        return out;
+    }
+
+    /* Build the compact object actually written to storage: only settings that
+       differ from DEFAULTS, collection fields as pruned NATIVE objects/arrays
+       (omitted entirely when empty), and session-only keys excluded.  Keeping
+       this small is what prevents the ThemeSettings sValue from exceeding
+       Domoticz's 2500-char cap (issue #203). */
+    function serializeSettings() {
+        var out = {};
+        if (!_settings) return out;
+        Object.keys(_settings).forEach(function (key) {
+            if (SESSION_ONLY_KEYS.indexOf(key) !== -1) return;
+            var v = _settings[key];
+            if (COLLECTION_FIELDS.indexOf(key) !== -1) {
+                var parsed;
+                try { parsed = (typeof v === 'string') ? JSON.parse(v || 'null') : v; }
+                catch (e) { parsed = null; }
+                if (key === 'deviceIconOverrides') { parsed = pruneOverrides(parsed); }
+                if (!parsed || typeof parsed !== 'object') { return; }
+                if (Array.isArray(parsed) ? !parsed.length : !Object.keys(parsed).length) { return; }
+                out[key] = parsed; // native form — no double-escaping in the blob
+                return;
+            }
+            if (!(key in DEFAULTS) || v !== DEFAULTS[key]) { out[key] = v; }
+        });
+        return out;
+    }
+
+    /* Inverse of serializeSettings: layer stored values over DEFAULTS and
+       convert collection fields back to the JSON-string form callers expect.
+       Accepts both the new compact form (native collections, diff only) and
+       the legacy form (collections already strings, every key present), so
+       existing installs upgrade transparently. */
+    function deserializeSettings(stored) {
+        var norm = {};
+        if (stored && typeof stored === 'object') {
+            Object.keys(stored).forEach(function (key) {
+                var v = stored[key];
+                if (COLLECTION_FIELDS.indexOf(key) !== -1 && v != null && typeof v !== 'string') {
+                    norm[key] = JSON.stringify(v);
+                } else {
+                    norm[key] = v;
+                }
+            });
+        }
+        return Object.assign({}, DEFAULTS, norm);
+    }
+
     function loadFromLocalStorage() {
         try {
             var stored = localStorage.getItem(LS_KEY);
@@ -805,16 +880,16 @@
                 return loadFromGetsettings().then(function (stored) {
                     if (stored) {
                         // Settings already persisted via new API — use them.
-                        _settings = Object.assign({}, DEFAULTS, stored);
+                        _settings = deserializeSettings(stored);
                     } else {
                         // Nothing in ThemeSettings yet; pull from user variables
                         // as a one-time migration source (read-only — saves will
                         // now go through the new API).
                         return loadJsonUvar().then(function (migrated) {
-                            _settings = Object.assign({}, DEFAULTS, migrated || {});
+                            _settings = deserializeSettings(migrated);
                             return _settings;
                         }).catch(function () {
-                            _settings = Object.assign({}, DEFAULTS);
+                            _settings = deserializeSettings(null);
                             return _settings;
                         });
                     }
@@ -822,10 +897,10 @@
                 }).catch(function () {
                     // getsettings failed — degrade to user variables.
                     return loadJsonUvar().then(function (stored) {
-                        _settings = Object.assign({}, DEFAULTS, stored || {});
+                        _settings = deserializeSettings(stored);
                         return _settings;
                     }).catch(function () {
-                        _settings = Object.assign({}, DEFAULTS, loadFromLocalStorage() || {});
+                        _settings = deserializeSettings(loadFromLocalStorage());
                         return _settings;
                     });
                 }).then(function (s) {
@@ -838,12 +913,12 @@
             _useNewApi    = false;
             return loadJsonUvar().then(function (stored) {
                 _apiAvailable = true;
-                _settings = Object.assign({}, DEFAULTS, stored || {});
+                _settings = deserializeSettings(stored);
                 saveToLocalStorage();
                 return _settings;
             }).catch(function () {
                 _apiAvailable = false;
-                _settings = Object.assign({}, DEFAULTS, loadFromLocalStorage() || {});
+                _settings = deserializeSettings(loadFromLocalStorage());
                 return _settings;
             });
         });
