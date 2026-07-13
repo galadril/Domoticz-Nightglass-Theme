@@ -83,7 +83,7 @@ function applyHighchartsTheme(isDark) {
         tooltip:  'rgba(255, 255, 255, 0.97)',
         series:   ['#2a7de1','#2e8c58','#c07818','#d63b3b','#9c5fe0','#e05535','#0288d1','#4caf50','#8e24aa','#546e7a']
     };
-    Highcharts.setOptions({
+    var opts = {
         colors: c.series,
         chart: {
             backgroundColor: 'transparent',
@@ -156,7 +156,41 @@ function applyHighchartsTheme(isDark) {
             menuItemStyle:      { color: c.textSoft },
             menuItemHoverStyle: { background: 'rgba(' + c.accentRgb + ', 0.12)', color: c.text }
         }
-    });
+    };
+
+    /* Defaults for charts created from now on. */
+    Highcharts.setOptions(opts);
+
+    /* setOptions only affects future charts — any chart already rendered
+       keeps its baked-in colors (most visibly the tooltip) until the page is
+       refreshed. Push the new palette onto every live chart so an automatic
+       or manual theme switch recolors them immediately. Axis options must be
+       applied per-axis because chart.update() with a single xAxis/yAxis
+       object only touches the first axis of that type. */
+    var charts = Highcharts.charts || [];
+    for (var i = 0; i < charts.length; i++) {
+        var chart = charts[i];
+        if (!chart || !chart.options || typeof chart.update !== 'function') continue;
+        try {
+            chart.update({
+                colors: opts.colors,
+                chart: { plotBorderColor: opts.chart.plotBorderColor, style: opts.chart.style },
+                legend: opts.legend,
+                tooltip: opts.tooltip,
+                plotOptions: opts.plotOptions,
+                credits: opts.credits,
+                navigation: opts.navigation
+            }, false);
+            var ax;
+            for (ax = 0; chart.xAxis && ax < chart.xAxis.length; ax++) {
+                chart.xAxis[ax].update(opts.xAxis, false);
+            }
+            for (ax = 0; chart.yAxis && ax < chart.yAxis.length; ax++) {
+                chart.yAxis[ax].update(opts.yAxis, false);
+            }
+            chart.redraw(false);
+        } catch (e) { /* leave a chart that refuses to update as-is */ }
+    }
 }
 
 /* Move Highcharts chart titles outside the SVG into a sibling HTML element */
