@@ -340,6 +340,17 @@
         stroke: var(--dz-text-soft) !important;
     }
 
+    /* The .highcharts-button-box rule above darkens the box of EVERY
+       Highcharts button, including the "Reset zoom" button that appears after
+       selecting a chart region. Highcharts leaves that button's label at its
+       default dark #333, so it became unreadable on the dark box. Force button
+       text to the theme text colour — legible on the surface-2 box in both
+       dark and light mode, and auto-adapting on theme switch. #195 */
+    .highcharts-button text,
+    .highcharts-reset-zoom text {
+        fill: var(--dz-text) !important;
+    }
+
 
     @media (prefers-reduced-motion: reduce) {
         *,
