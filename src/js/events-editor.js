@@ -257,6 +257,22 @@
         editor.classList.toggle('dz-tree-open', isMobile() && treeIsOpen(tree));
     }
 
+    /* Pin the full-screen editor right below the navbar. The navbar height
+       varies (collapsed menu, wrapped rows), so measure it live and expose
+       it to the CSS as `--dz-ee-top`. Cleared on desktop. */
+    function setEditorTop() {
+        var editor = editorEl();
+        if (!editor) return;
+        if (!isMobile()) {
+            editor.style.removeProperty('--dz-ee-top');
+            return;
+        }
+        var nav = document.querySelector('.navbar-fixed-top') ||
+                  document.querySelector('.navbar');
+        var top = nav ? Math.max(0, Math.round(nav.getBoundingClientRect().bottom)) : 50;
+        editor.style.setProperty('--dz-ee-top', top + 'px');
+    }
+
     /* ── Editor content offset ─────────────────────────────────────
        Set each visible viewer's Ace/Blockly container `top` to its
        toolbar's real height so the wrapped toolbar is never hidden. */
@@ -389,6 +405,7 @@
         treeObserver = new MutationObserver(syncState);
         treeObserver.observe(tree, { attributes: true, attributeFilter: ['class'] });
 
+        setEditorTop();
         syncState();
         scheduleFix();
         return true;
@@ -412,10 +429,12 @@
         /* fixEditorOffsets is idempotent (acts only on real change and only
            then dispatches "resize"), so binding it here can't loop. */
         window.addEventListener('resize', function () {
+            setEditorTop();
             syncState();
             fixEditorOffsets();
         });
         window.addEventListener('orientationchange', function () {
+            setEditorTop();
             syncState();
             scheduleFix();
         });

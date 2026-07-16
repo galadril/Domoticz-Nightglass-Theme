@@ -1392,17 +1392,30 @@
 
 @media (max-width: 820px) {
 
-    /* Give the editor frame a little more room on narrow screens */
+    /* Full-screen: pin the editor to the viewport, filling everything
+       below the navbar. `--dz-ee-top` is set to the navbar's height by
+       events-editor.js (fallback 50px). This drops the sun-times bar and
+       the copyright footer's wasted space — only the navbar remains. */
     .events-editor {
-        left: 6px !important;
-        right: 6px !important;
+        position: fixed !important;
+        top: var(--dz-ee-top, 50px) !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
     }
 
-    /* Let the editor pane own the full width (the tree floats over it)
-       and allow its flex children to shrink so the tab strip can scroll. */
+    /* Let the editor pane own the full width (the tree floats over it).
+       min-width:0 is essential: without it this flex item refuses to
+       shrink below the tab strip's content width, pushing the tabs off
+       screen instead of letting the strip scroll. */
     .events-editor__editor {
         margin-left: 0 !important;
         min-width: 0;
+        max-width: 100%;
     }
 
     /* ── Script tree → full-width slide-in panel ───────────────── */
@@ -1502,13 +1515,20 @@
         overflow-x: auto;
         overflow-y: visible;
         -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
+        min-width: 0;
         max-width: 100%;
+        scrollbar-width: thin;
+        scrollbar-color: var(--dz-border) transparent;
         padding: 6px 8px 0 58px !important;
     }
 
         .events-editor__file-list::-webkit-scrollbar {
-            height: 0;
+            height: 4px;
+        }
+
+        .events-editor__file-list::-webkit-scrollbar-thumb {
+            background: var(--dz-border);
+            border-radius: 2px;
         }
 
     .events-editor__file {
