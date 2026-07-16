@@ -257,20 +257,36 @@
         editor.classList.toggle('dz-tree-open', isMobile() && treeIsOpen(tree));
     }
 
-    /* Pin the full-screen editor right below the navbar. The navbar height
-       varies (collapsed menu, wrapped rows), so measure it live and expose
-       it to the CSS as `--dz-ee-top`. Cleared on desktop. */
-    function setEditorTop() {
+    /* Full-screen mobile state: pin the editor right below the navbar and
+       lock page scroll so the (mobile-static) navbar can't scroll away and
+       expose a gap. The navbar height varies (collapsed menu, wrapped rows),
+       so measure it live and expose it to the CSS as `--dz-ee-top`.
+       All of this is torn down on desktop or when we leave the page. */
+    function applyMobileState() {
         var editor = editorEl();
+        var active = !!editor && isMobile();
+        var wasActive = document.documentElement.classList.contains('dz-ee-lock');
+        document.documentElement.classList.toggle('dz-ee-lock', active);
+
         if (!editor) return;
-        if (!isMobile()) {
+        if (!active) {
             editor.style.removeProperty('--dz-ee-top');
             return;
+        }
+        /* Reset scroll to the top when first locking, so the (mobile-static)
+           navbar sits at the viewport top and the fixed editor lines up flush
+           beneath it. */
+        if (!wasActive) {
+            try { window.scrollTo(0, 0); } catch (e) {}
         }
         var nav = document.querySelector('.navbar-fixed-top') ||
                   document.querySelector('.navbar');
         var top = nav ? Math.max(0, Math.round(nav.getBoundingClientRect().bottom)) : 50;
         editor.style.setProperty('--dz-ee-top', top + 'px');
+    }
+
+    function unlockScroll() {
+        document.documentElement.classList.remove('dz-ee-lock');
     }
 
     /* ── Editor content offset ─────────────────────────────────────
@@ -405,7 +421,7 @@
         treeObserver = new MutationObserver(syncState);
         treeObserver.observe(tree, { attributes: true, attributeFilter: ['class'] });
 
-        setEditorTop();
+        applyMobileState();
         syncState();
         scheduleFix();
         return true;
@@ -417,10 +433,13 @@
             if (!setup() && tries++ < 40) setTimeout(wait, 500);
         })();
 
-        /* Re-run when navigating (back) to the Events page. */
+        /* Re-run when navigating (back) to the Events page; unlock scroll
+           immediately when leaving so other pages aren't frozen. */
         try {
             var $rootScope = angular.element(document.body).injector().get('$rootScope');
+            $rootScope.$on('$routeChangeStart', unlockScroll);
             $rootScope.$on('$routeChangeSuccess', function () {
+                unlockScroll();
                 setTimeout(setup, 600);
                 setTimeout(setup, 1600);
             });
@@ -429,12 +448,12 @@
         /* fixEditorOffsets is idempotent (acts only on real change and only
            then dispatches "resize"), so binding it here can't loop. */
         window.addEventListener('resize', function () {
-            setEditorTop();
+            applyMobileState();
             syncState();
             fixEditorOffsets();
         });
         window.addEventListener('orientationchange', function () {
-            setEditorTop();
+            applyMobileState();
             syncState();
             scheduleFix();
         });

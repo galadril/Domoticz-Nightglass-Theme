@@ -1418,6 +1418,26 @@
         max-width: 100%;
     }
 
+    /* Lock page scroll while the full-screen editor is active. Bootstrap
+       makes .navbar-fixed-top `position:static` below 979px, so the navbar
+       scrolls away with the page and exposes a gap above our fixed editor.
+       With scrolling disabled the navbar stays put and the editor is flush
+       beneath it; the tree and Ace panes still scroll internally. The class
+       is toggled by events-editor.js only on mobile + on the events page. */
+    html.dz-ee-lock,
+    html.dz-ee-lock body {
+        overflow: hidden !important;
+        height: 100%;
+    }
+
+    /* Keep the navbar (and its expandable menu) above the fixed editor so
+       it stays usable; `position:relative` lets the z-index apply to the
+       otherwise-static mobile navbar. */
+    html.dz-ee-lock .navbar {
+        position: relative;
+        z-index: 1050;
+    }
+
     /* ── Script tree → full-width slide-in panel ───────────────── */
     /* `.events-editor` is position:absolute, so this anchors to it and
        stays clear of the navbar / bottom bar. We force display:flex in
@@ -1459,6 +1479,65 @@
     /* Leave room at the top of the panel for the floating toggle button */
     .events-editor__tree h2 {
         padding-left: 58px;
+        font-size: 12px;
+    }
+
+    /* ── Consistent, touch-sized rows & fonts (like the filter sidebar) ──
+       The desktop tree is tuned for a mouse (12px text, 4-5px rows). On a
+       phone the rows need to be tappable and the type sizes uniform. */
+    .events-editor__search {
+        font-size: 16px !important;   /* 16px avoids iOS zoom on focus */
+        padding: 8px 10px !important;
+        height: auto !important;
+    }
+
+    .events-editor__toolbar {
+        gap: 6px;
+    }
+
+    .events-editor__toolbar-btn {
+        width: 38px !important;
+        height: 38px !important;
+        font-size: 15px !important;
+    }
+
+    .events-editor-folder__header,
+    .events-editor-folder__header:link,
+    .events-editor-folder__header:visited {
+        padding: 11px 10px !important;
+        font-size: 14px;
+        gap: 10px;
+    }
+
+        .events-editor-folder__header i {
+            width: 18px;
+            font-size: 15px;
+        }
+
+    .events-editor-tree-item__file,
+    .events-editor-tree-item__file:link,
+    .events-editor-tree-item__file:visited {
+        padding: 11px 10px 11px 12px !important;
+        font-size: 14px;
+        gap: 10px;
+    }
+
+        .events-editor-tree-item__file::before {
+            width: 7px;
+            height: 7px;
+        }
+
+    .events-editor-folder__count {
+        font-size: 11px;
+        padding: 2px 8px;
+        min-width: 20px;
+    }
+
+    /* Bigger status labels so they read at the larger row size */
+    .events-editor-tree-item__file .label-important,
+    .events-editor-tree-item__file .label-warning {
+        font-size: 10px !important;
+        padding: 2px 6px !important;
     }
 
     /* Dimmed backdrop behind the open panel (element injected by JS) */
