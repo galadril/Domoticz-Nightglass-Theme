@@ -105,6 +105,39 @@
         if (_safetyTimer) { clearTimeout(_safetyTimer); _safetyTimer = null; }
         var tb = document.getElementById('topBar');
         if (tb) tb.classList.add('ng-topbar--ready');
+        injectMoreBtn();
+    }
+
+    /* ══ Mobile "More" toggle ═══════════════════════════════════════
+       Reveals the clock/sun times (#tbTimeSun) and page action links
+       (#tbLinks — Custom Graph, Forecast, Add Scene, …) that the clipped
+       single-row bar hides on phones. CSS (layout.css) does the reveal via
+       `.dz-tb-expanded`; this just injects the button. Re-runs every reveal
+       so it survives per-page topbar re-renders. */
+    function injectMoreBtn() {
+        var topBar = document.getElementById('topBar');
+        if (!topBar || document.getElementById('dz-tb-more-btn')) return;
+        /* Anchor before the groups we reveal; nothing to reveal → no button */
+        var anchor = document.getElementById('tbTimeSun') ||
+                     document.getElementById('tbLinks');
+        if (!anchor) return;
+
+        var btn = document.createElement('button');
+        btn.id   = 'dz-tb-more-btn';
+        btn.type = 'button';
+        btn.setAttribute('aria-label', 'More top-bar tools');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.innerHTML = '<i class="fa-solid fa-ellipsis"></i>';
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var open = topBar.classList.toggle('dz-tb-expanded');
+            btn.classList.toggle('dz-tb-more-btn--open', open);
+            btn.setAttribute('aria-expanded', String(open));
+        });
+        /* Direct child of #topBar (flex-shrink:0) so it stays visible in the
+           clipped row and stays on row 1 when the bar expands. */
+        topBar.insertBefore(btn, anchor);
     }
 
     function scheduleRevealFallback() {

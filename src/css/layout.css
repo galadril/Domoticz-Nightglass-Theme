@@ -977,6 +977,91 @@ i.dz-fa-nav {
     #tbLinks { display: none !important; }
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   TOP BAR — mobile "More" collapsible
+   ──────────────────────────────────────────────────────────────────
+   On phones the bar is a single clipped row (overflow:hidden, nowrap),
+   so the clock + sun times (#tbTimeSun) and the page action buttons
+   (#tbLinks — e.g. Custom Graph, Forecast, Add Scene) fall off the edge.
+   A "⋯ More" button (injected by room-filter.js) toggles `.dz-tb-expanded`
+   on #topBar, which lets the bar grow and reveals those groups as stacked,
+   touch-sized rows. Collapsed is the default. (#tbFiltRooms stays hidden —
+   it's replaced by the filter pill bar.)
+   ────────────────────────────────────────────────────────────────── */
+
+/* The More button only exists / shows on mobile */
+#dz-tb-more-btn { display: none; }
+
+@media (max-width: 767px) {
+    #topBar { position: relative; }
+
+    /* Collapsed default: keep the extras out of the clipped row */
+    #tbTimeSun,
+    #tbLinks {
+        display: none !important;
+    }
+
+    #dz-tb-more-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: var(--topbar-h);
+        min-width: 32px;
+        padding: 0 8px;
+        box-sizing: border-box;
+        background: var(--dz-surface-2);
+        border: 1px solid var(--dz-border);
+        border-radius: 8px;
+        color: var(--dz-text-muted);
+        font-size: 13px;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: color 0.15s, border-color 0.15s;
+    }
+
+        #dz-tb-more-btn:hover,
+        #dz-tb-more-btn.dz-tb-more-btn--open {
+            color: var(--dz-accent);
+            border-color: var(--dz-accent);
+        }
+
+    /* Expanded: bar grows and stacks the revealed groups as full-width rows */
+    #topBar.dz-tb-expanded {
+        flex-wrap: wrap !important;
+        overflow: visible !important;
+        row-gap: 8px !important;
+    }
+
+        #topBar.dz-tb-expanded #tbTimeSun,
+        #topBar.dz-tb-expanded #tbLinks {
+            display: flex !important;
+            flex: 1 0 100%;
+            width: 100%;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        /* Un-hide the pieces the narrow-width rules dropped — there's room now */
+        #topBar.dz-tb-expanded #tbIconSun,
+        #topBar.dz-tb-expanded #jsTbTime,
+        #topBar.dz-tb-expanded #tbSunGroup {
+            display: inline-flex !important;
+        }
+
+        #topBar.dz-tb-expanded #tbLinks a.btn span[data-i18n] {
+            display: inline !important;
+        }
+
+        /* Touch-sized action buttons in the expanded panel */
+        #topBar.dz-tb-expanded #tbLinks a.btn,
+        #topBar.dz-tb-expanded #tbLinks a.btn.btn-xs {
+            height: auto !important;
+            min-height: 38px !important;
+            padding: 8px 14px !important;
+            font-size: 13px !important;
+        }
+}
+
 
 /* ══════════════════════════════════════════════════════════════════
    5.  CONTENT PANELS & SECTIONS

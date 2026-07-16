@@ -222,11 +222,63 @@
     font-variant-numeric: tabular-nums;
 }
 
-/* ── Hide bell on mobile to reduce navbar clutter ───────────────── */
+/* ── Bell on mobile ─────────────────────────────────────────────── */
+/* The bell is the only way to open the notification panel on a touch
+   device (the `N` shortcut needs a keyboard), so it must be reachable.
+   Landscape has navbar room, so it stays inline there; portrait doesn't,
+   so we lift it out into a floating button stacked above the back-to-top
+   button (see .gz-back-to-top) instead of crowding the navbar. */
 
 @media (max-width: 767px) {
     #ng-notif-li {
-        display: none !important;
+        display: flex !important;
+        align-items: center;
+        flex-shrink: 0;
+        list-style: none;
+    }
+
+    #ng-notif-btn {
+        padding: 0 8px !important;
+        font-size: 1.1rem;
+    }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+    /* Float the bell as a FAB, bottom-right, just above the back-to-top
+       button (which is 40px tall at bottom:24px / right:20px). */
+    #ng-notif-li {
+        position: fixed;
+        right: 20px;
+        bottom: 76px;
+        margin: 0;
+        z-index: 1200;
+    }
+
+    #ng-notif-btn {
+        width: 44px;
+        height: 44px;
+        padding: 0 !important;
+        justify-content: center;
+        border-radius: 12px !important;
+        color: var(--dz-text-soft) !important;
+        background: rgba(var(--dz-surface-rgb), 0.9) !important;
+        border: 1px solid rgba(var(--dz-accent-rgb), 0.25) !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        font-size: 1.15rem;
+    }
+
+        #ng-notif-btn:hover,
+        #ng-notif-btn:active {
+            color: var(--dz-accent) !important;
+            border-color: rgba(var(--dz-accent-rgb), 0.55) !important;
+        }
+
+    /* Re-anchor the unread dot to the FAB's corner */
+    .ng-notif-badge {
+        top: 9px;
+        right: 9px;
     }
 }
 

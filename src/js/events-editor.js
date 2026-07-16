@@ -196,6 +196,278 @@
 
 
 
+/* ── Events Editor — mobile layout glue ────────────────────────────
+   On phones / small tablets the script tree can't share the width with
+   the editor, so the CSS (src/css/events-editor.css) turns it into a
+   full-width slide-in panel. This module supplies the interactive glue
+   that CSS alone can't do:
+     • injects the dimmed backdrop behind the open panel and mirrors
+       AngularJS's `.ng-hide` state onto `.events-editor` as
+       `.dz-tree-open`; the splitter button opens/closes it, a backdrop
+       tap or opening a script closes it;
+     • fixes the Ace/Blockly content offset — that content is absolutely
+       positioned at a fixed `top` sized for a one-row desktop toolbar,
+       so the wrapped mobile toolbar would be hidden behind it. We set
+       `top` to the toolbar's real height and nudge Ace/Blockly to
+       re-measure (both listen for window "resize");
+     • repositions the tab-strip pop-out menus (new script / tab menu)
+       as fixed sheets so the strip's horizontal scroll can't clip them,
+       and toggles the Lua / dzVents submenus on tap (no hover on touch).
+   Angular keeps ownership of tree visibility (ng-show=isListExpanded);
+   we only ever toggle it through the existing splitter button, so the
+   Angular state and the DOM never diverge.
+   ─────────────────────────────────────────────────────────────────── */
+(function () {
+    'use strict';
+
+    var MOBILE_MQ = '(max-width: 820px)';
+
+    function editorEl()   { return document.querySelector('.events-editor'); }
+    function treeEl()     { return document.querySelector('.events-editor__tree'); }
+    function splitterEl() { return document.querySelector('.events-editor__splitter'); }
+
+    function isMobile()   { return window.matchMedia(MOBILE_MQ).matches; }
+
+    /* AngularJS ng-show toggles the `.ng-hide` class; absence = open. */
+    function treeIsOpen(tree) {
+        return !!tree && !tree.classList.contains('ng-hide');
+    }
+
+    /* Toggle the tree via the splitter button so Angular owns the state.
+       Only ever called while the panel is open, so this always closes. */
+    function closeDrawer() {
+        var sp = splitterEl();
+        if (sp) sp.click();
+    }
+
+    function ensureBackdrop(editor) {
+        var bd = editor.querySelector('.events-editor__tree-backdrop');
+        if (bd) return bd;
+        bd = document.createElement('div');
+        bd.className = 'events-editor__tree-backdrop';
+        bd.addEventListener('click', closeDrawer);
+        editor.appendChild(bd);
+        return bd;
+    }
+
+    function syncState() {
+        var editor = editorEl();
+        var tree = treeEl();
+        if (!editor || !tree) return;
+        editor.classList.toggle('dz-tree-open', isMobile() && treeIsOpen(tree));
+    }
+
+    /* Full-screen mobile state: pin the editor right below the navbar and
+       lock page scroll so the (mobile-static) navbar can't scroll away and
+       expose a gap. The navbar height varies (collapsed menu, wrapped rows),
+       so measure it live and expose it to the CSS as `--dz-ee-top`.
+       All of this is torn down on desktop or when we leave the page. */
+    function applyMobileState() {
+        var editor = editorEl();
+        var active = !!editor && isMobile();
+        var wasActive = document.documentElement.classList.contains('dz-ee-lock');
+        document.documentElement.classList.toggle('dz-ee-lock', active);
+
+        if (!editor) return;
+        if (!active) {
+            editor.style.removeProperty('--dz-ee-top');
+            return;
+        }
+        /* Reset scroll to the top when first locking, so the (mobile-static)
+           navbar sits at the viewport top and the fixed editor lines up flush
+           beneath it. */
+        if (!wasActive) {
+            try { window.scrollTo(0, 0); } catch (e) {}
+        }
+        var nav = document.querySelector('.navbar-fixed-top') ||
+                  document.querySelector('.navbar');
+        var top = nav ? Math.max(0, Math.round(nav.getBoundingClientRect().bottom)) : 50;
+        editor.style.setProperty('--dz-ee-top', top + 'px');
+    }
+
+    function unlockScroll() {
+        document.documentElement.classList.remove('dz-ee-lock');
+    }
+
+    /* ── Editor content offset ─────────────────────────────────────
+       Set each visible viewer's Ace/Blockly container `top` to its
+       toolbar's real height so the wrapped toolbar is never hidden. */
+    function fixEditorOffsets() {
+        var editor = editorEl();
+        if (!editor) return;
+        var mobile = isMobile();
+        var viewers = editor.querySelectorAll('.events-editor-file');
+        var needWindowResize = false;
+
+        for (var i = 0; i < viewers.length; i++) {
+            var header  = viewers[i].querySelector('.events-editor-file__header');
+            var content = viewers[i].querySelector('.events-editor-file__content');
+            if (!header || !content) continue;   /* e.g. current-states table */
+
+            var target = mobile ? (header.offsetHeight > 0 ? header.offsetHeight + 'px' : null)
+                                : '';             /* '' restores desktop stylesheet */
+            if (target === null || content.style.top === target) continue;
+
+            content.style.top = target;
+
+            /* Nudge that viewer's editor to re-measure its resized box.
+               Ace stores its instance on the container as `.env.editor`
+               and can resize directly; Blockly (and anything else) has to
+               be told via a window "resize" event, which it listens for. */
+            var env = content.env;
+            if (env && env.editor && typeof env.editor.resize === 'function') {
+                try { env.editor.resize(true); } catch (e) { needWindowResize = true; }
+            } else {
+                needWindowResize = true;
+            }
+        }
+
+        if (needWindowResize) {
+            try { window.dispatchEvent(new Event('resize')); } catch (e) {}
+        }
+    }
+
+    /* Async mounts (Ace/Blockly, interpreter-specific toolbar controls)
+       settle over a few hundred ms — re-apply across a short burst. */
+    function scheduleFix() {
+        [60, 260, 700, 1500].forEach(function (d) { setTimeout(fixEditorOffsets, d); });
+    }
+
+    /* ── Tab-strip pop-out menus ───────────────────────────────────
+       Reposition the open Bootstrap dropdown as a fixed sheet anchored
+       under its toggle, so the tab strip's overflow can't clip it. */
+    function positionMenu(toggle) {
+        var wrap = toggle.parentNode;
+        if (!wrap) return;
+        var menu = wrap.querySelector('.dropdown-menu');
+        if (!menu) return;
+
+        if (!wrap.classList.contains('open') || !isMobile()) {
+            menu.style.position = '';
+            menu.style.top = menu.style.left = menu.style.right = '';
+            menu.style.margin = menu.style.zIndex = '';
+            return;
+        }
+
+        var r = toggle.getBoundingClientRect();
+        var mw = menu.offsetWidth || 200;
+        menu.style.position = 'fixed';
+        menu.style.top = Math.round(r.bottom + 4) + 'px';
+        menu.style.left = Math.round(
+            Math.min(Math.max(8, r.left), window.innerWidth - mw - 8)) + 'px';
+        menu.style.right = 'auto';
+        menu.style.margin = '0';
+        menu.style.zIndex = '3000';
+    }
+
+    function onEditorClick(e) {
+        if (!isMobile()) return;
+        var t = e.target;
+        if (!t || !t.closest) return;
+
+        /* Opening a script reveals the editor: close the panel. */
+        if (t.closest('.events-editor-tree-item__file') && treeIsOpen(treeEl())) {
+            setTimeout(closeDrawer, 0);
+            return;
+        }
+
+        /* Switching tabs may change the toolbar height. */
+        if (t.closest('.events-editor__file') && !t.closest('[data-toggle="dropdown"]')) {
+            scheduleFix();
+        }
+
+        /* Lua / dzVents submenu label: toggle it open instead of following
+           the (empty) link or closing the whole menu. */
+        var subLink = t.closest('.dropdown-submenu > a');
+        if (subLink) {
+            e.preventDefault();
+            e.stopPropagation();
+            var li = subLink.parentNode;
+            var wasOpen = li.classList.contains('dz-submenu-open');
+            var siblings = li.parentNode.querySelectorAll('.dropdown-submenu.dz-submenu-open');
+            for (var s = 0; s < siblings.length; s++) siblings[s].classList.remove('dz-submenu-open');
+            if (!wasOpen) li.classList.add('dz-submenu-open');
+            return;
+        }
+
+        /* A dropdown toggle was tapped — reposition its menu after
+           Bootstrap has toggled `.open`. */
+        var toggle = t.closest('[data-toggle="dropdown"]');
+        if (toggle) setTimeout(function () { positionMenu(toggle); }, 0);
+    }
+
+    var treeObserver = null;
+
+    /* Idempotent: safe to call repeatedly (route changes recreate the DOM). */
+    function setup() {
+        var editor = editorEl();
+        var tree = treeEl();
+        if (!editor || !tree) return false;
+
+        ensureBackdrop(editor);
+
+        if (!editor.dataset.dzMobileBound) {
+            editor.dataset.dzMobileBound = '1';
+            editor.addEventListener('click', onEditorClick);
+            /* Keep an open pop-out anchored while the tab strip scrolls. */
+            editor.addEventListener('scroll', function (e) {
+                if (!isMobile()) return;
+                var open = editor.querySelector('.open > [data-toggle="dropdown"]');
+                if (open) positionMenu(open);
+            }, true);
+        }
+
+        if (treeObserver) treeObserver.disconnect();
+        treeObserver = new MutationObserver(syncState);
+        treeObserver.observe(tree, { attributes: true, attributeFilter: ['class'] });
+
+        applyMobileState();
+        syncState();
+        scheduleFix();
+        return true;
+    }
+
+    function init() {
+        var tries = 0;
+        (function wait() {
+            if (!setup() && tries++ < 40) setTimeout(wait, 500);
+        })();
+
+        /* Re-run when navigating (back) to the Events page; unlock scroll
+           immediately when leaving so other pages aren't frozen. */
+        try {
+            var $rootScope = angular.element(document.body).injector().get('$rootScope');
+            $rootScope.$on('$routeChangeStart', unlockScroll);
+            $rootScope.$on('$routeChangeSuccess', function () {
+                unlockScroll();
+                setTimeout(setup, 600);
+                setTimeout(setup, 1600);
+            });
+        } catch (e) {}
+
+        /* fixEditorOffsets is idempotent (acts only on real change and only
+           then dispatches "resize"), so binding it here can't loop. */
+        window.addEventListener('resize', function () {
+            applyMobileState();
+            syncState();
+            fixEditorOffsets();
+        });
+        window.addEventListener('orientationchange', function () {
+            applyMobileState();
+            syncState();
+            scheduleFix();
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+
+
+
 /* ── Automation Wizard — Ace editor on the review/code step ─────────
    Replaces the plain .aw-code-review textarea with a full Ace editor
    (Lua mode, user's saved theme) and keeps ng-model in sync.
