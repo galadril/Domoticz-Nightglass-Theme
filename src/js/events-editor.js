@@ -196,6 +196,121 @@
 
 
 
+/* ── Events Editor — mobile script-tree drawer ─────────────────────
+   On phones / small tablets the script tree can't share the width with
+   the editor, so the CSS (src/css/events-editor.css) turns it into an
+   off-canvas drawer. This module supplies the interactive glue:
+     • injects the dimmed backdrop element behind the open drawer,
+     • mirrors AngularJS's `.ng-hide` state onto `.events-editor` as
+       `.dz-tree-open` so the backdrop shows/hides via CSS,
+     • closes the drawer when the backdrop is tapped,
+     • auto-closes the drawer after a script is opened, so the editor
+       is immediately visible.
+   The tree's visibility itself stays owned by Angular (ng-show=
+   $ctrl.isListExpanded); we only ever toggle it through the existing
+   splitter button so Angular's state and the DOM never diverge.
+   ─────────────────────────────────────────────────────────────────── */
+(function () {
+    'use strict';
+
+    var MOBILE_MQ = '(max-width: 820px)';
+
+    function editorEl()   { return document.querySelector('.events-editor'); }
+    function treeEl()     { return document.querySelector('.events-editor__tree'); }
+    function splitterEl() { return document.querySelector('.events-editor__splitter'); }
+
+    function isMobile()   { return window.matchMedia(MOBILE_MQ).matches; }
+
+    /* AngularJS ng-show toggles the `.ng-hide` class; absence = open. */
+    function treeIsOpen(tree) {
+        return !!tree && !tree.classList.contains('ng-hide');
+    }
+
+    /* Toggle the tree via the splitter button so Angular owns the state.
+       Only ever called while the drawer is open, so this always closes. */
+    function closeDrawer() {
+        var sp = splitterEl();
+        if (sp) sp.click();
+    }
+
+    function ensureBackdrop(editor) {
+        var bd = editor.querySelector('.events-editor__tree-backdrop');
+        if (bd) return bd;
+        bd = document.createElement('div');
+        bd.className = 'events-editor__tree-backdrop';
+        bd.addEventListener('click', closeDrawer);
+        /* Insert before the editor pane so stacking order is predictable. */
+        editor.appendChild(bd);
+        return bd;
+    }
+
+    function syncState() {
+        var editor = editorEl();
+        var tree = treeEl();
+        if (!editor || !tree) return;
+        editor.classList.toggle('dz-tree-open', isMobile() && treeIsOpen(tree));
+    }
+
+    var treeObserver = null;
+
+    /* Idempotent: safe to call repeatedly (route changes recreate the DOM). */
+    function setup() {
+        var editor = editorEl();
+        var tree = treeEl();
+        if (!editor || !tree) return false;
+
+        ensureBackdrop(editor);
+
+        /* Bind the drawer-closing click handler once per editor element. */
+        if (!editor.dataset.dzDrawerBound) {
+            editor.dataset.dzDrawerBound = '1';
+            editor.addEventListener('click', function (e) {
+                if (!isMobile()) return;
+                var t = e.target;
+                if (t && t.closest && t.closest('.events-editor-tree-item__file') &&
+                        treeIsOpen(treeEl())) {
+                    setTimeout(closeDrawer, 0);
+                }
+            });
+        }
+
+        /* (Re)attach the class observer to the current tree element. */
+        if (treeObserver) treeObserver.disconnect();
+        treeObserver = new MutationObserver(syncState);
+        treeObserver.observe(tree, { attributes: true, attributeFilter: ['class'] });
+
+        syncState();
+        return true;
+    }
+
+    function init() {
+        var tries = 0;
+        (function wait() {
+            if (!setup() && tries++ < 40) setTimeout(wait, 500);
+        })();
+
+        /* Re-run when navigating (back) to the Events page. */
+        try {
+            var $rootScope = angular.element(document.body).injector().get('$rootScope');
+            $rootScope.$on('$routeChangeSuccess', function () {
+                setTimeout(setup, 600);
+                setTimeout(setup, 1600);
+            });
+        } catch (e) {}
+
+        window.addEventListener('resize', syncState);
+        window.addEventListener('orientationchange', syncState);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+
+
+
 /* ── Automation Wizard — Ace editor on the review/code step ─────────
    Replaces the plain .aw-code-review textarea with a full Ace editor
    (Lua mode, user's saved theme) and keeps ng-model in sync.
