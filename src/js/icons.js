@@ -531,6 +531,24 @@
         fo.appendChild(iEl);
         iconMap.set(el, fo);
 
+        /* Remove any leftover overlay before inserting the fresh one.
+           Domoticz redraws a floorplan device by replaceChild()-ing a brand
+           new <image> node over the old one on every state refresh AND on
+           every hover (Device.popup → popupRedraw → htmlMinimum).  The old
+           <image>'s foreignObject overlay is left behind as the new node's
+           sibling, so without this the theme icon and the original PNG stack
+           on top of each other — visible as a double icon, especially on
+           hover (issue #209).  iconMap-based orphan cleanup can miss this
+           when the removed node was never tracked, so we also clear it by
+           DOM adjacency here, which is unconditionally correct. */
+        var adj = el.nextElementSibling;
+        while (adj && adj.getAttribute &&
+               (adj.getAttribute('class') || '').indexOf('dz-fp-icon-wrap') !== -1) {
+            var nextAdj = adj.nextElementSibling;
+            adj.parentNode.removeChild(adj);
+            adj = nextAdj;
+        }
+
         el.parentNode.insertBefore(fo, el.nextSibling);
         return true;
     }
@@ -1289,12 +1307,28 @@
         $rootScope.$on('$viewContentLoaded', function () {
             scheduleBurst();
         });
+        /* Live device/scene updates.  Domoticz's websocket layer broadcasts
+           'device_update' / 'scene_update' on $rootScope whenever a device's
+           state changes, then runs a $digest that re-evaluates ng-src on the
+           icon <img> (dashboard) or replaceChild()s a fresh SVG <image>
+           (floorplan).  We schedule a burst so the icon is re-resolved and
+           re-coloured for the new state (issue #211).
+
+           This replaces the previous $rootScope.$watch(scheduleSafetyPass)
+           hook, which fired on EVERY digest (many times per second) and
+           degraded performance over time.  Keying off the update broadcasts
+           instead means a refresh runs only when a device actually changes,
+           while still guaranteeing live icons without a page reload. */
+        $rootScope.$on('device_update', function () {
+            scheduleBurst();
+        });
+        $rootScope.$on('scene_update', function () {
+            scheduleBurst();
+        });
         /* NOTE: Do NOT use $rootScope.$watch here. Angular evaluates the
            watch expression on every $digest cycle (which fires many times
            per second in an active Domoticz). Any side-effect in the watch
-           expression runs continuously and degrades performance over time.
-           The MutationObserver on the main view already catches all DOM
-           changes from WebSocket-driven re-renders. */
+           expression runs continuously and degrades performance over time. */
     }
 
     if (document.readyState === 'loading') {
