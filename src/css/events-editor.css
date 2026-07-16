@@ -1632,6 +1632,15 @@
         height: auto !important;
     }
 
+    /* Guarantee the Ace/Blockly editor stays usable. Its container is
+       absolutely positioned (top = toolbar height, bottom = 21px); in
+       landscape the viewport is short and a wrapped toolbar can squeeze it
+       down to a single line. min-height keeps a workable editor area even
+       then (it simply extends below and scrolls internally). */
+    .events-editor-file__content.js-script-content {
+        min-height: 45dvh;
+    }
+
         .events-editor-file__header .form-inline {
             gap: 8px;
         }
@@ -1714,10 +1723,28 @@
     }
 }
 
-/* Landscape phones are short — keep the name input on the same row as
-   its state toggle so the header doesn't eat the whole editor height. */
+/* Landscape phones are short — keep the toolbar as flat as possible so it
+   doesn't eat the limited height and squeeze the editor. There's more width
+   here, so let the name share its row and the right-hand controls flow
+   inline (wrapping only when they truly must). */
 @media (max-width: 820px) and (orientation: landscape) {
     .events-editor-file__name {
-        flex: 1 1 220px;
+        flex: 1 1 200px;
+    }
+
+    .events-editor-file__header .pull-right {
+        width: auto;
+        margin-left: auto;
+    }
+
+    /* Slightly tighter controls reclaim vertical space */
+    .events-editor-file__header .btn,
+    .events-editor-file__header .pull-right > a.btn,
+    .events-editor-file__type .add-on,
+    .events-editor-file__type select,
+    .events-editor-file__type > select,
+    .ace-settings__theme,
+    .ace-settings .btn-xs {
+        min-height: 32px !important;
     }
 }
