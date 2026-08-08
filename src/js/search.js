@@ -3763,19 +3763,29 @@
                     'Your settings will revert to the instance defaults.\n' +
                     'Local storage will also be cleared.'
                 )) return;
-                // Clear in-memory state
+                // Clear in-memory state immediately so the live page reflects
+                // defaults even while the API call is in flight.
                 _settings = deserializeSettings(null);
                 _lastupdate = '';
                 saveToLocalStorage();
                 applySettings();
-                // POST the server reset
+                // POST the server reset, then re-render the panel only after
+                // confirming the server acknowledged the deletion.
                 apiPost({
                     type: 'command', param: 'themesettings_set',
                     theme: THEME_NAME, reset: 'true'
                 }).then(function (data) {
                     if (data && data.status === 'OK') {
+                        _lastupdate = data.lastupdate || '';
                         _dirty = false;
                         _showUnsavedToast(false);
+                        // Re-render panel to reflect the cleared state.
+                        var wrap = document.getElementById('ng-theme-settings-wrap');
+                        if (wrap) {
+                            wrap.innerHTML = buildPanel();
+                            bindEvents(wrap);
+                            loadPresets(wrap);
+                        }
                         if (window.ngShowToast) {
                             window.ngShowToast({
                                 icon:     'fa-rotate-left',
@@ -3788,13 +3798,6 @@
                         }
                     }
                 }).catch(function () {});
-                // Re-render panel
-                var wrap = document.getElementById('ng-theme-settings-wrap');
-                if (wrap) {
-                    wrap.innerHTML = buildPanel();
-                    bindEvents(wrap);
-                    loadPresets(wrap);
-                }
             });
         }
 
