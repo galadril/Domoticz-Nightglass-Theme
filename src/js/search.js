@@ -736,8 +736,8 @@
     // (domoticz/domoticz#6950).  Handles all documented error statuses and
     // uses the lastupdate concurrency token to detect conflicts before
     // blindly overwriting another session's changes.
+    var SAVE_BTN_HTML = '<i class="fa-solid fa-floppy-disk"></i> Save to Domoticz';
     function _postThemeSettings(btn) {
-        var origHtml = btn ? (btn.getAttribute('data-orig-html') || btn.innerHTML) : '';
         var json = JSON.stringify(serializeSettings());
         var params = {
             type:  'command',
@@ -753,7 +753,7 @@
         }
 
         function restoreBtn() {
-            if (btn) { btn.innerHTML = origHtml; btn.disabled = false; }
+            if (btn) { btn.innerHTML = SAVE_BTN_HTML; btn.disabled = false; }
         }
 
         return apiPost(params).then(function (data) {
@@ -765,7 +765,7 @@
                 _showUnsavedToast(false);
                 if (btn) {
                     btn.innerHTML = '<i class="fa-solid fa-check"></i> Saved!';
-                    setTimeout(function () { btn.innerHTML = origHtml; btn.disabled = false; }, 2000);
+                    setTimeout(function () { btn.innerHTML = SAVE_BTN_HTML; btn.disabled = false; }, 2000);
                 }
                 return;
             }
