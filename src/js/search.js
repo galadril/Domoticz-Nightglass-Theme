@@ -1906,7 +1906,7 @@
             (!_apiAvailable
                 ? 'API unavailable \u2014 settings are stored in this browser\'s local storage.'
                 : _useNewApi
-                    ? 'Changes apply instantly. Click <strong>Save to Domoticz</strong> to persist across all browsers.' +
+                    ? 'Changes apply instantly. Click <strong>Save to Domoticz</strong> (or Domoticz’s <strong>Apply Settings</strong>) to persist across all browsers.' +
                       (!_perUser ? ' <strong>\u26a0\ufe0f Shared:</strong> no authentication is active — all users share this config.' : '')
                     : 'Settings are stored as Domoticz user variables and sync across all your browsers.') +
             '</span></div>' +
@@ -2219,6 +2219,31 @@
             var ngTab = document.getElementById('ng-settings-tab');
             if (ngTab) ngTab.classList.remove('active');
         });
+    }
+
+    /* Mirror the pre-migration unified save: Domoticz's own "Apply Settings"
+       button (a.sub-tabs-apply, ng-click="StoreSettings()") now saves only core
+       settings, because PR #6950 removed theme settings from the storesettings
+       path.  So when the user clicks it with unsaved Nightglass changes, also
+       persist those through the new per-user API — either save button then
+       stores the theme settings, as it did before the migration.
+
+       Uses a single document-level delegated listener (capture phase) so it
+       keeps working across Angular's re-renders of the settings view without
+       re-binding, and is installed only once. */
+    var _nativeSaveHooked = false;
+    function hookNativeSaveButton() {
+        if (_nativeSaveHooked) return;
+        _nativeSaveHooked = true;
+        document.addEventListener('click', function (e) {
+            var applyBtn = e.target && e.target.closest && e.target.closest('a.sub-tabs-apply');
+            if (!applyBtn) return;
+            // Only the new API has a separate write path to keep in sync; the
+            // legacy user-variable path already persists on every change.
+            if (_useNewApi && _apiAvailable && _dirty) {
+                _postThemeSettings(); // no button arg — quiet save alongside StoreSettings()
+            }
+        }, true);
     }
 
     /* ── Bind interactive events ───────────────────────────────── */
@@ -4104,6 +4129,7 @@
             applySettings();
             injectPanel();
             hookOtherTabs();
+            hookNativeSaveButton();
             if (!_panelInjected) {
                 retryInjectPanel(10);
             }
