@@ -1122,21 +1122,54 @@
         });
     }
 
-    /* Reconcile userPresets with their dedicated ngTheme_presets user variable.
-       Only relevant on legacy builds where presets live outside the blob.
-       On the new API userPresets are serialized into the main blob (16 KB limit),
-       so we can skip the variable entirely.
-       Runs once after loadSettings() has populated _settings:
-         • If the variable exists, it is authoritative — use its value and
-           ignore any (legacy) copy still sitting in the ThemeSettings blob.
-         • If it does NOT exist but the blob carried presets (users upgrading
-           from a build that stored them inline), migrate transparently by
-           writing the variable from _settings.userPresets — nothing is lost.
-       Either way _settings[PRESETS_KEY] ends up as the JSON string every caller
-       expects.  Best-effort — resolves to _settings even if the API is unreachable. */
+    /* Reconcile userPresets with the legacy ngTheme_presets user variable.
+       Runs once after loadSettings() has populated _settings.
+
+       New API: presets live inside the ThemeSettings blob, NOT in a user
+       variable.  The only thing left to do is a one-time INBOUND migration:
+       if the blob has no presets yet but the pre-migration ngTheme_presets
+       variable still holds some, fold them into _settings and mark the state
+       dirty so they persist into the blob on the next save.  We never WRITE the
+       variable on the new API; the old row stays as a read-only source until the
+       user saves (Save to Domoticz / Apply Settings), after which the blob wins.
+
+       Legacy builds (unchanged): the variable is authoritative — read it if it
+       exists, otherwise create it from any inline blob copy.
+       Best-effort — resolves to _settings even if the API is unreachable. */
     function reconcilePresets() {
-        if (_useNewApi) { return Promise.resolve(_settings); } // presets are in the blob
         if (!_apiAvailable) { return Promise.resolve(_settings); }
+
+        if (_useNewApi) {
+            // Already have presets in the blob? Nothing to migrate.
+            var current = [];
+            try { current = JSON.parse((_settings && _settings[PRESETS_KEY]) || '[]') || []; } catch (e) {}
+            if (current.length) { return Promise.resolve(_settings); }
+
+            return apiCall({ type: 'command', param: 'getuservariables' }).then(function (data) {
+                var found = null;
+                if (data && data.result) {
+                    data.result.forEach(function (uv) {
+                        if (uv.Name === PRESETS_UVAR) { found = uv; }
+                    });
+                }
+                if (found) {
+                    var legacy = [];
+                    try { legacy = JSON.parse(found.Value || '[]') || []; } catch (e) {}
+                    if (legacy.length) {
+                        window.ngLog('[Settings]', 'migrating legacy ' + PRESETS_UVAR +
+                            ' presets into the ThemeSettings blob (' + legacy.length + ')');
+                        _settings[PRESETS_KEY] = JSON.stringify(legacy);
+                        saveToLocalStorage();
+                        // Mark dirty so the next Save/Apply writes them into the blob.
+                        // The old variable is left untouched as a source of truth
+                        // until that save lands (so nothing is lost mid-migration).
+                        _markDirty();
+                    }
+                }
+                return _settings;
+            }).catch(function () { return _settings; });
+        }
+
         return apiCall({ type: 'command', param: 'getuservariables' }).then(function (data) {
             var found = null;
             if (data && data.result) {
