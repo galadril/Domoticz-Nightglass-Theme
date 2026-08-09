@@ -1750,7 +1750,7 @@
             '<i class="fa-solid fa-palette ng-header-icon"></i>' +
             '<div><h3 class="ng-settings-title">Nightglass Theme</h3>' +
             '<span class="ng-settings-subtitle">Customize your dashboard experience</span></div></div>' +
-            '<button class="ng-reset-btn" id="ngResetBtn" title="Reset all settings to defaults">' +
+            '<button type="button" class="ng-reset-btn" id="ngResetBtn" title="Reset all settings to defaults">' +
             '<i class="fa-solid fa-rotate-left"></i> Reset</button></div>' +
 
             '<div class="ng-presets-section" id="ngPresetsSection">' +
@@ -1835,7 +1835,7 @@
             '    <span class="ng-setting-label">Suppressed Devices</span>' +
             '    <span class="ng-setting-desc">Block specific devices from triggering notifications</span>' +
             '  </div>' +
-            '  <button class="ng-action-chip" id="ng-bl-manage-btn">' +
+            '  <button type="button" class="ng-action-chip" id="ng-bl-manage-btn">' +
             '    <i class="fa-solid fa-filter-circle-xmark"></i> Manage</button>' +
             '</div>' +
             '</div>' +
@@ -1854,7 +1854,7 @@
                     '    <span class="ng-setting-label">Per-Device Icons' + badge + '</span>' +
                     '    <span class="ng-setting-desc">Assign any Font Awesome icon &amp; custom on/off colors to individual devices</span>' +
                     '  </div>' +
-                    '  <button class="ng-action-chip" id="ng-override-manage-btn">' +
+                    '  <button type="button" class="ng-action-chip" id="ng-override-manage-btn">' +
                     '    <i class="fa-solid fa-wand-magic-sparkles"></i> Manage</button>' +
                     '</div>' +
                     '</div>';
@@ -1889,15 +1889,15 @@
 
             '<div class="ng-settings-footer">' +
             '<div class="ng-footer-actions">' +
-            '<button class="ng-export-btn" id="ngExportBtn" title="Export settings as JSON file">' +
+            '<button type="button" class="ng-export-btn" id="ngExportBtn" title="Export settings as JSON file">' +
             '<i class="fa-solid fa-file-export"></i> Export</button>' +
-            '<button class="ng-import-btn" id="ngImportBtn" title="Import settings from JSON file">' +
+            '<button type="button" class="ng-import-btn" id="ngImportBtn" title="Import settings from JSON file">' +
             '<i class="fa-solid fa-file-import"></i> Import</button>' +
             '<input type="file" id="ngImportFile" accept=".json" style="display:none">' +
             (_useNewApi
-                ? '<button class="ng-save-btn" id="ngSaveBtn" title="Save settings to the Domoticz database">' +
+                ? '<button type="button" class="ng-save-btn" id="ngSaveBtn" title="Save settings to the Domoticz database">' +
                   '<i class="fa-solid fa-floppy-disk"></i> Save to Domoticz</button>' +
-                  '<button class="ng-reset-all-btn" id="ngResetAllBtn" ' +
+                  '<button type="button" class="ng-reset-all-btn" id="ngResetAllBtn" ' +
                   'title="Remove all Nightglass settings from the Domoticz database and revert to instance defaults">' +
                   '<i class="fa-solid fa-trash-can"></i> Reset server</button>'
                 : '') +
@@ -3674,7 +3674,8 @@
         // Reset button
         var resetBtn = container.querySelector('#ngResetBtn');
         if (resetBtn) {
-            resetBtn.addEventListener('click', function () {
+            resetBtn.addEventListener('click', function (e) {
+                e.preventDefault();
                 if (!confirm('Reset all Nightglass theme settings to defaults?')) return;
                 Object.keys(DEFAULTS).forEach(function (key) {
                     saveSetting(key, DEFAULTS[key]);
@@ -3773,7 +3774,10 @@
         // Save to Domoticz button (new API only)
         var saveBtn = container.querySelector('#ngSaveBtn');
         if (saveBtn) {
-            saveBtn.addEventListener('click', function () {
+            saveBtn.addEventListener('click', function (e) {
+                // Panel lives inside Domoticz's Angular settings <form>; stop any
+                // implicit submit so the page doesn't reload and revert changes.
+                e.preventDefault();
                 _postThemeSettings(this);
             });
         }
@@ -3782,7 +3786,8 @@
         // entry so the user reverts to the instance-level defaults.
         var resetAllBtn = container.querySelector('#ngResetAllBtn');
         if (resetAllBtn) {
-            resetAllBtn.addEventListener('click', function () {
+            resetAllBtn.addEventListener('click', function (e) {
+                e.preventDefault();
                 if (!confirm(
                     'Remove your Nightglass settings from the Domoticz database?\n\n' +
                     'Your settings will revert to the instance defaults.\n' +
