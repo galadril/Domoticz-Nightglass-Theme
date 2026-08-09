@@ -611,22 +611,24 @@
     var _uvarIdx       = null;  // Domoticz idx of the ngTheme_settings variable
     var _panelInjected = false;
     var _apiAvailable  = true;  // false if Domoticz API is unreachable
-    var _useNewApi     = false; // true when build ≥ 17806 (ThemeSettings in getsettings)
+    var _useNewApi     = false; // true when ThemeSettingsAPI is supported (domoticz/domoticz#6950)
     var _saveTimer     = null;  // debounce handle for API writes
     var _dirty         = false; // true when in-memory changes not yet saved to DB
-    var _presetsUvarIdx  = null; // Domoticz idx of the ngTheme_presets variable
-    var _presetsSaveTimer = null; // debounce handle for preset writes
+    var _lastupdate    = '';    // concurrency token received from the last server read/write
+    var _perUser       = true;  // false when session maps to a shared account (no-auth / trusted net)
+    var _presetsUvarIdx  = null; // Domoticz idx of the ngTheme_presets variable (legacy)
+    var _presetsSaveTimer = null; // debounce handle for legacy preset writes
     var LS_KEY         = 'ngThemeSettings';
 
     /* Collection fields are held in _settings as JSON *strings* (the shape the
        get/set API and every caller expects), but persisted as native
        objects/arrays so their quotes are NOT double-escaped inside the
-       ThemeSettings blob.  Combined with diff-from-defaults persistence and
-       pruning of empty override fields, this keeps the stored value well under
-       Domoticz's hard 2500-char Preferences cap (issue #203). */
+       ThemeSettings blob.  On the new API (16 KB limit) userPresets are
+       included in the blob; on the legacy user-variable path they remain in a
+       dedicated variable to stay under the 2500-char cap (issue #203). */
     var COLLECTION_FIELDS = ['deviceIconOverrides', 'userPresets', 'toastBlacklist'];
 
-    /* ── Domoticz API helper ──────────────────────────────────────── */
+    /* ── Domoticz API helpers ─────────────────────────────────────── */
 
     function apiCall(params) {
         var url = BASE + 'json.htm?' + Object.keys(params).map(function (k) {
@@ -638,23 +640,76 @@
         }).then(function (r) { return r.json(); });
     }
 
-    /* ── New API: ThemeSettings in Domoticz preferences DB (build ≥ 17806) ── */
-
-    // Resolves with the Domoticz build number, or 0 on failure.
-    function getBuildNumber() {
-        return apiCall({ type: 'command', param: 'getversion' }).then(function (data) {
-            return (data && (data.Revision || data.build_number)) || 0;
-        }).catch(function () { return 0; });
+    // POST variant required by the new themesettings_set endpoint (GET returns post_required).
+    function apiPost(params) {
+        var body = Object.keys(params).map(function (k) {
+            return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
+        }).join('&');
+        return fetch(BASE + 'json.htm', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: body
+        }).then(function (r) {
+            // no_identity / insufficient-rights replies come back as HTTP 403.
+            // The body is usually still the command JSON, but a bare 403 page is
+            // possible — fall back to a synthetic error object so callers can
+            // branch on data.error instead of hitting the network-error catch.
+            return r.text().then(function (t) {
+                try { return JSON.parse(t); }
+                catch (e) {
+                    return { status: 'ERR', error: (r.status === 403 ? 'no_identity' : 'http_error'), httpStatus: r.status };
+                }
+            });
+        });
     }
 
-    // Reads ThemeSettings from getsettings.  Always resolves — returns the
-    // stored object if present, or null when no settings have been saved yet
-    // (first use with the new API).  Rejects only on a network/parse error.
-    function loadFromGetsettings() {
-        return apiCall({ type: 'command', param: 'getsettings' }).then(function (data) {
-            if (!data || data.status !== 'OK') return Promise.reject('getsettings failed');
-            var stored = data.ThemeSettings && data.ThemeSettings[THEME_NAME];
-            return stored || null;
+    /* ── New API: per-user ThemeSettings (domoticz/domoticz#6950) ── */
+
+    // Resolves true when the core exposes the ThemeSettingsAPI flag in getversion,
+    // or when the build number indicates a build that already merged the feature.
+    // Falls back gracefully so older cores keep using user variables.
+    function detectThemeSettingsApi() {
+        return apiCall({ type: 'command', param: 'getversion' }).then(function (data) {
+            if (data && data.ThemeSettingsAPI) return true;
+            // Fallback: honour the old build-number threshold while the flag rolls out
+            return ((data && (data.Revision || data.build_number)) || 0) >= 17806;
+        }).catch(function () { return false; });
+    }
+
+    // Reads this theme's settings via the dedicated themesettings_get command.
+    // Unlike getsettings (which returns only the *merged* value and no token),
+    // this returns the instance and user layers separately, each with its own
+    // presence flag and lastupdate concurrency token, plus the PerUser flag.
+    //
+    // Resolves with { stored, token, perUser }:
+    //   • stored  — the effective settings object (user overlay wins over the
+    //               instance default), or null when neither layer exists yet.
+    //   • token   — the USER-row concurrency token that themesettings_set checks
+    //               against on write ('' when the user has no row yet, which the
+    //               server treats as a fresh INSERT).
+    //   • perUser — false when the session maps to a shared identity (no-auth /
+    //               trusted-network), so per-user rows can't actually isolate.
+    //
+    // Side effects: updates _lastupdate and _perUser.  Rejects only on a
+    // network/parse error or a non-OK status.
+    function loadFromThemeApi() {
+        return apiCall({ type: 'command', param: 'themesettings_get', theme: THEME_NAME }).then(function (data) {
+            if (!data || data.status !== 'OK') return Promise.reject('themesettings_get failed');
+            _perUser = (data.PerUser !== false);
+            var userLayer = data.user || {};
+            var instLayer = data.instance || {};
+            // The token we must echo back on write is the USER row's — that's the
+            // layer themesettings_set writes.  Empty until the first user save.
+            _lastupdate = (userLayer.present && userLayer.lastupdate) ? userLayer.lastupdate : '';
+            // Effective value: the user overlay replaces the instance sub-object
+            // wholesale (themes are atomic), falling back to the instance default.
+            var stored = userLayer.present ? userLayer.value
+                       : (instLayer.present ? instLayer.value : null);
+            return { stored: stored || null, token: _lastupdate, perUser: _perUser };
         });
     }
 
@@ -682,52 +737,146 @@
         }
     }
 
-    // Updates Angular scope's ThemeSettings in-memory so the value is
-    // included when scope.StoreSettings() is called later from the Save button.
-    // No direct storesettings API call — avoids any risk of clobbering other
-    // Domoticz settings with a partial POST.
-    function _updateAngularScope() {
-        try {
-            var el = document.getElementById('maindiv') || document.body;
-            var scope = window.angular && angular.element(el).scope();
-            if (!scope) return;
-            scope.$apply(function () {
-                scope.ThemeSettings = scope.ThemeSettings || {};
-                scope.ThemeSettings[THEME_NAME] = serializeSettings();
-            });
-        } catch (e) {}
+    // Updates the in-memory dirty flag and surfaces the "unsaved changes" toast
+    // so the user knows they need to click "Save to Domoticz".
+    function _markDirty() {
         _dirty = true;
         _showUnsavedToast(true);
     }
 
-    // Persists settings to the Domoticz database by calling Angular's
-    // StoreSettings() — the same full-form save the settings page uses, so
-    // all other Domoticz settings are preserved.  Only callable from the
-    // Settings page (which is where the Nightglass panel lives).
-    function _saveToDomoticz(btn) {
-        try {
-            var el = document.getElementById('maindiv') || document.body;
-            var scope = window.angular && angular.element(el).scope();
-            if (!scope || !scope.StoreSettings) {
-                console.warn('Nightglass: StoreSettings not available on this page');
+    // POSTs theme settings to the new per-user themesettings_set endpoint
+    // (domoticz/domoticz#6950).  Handles all documented error statuses and
+    // uses the lastupdate concurrency token to detect conflicts before
+    // blindly overwriting another session's changes.
+    var SAVE_BTN_HTML = '<i class="fa-solid fa-floppy-disk"></i> Save to Domoticz';
+    // retryCount guards the conflict -> re-read -> overwrite loop: a single
+    // automatic retry with the freshly-read token handles the normal case
+    // (another session wrote between our read and our write); a second conflict
+    // stops prompting and reports, rather than looping forever.
+    function _postThemeSettings(btn, retryCount) {
+        retryCount = retryCount || 0;
+        var json = JSON.stringify(serializeSettings());
+        var params = {
+            type:  'command',
+            param: 'themesettings_set',
+            theme: THEME_NAME,
+            value: json
+        };
+        // Always send the token: '' on a first save -> the server INSERTs a fresh
+        // row; a real token -> the server compare-and-swaps the existing row.
+        params.lastupdate = _lastupdate || '';
+
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving\u2026';
+        }
+
+        function restoreBtn() {
+            if (btn) { btn.innerHTML = SAVE_BTN_HTML; btn.disabled = false; }
+        }
+
+        function errorToast(color, title, body) {
+            restoreBtn();
+            if (window.ngShowToast) {
+                window.ngShowToast({
+                    icon: 'fa-triangle-exclamation', color: color,
+                    title: title, body: body, duration: 8000, type: 'system'
+                });
+            }
+        }
+
+        return apiPost(params).then(function (data) {
+            if (!data) throw new Error('no response');
+
+            if (data.status === 'OK') {
+                // The server hands back the new token so our next save's CAS matches.
+                if (data.lastupdate) _lastupdate = data.lastupdate;
+                _dirty = false;
+                _showUnsavedToast(false);
+                if (btn) {
+                    btn.innerHTML = '<i class="fa-solid fa-check"></i> Saved!';
+                    setTimeout(function () { btn.innerHTML = SAVE_BTN_HTML; btn.disabled = false; }, 2000);
+                }
                 return;
             }
-            scope.$apply(function () {
-                scope.ThemeSettings = scope.ThemeSettings || {};
-                scope.ThemeSettings[THEME_NAME] = serializeSettings();
-            });
-            scope.StoreSettings();
-            _dirty = false;
-            _showUnsavedToast(false);
-            if (btn) {
-                var orig = btn.innerHTML;
-                btn.innerHTML = '<i class="fa-solid fa-check"></i> Saved!';
-                btn.disabled = true;
-                setTimeout(function () { btn.innerHTML = orig; btn.disabled = false; }, 2000);
+
+            // Every non-OK reply carries the reason in data.error (status is only
+            // ever "OK" or "ERR"), so branch on that — never on data.status.
+            var err = data.error || 'unknown';
+
+            if (err === 'conflict') {
+                if (retryCount > 0) {
+                    // We already retried with a fresh token and STILL conflicted —
+                    // something keeps writing.  Stop looping; leave changes dirty.
+                    errorToast('var(--dz-danger, #e05555)', 'Save conflict',
+                        'Another session keeps changing these settings. Reload the ' +
+                        'page and try again.');
+                    return;
+                }
+                // Another session saved after we last read — re-fetch the current
+                // server value AND token (loadFromThemeApi updates _lastupdate),
+                // then offer the user a choice.
+                return loadFromThemeApi().then(function (res) {
+                    restoreBtn();
+                    var fresh = res ? res.stored : null;
+                    if (!confirm(
+                        'Your Nightglass settings were changed from another browser or session.\n' +
+                        'Overwrite the server copy with your current settings?'
+                    )) {
+                        // User prefers the server version — apply it locally.
+                        if (fresh) {
+                            _settings = deserializeSettings(fresh);
+                            saveToLocalStorage();
+                            applySettings();
+                        }
+                        _dirty = false;
+                        _showUnsavedToast(false);
+                        return;
+                    }
+                    // User chose to overwrite — retry WITH the fresh token so the
+                    // server's compare-and-swap matches and the write lands.
+                    return _postThemeSettings(btn, retryCount + 1);
+                }, function () {
+                    // Re-read failed — surface the conflict rather than silently drop.
+                    errorToast('var(--dz-danger, #e05555)', 'Save conflict',
+                        'Settings were changed elsewhere and the current server copy ' +
+                        'could not be read. Reload the page and try again.');
+                });
             }
-        } catch (e) {
-            console.warn('Nightglass: _saveToDomoticz failed', e);
-        }
+
+            if (err === 'no_identity') {
+                // OAuth / token sessions have no user row — fall back to localStorage.
+                _apiAvailable = false;
+                saveToLocalStorage();
+                _dirty = false;
+                _showUnsavedToast(false);
+                errorToast('var(--dz-warning, #f0a832)', 'Settings not synced',
+                    'Your session type does not support per-user settings. ' +
+                    'Settings are stored in this browser only.');
+                return;
+            }
+
+            if (err === 'too_large') {
+                errorToast('var(--dz-danger, #e05555)', 'Settings too large',
+                    'The settings blob exceeds the 16 KB server limit. ' +
+                    'Try removing device icon overrides or user presets.');
+                return;
+            }
+
+            if (err === 'too_many_themes') {
+                errorToast('var(--dz-danger, #e05555)', 'Too many theme configs',
+                    'The server has reached its per-user theme-config limit. ' +
+                    'Use the Reset All button to clear stale entries.');
+                return;
+            }
+
+            // invalid_theme / invalid_json / missing_value / post_required / db_error
+            errorToast('var(--dz-danger, #e05555)', 'Save failed',
+                (data.message || 'The server rejected the settings.') + ' (' + err + ')');
+        }).catch(function (e) {
+            console.warn('Nightglass: _postThemeSettings failed', e);
+            restoreBtn();
+        });
     }
 
     /* ── Legacy: single-variable JSON storage (user variables) ───────── */
@@ -765,17 +914,15 @@
         });
     }
 
-    // Keeps Angular scope in sync on every setting change (debounced 400 ms).
-    // On build ≥ 17806 only updates the Angular scope in-memory — the actual
-    // database write happens when the user clicks "Save to Domoticz" in the
-    // panel footer, which calls scope.StoreSettings() so ALL Domoticz settings
-    // are written together (no partial-POST risk).
-    // On older builds falls back to the safe user-variable API.
+    // Debounced persistence helper called from saveSetting().
+    // On the new API, just marks the in-memory state dirty so the user knows
+    // to click "Save to Domoticz" — the actual POST happens then.
+    // On legacy builds writes to the ngTheme_settings user variable directly.
     function saveJsonUvar() {
         clearTimeout(_saveTimer);
         _saveTimer = setTimeout(function () {
             if (_useNewApi) {
-                _updateAngularScope();
+                _markDirty();
                 return;
             }
             // Legacy path: store as a JSON user variable (compact form too, so
@@ -803,12 +950,12 @@
         }, 400);
     }
 
-    // Persist userPresets to their dedicated ngTheme_presets user variable
-    // (debounced so rapid save/delete clicks coalesce into one write).  This is
-    // a targeted, safe API call on both old and new builds — unlike the blob it
-    // never clobbers other Domoticz settings, so there's no need to defer it to
-    // the "Save to Domoticz" button the way the ThemeSettings blob is.
+    // Persist userPresets to their dedicated ngTheme_presets user variable on
+    // legacy builds (debounced so rapid save/delete clicks coalesce into one
+    // write).  On the new API userPresets are part of the main blob and are
+    // sent with the next "Save to Domoticz" click — no separate call needed.
     function savePresetsUvar() {
+        if (_useNewApi) { _markDirty(); return; }
         clearTimeout(_presetsSaveTimer);
         _presetsSaveTimer = setTimeout(function () {
             if (!_apiAvailable) return;
@@ -859,15 +1006,18 @@
 
     /* Build the compact object actually written to storage: only settings that
        differ from DEFAULTS, collection fields as pruned NATIVE objects/arrays
-       (omitted entirely when empty), and session-only keys excluded.  Keeping
-       this small is what prevents the ThemeSettings sValue from exceeding
-       Domoticz's 2500-char cap (issue #203). */
+       (omitted entirely when empty), and session-only keys excluded.
+       On the new API (16 KB limit) userPresets are included in the blob so the
+       separate ngTheme_presets user variable is no longer needed.
+       On legacy builds presets are still persisted in their own variable (no
+       blob-size cap relief there), so they continue to be excluded here. */
     function serializeSettings() {
         var out = {};
         if (!_settings) return out;
         Object.keys(_settings).forEach(function (key) {
             if (SESSION_ONLY_KEYS.indexOf(key) !== -1) return;
-            if (key === PRESETS_KEY) return; // persisted in its own user variable
+            // On legacy builds userPresets live in their own user variable.
+            if (!_useNewApi && key === PRESETS_KEY) return;
             var v = _settings[key];
             if (COLLECTION_FIELDS.indexOf(key) !== -1) {
                 var parsed;
@@ -917,13 +1067,15 @@
     }
 
     function loadSettings() {
-        // Check build number first so we know which storage backend to use.
-        return getBuildNumber().then(function (build) {
-            if (build >= 17806) {
-                // New API: read from getsettings, fall back to user vars for migration.
+        // Detect ThemeSettingsAPI support first so we know which storage backend to use.
+        return detectThemeSettingsApi().then(function (hasNewApi) {
+            if (hasNewApi) {
+                // New API: read from themesettings_get (captures the concurrency
+                // token + PerUser flag), fall back to user vars for migration.
                 _useNewApi    = true;
                 _apiAvailable = true;
-                return loadFromGetsettings().then(function (stored) {
+                return loadFromThemeApi().then(function (res) {
+                    var stored = res ? res.stored : null;
                     if (stored) {
                         // Settings already persisted via new API — use them.
                         _settings = deserializeSettings(stored);
@@ -941,7 +1093,7 @@
                     }
                     return _settings;
                 }).catch(function () {
-                    // getsettings failed — degrade to user variables.
+                    // themesettings_get failed — degrade to user variables.
                     return loadJsonUvar().then(function (stored) {
                         _settings = deserializeSettings(stored);
                         return _settings;
@@ -970,19 +1122,54 @@
         });
     }
 
-    /* Reconcile userPresets with their dedicated ngTheme_presets user variable.
-       Runs once after loadSettings() has populated _settings:
-         • If the variable exists, it is authoritative — use its value and
-           ignore any (legacy) copy still sitting in the ThemeSettings blob.
-         • If it does NOT exist but the blob carried presets (users upgrading
-           from a build that stored them inline), migrate transparently by
-           writing the variable from _settings.userPresets — nothing is lost.
-       Either way _settings[PRESETS_KEY] ends up as the JSON string every caller
-       expects, and serializeSettings() no longer writes presets into the blob,
-       so the blob shrinks on its next save.  Best-effort — resolves to
-       _settings even if the API is unreachable (localStorage cache stands in). */
+    /* Reconcile userPresets with the legacy ngTheme_presets user variable.
+       Runs once after loadSettings() has populated _settings.
+
+       New API: presets live inside the ThemeSettings blob, NOT in a user
+       variable.  The only thing left to do is a one-time INBOUND migration:
+       if the blob has no presets yet but the pre-migration ngTheme_presets
+       variable still holds some, fold them into _settings and mark the state
+       dirty so they persist into the blob on the next save.  We never WRITE the
+       variable on the new API; the old row stays as a read-only source until the
+       user saves (Save to Domoticz / Apply Settings), after which the blob wins.
+
+       Legacy builds (unchanged): the variable is authoritative — read it if it
+       exists, otherwise create it from any inline blob copy.
+       Best-effort — resolves to _settings even if the API is unreachable. */
     function reconcilePresets() {
         if (!_apiAvailable) { return Promise.resolve(_settings); }
+
+        if (_useNewApi) {
+            // Already have presets in the blob? Nothing to migrate.
+            var current = [];
+            try { current = JSON.parse((_settings && _settings[PRESETS_KEY]) || '[]') || []; } catch (e) {}
+            if (current.length) { return Promise.resolve(_settings); }
+
+            return apiCall({ type: 'command', param: 'getuservariables' }).then(function (data) {
+                var found = null;
+                if (data && data.result) {
+                    data.result.forEach(function (uv) {
+                        if (uv.Name === PRESETS_UVAR) { found = uv; }
+                    });
+                }
+                if (found) {
+                    var legacy = [];
+                    try { legacy = JSON.parse(found.Value || '[]') || []; } catch (e) {}
+                    if (legacy.length) {
+                        window.ngLog('[Settings]', 'migrating legacy ' + PRESETS_UVAR +
+                            ' presets into the ThemeSettings blob (' + legacy.length + ')');
+                        _settings[PRESETS_KEY] = JSON.stringify(legacy);
+                        saveToLocalStorage();
+                        // Mark dirty so the next Save/Apply writes them into the blob.
+                        // The old variable is left untouched as a source of truth
+                        // until that save lands (so nothing is lost mid-migration).
+                        _markDirty();
+                    }
+                }
+                return _settings;
+            }).catch(function () { return _settings; });
+        }
+
         return apiCall({ type: 'command', param: 'getuservariables' }).then(function (data) {
             var found = null;
             if (data && data.result) {
@@ -1016,8 +1203,8 @@
         _settings[key] = value;
         window.ngLog('[Settings]', 'set', key, '=', value);
         if (SESSION_ONLY_KEYS.indexOf(key) === -1) {
-            if (key === PRESETS_KEY) {
-                // Presets have their own user variable, outside the blob.
+            if (key === PRESETS_KEY && !_useNewApi) {
+                // Legacy: presets have their own user variable, outside the blob.
                 if (_apiAvailable) savePresetsUvar();
             } else if (_apiAvailable) {
                 saveJsonUvar(); // debounced, batches rapid changes
@@ -1596,7 +1783,7 @@
             '<i class="fa-solid fa-palette ng-header-icon"></i>' +
             '<div><h3 class="ng-settings-title">Nightglass Theme</h3>' +
             '<span class="ng-settings-subtitle">Customize your dashboard experience</span></div></div>' +
-            '<button class="ng-reset-btn" id="ngResetBtn" title="Reset all settings to defaults">' +
+            '<button type="button" class="ng-reset-btn" id="ngResetBtn" title="Reset all settings to defaults">' +
             '<i class="fa-solid fa-rotate-left"></i> Reset</button></div>' +
 
             '<div class="ng-presets-section" id="ngPresetsSection">' +
@@ -1681,7 +1868,7 @@
             '    <span class="ng-setting-label">Suppressed Devices</span>' +
             '    <span class="ng-setting-desc">Block specific devices from triggering notifications</span>' +
             '  </div>' +
-            '  <button class="ng-action-chip" id="ng-bl-manage-btn">' +
+            '  <button type="button" class="ng-action-chip" id="ng-bl-manage-btn">' +
             '    <i class="fa-solid fa-filter-circle-xmark"></i> Manage</button>' +
             '</div>' +
             '</div>' +
@@ -1700,7 +1887,7 @@
                     '    <span class="ng-setting-label">Per-Device Icons' + badge + '</span>' +
                     '    <span class="ng-setting-desc">Assign any Font Awesome icon &amp; custom on/off colors to individual devices</span>' +
                     '  </div>' +
-                    '  <button class="ng-action-chip" id="ng-override-manage-btn">' +
+                    '  <button type="button" class="ng-action-chip" id="ng-override-manage-btn">' +
                     '    <i class="fa-solid fa-wand-magic-sparkles"></i> Manage</button>' +
                     '</div>' +
                     '</div>';
@@ -1735,21 +1922,25 @@
 
             '<div class="ng-settings-footer">' +
             '<div class="ng-footer-actions">' +
-            '<button class="ng-export-btn" id="ngExportBtn" title="Export settings as JSON file">' +
+            '<button type="button" class="ng-export-btn" id="ngExportBtn" title="Export settings as JSON file">' +
             '<i class="fa-solid fa-file-export"></i> Export</button>' +
-            '<button class="ng-import-btn" id="ngImportBtn" title="Import settings from JSON file">' +
+            '<button type="button" class="ng-import-btn" id="ngImportBtn" title="Import settings from JSON file">' +
             '<i class="fa-solid fa-file-import"></i> Import</button>' +
             '<input type="file" id="ngImportFile" accept=".json" style="display:none">' +
             (_useNewApi
-                ? '<button class="ng-save-btn" id="ngSaveBtn" title="Save settings to the Domoticz database">' +
-                  '<i class="fa-solid fa-floppy-disk"></i> Save to Domoticz</button>'
+                ? '<button type="button" class="ng-save-btn" id="ngSaveBtn" title="Save settings to the Domoticz database">' +
+                  '<i class="fa-solid fa-floppy-disk"></i> Save to Domoticz</button>' +
+                  '<button type="button" class="ng-reset-all-btn" id="ngResetAllBtn" ' +
+                  'title="Remove all Nightglass settings from the Domoticz database and revert to instance defaults">' +
+                  '<i class="fa-solid fa-trash-can"></i> Reset server</button>'
                 : '') +
             '</div>' +
             '<span class="ng-footer-note"><i class="fa-solid fa-cloud-arrow-up"></i> ' +
             (!_apiAvailable
-                ? 'API unavailable — settings are stored in this browser\'s local storage.'
+                ? 'API unavailable \u2014 settings are stored in this browser\'s local storage.'
                 : _useNewApi
-                    ? 'Changes apply instantly. Click <strong>Save to Domoticz</strong> to persist across all browsers.'
+                    ? 'Changes apply instantly. Click <strong>Save to Domoticz</strong> (or Domoticz’s <strong>Apply Settings</strong>) to persist across all browsers.' +
+                      (!_perUser ? ' <strong>\u26a0\ufe0f Shared:</strong> no authentication is active — all users share this config.' : '')
                     : 'Settings are stored as Domoticz user variables and sync across all your browsers.') +
             '</span></div>' +
 
@@ -2061,6 +2252,31 @@
             var ngTab = document.getElementById('ng-settings-tab');
             if (ngTab) ngTab.classList.remove('active');
         });
+    }
+
+    /* Mirror the pre-migration unified save: Domoticz's own "Apply Settings"
+       button (a.sub-tabs-apply, ng-click="StoreSettings()") now saves only core
+       settings, because PR #6950 removed theme settings from the storesettings
+       path.  So when the user clicks it with unsaved Nightglass changes, also
+       persist those through the new per-user API — either save button then
+       stores the theme settings, as it did before the migration.
+
+       Uses a single document-level delegated listener (capture phase) so it
+       keeps working across Angular's re-renders of the settings view without
+       re-binding, and is installed only once. */
+    var _nativeSaveHooked = false;
+    function hookNativeSaveButton() {
+        if (_nativeSaveHooked) return;
+        _nativeSaveHooked = true;
+        document.addEventListener('click', function (e) {
+            var applyBtn = e.target && e.target.closest && e.target.closest('a.sub-tabs-apply');
+            if (!applyBtn) return;
+            // Only the new API has a separate write path to keep in sync; the
+            // legacy user-variable path already persists on every change.
+            if (_useNewApi && _apiAvailable && _dirty) {
+                _postThemeSettings(); // no button arg — quiet save alongside StoreSettings()
+            }
+        }, true);
     }
 
     /* ── Bind interactive events ───────────────────────────────── */
@@ -3516,11 +3732,26 @@
         // Reset button
         var resetBtn = container.querySelector('#ngResetBtn');
         if (resetBtn) {
-            resetBtn.addEventListener('click', function () {
+            resetBtn.addEventListener('click', function (e) {
+                e.preventDefault();
                 if (!confirm('Reset all Nightglass theme settings to defaults?')) return;
                 Object.keys(DEFAULTS).forEach(function (key) {
                     saveSetting(key, DEFAULTS[key]);
                 });
+                // Also clear the server-side entry so the user is no longer
+                // anchored to their own layer and falls back to instance defaults.
+                if (_useNewApi && _apiAvailable) {
+                    apiPost({
+                        type: 'command', param: 'themesettings_set',
+                        theme: THEME_NAME, reset: 'true'
+                    }).then(function (data) {
+                        if (data && data.status === 'OK') {
+                            _lastupdate = data.lastupdate || '';
+                            _dirty = false;
+                            _showUnsavedToast(false);
+                        }
+                    }).catch(function () {});
+                }
                 // Re-render
                 var wrap = document.getElementById('ng-theme-settings-wrap');
                 if (wrap) {
@@ -3601,8 +3832,60 @@
         // Save to Domoticz button (new API only)
         var saveBtn = container.querySelector('#ngSaveBtn');
         if (saveBtn) {
-            saveBtn.addEventListener('click', function () {
-                _saveToDomoticz(this);
+            saveBtn.addEventListener('click', function (e) {
+                // Panel lives inside Domoticz's Angular settings <form>; stop any
+                // implicit submit so the page doesn't reload and revert changes.
+                e.preventDefault();
+                _postThemeSettings(this);
+            });
+        }
+
+        // Reset All server button (new API only) — clears only the Nightglass
+        // entry so the user reverts to the instance-level defaults.
+        var resetAllBtn = container.querySelector('#ngResetAllBtn');
+        if (resetAllBtn) {
+            resetAllBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                if (!confirm(
+                    'Remove your Nightglass settings from the Domoticz database?\n\n' +
+                    'Your settings will revert to the instance defaults.\n' +
+                    'Local storage will also be cleared.'
+                )) return;
+                // Clear in-memory state immediately so the live page reflects
+                // defaults even while the API call is in flight.
+                _settings = deserializeSettings(null);
+                _lastupdate = '';
+                saveToLocalStorage();
+                applySettings();
+                // POST the server reset, then re-render the panel only after
+                // confirming the server acknowledged the deletion.
+                apiPost({
+                    type: 'command', param: 'themesettings_set',
+                    theme: THEME_NAME, reset: 'true'
+                }).then(function (data) {
+                    if (data && data.status === 'OK') {
+                        _lastupdate = data.lastupdate || '';
+                        _dirty = false;
+                        _showUnsavedToast(false);
+                        // Re-render panel to reflect the cleared state.
+                        var wrap = document.getElementById('ng-theme-settings-wrap');
+                        if (wrap) {
+                            wrap.innerHTML = buildPanel();
+                            bindEvents(wrap);
+                            loadPresets(wrap);
+                        }
+                        if (window.ngShowToast) {
+                            window.ngShowToast({
+                                icon:     'fa-rotate-left',
+                                color:    'var(--dz-accent)',
+                                title:    'Server settings cleared',
+                                body:     'Nightglass is now using the instance defaults.',
+                                type:     'success',
+                                duration: 4000
+                            });
+                        }
+                    }
+                }).catch(function () {});
             });
         }
 
@@ -3879,8 +4162,25 @@
             applySettings();
             injectPanel();
             hookOtherTabs();
+            hookNativeSaveButton();
             if (!_panelInjected) {
                 retryInjectPanel(10);
+            }
+            // Warn when the "per-user" layer is actually shared because no real
+            // authentication is in play (trusted network / -nowwwpwd).
+            if (_useNewApi && !_perUser) {
+                window.ngLog('[Settings]', 'PerUser=false — settings are shared across all clients on this instance');
+                if (window.ngShowToast) {
+                    window.ngShowToast({
+                        icon:     'fa-users',
+                        color:    'var(--dz-warning, #f0a832)',
+                        title:    'Shared theme settings',
+                        body:     'Domoticz is running without authentication. ' +
+                                  'All users on this instance share the same Nightglass configuration.',
+                        duration: 10000,
+                        type:     'system'
+                    });
+                }
             }
         });
     }

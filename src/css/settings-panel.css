@@ -604,6 +604,35 @@
     font-size: 0.9em;
 }
 
+.ng-reset-all-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border: 1px solid var(--dz-danger, #e05555);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--dz-danger, #e05555);
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, opacity 0.2s;
+}
+
+.ng-reset-all-btn:hover {
+    background: var(--dz-danger, #e05555);
+    color: #fff;
+}
+
+.ng-reset-all-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.ng-reset-all-btn i {
+    font-size: 0.9em;
+}
+
 .ng-footer-note {
     font-size: 0.78rem;
     color: var(--dz-text-faint);
