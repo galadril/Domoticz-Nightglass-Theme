@@ -653,7 +653,18 @@
                 'X-Requested-With': 'XMLHttpRequest'
             },
             body: body
-        }).then(function (r) { return r.json(); });
+        }).then(function (r) {
+            // no_identity / insufficient-rights replies come back as HTTP 403.
+            // The body is usually still the command JSON, but a bare 403 page is
+            // possible — fall back to a synthetic error object so callers can
+            // branch on data.error instead of hitting the network-error catch.
+            return r.text().then(function (t) {
+                try { return JSON.parse(t); }
+                catch (e) {
+                    return { status: 'ERR', error: (r.status === 403 ? 'no_identity' : 'http_error'), httpStatus: r.status };
+                }
+            });
+        });
     }
 
     /* ── New API: per-user ThemeSettings (domoticz/domoticz#6950) ── */
@@ -669,35 +680,36 @@
         }).catch(function () { return false; });
     }
 
-    // Reads ThemeSettings from getsettings.  Always resolves — returns the
-    // stored object if present, or null when no settings have been saved yet
-    // (first use with the new API).  Rejects only on a network/parse error.
-    // Also captures the PerUser flag and the lastupdate concurrency token.
-    function loadFromGetsettings() {
-        return apiCall({ type: 'command', param: 'getsettings' }).then(function (data) {
-            if (!data || data.status !== 'OK') return Promise.reject('getsettings failed');
-            // PerUser = false when all anonymous clients share one account (no-auth / trusted-net).
-            // In that case the "per-user" layer is effectively shared — surface a warning later.
+    // Reads this theme's settings via the dedicated themesettings_get command.
+    // Unlike getsettings (which returns only the *merged* value and no token),
+    // this returns the instance and user layers separately, each with its own
+    // presence flag and lastupdate concurrency token, plus the PerUser flag.
+    //
+    // Resolves with { stored, token, perUser }:
+    //   • stored  — the effective settings object (user overlay wins over the
+    //               instance default), or null when neither layer exists yet.
+    //   • token   — the USER-row concurrency token that themesettings_set checks
+    //               against on write ('' when the user has no row yet, which the
+    //               server treats as a fresh INSERT).
+    //   • perUser — false when the session maps to a shared identity (no-auth /
+    //               trusted-network), so per-user rows can't actually isolate.
+    //
+    // Side effects: updates _lastupdate and _perUser.  Rejects only on a
+    // network/parse error or a non-OK status.
+    function loadFromThemeApi() {
+        return apiCall({ type: 'command', param: 'themesettings_get', theme: THEME_NAME }).then(function (data) {
+            if (!data || data.status !== 'OK') return Promise.reject('themesettings_get failed');
             _perUser = (data.PerUser !== false);
-            var themeEntry = data.ThemeSettings && data.ThemeSettings[THEME_NAME];
-            // The server may wrap the settings in a {value, lastupdate} envelope or embed the
-            // lastupdate token directly in the settings object; handle both shapes gracefully.
-            var stored, token;
-            if (themeEntry && typeof themeEntry === 'object' && 'value' in themeEntry) {
-                stored = themeEntry.value;
-                token  = themeEntry.lastupdate;
-            } else {
-                stored = themeEntry;
-                token  = (themeEntry && themeEntry._lastupdate) ||
-                         (data.ThemeSettings && data.ThemeSettings._lastupdate) || '';
-            }
-            if (token) _lastupdate = token;
-            // Strip any internal metadata that leaked into the stored object.
-            if (stored && typeof stored === 'object') {
-                stored = Object.assign({}, stored);
-                delete stored._lastupdate;
-            }
-            return stored || null;
+            var userLayer = data.user || {};
+            var instLayer = data.instance || {};
+            // The token we must echo back on write is the USER row's — that's the
+            // layer themesettings_set writes.  Empty until the first user save.
+            _lastupdate = (userLayer.present && userLayer.lastupdate) ? userLayer.lastupdate : '';
+            // Effective value: the user overlay replaces the instance sub-object
+            // wholesale (themes are atomic), falling back to the instance default.
+            var stored = userLayer.present ? userLayer.value
+                       : (instLayer.present ? instLayer.value : null);
+            return { stored: stored || null, token: _lastupdate, perUser: _perUser };
         });
     }
 
@@ -737,7 +749,12 @@
     // uses the lastupdate concurrency token to detect conflicts before
     // blindly overwriting another session's changes.
     var SAVE_BTN_HTML = '<i class="fa-solid fa-floppy-disk"></i> Save to Domoticz';
-    function _postThemeSettings(btn) {
+    // retryCount guards the conflict -> re-read -> overwrite loop: a single
+    // automatic retry with the freshly-read token handles the normal case
+    // (another session wrote between our read and our write); a second conflict
+    // stops prompting and reports, rather than looping forever.
+    function _postThemeSettings(btn, retryCount) {
+        retryCount = retryCount || 0;
         var json = JSON.stringify(serializeSettings());
         var params = {
             type:  'command',
@@ -745,7 +762,9 @@
             theme: THEME_NAME,
             value: json
         };
-        if (_lastupdate) params.lastupdate = _lastupdate;
+        // Always send the token: '' on a first save -> the server INSERTs a fresh
+        // row; a real token -> the server compare-and-swaps the existing row.
+        params.lastupdate = _lastupdate || '';
 
         if (btn) {
             btn.disabled = true;
@@ -756,10 +775,21 @@
             if (btn) { btn.innerHTML = SAVE_BTN_HTML; btn.disabled = false; }
         }
 
+        function errorToast(color, title, body) {
+            restoreBtn();
+            if (window.ngShowToast) {
+                window.ngShowToast({
+                    icon: 'fa-triangle-exclamation', color: color,
+                    title: title, body: body, duration: 8000, type: 'system'
+                });
+            }
+        }
+
         return apiPost(params).then(function (data) {
             if (!data) throw new Error('no response');
 
             if (data.status === 'OK') {
+                // The server hands back the new token so our next save's CAS matches.
                 if (data.lastupdate) _lastupdate = data.lastupdate;
                 _dirty = false;
                 _showUnsavedToast(false);
@@ -770,11 +800,25 @@
                 return;
             }
 
-            if (data.status === 'conflict') {
+            // Every non-OK reply carries the reason in data.error (status is only
+            // ever "OK" or "ERR"), so branch on that — never on data.status.
+            var err = data.error || 'unknown';
+
+            if (err === 'conflict') {
+                if (retryCount > 0) {
+                    // We already retried with a fresh token and STILL conflicted —
+                    // something keeps writing.  Stop looping; leave changes dirty.
+                    errorToast('var(--dz-danger, #e05555)', 'Save conflict',
+                        'Another session keeps changing these settings. Reload the ' +
+                        'page and try again.');
+                    return;
+                }
                 // Another session saved after we last read — re-fetch the current
-                // server value and offer the user a choice before overwriting.
-                return loadFromGetsettings().then(function (fresh) {
+                // server value AND token (loadFromThemeApi updates _lastupdate),
+                // then offer the user a choice.
+                return loadFromThemeApi().then(function (res) {
                     restoreBtn();
+                    var fresh = res ? res.stored : null;
                     if (!confirm(
                         'Your Nightglass settings were changed from another browser or session.\n' +
                         'Overwrite the server copy with your current settings?'
@@ -789,67 +833,46 @@
                         _showUnsavedToast(false);
                         return;
                     }
-                    // User chose to overwrite — retry without a token so the server
-                    // accepts the write unconditionally.
-                    _lastupdate = '';
-                    return _postThemeSettings(btn);
+                    // User chose to overwrite — retry WITH the fresh token so the
+                    // server's compare-and-swap matches and the write lands.
+                    return _postThemeSettings(btn, retryCount + 1);
+                }, function () {
+                    // Re-read failed — surface the conflict rather than silently drop.
+                    errorToast('var(--dz-danger, #e05555)', 'Save conflict',
+                        'Settings were changed elsewhere and the current server copy ' +
+                        'could not be read. Reload the page and try again.');
                 });
             }
 
-            if (data.status === 'no_identity') {
+            if (err === 'no_identity') {
                 // OAuth / token sessions have no user row — fall back to localStorage.
                 _apiAvailable = false;
                 saveToLocalStorage();
                 _dirty = false;
                 _showUnsavedToast(false);
-                restoreBtn();
-                if (window.ngShowToast) {
-                    window.ngShowToast({
-                        icon:     'fa-triangle-exclamation',
-                        color:    'var(--dz-warning, #f0a832)',
-                        title:    'Settings not synced',
-                        body:     'Your session type does not support per-user settings. ' +
-                                  'Settings are stored in this browser only.',
-                        duration: 8000,
-                        type:     'system'
-                    });
-                }
+                errorToast('var(--dz-warning, #f0a832)', 'Settings not synced',
+                    'Your session type does not support per-user settings. ' +
+                    'Settings are stored in this browser only.');
                 return;
             }
 
-            if (data.status === 'too_large') {
-                restoreBtn();
-                if (window.ngShowToast) {
-                    window.ngShowToast({
-                        icon:     'fa-triangle-exclamation',
-                        color:    'var(--dz-danger, #e05555)',
-                        title:    'Settings too large',
-                        body:     'The settings blob exceeds the 16 KB server limit. ' +
-                                  'Try removing device icon overrides or user presets.',
-                        duration: 8000,
-                        type:     'system'
-                    });
-                }
+            if (err === 'too_large') {
+                errorToast('var(--dz-danger, #e05555)', 'Settings too large',
+                    'The settings blob exceeds the 16 KB server limit. ' +
+                    'Try removing device icon overrides or user presets.');
                 return;
             }
 
-            if (data.status === 'too_many_themes') {
-                restoreBtn();
-                if (window.ngShowToast) {
-                    window.ngShowToast({
-                        icon:     'fa-triangle-exclamation',
-                        color:    'var(--dz-danger, #e05555)',
-                        title:    'Too many theme configs',
-                        body:     'The server has reached its per-user theme-config limit. ' +
-                                  'Use the Reset All button to clear stale entries.',
-                        duration: 8000,
-                        type:     'system'
-                    });
-                }
+            if (err === 'too_many_themes') {
+                errorToast('var(--dz-danger, #e05555)', 'Too many theme configs',
+                    'The server has reached its per-user theme-config limit. ' +
+                    'Use the Reset All button to clear stale entries.');
                 return;
             }
 
-            throw new Error('unexpected status: ' + data.status);
+            // invalid_theme / invalid_json / missing_value / post_required / db_error
+            errorToast('var(--dz-danger, #e05555)', 'Save failed',
+                (data.message || 'The server rejected the settings.') + ' (' + err + ')');
         }).catch(function (e) {
             console.warn('Nightglass: _postThemeSettings failed', e);
             restoreBtn();
@@ -1047,10 +1070,12 @@
         // Detect ThemeSettingsAPI support first so we know which storage backend to use.
         return detectThemeSettingsApi().then(function (hasNewApi) {
             if (hasNewApi) {
-                // New API: read from getsettings, fall back to user vars for migration.
+                // New API: read from themesettings_get (captures the concurrency
+                // token + PerUser flag), fall back to user vars for migration.
                 _useNewApi    = true;
                 _apiAvailable = true;
-                return loadFromGetsettings().then(function (stored) {
+                return loadFromThemeApi().then(function (res) {
+                    var stored = res ? res.stored : null;
                     if (stored) {
                         // Settings already persisted via new API — use them.
                         _settings = deserializeSettings(stored);
@@ -1068,7 +1093,7 @@
                     }
                     return _settings;
                 }).catch(function () {
-                    // getsettings failed — degrade to user variables.
+                    // themesettings_get failed — degrade to user variables.
                     return loadJsonUvar().then(function (stored) {
                         _settings = deserializeSettings(stored);
                         return _settings;
