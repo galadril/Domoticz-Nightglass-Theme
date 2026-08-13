@@ -910,17 +910,35 @@ body.ng-mobile-dashboard #tbFiltSearch.ng-hide {
 
 /* Dimmer/TPI/Blinds devices have a sibling <tr ng-if> containing the slider.
    Hide it whenever its preceding device row is filtered or search-hidden.
-   Only targets tr:not([id]) to avoid hiding subsequent device rows in sections
-   like utility/temp/weather that share a single implicit <tbody>. Slider rows
-   have no id; device rows always have id="utility_N", "temp_N", etc. */
-.dashboardMobile .mobileitem tr.ng-rf-filtered ~ tr:not([id]),
-.dashboardMobile .mobileitem tr.ng-mobile-search-hidden ~ tr:not([id]) {
+   MUST use the adjacent-sibling combinator (+), not the general-sibling (~):
+   slider rows are id-less, and `~ tr:not([id])` matched EVERY later id-less row
+   in the same <tbody> — so one filtered/searched device hid the sliders of all
+   devices below it too (issue #213).  `+ tr:not([id])` targets only the slider
+   row directly paired with the filtered device. */
+.dashboardMobile .mobileitem tr.ng-rf-filtered + tr:not([id]),
+.dashboardMobile .mobileitem tr.ng-mobile-search-hidden + tr:not([id]) {
     display: none !important;
 }
 
 /* Hide entire dashCategory sections that have no visible rows */
 .dashboardMobile section.dashCategory.ng-rf-section-hidden {
     display: none !important;
+}
+
+/* Mobile dimmer slider width — give the jQuery UI track a robust, layout- and
+   timing-independent width so it can never collapse to ~1px and vanish.
+   Previously the width was set ONLY by fixMobileSliderWidths() in JS at
+   t+300ms / t+700ms; sliders that (re)rendered later — which Firefox does when
+   it repaints rows on scroll — got no width and disappeared, while Chrome kept
+   the initial one (issue #213).  A CSS width makes it browser-independent, and
+   the jQuery UI handle (left:%) / range (width:%) stay correct at any width.
+   box-sizing keeps the handle from overflowing the cell. */
+.dashboardMobile .mobileitem .dimslider,
+.dashboardMobile .mobileitem .dimslidernorm,
+.dashboardMobile .mobileitem .dimslidersmall {
+    width: calc(100% - 24px) !important;
+    min-width: 80px;
+    box-sizing: border-box;
 }
 
 
