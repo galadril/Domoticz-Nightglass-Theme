@@ -543,13 +543,21 @@ document.addEventListener('DOMContentLoaded', function () {
         [999, '#4caf7d']  // excellent
     ];
 
-    // Humidity (% relative) — smooth anchors: dry→red, comfortable→green, humid→blue.
-    // Interpolated (not bucketed) so the accent glides across the whole range,
-    // matching the gradient requested in issue #215.
+    // Humidity (% relative) — anchors every 10% so the accent shifts gradually:
+    // parched→red, comfortable→green (~40%), then eases through teal to blue as it
+    // gets humid.  interpAccent() blends smoothly between these stops (issue #215).
     var HUMIDITY_ACCENT = [
-        [10, '#e05555'], // very dry
-        [45, '#4caf7d'], // comfortable
-        [90, '#29b6f6']  // very humid
+        [  0, '#e05555'], // parched — red
+        [ 10, '#ec6f3a'], // very dry — red-orange
+        [ 20, '#f0a832'], // dry — amber
+        [ 30, '#a9c34a'], // getting comfortable — yellow-green
+        [ 40, '#4caf7d'], // comfortable — green
+        [ 50, '#43b291'], // ideal — green-teal
+        [ 60, '#3ab3b3'], // slightly humid — teal
+        [ 70, '#33a9d6'], // humid — cyan
+        [ 80, '#2ea6ee'], // very humid — light blue
+        [ 90, '#29b6f6'], // saturated — blue
+        [100, '#1e88e5']  // condensing — deep blue
     ];
 
     // CO2 (ppm) — fresh→green, rising→amber, stuffy→orange, poor→red.
