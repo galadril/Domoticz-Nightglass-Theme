@@ -1839,7 +1839,7 @@
             toggle('sparklines', 'Sparkline Charts', 'Mini 24h trend charts as card watermarks') +
             toggle('stalenessIndicator', 'Staleness Dot', 'Pulsing red dot on devices that haven\'t updated in 24h') +
             toggle('stateFlash', 'State-Change Flash', 'Blue/red ring flash when a device changes state') +
-            toggle('tempAccent', 'Temperature Accent', 'Color-coded top border based on temperature value') +
+            toggle('tempAccent', 'Sensor Value Accent', 'Color-coded top border reflecting the sensor value — temperature, humidity, CO₂, UV, rain, wind & visibility') +
             toggle('cardAnimations', 'Card Animations', 'Entrance animations and hover transitions on cards') +
             toggle('navAnimations', 'Navbar Animations', 'Staggered entrances, sliding indicator, dropdown effects') +
             toggle('smoothScrolling', 'Smooth Scrolling', 'Enable smooth scroll behavior page-wide') +
