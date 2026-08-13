@@ -1940,7 +1940,7 @@
                 ? 'API unavailable \u2014 settings are stored in this browser\'s local storage.'
                 : _useNewApi
                     ? 'Changes apply instantly. Click <strong>Save to Domoticz</strong> (or Domoticz’s <strong>Apply Settings</strong>) to persist across all browsers.' +
-                      (!_perUser ? ' <strong>\u26a0\ufe0f Shared:</strong> no authentication is active — all users share this config.' : '')
+                      (!_perUser ? ' <strong>\u26a0\ufe0f Shared:</strong> trusted-network session — all clients share this config (log in for per-user).' : '')
                     : 'Settings are stored as Domoticz user variables and sync across all your browsers.') +
             '</span></div>' +
 
@@ -4166,17 +4166,28 @@
             if (!_panelInjected) {
                 retryInjectPanel(10);
             }
-            // Warn when the "per-user" layer is actually shared because no real
-            // authentication is in play (trusted network / -nowwwpwd).
+            // Warn when the "per-user" layer is actually shared.  The server sets
+            // PerUser=false only when the session is auto-authenticated over a
+            // trusted network with no login session (WebLocalNetworks / -nowwwpwd):
+            // every such client resolves to the same admin identity, so per-user
+            // rows can't isolate them.  This is NOT "no authentication" — an admin
+            // reached the page — so word it accurately, and show it once per
+            // browser session instead of on every page load.
             if (_useNewApi && !_perUser) {
-                window.ngLog('[Settings]', 'PerUser=false — settings are shared across all clients on this instance');
-                if (window.ngShowToast) {
+                window.ngLog('[Settings]', 'PerUser=false — trusted-network session shares one identity; settings are not per-user');
+                var warnKey = 'ngSharedWarnShown';
+                var alreadyWarned = false;
+                try { alreadyWarned = sessionStorage.getItem(warnKey) === '1'; } catch (e) {}
+                if (!alreadyWarned && window.ngShowToast) {
+                    try { sessionStorage.setItem(warnKey, '1'); } catch (e) {}
                     window.ngShowToast({
                         icon:     'fa-users',
                         color:    'var(--dz-warning, #f0a832)',
-                        title:    'Shared theme settings',
-                        body:     'Domoticz is running without authentication. ' +
-                                  'All users on this instance share the same Nightglass configuration.',
+                        title:    'Theme settings are shared, not per-user',
+                        body:     'This session was auto-authenticated over a trusted local network, ' +
+                                  'so Domoticz can’t tell clients apart. All clients on that network ' +
+                                  'share one Nightglass configuration. Log in with a username and password ' +
+                                  '(or disable trusted-network access) for per-user settings.',
                         duration: 10000,
                         type:     'system'
                     });
