@@ -757,6 +757,19 @@
        Schedules a replacement burst so already-rendered icons update. */
     window._dzSetDeviceIconOverrides = function (overrides) {
         DEVICE_ICON_OVERRIDES = overrides || {};
+        /* Re-apply to already-rendered device icons right away so overrides
+           added, changed, or removed at runtime take effect immediately —
+           without waiting for a device state change or a page refresh.  A plain
+           burst wouldn't do it: Pass 2 / updateReplacedIcon skip icons whose src
+           hasn't changed.  Clearing data-dz-src forces a re-resolve, which also
+           reverts to the default icon when an override was removed (issue #196). */
+        try {
+            var imgs = document.querySelectorAll('img.dz-icon-replaced[data-dz-dev-idx]');
+            for (var i = 0; i < imgs.length; i++) {
+                imgs[i].removeAttribute('data-dz-src');
+                updateReplacedIcon(imgs[i]);
+            }
+        } catch (e) { /* best-effort — burst below is the safety net */ }
         if (typeof window._dzScheduleBurst === 'function') window._dzScheduleBurst();
     };
 
@@ -811,10 +824,16 @@
             var angDev = getDeviceFromIcon(img);
             if (angDev) {
                 var devIdx = String(angDev.idx || angDev.IDX || '');
-                var ovSpec = devIdx ? applyDeviceOverride(devIdx, src, resolved) : null;
-                if (ovSpec) {
-                    resolved = ovSpec;
+                if (devIdx) {
+                    /* Always tag the device IDX — not only when an override
+                       currently exists.  updateReplacedIcon()/Pass 2 read this
+                       attribute on every state change to re-apply the override;
+                       tagging unconditionally means an override that is loaded
+                       async or added at runtime still sticks across state changes
+                       instead of reverting to the default icon (issue #196). */
                     img.setAttribute('data-dz-dev-idx', devIdx);
+                    var ovSpec = applyDeviceOverride(devIdx, src, resolved);
+                    if (ovSpec) resolved = ovSpec;
                 }
             }
         }
@@ -1367,6 +1386,21 @@
     /* Expose scheduleBurst so code outside this IIFE (e.g. tab-switch
        observers in the processCards block) can trigger a replacement pass. */
     window._dzScheduleBurst = scheduleBurst;
+
+    /* Re-run a replacement pass when the tab regains visibility / focus, or is
+       restored from the back-forward cache.  Browsers throttle timers and the
+       MutationObserver in background tabs, and the Dynamic Dashboard rebuilds
+       its widgets on refocus — wiping our injected <i> elements while the
+       original <img> stays hidden (dz-icon-replaced), so icons come back blank
+       until something triggers a burst.  scheduleBurst() runs replaceIcons()
+       whose Pass-2 recovery re-creates the missing <i> elements (issue #214).
+       Without this, the only recovery was a manual refresh or toggling the
+       Device Icons setting off/on. */
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) scheduleBurst();
+    });
+    window.addEventListener('pageshow', function () { scheduleBurst(); });
+    window.addEventListener('focus', function () { scheduleBurst(); });
 
     /* Expose a device-icon lookup for other modules (e.g. settings dialog).
        Given a Domoticz device object, returns { icon, color } replicating

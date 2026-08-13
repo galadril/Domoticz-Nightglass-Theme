@@ -543,11 +543,54 @@ document.addEventListener('DOMContentLoaded', function () {
         [999, '#4caf7d']  // excellent
     ];
 
+    // Humidity (% relative) — anchors every 10% so the accent shifts gradually:
+    // parched→red, comfortable→green (~40%), then eases through teal to blue as it
+    // gets humid.  interpAccent() blends smoothly between these stops (issue #215).
+    var HUMIDITY_ACCENT = [
+        [  0, '#e05555'], // parched — red
+        [ 10, '#ec6f3a'], // very dry — red-orange
+        [ 20, '#f0a832'], // dry — amber
+        [ 30, '#a9c34a'], // getting comfortable — yellow-green
+        [ 40, '#4caf7d'], // comfortable — green
+        [ 50, '#43b291'], // ideal — green-teal
+        [ 60, '#3ab3b3'], // slightly humid — teal
+        [ 70, '#33a9d6'], // humid — cyan
+        [ 80, '#2ea6ee'], // very humid — light blue
+        [ 90, '#29b6f6'], // saturated — blue
+        [100, '#1e88e5']  // condensing — deep blue
+    ];
+
+    // CO2 (ppm) — fresh→green, rising→amber, stuffy→orange, poor→red.
+    var CO2_ACCENT = [
+        [ 400, '#4caf7d'], // fresh outdoor air
+        [1000, '#f0a832'], // acceptable ceiling
+        [1500, '#ff7043'], // drowsy / stuffy
+        [2000, '#e05555']  // poor — ventilate
+    ];
+
     function accentFromScale(scale, value) {
         for (var i = 0; i < scale.length; i++) {
             if (value <= scale[i][0]) return scale[i][1];
         }
         return scale[scale.length - 1][1];
+    }
+
+    // Smoothly interpolate a color from ascending [threshold, hex] anchors.
+    // Values at/below the first anchor and at/above the last clamp to the end
+    // colors; in between, blend linearly between the two surrounding anchors.
+    // (lerpColor is a hoisted function declaration defined further down.)
+    function interpAccent(anchors, value) {
+        if (value <= anchors[0][0]) return anchors[0][1];
+        var last = anchors[anchors.length - 1];
+        if (value >= last[0]) return last[1];
+        for (var i = 0; i < anchors.length - 1; i++) {
+            var a = anchors[i], b = anchors[i + 1];
+            if (value >= a[0] && value <= b[0]) {
+                var t = (b[0] - a[0]) > 0 ? (value - a[0]) / (b[0] - a[0]) : 0;
+                return lerpColor(a[1], b[1], t);
+            }
+        }
+        return last[1];
     }
 
     function firstNumber(text) {
@@ -780,7 +823,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function resolveAccentColor(btText, iconCls) {
+    function resolveAccentColor(btText, iconCls, nameText) {
         // Temperature
         var c = parseCelsius(btText);
         if (c === null && /fa-temperature|fa-thermometer/.test(iconCls)) {
@@ -788,6 +831,14 @@ document.addEventListener('DOMContentLoaded', function () {
             if (nm) c = parseFloat(nm[1]);
         }
         if (c !== null && !isNaN(c)) return tempToAccentColor(c);
+
+        // Humidity (% relative).  Shares the fa-droplet icon with Rain, so
+        // disambiguate on the unit: humidity reads "%", rain reads "mm".  Must be
+        // checked before the Rain branch below.  dry→red, comfortable→green, humid→blue.
+        if (/fa-droplet/.test(iconCls) && /%/.test(btText)) {
+            var h = firstNumber(btText);
+            if (h !== null) return interpAccent(HUMIDITY_ACCENT, h);
+        }
 
         // UV (fa-sun shared with lux — use value range to distinguish: UV 0–12, lux can be 0–100000)
         if (/fa-sun/.test(iconCls)) {
@@ -799,6 +850,17 @@ document.addEventListener('DOMContentLoaded', function () {
         if (/fa-cloud-showers|fa-cloud-rain|fa-droplet/.test(iconCls)) {
             var n = firstNumber(btText);
             if (n !== null) return accentFromScale(RAIN_ACCENT, n);
+        }
+
+        // CO2 (ppm) — plain fa-cloud only (fa-cloud-rain / -showers are Rain and
+        // were already handled above).  fa-cloud is also used by CO sensors, which
+        // are dangerous at far lower ppm and must NOT read as "green/safe", so skip
+        // when the device name looks like a CO (carbon-monoxide) sensor.
+        // fresh→green … poor→red.
+        if (/fa-cloud(?![\w-])/.test(iconCls)) {
+            var looksLikeCO = /(^|[^a-z0-9])co([^a-z0-9]|$)|monoxide/i.test(nameText || '');
+            var co2 = firstNumber(btText);
+            if (co2 !== null && !looksLikeCO) return interpAccent(CO2_ACCENT, co2);
         }
 
         // Wind
@@ -886,7 +948,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (!accentColor) {
                         var btText = bigtext.textContent || '';
                         var accentCls  = accentIcon ? (accentIcon.className || '') : '';
-                        accentColor = resolveAccentColor(btText, accentCls);
+                        var nameEl2 = card.querySelector('td#name');
+                        var nameText = nameEl2 ? (nameEl2.textContent || '') : '';
+                        accentColor = resolveAccentColor(btText, accentCls, nameText);
                     }
                     if (accentColor) {
                         card.classList.add('dz-temp-accent');
