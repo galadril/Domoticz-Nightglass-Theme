@@ -725,10 +725,25 @@
                 icon:     'fa-floppy-disk',
                 color:    'var(--dz-warning, #f0a832)',
                 title:    'Unsaved theme changes',
-                body:     'Click <strong>Save to Domoticz</strong> to persist across all browsers.',
+                body:     'Persist your changes across all browsers.' +
+                          '<div class="ng-toast-actions">' +
+                          '<button type="button" class="ng-toast-action ng-toast-action--save">' +
+                          SAVE_BTN_HTML + '</button></div>',
                 duration: 0,
                 type:     'system'
             });
+            // Wire the in-toast Save button to the same save path the settings
+            // panel uses, so the latest theme config (incl. device icon
+            // overrides) can be stored without opening the panel.
+            if (_unsavedToastEl) {
+                var _saveBtn = _unsavedToastEl.querySelector('.ng-toast-action--save');
+                if (_saveBtn) {
+                    _saveBtn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        _postThemeSettings(_saveBtn);
+                    });
+                }
+            }
         } else {
             if (_unsavedToastEl && typeof window.ngRemoveToast === 'function') {
                 window.ngRemoveToast(_unsavedToastEl);
