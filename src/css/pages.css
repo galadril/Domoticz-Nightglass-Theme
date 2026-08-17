@@ -990,21 +990,26 @@
     align-items: center;
     gap: 14px;
     flex-wrap: wrap;
-    padding: 10px 12px;
-    background: var(--dz-surface-2);
-    border: 1px solid var(--dz-border);
+    padding: 12px 14px;
+    /* The surrounding .page-content-container is --dz-surface-2, so use the
+       lighter surface-3 + an accent left bar to make this read as a distinct,
+       interactive Nightglass control rather than a flat table cell. */
+    background: var(--dz-surface-3);
+    border: 1px solid var(--dz-border-b);
+    border-left: 3px solid var(--dz-accent);
     border-radius: 10px;
-    max-width: 460px;
+    max-width: 480px;
 }
 
 .ng-dd-icon-preview {
-    width: 44px;
-    height: 44px;
+    width: 46px;
+    height: 46px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--dz-surface-3);
+    background: var(--dz-surface);
+    border: 1px solid var(--dz-border);
     border-radius: 10px;
     font-size: 22px;
 }
@@ -1055,6 +1060,29 @@
     flex: 1 1 100%;
 }
 
+.ng-dd-icon-native-note {
+    flex: 1 1 100%;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: 0.74rem;
+    line-height: 1.4;
+    color: var(--dz-text-muted);
+    background: var(--dz-surface-2);
+    border: 1px dashed var(--dz-border-b);
+    border-radius: 7px;
+    padding: 7px 10px;
+}
+
+    .ng-dd-icon-native-note i {
+        color: var(--dz-accent);
+        margin-top: 1px;
+    }
+
+    .ng-dd-icon-native-note strong {
+        color: var(--dz-text-soft);
+    }
+
 .ng-dd-icon-btn {
     display: inline-flex;
     align-items: center;
@@ -1064,14 +1092,15 @@
     font-weight: 500;
     border-radius: 7px;
     border: 1px solid var(--dz-border-b);
-    background: var(--dz-surface-3);
+    background: var(--dz-surface-2);
     color: var(--dz-text-soft);
     cursor: pointer;
     transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 
     .ng-dd-icon-btn:hover {
-        background: var(--dz-border);
+        background: var(--dz-surface);
+        border-color: var(--dz-accent);
         color: var(--dz-text);
     }
 

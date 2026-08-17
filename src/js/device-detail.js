@@ -44,47 +44,56 @@
         return null;
     }
 
-    /* Determine where this device's icon currently comes from. */
+    /* Determine where this device's icon currently comes from, and what the
+       dashboard actually renders for it (so the preview matches the cards). */
     function resolveSource(device) {
         var s = settings();
         var idx = String(device.idx);
+        var themeSpec = (typeof window._dzIconForDevice === 'function')
+            ? window._dzIconForDevice(device) : null;
+
         var ov = s && s.getDeviceOverride ? s.getDeviceOverride(idx) : null;
         if (ov && (ov.iconOn || ov.iconOpen || ov.icon)) {
             return {
                 kind:  'override',
                 label: 'Nightglass override',
-                hint:  'A custom Font Awesome icon you set for this device.',
+                hint:  'A custom Font Awesome icon you set for this device in Nightglass.',
                 iconCls: ov.iconOn || ov.iconOpen || ov.icon,
                 color:   ov.on || '#4e9af1',
-                override: ov
+                usePng:  false
             };
         }
         if (device.CustomImage && String(device.CustomImage) !== '0') {
+            /* Domoticz custom PNG. Nightglass maps recognised images to a
+               matching Font Awesome icon; unmapped ones fall back to the PNG. */
+            var mapped = !!(themeSpec && themeSpec.icon);
             return {
                 kind:  'domoticz',
                 label: 'Domoticz custom icon',
-                hint:  'A built-in Domoticz icon (CustomImage). Nightglass shows it as-is.',
-                iconCls: null,
-                color: null
+                hint:  mapped
+                    ? 'Chosen in Domoticz’s icon picker; Nightglass renders a matching icon.'
+                    : 'Chosen in Domoticz’s icon picker; shown as the original image.',
+                iconCls: mapped ? themeSpec.icon  : null,
+                color:   mapped ? themeSpec.color : null,
+                usePng:  !mapped
             };
         }
-        var themeSpec = (typeof window._dzIconForDevice === 'function')
-            ? window._dzIconForDevice(device) : null;
         return {
             kind:  'theme',
             label: 'Nightglass theme icon',
-            hint:  'Automatically chosen from the device type. Set a custom one below.',
+            hint:  'Automatically chosen by Nightglass from the device type.',
             iconCls: (themeSpec && themeSpec.icon)  || 'fa-solid fa-circle-question',
-            color:   (themeSpec && themeSpec.color) || '#4e9af1'
+            color:   (themeSpec && themeSpec.color) || '#4e9af1',
+            usePng:  false
         };
     }
 
-    /* Build the preview element for the current source. For a Domoticz PNG we
-       reuse the native combo's selected thumbnail so the preview is accurate. */
+    /* Build the preview element. Shows the Font Awesome icon the dashboard
+       renders; for an unmapped Domoticz PNG, shows the actual image thumbnail. */
     function buildPreview(src, iconSelectEl) {
         var wrap = document.createElement('div');
         wrap.className = 'ng-dd-icon-preview';
-        if (src.kind === 'domoticz') {
+        if (src.usePng) {
             var thumb = iconSelectEl.querySelector('.dd-selected-image');
             if (thumb && thumb.getAttribute('src')) {
                 var im = document.createElement('img');
@@ -113,7 +122,11 @@
         var src = resolveSource(device);
 
         var box = td.querySelector('#' + BOX_ID);
-        var nativeVisible = box ? box.getAttribute('data-native-open') === '1' : false;
+        /* Preserve the user's toggle across rebuilds; on first build, open the
+           native picker automatically when the device already uses a Domoticz
+           custom image, so it's obvious that old-school icons still work. */
+        var nativeVisible = box ? box.getAttribute('data-native-open') === '1'
+                                : (src.kind === 'domoticz');
 
         /* Skip rebuilding when nothing changed. Essential: our observer watches
            the whole body subtree, so without this guard our own DOM writes would
@@ -131,6 +144,7 @@
         }
         box.setAttribute('data-dz-idx', idx);
         box.setAttribute('data-sig', sig);
+        box.setAttribute('data-native-open', nativeVisible ? '1' : '0');
 
         /* Hide the native combo unless the user explicitly revealed it. */
         iconSelectEl.style.display = nativeVisible ? '' : 'none';
@@ -177,23 +191,35 @@
             actions.appendChild(rmBtn);
         }
 
+        var LABEL_OPEN  = '<i class="fa-solid fa-chevron-up"></i> Hide Domoticz icon picker';
+        var LABEL_SHUT  = '<i class="fa-solid fa-image"></i> Use a Domoticz / uploaded icon';
+
         var nativeBtn = document.createElement('button');
         nativeBtn.type = 'button';
         nativeBtn.className = 'ng-dd-icon-btn ng-dd-icon-btn--link';
-        nativeBtn.innerHTML = nativeVisible
-            ? '<i class="fa-solid fa-chevron-up"></i> Hide Domoticz custom icon'
-            : '<i class="fa-solid fa-image"></i> Use a Domoticz custom icon';
+        nativeBtn.innerHTML = nativeVisible ? LABEL_OPEN : LABEL_SHUT;
         nativeBtn.addEventListener('click', function () {
             var open = iconSelectEl.style.display === 'none';
             iconSelectEl.style.display = open ? '' : 'none';
             box.setAttribute('data-native-open', open ? '1' : '0');
-            nativeBtn.innerHTML = open
-                ? '<i class="fa-solid fa-chevron-up"></i> Hide Domoticz custom icon'
-                : '<i class="fa-solid fa-image"></i> Use a Domoticz custom icon';
+            nativeBtn.innerHTML = open ? LABEL_OPEN : LABEL_SHUT;
+            if (note) note.style.display = open ? '' : 'none';
         });
         actions.appendChild(nativeBtn);
 
         box.appendChild(actions);
+
+        /* Clarify that Domoticz's picker holds both built-in icons and the
+           user's own ZIP-uploaded custom icons — and that this path stays
+           available even for a device that has no custom image yet. */
+        var note = document.createElement('div');
+        note.className = 'ng-dd-icon-native-note';
+        note.style.display = nativeVisible ? '' : 'none';
+        note.innerHTML =
+            '<i class="fa-solid fa-circle-info"></i> ' +
+            'Pick a built-in icon or one of your own uploaded custom icons ' +
+            '(Setup ▸ More Options ▸ Custom Icons), then <strong>Save</strong> to apply.';
+        box.appendChild(note);
     }
 
     /* After the override dialog is used, its save is async. Poll briefly so
