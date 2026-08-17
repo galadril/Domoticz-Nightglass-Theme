@@ -1,107 +1,225 @@
 /* ══════════════════════════════════════════════════════════════════
-   DEVICE DETAIL PAGE — Nightglass icon section
+   DEVICE ICON — Nightglass takeover of the native icon pickers
    ──────────────────────────────────────────────────────────────────
-   Domoticz's device detail page (Setup ▸ Devices ▸ a device, or the
-   "Edit" button on a card) exposes a native <device-icon-select> combo
-   that only lets you pick a built-in Domoticz PNG (CustomImage). But
-   Nightglass resolves icons in three different ways:
+   Domoticz lets you set a device icon in two places, both via a ddslick
+   combo listing the ENTIRE built-in icon set:
 
-     1. a Nightglass per-device OVERRIDE (Font Awesome, set via our
-        Device Icon Overrides dialog — stored in a user variable),
-     2. a Nightglass THEME icon (automatic FA icon from the device type),
-     3. a Domoticz CUSTOM icon (CustomImage ≠ 0 — a built-in PNG).
+     1. Setup ▸ Devices ▸ a device — Angular <device-icon-select>
+        (ng-model vm.device.CustomImage; persisted by the page's Save).
+     2. The Utility "edit device" jQuery-UI dialogs — #combosensoricon
+        (persisted by the dialog's Update button, which reads
+        $.ddData[selectedIndex].value → &customimage=).
 
-   This module rewrites that row to (a) show which of the three the icon
-   currently comes from, (b) let the user open our override dialog preset
-   to this device, and (c) still reach Domoticz's native PNG selector on
-   demand (kept in the DOM so its ng-model keeps writing CustomImage —
-   Domoticz stays in sync). Issue #191 / device-detail request.
+   Nightglass replaces BOTH combos with one consistent UI that:
+     • shows where the icon currently comes from (Nightglass override /
+       theme icon / Domoticz built-in / uploaded custom image),
+     • sets a Font-Awesome icon through our Device Icon Overrides dialog,
+     • and — for the old-school path — offers ONLY the user's own uploaded
+       custom images (getcustomiconset), not the whole built-in list.
+
+   The native combo stays in the DOM (hidden) purely as the persistence
+   bridge: we drive its selection / ng-model, so Domoticz's own Save /
+   Update code writes CustomImage exactly as before. Custom-icon ZIP
+   uploads (Setup ▸ More Options ▸ Custom Icons) remain fully supported.
    ══════════════════════════════════════════════════════════════════ */
 (function () {
     'use strict';
 
     var BOX_ID = 'ng-dd-icon-box';
+    var _customSet = null;   // getcustomiconset result cache (uploaded icons)
+    var _devByIdx  = {};     // idx → device object (utility-dialog fetch cache)
 
     function settings() { return window.dzNightglassSettings || null; }
+    function jq()       { return window.jQuery || window.$ || null; }
 
-    /* Resolve the Angular device object bound to the detail-page controller
-       (controllerAs 'vm'). Falls back to null. */
-    function getDetailDevice(iconSelectEl) {
+    /* ── Data ─────────────────────────────────────────────────────── */
+
+    function fetchCustomSet(cb) {
+        if (_customSet) { cb(_customSet); return; }
+        fetch('json.htm?type=command&param=getcustomiconset', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) { _customSet = (d && d.result) || []; cb(_customSet); })
+            .catch(function () { _customSet = []; cb(_customSet); });
+    }
+
+    function fetchDevice(idx, cb) {
+        if (_devByIdx[idx]) { cb(_devByIdx[idx]); return; }
+        fetch('json.htm?type=command&param=getdevices&rid=' + encodeURIComponent(idx),
+              { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                var dev = (d && d.result && d.result[0]) || null;
+                if (dev) _devByIdx[idx] = dev;
+                cb(dev);
+            })
+            .catch(function () { cb(null); });
+    }
+
+    /* ── Surface abstraction ──────────────────────────────────────────
+       Normalises the Angular page and the jQuery dialogs behind one API. */
+
+    function angularScope(el) {
         if (!window.angular) return null;
-        var node = iconSelectEl;
-        var guard = 0;
+        var node = el, guard = 0;
         while (node && node !== document.body && guard++ < 20) {
             try {
-                var scope = angular.element(node).scope();
-                if (scope) {
-                    var d = (scope.vm && scope.vm.device) || scope.device ||
-                            (scope.ctrl && scope.ctrl.device);
-                    if (d && d.idx !== undefined) return d;
-                }
+                var s = angular.element(node).scope();
+                if (s && ((s.vm && s.vm.device) || s.device)) return s;
             } catch (e) {}
             node = node.parentElement;
         }
         return null;
     }
 
-    /* Determine where this device's icon currently comes from, and what the
-       dashboard actually renders for it (so the preview matches the cards). */
-    function resolveSource(device) {
-        var s = settings();
-        var idx = String(device.idx);
-        var themeSpec = (typeof window._dzIconForDevice === 'function')
-            ? window._dzIconForDevice(device) : null;
+    function detectSurface() {
+        /* A visible utility dialog wins (there can be several hidden dialog
+           templates that share the #combosensoricon id). */
+        var dialogs = document.querySelectorAll('.ui-dialog');
+        for (var i = 0; i < dialogs.length; i++) {
+            var dlg = dialogs[i];
+            if (!dlg.offsetWidth && !dlg.offsetHeight) continue;  // hidden dialog
+            var combo = dlg.querySelector('#combosensoricon');
+            if (!combo) continue;
+            var idxEl = dlg.querySelector('#deviceidx');
+            var idx   = idxEl ? (idxEl.textContent || '').trim() : '';
+            if (!/^\d+$/.test(idx)) continue;
+            return makeJquerySurface(combo, idx);
+        }
 
-        var ov = s && s.getDeviceOverride ? s.getDeviceOverride(idx) : null;
-        if (ov && (ov.iconOn || ov.iconOpen || ov.icon)) {
-            return {
-                kind:  'override',
-                label: 'Nightglass override',
-                hint:  'A custom Font Awesome icon you set for this device in Nightglass.',
-                iconCls: ov.iconOn || ov.iconOpen || ov.icon,
-                color:   ov.on || '#4e9af1',
-                usePng:  false
-            };
+        var ng = document.querySelector('device-icon-select');
+        if (ng) {
+            var scope = angularScope(ng);
+            var dev = scope ? ((scope.vm && scope.vm.device) || scope.device) : null;
+            if (dev && dev.idx !== undefined) return makeAngularSurface(ng, scope, dev);
         }
-        if (device.CustomImage && String(device.CustomImage) !== '0') {
-            /* Domoticz custom PNG. Nightglass maps recognised images to a
-               matching Font Awesome icon; unmapped ones fall back to the PNG. */
-            var mapped = !!(themeSpec && themeSpec.icon);
-            return {
-                kind:  'domoticz',
-                label: 'Domoticz custom icon',
-                hint:  mapped
-                    ? 'Chosen in Domoticz’s icon picker; Nightglass renders a matching icon.'
-                    : 'Chosen in Domoticz’s icon picker; shown as the original image.',
-                iconCls: mapped ? themeSpec.icon  : null,
-                color:   mapped ? themeSpec.color : null,
-                usePng:  !mapped
-            };
-        }
+        return null;
+    }
+
+    function makeAngularSurface(comboEl, scope, device) {
         return {
-            kind:  'theme',
-            label: 'Nightglass theme icon',
-            hint:  'Automatically chosen by Nightglass from the device type.',
-            iconCls: (themeSpec && themeSpec.icon)  || 'fa-solid fa-circle-question',
-            color:   (themeSpec && themeSpec.color) || '#4e9af1',
-            usePng:  false
+            kind: 'angular',
+            comboEl: comboEl,
+            td: comboEl.parentNode,
+            idx: String(device.idx),
+            device: device,
+            applyLabel: 'Save',
+            getCustomImage: function () { return parseInt(device.CustomImage, 10) || 0; },
+            withDevice: function (cb) { cb(device); },
+            setCustomImage: function (value) {
+                var dev = scope.vm ? scope.vm.device : scope.device;
+                /* Our click runs outside Angular, so a digest usually isn't in
+                   flight — $apply commits the model + updates Save. Guard on
+                   $$phase to avoid "digest already in progress". */
+                if (scope.$$phase || (scope.$root && scope.$root.$$phase)) {
+                    dev.CustomImage = value;
+                } else {
+                    scope.$apply(function () { dev.CustomImage = value; });
+                }
+                device.CustomImage = value;
+            }
         };
     }
 
-    /* Build the preview element. Shows the Font Awesome icon the dashboard
-       renders; for an unmapped Domoticz PNG, shows the actual image thumbnail. */
-    function buildPreview(src, iconSelectEl) {
+    function makeJquerySurface(comboEl, idx) {
+        var cur = comboEl.querySelector('.dd-selected-value');
+        var curVal = cur ? (parseInt(cur.value, 10) || 0) : 0;
+        return {
+            kind: 'jquery',
+            comboEl: comboEl,
+            td: comboEl.parentNode,
+            idx: String(idx),
+            device: _devByIdx[idx] || null,
+            applyLabel: 'Update',
+            getCustomImage: function () {
+                var v = comboEl.querySelector('.dd-selected-value');
+                return v ? (parseInt(v.value, 10) || 0) : curVal;
+            },
+            withDevice: function (cb) {
+                if (this.device) { cb(this.device); return; }
+                var self = this;
+                fetchDevice(idx, function (d) { self.device = d; cb(d); });
+            },
+            setCustomImage: function (value) {
+                var $ = jq();
+                if (!$) return;
+                var data = $.ddData || [];
+                var sel = -1;
+                for (var i = 0; i < data.length; i++) {
+                    var dv = (data[i] && data[i].value != null) ? data[i].value : 0;
+                    if (String(dv) === String(value)) { sel = i; break; }
+                }
+                if (sel < 0 && value === 0) sel = 0;   // Default row
+                if (sel >= 0) { try { $(comboEl).ddslick('select', { index: sel }); } catch (e) {} }
+            }
+        };
+    }
+
+    /* ── Provenance + preview ─────────────────────────────────────── */
+
+    function resolveSource(surface, device) {
+        var s = settings();
+        var ov = s && s.getDeviceOverride ? s.getDeviceOverride(surface.idx) : null;
+        if (ov && (ov.iconOn || ov.iconOpen || ov.icon)) {
+            return {
+                kind: 'override', label: 'Nightglass override',
+                hint: 'A Font Awesome icon you set for this device in Nightglass.',
+                iconCls: ov.iconOn || ov.iconOpen || ov.icon, color: ov.on || '#4e9af1'
+            };
+        }
+
+        var ci = surface.getCustomImage();
+        if (ci >= 100) {
+            var up = findUploaded(ci);
+            return {
+                kind: 'custom', label: 'Uploaded custom image',
+                hint: 'One of your own uploaded custom icons (Setup ▸ More Options ▸ Custom Icons).',
+                pngSrc: up ? up.IconFile48On : (selectedImg(surface) || null),
+                iconCls: null, color: null
+            };
+        }
+        if (ci > 0) {
+            var spec = device && typeof window._dzIconForDevice === 'function'
+                ? window._dzIconForDevice(device) : null;
+            return {
+                kind: 'builtin', label: 'Domoticz built-in icon',
+                hint: 'A stock Domoticz icon. Prefer a Nightglass icon for a themed look.',
+                iconCls: (spec && spec.icon) || null,
+                color:   (spec && spec.color) || null,
+                pngSrc:  (spec && spec.icon) ? null : (selectedImg(surface) || null)
+            };
+        }
+        var themeSpec = device && typeof window._dzIconForDevice === 'function'
+            ? window._dzIconForDevice(device) : null;
+        return {
+            kind: 'theme', label: 'Nightglass theme icon',
+            hint: 'Automatically chosen by Nightglass from the device type.',
+            iconCls: (themeSpec && themeSpec.icon)  || 'fa-solid fa-circle-question',
+            color:   (themeSpec && themeSpec.color) || '#4e9af1'
+        };
+    }
+
+    function selectedImg(surface) {
+        var img = surface.comboEl.querySelector('.dd-selected-image');
+        return img ? img.getAttribute('src') : null;
+    }
+
+    function findUploaded(customImage) {
+        if (!_customSet) return null;
+        var wantId = customImage - 100;      // getcustomiconset idx == CustomImage - 100
+        for (var i = 0; i < _customSet.length; i++) {
+            if (String(_customSet[i].idx) === String(wantId)) return _customSet[i];
+        }
+        return null;
+    }
+
+    function buildPreview(src) {
         var wrap = document.createElement('div');
         wrap.className = 'ng-dd-icon-preview';
-        if (src.usePng) {
-            var thumb = iconSelectEl.querySelector('.dd-selected-image');
-            if (thumb && thumb.getAttribute('src')) {
-                var im = document.createElement('img');
-                im.src = thumb.getAttribute('src');
-                im.alt = '';
-                wrap.appendChild(im);
-                return wrap;
-            }
+        if (src.pngSrc) {
+            var im = document.createElement('img');
+            im.src = src.pngSrc; im.alt = '';
+            wrap.appendChild(im);
+            return wrap;
         }
         var i = document.createElement('i');
         i.className = src.iconCls || 'fa-solid fa-image';
@@ -110,146 +228,179 @@
         return wrap;
     }
 
-    /* (Re)build our section inside the icon row's value cell. Idempotent:
-       reuses the existing box element and only refreshes its contents. */
-    function render(iconSelectEl) {
-        var device = getDetailDevice(iconSelectEl);
-        if (!device) return;
-        var idx = String(device.idx);
-        var td  = iconSelectEl.parentNode;
+    /* ── Render ───────────────────────────────────────────────────── */
+
+    function render(surface) {
+        var td = surface.td;
         if (!td) return;
 
-        var src = resolveSource(device);
-
+        /* Create the box synchronously so concurrent async (device-fetch)
+           renders can't each insert a duplicate. The native combo is a
+           persistence bridge only — never shown. */
         var box = td.querySelector('#' + BOX_ID);
-        /* Preserve the user's toggle across rebuilds; on first build, open the
-           native picker automatically when the device already uses a Domoticz
-           custom image, so it's obvious that old-school icons still work. */
-        var nativeVisible = box ? box.getAttribute('data-native-open') === '1'
-                                : (src.kind === 'domoticz');
-
-        /* Skip rebuilding when nothing changed. Essential: our observer watches
-           the whole body subtree, so without this guard our own DOM writes would
-           re-trigger render() in a tight loop (and flicker the buttons). */
-        var sig = [idx, src.kind, src.iconCls || '', src.color || '',
-                   device.CustomImage, nativeVisible ? 1 : 0].join('|');
-        if (box && box.getAttribute('data-sig') === sig) return;
-
         if (!box) {
             box = document.createElement('div');
             box.id = BOX_ID;
             box.className = 'ng-dd-icon-box';
-            /* Insert our UI before the native combo, then hide the combo. */
-            td.insertBefore(box, iconSelectEl);
+            td.insertBefore(box, surface.comboEl);
         }
-        box.setAttribute('data-dz-idx', idx);
-        box.setAttribute('data-sig', sig);
-        box.setAttribute('data-native-open', nativeVisible ? '1' : '0');
+        surface.comboEl.style.display = 'none';
 
-        /* Hide the native combo unless the user explicitly revealed it. */
-        iconSelectEl.style.display = nativeVisible ? '' : 'none';
+        surface.withDevice(function (device) {
+            if (!document.body.contains(box)) return;   // dialog closed meanwhile
+            var src = resolveSource(surface, device);
+            var ci  = surface.getCustomImage();
 
-        box.innerHTML = '';
-        box.appendChild(buildPreview(src, iconSelectEl));
+            var pickerOpen = box.getAttribute('data-picker-open') === '1';
 
-        var info = document.createElement('div');
-        info.className = 'ng-dd-icon-info';
-        info.innerHTML =
-            '<div class="ng-dd-icon-source ng-dd-icon-source--' + src.kind + '">' +
-            '  <span class="ng-dd-icon-dot"></span>' + src.label +
-            '</div>' +
-            '<div class="ng-dd-icon-hint">' + src.hint + '</div>';
-        box.appendChild(info);
+            var sig = [surface.idx, src.kind, src.iconCls || '', src.color || '',
+                       src.pngSrc || '', ci, pickerOpen ? 1 : 0].join('|');
+            if (box.getAttribute('data-sig') === sig) return;
 
-        var actions = document.createElement('div');
-        actions.className = 'ng-dd-icon-actions';
+            box.setAttribute('data-sig', sig);
+            box.setAttribute('data-picker-open', pickerOpen ? '1' : '0');
 
-        var setBtn = document.createElement('button');
-        setBtn.type = 'button';
-        setBtn.className = 'ng-dd-icon-btn ng-dd-icon-btn--primary';
-        setBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> ' +
-            (src.kind === 'override' ? 'Edit Nightglass icon' : 'Set Nightglass icon');
-        setBtn.addEventListener('click', function () {
-            var s = settings();
-            if (s && s.openIconOverride) s.openIconOverride(idx);
-            /* The dialog saves asynchronously; refresh shortly after so the
-               new provenance/preview shows without leaving the page. */
-            scheduleRefresh(iconSelectEl);
+            box.innerHTML = '';
+
+            var head = document.createElement('div');
+            head.className = 'ng-dd-icon-head';
+            head.appendChild(buildPreview(src));
+            var info = document.createElement('div');
+            info.className = 'ng-dd-icon-info';
+            info.innerHTML =
+                '<div class="ng-dd-icon-source ng-dd-icon-source--' + src.kind + '">' +
+                '<span class="ng-dd-icon-dot"></span>' + src.label + '</div>' +
+                '<div class="ng-dd-icon-hint">' + src.hint + '</div>';
+            head.appendChild(info);
+            box.appendChild(head);
+
+            var actions = document.createElement('div');
+            actions.className = 'ng-dd-icon-actions';
+
+            var setBtn = mkBtn('ng-dd-icon-btn--primary',
+                '<i class="fa-solid fa-wand-magic-sparkles"></i> ' +
+                (src.kind === 'override' ? 'Edit Nightglass icon' : 'Set Nightglass icon'),
+                function () {
+                    var s = settings();
+                    if (s && s.openIconOverride) s.openIconOverride(surface.idx);
+                    scheduleRefresh(surface);
+                });
+            actions.appendChild(setBtn);
+
+            var pickBtn = mkBtn('ng-dd-icon-btn--link',
+                pickerOpen
+                    ? '<i class="fa-solid fa-chevron-up"></i> Hide custom images'
+                    : '<i class="fa-solid fa-images"></i> Use a custom uploaded image',
+                function () {
+                    box.setAttribute('data-picker-open', pickerOpen ? '0' : '1');
+                    render(surface);
+                });
+            actions.appendChild(pickBtn);
+
+            if (src.kind === 'override') {
+                actions.appendChild(mkBtn('ng-dd-icon-btn--danger',
+                    '<i class="fa-solid fa-rotate-left"></i> Remove override',
+                    function () {
+                        var s = settings();
+                        if (s && s.removeDeviceOverride) s.removeDeviceOverride(surface.idx);
+                        render(surface);
+                    }));
+            } else if (ci > 0) {
+                actions.appendChild(mkBtn('ng-dd-icon-btn--danger',
+                    '<i class="fa-solid fa-rotate-left"></i> Reset to default',
+                    function () {
+                        surface.setCustomImage(0);
+                        render(surface);
+                    }));
+            }
+
+            box.appendChild(actions);
+
+            if (pickerOpen) box.appendChild(buildPicker(surface));
         });
-        actions.appendChild(setBtn);
-
-        if (src.kind === 'override') {
-            var rmBtn = document.createElement('button');
-            rmBtn.type = 'button';
-            rmBtn.className = 'ng-dd-icon-btn ng-dd-icon-btn--danger';
-            rmBtn.innerHTML = '<i class="fa-solid fa-rotate-left"></i> Remove override';
-            rmBtn.addEventListener('click', function () {
-                var s = settings();
-                if (s && s.removeDeviceOverride) s.removeDeviceOverride(idx);
-                render(iconSelectEl);
-            });
-            actions.appendChild(rmBtn);
-        }
-
-        var LABEL_OPEN  = '<i class="fa-solid fa-chevron-up"></i> Hide Domoticz icon picker';
-        var LABEL_SHUT  = '<i class="fa-solid fa-image"></i> Use a Domoticz / uploaded icon';
-
-        var nativeBtn = document.createElement('button');
-        nativeBtn.type = 'button';
-        nativeBtn.className = 'ng-dd-icon-btn ng-dd-icon-btn--link';
-        nativeBtn.innerHTML = nativeVisible ? LABEL_OPEN : LABEL_SHUT;
-        nativeBtn.addEventListener('click', function () {
-            var open = iconSelectEl.style.display === 'none';
-            iconSelectEl.style.display = open ? '' : 'none';
-            box.setAttribute('data-native-open', open ? '1' : '0');
-            nativeBtn.innerHTML = open ? LABEL_OPEN : LABEL_SHUT;
-            if (note) note.style.display = open ? '' : 'none';
-        });
-        actions.appendChild(nativeBtn);
-
-        box.appendChild(actions);
-
-        /* Clarify that Domoticz's picker holds both built-in icons and the
-           user's own ZIP-uploaded custom icons — and that this path stays
-           available even for a device that has no custom image yet. */
-        var note = document.createElement('div');
-        note.className = 'ng-dd-icon-native-note';
-        note.style.display = nativeVisible ? '' : 'none';
-        note.innerHTML =
-            '<i class="fa-solid fa-circle-info"></i> ' +
-            'Pick a built-in icon or one of your own uploaded custom icons ' +
-            '(Setup ▸ More Options ▸ Custom Icons), then <strong>Save</strong> to apply.';
-        box.appendChild(note);
     }
 
-    /* After the override dialog is used, its save is async. Poll briefly so
-       the section reflects the new override/removal without a page reload. */
-    function scheduleRefresh(iconSelectEl) {
-        var tries = 0;
-        var t = setInterval(function () {
-            if (++tries > 20 || !document.body.contains(iconSelectEl)) {
-                clearInterval(t);
+    function mkBtn(cls, html, onClick) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'ng-dd-icon-btn ' + cls;
+        b.innerHTML = html;
+        b.addEventListener('click', onClick);
+        return b;
+    }
+
+    /* Our own custom-image picker — uploaded icons ONLY (getcustomiconset). */
+    function buildPicker(surface) {
+        var panel = document.createElement('div');
+        panel.className = 'ng-dd-icon-picker';
+        panel.innerHTML = '<div class="ng-dd-icon-picker-loading">' +
+            '<i class="fa-solid fa-spinner fa-spin"></i> Loading your custom images…</div>';
+
+        fetchCustomSet(function (list) {
+            panel.innerHTML = '';
+            var note = document.createElement('div');
+            note.className = 'ng-dd-icon-picker-note';
+            note.innerHTML = '<i class="fa-solid fa-circle-info"></i> Your own uploaded ' +
+                'custom images. Manage them in Setup ▸ More Options ▸ Custom Icons. ' +
+                'Selecting one sets it as the Domoticz image — click <strong>' +
+                surface.applyLabel + '</strong> to save.';
+            panel.appendChild(note);
+
+            if (!list.length) {
+                var empty = document.createElement('div');
+                empty.className = 'ng-dd-icon-picker-empty';
+                empty.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> ' +
+                    'No custom images uploaded yet. Upload a ZIP via ' +
+                    'Setup ▸ More Options ▸ Custom Icons.';
+                panel.appendChild(empty);
                 return;
             }
-            render(iconSelectEl);
+
+            var grid = document.createElement('div');
+            grid.className = 'ng-dd-icon-grid';
+            var curCi = surface.getCustomImage();
+
+            list.forEach(function (icon) {
+                var value = (parseInt(icon.idx, 10) || 0) + 100;   // stored CustomImage
+                var tile = document.createElement('button');
+                tile.type = 'button';
+                tile.className = 'ng-dd-icon-tile' + (value === curCi ? ' ng-dd-icon-tile--active' : '');
+                tile.title = (icon.Title || '') + (icon.Description ? ' — ' + icon.Description : '');
+                tile.innerHTML =
+                    '<img src="' + icon.IconFile48On + '" alt="">' +
+                    '<span>' + (icon.Title || ('#' + icon.idx)) + '</span>';
+                tile.addEventListener('click', function () {
+                    surface.setCustomImage(value);
+                    render(surface);              // reflect new provenance immediately
+                });
+                grid.appendChild(tile);
+            });
+            panel.appendChild(grid);
+        });
+
+        return panel;
+    }
+
+    /* The override dialog saves asynchronously; poll briefly so provenance
+       refreshes without leaving the page. */
+    function scheduleRefresh(surface) {
+        var n = 0;
+        var t = setInterval(function () {
+            if (++n > 20 || !document.body.contains(surface.comboEl)) { clearInterval(t); return; }
+            render(surface);
         }, 500);
     }
 
-    /* Find the native icon combo on the current page and enhance it. */
+    /* ── Wiring ───────────────────────────────────────────────────── */
+
     function enhance() {
-        var iconSelectEl = document.querySelector('device-icon-select');
-        if (!iconSelectEl) return;
-        /* Wait until Angular has populated the isolate scope / device. */
-        render(iconSelectEl);
+        var surface = detectSurface();
+        if (surface) render(surface);
     }
 
     var _t = null;
-    function schedule() {
-        clearTimeout(_t);
-        _t = setTimeout(enhance, 120);
-    }
+    function schedule() { clearTimeout(_t); _t = setTimeout(enhance, 120); }
 
-    /* Detail page is rendered by AngularJS routing; watch for it to appear. */
     var mo = new MutationObserver(function (muts) {
         for (var i = 0; i < muts.length; i++) {
             if (muts[i].addedNodes && muts[i].addedNodes.length) { schedule(); return; }

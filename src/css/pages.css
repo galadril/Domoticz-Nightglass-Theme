@@ -981,24 +981,30 @@
         white-space: nowrap;
     }
 
-/* ── Device detail: Nightglass icon source box (device-detail.js) ─────
-   Replaces the native <device-icon-select> combo with a provenance
-   summary + actions; the native combo is kept in the DOM (hidden) so its
-   ng-model keeps writing CustomImage. */
+/* ── Device icon: Nightglass picker box (device-detail.js) ────────────
+   Replaces the native icon combo on the Angular device page AND the
+   jQuery utility edit dialogs with one provenance + actions + custom-
+   image-picker control. The native combo stays hidden in the DOM as the
+   persistence bridge. */
 .ng-dd-icon-box {
     display: flex;
-    align-items: center;
-    gap: 14px;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 10px;
     padding: 12px 14px;
-    /* The surrounding .page-content-container is --dz-surface-2, so use the
-       lighter surface-3 + an accent left bar to make this read as a distinct,
-       interactive Nightglass control rather than a flat table cell. */
+    /* The surrounding container is --dz-surface-2, so use the lighter
+       surface-3 + an accent left bar to read as a distinct Nightglass
+       control rather than a flat table cell. */
     background: var(--dz-surface-3);
     border: 1px solid var(--dz-border-b);
     border-left: 3px solid var(--dz-accent);
     border-radius: 10px;
-    max-width: 480px;
+    max-width: 520px;
+}
+
+.ng-dd-icon-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
 }
 
 .ng-dd-icon-preview {
@@ -1044,7 +1050,8 @@
 
 .ng-dd-icon-source--override .ng-dd-icon-dot { background: var(--dz-accent); }
 .ng-dd-icon-source--theme    .ng-dd-icon-dot { background: #4caf7d; }
-.ng-dd-icon-source--domoticz .ng-dd-icon-dot { background: #f0a832; }
+.ng-dd-icon-source--custom   .ng-dd-icon-dot { background: #f0a832; }
+.ng-dd-icon-source--builtin  .ng-dd-icon-dot { background: #b0b3c6; }
 
 .ng-dd-icon-hint {
     margin-top: 2px;
@@ -1057,31 +1064,90 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    flex: 1 1 100%;
 }
 
-.ng-dd-icon-native-note {
-    flex: 1 1 100%;
+/* ── Custom uploaded-image picker (our own — getcustomiconset) ──── */
+.ng-dd-icon-picker {
+    border-top: 1px solid var(--dz-border);
+    padding-top: 10px;
+}
+
+.ng-dd-icon-picker-loading,
+.ng-dd-icon-picker-empty {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.78rem;
+    color: var(--dz-text-muted);
+    padding: 6px 2px;
+}
+
+.ng-dd-icon-picker-note {
     display: flex;
     align-items: flex-start;
     gap: 6px;
-    font-size: 0.74rem;
+    font-size: 0.73rem;
     line-height: 1.4;
     color: var(--dz-text-muted);
-    background: var(--dz-surface-2);
-    border: 1px dashed var(--dz-border-b);
-    border-radius: 7px;
-    padding: 7px 10px;
+    margin-bottom: 8px;
 }
 
-    .ng-dd-icon-native-note i {
-        color: var(--dz-accent);
-        margin-top: 1px;
+    .ng-dd-icon-picker-note i,
+    .ng-dd-icon-picker-empty i { color: var(--dz-accent); margin-top: 1px; }
+
+    .ng-dd-icon-picker-note strong { color: var(--dz-text-soft); }
+
+.ng-dd-icon-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    gap: 8px;
+    max-height: 260px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--dz-border) transparent;
+}
+
+.ng-dd-icon-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 6px;
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-radius: 9px;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s, transform 0.08s;
+}
+
+    .ng-dd-icon-tile:hover {
+        border-color: var(--dz-accent);
+        background: var(--dz-surface);
+        transform: translateY(-1px);
     }
 
-    .ng-dd-icon-native-note strong {
-        color: var(--dz-text-soft);
+    .ng-dd-icon-tile img {
+        width: 32px;
+        height: 32px;
+        object-fit: contain;
     }
+
+    .ng-dd-icon-tile span {
+        font-size: 0.68rem;
+        color: var(--dz-text-soft);
+        text-align: center;
+        line-height: 1.2;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+.ng-dd-icon-tile--active {
+    border-color: var(--dz-accent);
+    background: rgba(var(--dz-accent-rgb), 0.14);
+    box-shadow: inset 0 0 0 1px var(--dz-accent);
+}
 
 .ng-dd-icon-btn {
     display: inline-flex;
