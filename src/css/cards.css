@@ -861,7 +861,12 @@ body table#itemtablenostatus tr td.options {
 }
 
 .dz-text-msg {
-    font-family: 'Courier New', 'Consolas', ui-monospace, monospace;
+    /* Inherit the theme's sans-serif stack rather than forcing a monospace
+       face. On classic-table tabs (e.g. Utility) this block is only present
+       until the next device update overwrites #status with the raw text; a
+       monospace font here made the card visibly flip fonts on every update
+       and diverge from the Dashboard 2.0 rendering (issue #221). */
+    font-family: inherit;
     font-size: 0.75rem;
     line-height: 1.55;
     color: var(--dz-text-soft);
