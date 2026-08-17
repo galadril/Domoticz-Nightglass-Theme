@@ -1361,6 +1361,41 @@
     text-overflow: ellipsis;
 }
 
+/* System toasts (e.g. the unsaved-changes prompt) may carry an action button
+   and a longer body — let them wrap instead of truncating. */
+.ng-toast--system .ng-toast-body {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+}
+
+/* In-toast action button (e.g. "Save to Domoticz" on the unsaved toast) */
+.ng-toast-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+    white-space: normal;
+}
+
+.ng-toast-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 7px;
+    background: var(--dz-accent);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.12s, opacity 0.12s;
+}
+
+    .ng-toast-action:hover { background: var(--dz-accent-light, var(--dz-accent)); }
+    .ng-toast-action:disabled { opacity: 0.7; cursor: default; }
+
 /* ── Dismiss button ── */
 .ng-toast-close {
     flex-shrink:  0;
