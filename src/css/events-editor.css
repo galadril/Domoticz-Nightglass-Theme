@@ -1167,7 +1167,20 @@
     font-size: 12px !important;
 }
 
-/* ── Ace editor replacing .aw-code-review ───────────────────────── */
+/* ── Ace editor replacing .aw-code-review ─────────────────────────
+   `ace.edit(wrap)` turns the .aw-ace-wrap <div> itself into the editor
+   root (it gains `.ace_editor .ace-<theme>`), so the editor rules below
+   are COMPOUND (`.aw-ace-wrap.ace_editor`), NOT descendant — a descendant
+   combinator never matches, which is why the font override used to be a
+   no-op.
+
+   The wizard has no Ace theme picker, so it inherits whatever theme the
+   events editor last saved (`dz-ace-theme`). A light theme renders near
+   black base text — invisible on the dark modal (issue #220). Independent
+   of the theme we force the Nightglass surface + base (un-tokenised) text
+   colours; both are mode-aware tokens, so the code stays readable in dark
+   AND light mode. Syntax-token colours are left to the Ace theme (each
+   token span carries its own colour, so it wins over the inherited base). */
 .aw-ace-wrap {
     height: 300px;          /* matches textarea rows="14" */
     border: 1px solid var(--dz-border);
@@ -1176,10 +1189,47 @@
     position: relative;
 }
 
-.aw-ace-wrap .ace_editor {
+.aw-ace-wrap.ace_editor {
     border-radius: 6px;
     font-family: 'Consolas', 'Monaco', 'Fira Code', monospace !important;
     font-size: 13px !important;
+}
+
+/* Editor surface */
+.aw-ace-wrap.ace_editor,
+.aw-ace-wrap .ace_scroller,
+.aw-ace-wrap .ace_content {
+    background-color: var(--dz-input-bg) !important;
+}
+
+/* Base (un-tokenised) text + caret — the fix for the black-text report */
+.aw-ace-wrap.ace_editor,
+.aw-ace-wrap .ace_text-layer {
+    color: var(--dz-input-text) !important;
+}
+
+.aw-ace-wrap .ace_cursor {
+    color: var(--dz-input-text) !important;
+}
+
+/* Gutter (line numbers) */
+.aw-ace-wrap .ace_gutter,
+.aw-ace-wrap .ace_gutter-layer {
+    background-color: var(--dz-surface) !important;
+}
+
+.aw-ace-wrap .ace_gutter-cell {
+    color: var(--dz-text-muted) !important;
+}
+
+/* Active line + print margin */
+.aw-ace-wrap .ace_active-line,
+.aw-ace-wrap .ace_gutter-active-line {
+    background-color: rgba(var(--dz-accent-rgb), 0.08) !important;
+}
+
+.aw-ace-wrap .ace_print-margin {
+    background: var(--dz-border) !important;
 }
 
 /* ── Footer ─────────────────────────────────────────────────────── */

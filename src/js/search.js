@@ -725,10 +725,25 @@
                 icon:     'fa-floppy-disk',
                 color:    'var(--dz-warning, #f0a832)',
                 title:    'Unsaved theme changes',
-                body:     'Click <strong>Save to Domoticz</strong> to persist across all browsers.',
+                body:     'Persist your changes across all browsers.' +
+                          '<div class="ng-toast-actions">' +
+                          '<button type="button" class="ng-toast-action ng-toast-action--save">' +
+                          SAVE_BTN_HTML + '</button></div>',
                 duration: 0,
                 type:     'system'
             });
+            // Wire the in-toast Save button to the same save path the settings
+            // panel uses, so the latest theme config (incl. device icon
+            // overrides) can be stored without opening the panel.
+            if (_unsavedToastEl) {
+                var _saveBtn = _unsavedToastEl.querySelector('.ng-toast-action--save');
+                if (_saveBtn) {
+                    _saveBtn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        _postThemeSettings(_saveBtn);
+                    });
+                }
+            }
         } else {
             if (_unsavedToastEl && typeof window.ngRemoveToast === 'function') {
                 window.ngRemoveToast(_unsavedToastEl);
@@ -2521,7 +2536,8 @@
         return null;
     }
 
-    function openDeviceIconOverrideDialog() {
+    function openDeviceIconOverrideDialog(presetIdx) {
+        presetIdx = presetIdx != null ? String(presetIdx) : null;
         var existing = document.getElementById('ng-ov-overlay');
         if (existing) existing.remove();
 
@@ -3548,6 +3564,24 @@
 
             sorted.forEach(function (d) { listEl.appendChild(renderRow(d)); });
             updateCount();
+
+            /* Opened preset to a specific device (e.g. from the device-detail
+               page): scroll it into view, flash a highlight, and open its
+               inline editor so the user lands straight on it. */
+            if (presetIdx) {
+                var target = listEl.querySelector('.ng-ov-row[data-idx="' + presetIdx + '"]');
+                if (target) {
+                    target.classList.add('ng-ov-row--preset-focus');
+                    try { target.scrollIntoView({ block: 'center' }); } catch (e) { target.scrollIntoView(); }
+                    var eb = target.querySelector('.ng-ov-edit-btn');
+                    if (eb) eb.click();
+                    setTimeout(function () { target.classList.remove('ng-ov-row--preset-focus'); }, 2600);
+                } else if (searchEl) {
+                    /* Device not in the used-device list — at least surface it. */
+                    searchEl.value = presetIdx;
+                    filterList(presetIdx);
+                }
+            }
         }
 
         /* Selection mode — used when a preset chip is active */
@@ -4242,6 +4276,15 @@
     }
 
     // Expose for external use
+    /* Parse the stored override map (best-effort). */
+    function readOverrideMap() {
+        try {
+            var raw = (window.dzNightglassSettings && window.dzNightglassSettings.get('deviceIconOverrides')) || '{}';
+            var m = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
+            return (m && typeof m === 'object') ? m : {};
+        } catch (e) { return {}; }
+    }
+
     window.dzNightglassSettings = {
         get: function (key) { return _settings ? _settings[key] : DEFAULTS[key]; },
         set: saveSetting,
@@ -4249,6 +4292,25 @@
             Object.keys(DEFAULTS).forEach(function (key) {
                 saveSetting(key, DEFAULTS[key]);
             });
+        },
+        /* Open the Device Icon Overrides dialog, optionally focused on one
+           device (used by the device-detail page). */
+        openIconOverride: function (idx) { openDeviceIconOverrideDialog(idx); },
+        /* Return the override entry for a device IDX, or null. */
+        getDeviceOverride: function (idx) {
+            var m = readOverrideMap();
+            return m[String(idx)] || null;
+        },
+        /* Remove a device's override and re-apply icons immediately. */
+        removeDeviceOverride: function (idx) {
+            var m = readOverrideMap();
+            if (!m[String(idx)]) return false;
+            delete m[String(idx)];
+            saveSetting('deviceIconOverrides', JSON.stringify(m));
+            if (typeof window._dzSetDeviceIconOverrides === 'function') {
+                window._dzSetDeviceIconOverrides(m);
+            }
+            return true;
         }
     };
 })();

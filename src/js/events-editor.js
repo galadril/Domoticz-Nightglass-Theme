@@ -164,27 +164,31 @@
         try {
             var $rootScope = angular.element(document.body).injector().get('$rootScope');
             $rootScope.$on('$routeChangeSuccess', function () {
-                setTimeout(swapIcons, 400);
-                setTimeout(swapIcons, 1200);
+                [400, 1200, 2500].forEach(function (d) { setTimeout(swapIcons, d); });
             });
         } catch (e) {}
 
-        // Watch for Angular re-renders (folder expand, filter changes)
+        // Watch for Angular re-renders (initial editor mount, folder expand,
+        // filter changes, wizard overlay). We observe a STABLE ancestor that
+        // exists before the editor mounts rather than the editor itself: on
+        // the first SPA navigation to the events page, DOMContentLoaded has
+        // long since fired, so the editor and its toolbar buttons appear only
+        // as later mutations. Attaching to `.events-editor` after a poll used
+        // to miss buttons rendered in the same tick it appeared — leaving them
+        // blank (the sprite is hidden by CSS) until a full page refresh.
+        var _t = null;
         var mo = new MutationObserver(function (mutations) {
-            if (mutations.some(function (m) { return m.addedNodes.length > 0; })) {
-                setTimeout(swapIcons, 80);
-            }
+            if (!mutations.some(function (m) { return m.addedNodes.length > 0; })) return;
+            clearTimeout(_t);
+            _t = setTimeout(swapIcons, 80);
         });
+        var host = document.getElementById('dashcontent') ||
+                   document.getElementById('main-content') ||
+                   document.body;
+        mo.observe(host, { childList: true, subtree: true });
 
-        function hookEditor() {
-            var ed = document.querySelector('.events-editor');
-            if (ed) {
-                mo.observe(ed, { childList: true, subtree: true });
-            } else {
-                setTimeout(hookEditor, 1000);
-            }
-        }
-        hookEditor();
+        // Catch any buttons already in the DOM when we attach.
+        swapIcons();
     }
 
     if (document.readyState === 'loading') {
