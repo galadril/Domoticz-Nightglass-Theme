@@ -32,7 +32,8 @@
         'src/js/icons.js',          /* Font Awesome PNG → icon replacement system */
         'src/js/card-features.js',  /* bigtext, timestamps, moon phase, tilt/temp/glow/flash */
         'src/js/sparklines.js',     /* Feature 7: sparkline micro-charts */
-        'src/js/search.js',         /* Feature 8: slash-to-search + keyboard shortcuts */
+        'src/js/search.js',         /* Feature 8: slash-to-search + keyboard shortcuts + icon override dialog */
+        'src/js/device-detail.js',  /* Device detail page: Nightglass icon source + override entry point */
         'src/js/popups.js',         /* Feature 9: popup/modal redesigns */
         'src/js/toasts.js',         /* Feature 10: live toasts */
         'src/js/realtime.js',       /* Feature 11: WebSocket live card updates */

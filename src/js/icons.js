@@ -352,10 +352,20 @@
         var node = el;
         while (node && node !== document.body) {
             try {
-                var scope = angular.element(node).scope();
-                if (scope) {
-                    /* dzLightWidget exposes device on ctrl.device or
-                       directly as scope.device / scope.item          */
+                var $el = angular.element(node);
+                /* dzLightWidget / dzUtilityWidget are ISOLATE-scope directives
+                   (scope:{…}, controllerAs 'ctrl').  For their template children
+                   .scope() returns the surrounding NON-isolate scope, which has
+                   no ctrl.device — so also probe .isolateScope() on the directive
+                   element. Checking both is why overrides now reach dimmers /
+                   Color Switches (issue #191). */
+                var scopes = [
+                    $el.scope       ? $el.scope()       : null,
+                    $el.isolateScope ? $el.isolateScope() : null
+                ];
+                for (var s = 0; s < scopes.length; s++) {
+                    var scope = scopes[s];
+                    if (!scope) continue;
                     var d = (scope.ctrl && scope.ctrl.device) ||
                              scope.device || scope.item || scope.widget;
                     if (d && d.Type !== undefined) return d;
@@ -364,6 +374,40 @@
             node = node.parentElement;
         }
         return null;
+    }
+
+    /* Resolve a device IDX for an icon without relying on Angular scope.
+       Domoticz stamps the idx on the widget DOM: the card is
+       <div class="item itemBlock" id="{{idx}}"> and the name cell carries
+       data-idx. Used as a robust fallback when getDeviceFromIcon() can't
+       reach the device object (issue #191). */
+    function deviceIdxFromDom(img) {
+        if (!img || !img.closest) return '';
+        var card = img.closest('.item.itemBlock, .itemBlock');
+        if (card) {
+            var cid = card.getAttribute('id') || '';
+            if (/^\d+$/.test(cid)) return cid;
+        }
+        var table = img.closest('table');
+        if (table) {
+            var nameCell = table.querySelector('td#name[data-idx]');
+            if (nameCell) {
+                var di = nameCell.getAttribute('data-idx') || '';
+                if (/^\d+$/.test(di)) return di;
+            }
+        }
+        return '';
+    }
+
+    /* Best-effort device IDX for an icon: Angular device object first
+       (also yields Type/SwitchType for other callers), DOM stamp second. */
+    function deviceIdxForIcon(img) {
+        var d = getDeviceFromIcon(img);
+        if (d) {
+            var i = String(d.idx || d.IDX || '');
+            if (i) return i;
+        }
+        return deviceIdxFromDom(img);
     }
 
     /* -- Determines whether clicking the device icon should optimistically
@@ -764,7 +808,12 @@
            hasn't changed.  Clearing data-dz-src forces a re-resolve, which also
            reverts to the default icon when an override was removed (issue #196). */
         try {
-            var imgs = document.querySelectorAll('img.dz-icon-replaced[data-dz-dev-idx]');
+            /* Include already-replaced device icons that were never tagged with
+               an IDX (e.g. isolate-scope widgets before the robust tagging, or
+               icons replaced before the map first loaded) so a newly-set override
+               applies without a refresh — updateReplacedIcon() self-heals the tag
+               via deviceIdxForIcon(). Issue #191. */
+            var imgs = document.querySelectorAll('img.dz-icon-replaced');
             for (var i = 0; i < imgs.length; i++) {
                 imgs[i].removeAttribute('data-dz-src');
                 updateReplacedIcon(imgs[i]);
@@ -821,20 +870,21 @@
            blindsstop.png matches ICON_MAP (type='icon') so we check it explicitly here so
            that iconStop overrides are applied even though it is not a 48px device icon. */
         if (resolved.type === 'device' || src.indexOf('blindsstop') !== -1) {
-            var angDev = getDeviceFromIcon(img);
-            if (angDev) {
-                var devIdx = String(angDev.idx || angDev.IDX || '');
-                if (devIdx) {
-                    /* Always tag the device IDX — not only when an override
-                       currently exists.  updateReplacedIcon()/Pass 2 read this
-                       attribute on every state change to re-apply the override;
-                       tagging unconditionally means an override that is loaded
-                       async or added at runtime still sticks across state changes
-                       instead of reverting to the default icon (issue #196). */
-                    img.setAttribute('data-dz-dev-idx', devIdx);
-                    var ovSpec = applyDeviceOverride(devIdx, src, resolved);
-                    if (ovSpec) resolved = ovSpec;
-                }
+            /* Resolve the IDX robustly (Angular device object OR the idx Domoticz
+               stamps on the card DOM). Isolate-scope widgets (dimmers, Color
+               Switches) don't expose the device via .scope(), so the DOM
+               fallback is what makes their overrides work (issue #191). */
+            var devIdx = deviceIdxForIcon(img);
+            if (devIdx) {
+                /* Always tag the device IDX — not only when an override
+                   currently exists.  updateReplacedIcon()/Pass 2 read this
+                   attribute on every state change to re-apply the override;
+                   tagging unconditionally means an override that is loaded
+                   async or added at runtime still sticks across state changes
+                   instead of reverting to the default icon (issue #196). */
+                img.setAttribute('data-dz-dev-idx', devIdx);
+                var ovSpec = applyDeviceOverride(devIdx, src, resolved);
+                if (ovSpec) resolved = ovSpec;
             }
         }
 
@@ -959,8 +1009,15 @@
         /* Resolve icon first so colors are available as fallback for overrides */
         var resolved = resolveIcon(curSrc);
 
-        /* Per-device icon override — check stored IDX on the img element */
+        /* Per-device icon override — prefer the stored IDX, but self-heal it
+           if missing (e.g. the icon was first replaced before this idx-tagging
+           became robust, or before the override map loaded) so isolate-scope
+           widgets like dimmers still pick up overrides — issue #191. */
         var devIdx = img.getAttribute('data-dz-dev-idx');
+        if (!devIdx && (resolved && resolved.type === 'device')) {
+            devIdx = deviceIdxForIcon(img);
+            if (devIdx) img.setAttribute('data-dz-dev-idx', devIdx);
+        }
         if (devIdx) {
             var ovSpec = applyDeviceOverride(devIdx, curSrc, resolved);
             if (ovSpec) {

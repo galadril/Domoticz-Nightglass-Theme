@@ -823,7 +823,38 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function resolveAccentColor(btText, iconCls, nameText) {
+    /* Resolve the actual Domoticz device object bound to a card's Angular
+       scope (Type / SubType / Humidity / Data). Mirrors icons.js's
+       getDeviceFromIcon: walk up from an inner widget node until a scope
+       exposes the device. Lets the accent key off real device semantics
+       instead of the (user-configurable) icon glyph — issue #215. */
+    function getCardDevice(card) {
+        if (!window.angular) return null;
+        var node = card.querySelector('dz-bar, .js-sensor-bar, i.dz-fa-device') || card;
+        var guard = 0;
+        while (node && node !== document.body && guard++ < 16) {
+            try {
+                var scope = angular.element(node).scope();
+                if (scope) {
+                    var d = (scope.ctrl && scope.ctrl.device) ||
+                             scope.device || scope.item || scope.widget;
+                    if (d && d.Type !== undefined) return d;
+                }
+            } catch (e) {}
+            node = node.parentElement;
+        }
+        return null;
+    }
+
+    /* CO (carbon-monoxide) sensors also report ppm but are dangerous at far
+       lower levels, so they must never read as "green/safe" on the CO2 scale.
+       Skip anything whose name or subtype looks like carbon monoxide. */
+    function looksLikeCOName(nameText, subType) {
+        var re = /(^|[^a-z0-9])co([^a-z0-9]|$)|monoxide/i;
+        return re.test(nameText || '') || re.test(subType || '');
+    }
+
+    function resolveAccentColor(btText, iconCls, nameText, dev) {
         // Temperature
         var c = parseCelsius(btText);
         if (c === null && /fa-temperature|fa-thermometer/.test(iconCls)) {
@@ -832,10 +863,30 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (c !== null && !isNaN(c)) return tempToAccentColor(c);
 
-        // Humidity (% relative).  Shares the fa-droplet icon with Rain, so
-        // disambiguate on the unit: humidity reads "%", rain reads "mm".  Must be
-        // checked before the Rain branch below.  dry→red, comfortable→green, humid→blue.
-        if (/fa-droplet/.test(iconCls) && /%/.test(btText)) {
+        // ── Device-aware humidity & air-quality detection (issue #215) ──
+        // Key off the real device semantics from Angular, so the accent works
+        // regardless of which icon the user picked. A CO2 sensor using the
+        // "AirMeasure" image (→ fa-lungs) or a humidity sensor using "Soil"
+        // (→ fa-seedling) used to never colour because the branches below only
+        // matched fa-droplet / fa-cloud. Pure "Humidity" type only — combined
+        // Temp+Humidity devices show temperature as the hero and are handled
+        // by the temperature branch above.
+        if (dev) {
+            if (dev.Type === 'Humidity') {
+                var hv = (typeof dev.Humidity === 'number') ? dev.Humidity : firstNumber(btText);
+                if (hv !== null) return interpAccent(HUMIDITY_ACCENT, hv);
+            }
+            if (dev.Type === 'Air Quality' && !looksLikeCOName(nameText, dev.SubType)) {
+                var ppmV = firstNumber(String(dev.Data != null ? dev.Data : btText));
+                if (ppmV !== null) return interpAccent(CO2_ACCENT, ppmV);
+            }
+        }
+
+        // Humidity (% relative) — text/icon fallback for when the device object
+        // isn't reachable. Matches fa-droplet AND the moisture variant
+        // fa-hand-holding-droplet, or a value that spells out "Humidity". The
+        // "%" unit keeps us clear of Rain (mm); must precede the Rain branch.
+        if ((/fa-droplet|fa-hand-holding-droplet/.test(iconCls) || /humidit/i.test(btText)) && /%/.test(btText)) {
             var h = firstNumber(btText);
             if (h !== null) return interpAccent(HUMIDITY_ACCENT, h);
         }
@@ -852,15 +903,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (n !== null) return accentFromScale(RAIN_ACCENT, n);
         }
 
-        // CO2 (ppm) — plain fa-cloud only (fa-cloud-rain / -showers are Rain and
-        // were already handled above).  fa-cloud is also used by CO sensors, which
-        // are dangerous at far lower ppm and must NOT read as "green/safe", so skip
-        // when the device name looks like a CO (carbon-monoxide) sensor.
-        // fresh→green … poor→red.
-        if (/fa-cloud(?![\w-])/.test(iconCls)) {
-            var looksLikeCO = /(^|[^a-z0-9])co([^a-z0-9]|$)|monoxide/i.test(nameText || '');
+        // CO2 (ppm) — icon-independent: any value carrying the ppm unit (covers
+        // AirMeasure→fa-lungs, fa-smog, etc.), plus the legacy plain fa-cloud
+        // glyph.  fresh→green … poor→red.  Skip CO (carbon-monoxide) sensors.
+        if (/\bppm\b/i.test(btText) || /fa-cloud(?![\w-])/.test(iconCls)) {
             var co2 = firstNumber(btText);
-            if (co2 !== null && !looksLikeCO) return interpAccent(CO2_ACCENT, co2);
+            if (co2 !== null && !looksLikeCOName(nameText, null)) return interpAccent(CO2_ACCENT, co2);
         }
 
         // Wind
@@ -950,7 +998,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         var accentCls  = accentIcon ? (accentIcon.className || '') : '';
                         var nameEl2 = card.querySelector('td#name');
                         var nameText = nameEl2 ? (nameEl2.textContent || '') : '';
-                        accentColor = resolveAccentColor(btText, accentCls, nameText);
+                        var dev = getCardDevice(card);
+                        accentColor = resolveAccentColor(btText, accentCls, nameText, dev);
                     }
                     if (accentColor) {
                         card.classList.add('dz-temp-accent');

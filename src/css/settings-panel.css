@@ -1705,6 +1705,17 @@
     background: rgba(var(--dz-accent-rgb), 0.06);
 }
 
+/* Preset focus: the dialog was opened targeting one device (from the device
+   detail page) — flash a highlight so the user lands straight on it. */
+.ng-ov-row--preset-focus {
+    animation: ngOvPresetFocus 2.4s ease;
+}
+
+@keyframes ngOvPresetFocus {
+    0%, 60%  { background: rgba(var(--dz-accent-rgb), 0.28); box-shadow: inset 3px 0 0 var(--dz-accent); }
+    100%     { background: rgba(var(--dz-accent-rgb), 0.06); box-shadow: inset 3px 0 0 transparent; }
+}
+
 .ng-ov-row-summary {
     display: flex;
     align-items: center;

@@ -981,6 +981,130 @@
         white-space: nowrap;
     }
 
+/* ── Device detail: Nightglass icon source box (device-detail.js) ─────
+   Replaces the native <device-icon-select> combo with a provenance
+   summary + actions; the native combo is kept in the DOM (hidden) so its
+   ng-model keeps writing CustomImage. */
+.ng-dd-icon-box {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-radius: 10px;
+    max-width: 460px;
+}
+
+.ng-dd-icon-preview {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--dz-surface-3);
+    border-radius: 10px;
+    font-size: 22px;
+}
+
+    .ng-dd-icon-preview img {
+        width: 28px;
+        height: 28px;
+        object-fit: contain;
+    }
+
+.ng-dd-icon-info {
+    flex: 1 1 160px;
+    min-width: 0;
+}
+
+.ng-dd-icon-source {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-weight: 600;
+    font-size: 0.86rem;
+    color: var(--dz-text);
+}
+
+.ng-dd-icon-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--dz-text-muted);
+}
+
+.ng-dd-icon-source--override .ng-dd-icon-dot { background: var(--dz-accent); }
+.ng-dd-icon-source--theme    .ng-dd-icon-dot { background: #4caf7d; }
+.ng-dd-icon-source--domoticz .ng-dd-icon-dot { background: #f0a832; }
+
+.ng-dd-icon-hint {
+    margin-top: 2px;
+    font-size: 0.74rem;
+    color: var(--dz-text-muted);
+    line-height: 1.35;
+}
+
+.ng-dd-icon-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex: 1 1 100%;
+}
+
+.ng-dd-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border-radius: 7px;
+    border: 1px solid var(--dz-border-b);
+    background: var(--dz-surface-3);
+    color: var(--dz-text-soft);
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+    .ng-dd-icon-btn:hover {
+        background: var(--dz-border);
+        color: var(--dz-text);
+    }
+
+.ng-dd-icon-btn--primary {
+    background: var(--dz-accent);
+    border-color: transparent;
+    color: #fff;
+}
+
+    .ng-dd-icon-btn--primary:hover {
+        background: var(--dz-accent-light, var(--dz-accent));
+        color: #fff;
+    }
+
+.ng-dd-icon-btn--danger:hover {
+    background: rgba(var(--dz-danger-rgb), 0.15);
+    border-color: var(--dz-danger);
+    color: var(--dz-danger);
+}
+
+.ng-dd-icon-btn--link {
+    background: transparent;
+    border-color: transparent;
+    color: var(--dz-text-muted);
+    padding-left: 4px;
+    padding-right: 4px;
+}
+
+    .ng-dd-icon-btn--link:hover {
+        background: transparent;
+        color: var(--dz-accent);
+    }
+
 @media (max-width: 767px) {
     /* Header: stack title + buttons vertically */
     .page-header-with-button {
