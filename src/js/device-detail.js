@@ -114,6 +114,14 @@
 
         var box = td.querySelector('#' + BOX_ID);
         var nativeVisible = box ? box.getAttribute('data-native-open') === '1' : false;
+
+        /* Skip rebuilding when nothing changed. Essential: our observer watches
+           the whole body subtree, so without this guard our own DOM writes would
+           re-trigger render() in a tight loop (and flicker the buttons). */
+        var sig = [idx, src.kind, src.iconCls || '', src.color || '',
+                   device.CustomImage, nativeVisible ? 1 : 0].join('|');
+        if (box && box.getAttribute('data-sig') === sig) return;
+
         if (!box) {
             box = document.createElement('div');
             box.id = BOX_ID;
@@ -122,6 +130,7 @@
             td.insertBefore(box, iconSelectEl);
         }
         box.setAttribute('data-dz-idx', idx);
+        box.setAttribute('data-sig', sig);
 
         /* Hide the native combo unless the user explicitly revealed it. */
         iconSelectEl.style.display = nativeVisible ? '' : 'none';
