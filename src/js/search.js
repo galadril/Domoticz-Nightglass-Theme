@@ -2537,7 +2537,10 @@
     }
 
     function openDeviceIconOverrideDialog(presetIdx) {
-        presetIdx = presetIdx != null ? String(presetIdx) : null;
+        /* Only accept a real device IDX. Guards against a click handler passing
+           its Event object as the argument (would prefill "[object …]") — #225. */
+        presetIdx = (presetIdx != null && /^\d+$/.test(String(presetIdx)))
+            ? String(presetIdx) : null;
         var existing = document.getElementById('ng-ov-overlay');
         if (existing) existing.remove();
 
@@ -3805,7 +3808,8 @@
         // Device icon override manage button
         var ovBtn = container.querySelector('#ng-override-manage-btn');
         if (ovBtn) {
-            ovBtn.addEventListener('click', openDeviceIconOverrideDialog);
+            /* Wrap so the click Event isn't passed as presetIdx (issue #225). */
+            ovBtn.addEventListener('click', function () { openDeviceIconOverrideDialog(); });
         }
 
         // Export button
