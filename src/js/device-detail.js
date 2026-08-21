@@ -25,6 +25,13 @@
 (function () {
     'use strict';
 
+    /* Mark the document as managed as early as this module executes (well
+       before any device page / utility dialog renders). CSS keys off this to
+       hide the native icon combos from first paint, so the user never sees the
+       old combo flash in and get swapped out. If this module somehow doesn't
+       run, the class is absent and the native combos show as a fallback. */
+    document.documentElement.classList.add('ng-dd-icons-managed');
+
     var BOX_ID = 'ng-dd-icon-box';
     var _customSet = null;   // getcustomiconset result cache (uploaded icons)
     var _devByIdx  = {};     // idx → device object (utility-dialog fetch cache)
@@ -82,7 +89,15 @@
             if (!combo) continue;
             var idxEl = dlg.querySelector('#deviceidx');
             var idx   = idxEl ? (idxEl.textContent || '').trim() : '';
-            if (!/^\d+$/.test(idx)) continue;
+            if (!/^\d+$/.test(idx)) {
+                /* Fall back to the global the dialogs set on open. */
+                var $ = jq();
+                if ($ && $.devIdx != null && /^\d+$/.test(String($.devIdx))) idx = String($.devIdx);
+                else idx = '';
+            }
+            /* Return the surface even without an idx: the custom-image picker
+               still works (it just drives the ddslick), so we never leave the
+               native combo hidden with nothing in its place. */
             return makeJquerySurface(combo, idx);
         }
 
@@ -136,6 +151,7 @@
             },
             withDevice: function (cb) {
                 if (this.device) { cb(this.device); return; }
+                if (!/^\d+$/.test(String(idx))) { cb(null); return; }  // no idx → no fetch
                 var self = this;
                 fetchDevice(idx, function (d) { self.device = d; cb(d); });
             },
@@ -279,11 +295,26 @@
 
             var setBtn = mkBtn('ng-dd-icon-btn--primary',
                 '<i class="fa-solid fa-wand-magic-sparkles"></i> ' +
-                (src.kind === 'override' ? 'Edit Nightglass icon' : 'Set Nightglass icon'),
+                (src.kind === 'override' ? 'Change Nightglass icon' : 'Set Nightglass icon'),
                 function () {
                     var s = settings();
-                    if (s && s.openIconOverride) s.openIconOverride(surface.idx);
-                    scheduleRefresh(surface);
+                    /* Open the Icon Studio directly for this device and apply
+                       the pick as an override (preserving any existing colors).
+                       Falls back to the full override dialog if the Studio
+                       module isn't available. */
+                    if (typeof window.dzOpenIconStudio === 'function' && s && s.setDeviceOverrideIcon) {
+                        window.dzOpenIconStudio({
+                            current: src.iconCls || '',
+                            title: 'Set icon for ' + ((device && device.Name) || 'device'),
+                            onPick: function (cls) {
+                                s.setDeviceOverrideIcon(surface.idx, cls, device && device.Name);
+                                render(surface);
+                            }
+                        });
+                    } else if (s && s.openIconOverride) {
+                        s.openIconOverride(surface.idx);
+                        scheduleRefresh(surface);
+                    }
                 });
             actions.appendChild(setBtn);
 
@@ -399,7 +430,7 @@
     }
 
     var _t = null;
-    function schedule() { clearTimeout(_t); _t = setTimeout(enhance, 120); }
+    function schedule() { clearTimeout(_t); _t = setTimeout(enhance, 40); }
 
     var mo = new MutationObserver(function (muts) {
         for (var i = 0; i < muts.length; i++) {

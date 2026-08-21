@@ -986,11 +986,24 @@
    jQuery utility edit dialogs with one provenance + actions + custom-
    image-picker control. The native combo stays hidden in the DOM as the
    persistence bridge. */
+
+/* Hide the native icon combos from first paint (device-detail.js sets
+   .ng-dd-icons-managed as soon as it loads) so our box replaces them with no
+   visible old→new swap. Absent the class (module didn't load), the native
+   combos remain as a graceful fallback. */
+.ng-dd-icons-managed device-icon-select,
+.ng-dd-icons-managed #combosensoricon {
+    display: none !important;
+}
+
 .ng-dd-icon-box {
     display: flex;
     flex-direction: column;
     gap: 10px;
     padding: 12px 14px;
+    /* Fade/slide in so appearing after the (already-hidden) native combo
+       reads as intentional rather than a flicker. */
+    animation: ngDdIconIn 0.16s ease both;
     /* The surrounding container is --dz-surface-2, so use the lighter
        surface-3 + an accent left bar to read as a distinct Nightglass
        control rather than a flat table cell. */
@@ -999,6 +1012,11 @@
     border-left: 3px solid var(--dz-accent);
     border-radius: 10px;
     max-width: 520px;
+}
+
+@keyframes ngDdIconIn {
+    from { opacity: 0; transform: translateY(2px); }
+    to   { opacity: 1; transform: none; }
 }
 
 .ng-dd-icon-head {
