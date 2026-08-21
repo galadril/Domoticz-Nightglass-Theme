@@ -285,6 +285,27 @@
         } catch (e) {}
     }
 
+    /* Is this icon class still backed by an available library? Font Awesome is
+       always present; other classes need their library (by prefix) configured. */
+    function isKnownIcon(cls, libs) {
+        var token = (cls || '').split(/\s+/)[0];
+        if (!token) return false;
+        if (token === 'fa' || token.indexOf('fa-') === 0) return true;
+        for (var i = 0; i < libs.length; i++) {
+            if (libs[i].prefix && (token === libs[i].prefix || token.indexOf(libs[i].prefix) === 0)) return true;
+        }
+        return false;
+    }
+
+    /* Drop recent icons whose library has been removed, so they don't linger as
+       blank/invalid glyphs. */
+    function pruneRecent(libs) {
+        try {
+            var kept = getRecent().filter(function (c) { return isKnownIcon(c, libs); });
+            localStorage.setItem(RECENT_KEY, JSON.stringify(kept));
+        } catch (e) {}
+    }
+
     /* ── Font Awesome category chips (curated) ────────────────────── */
     var FA_CATEGORIES = {
         'Home':        ['house','house-chimney','door-open','door-closed','couch','bed','bath','shower','toilet','kitchen-set','stairs','warehouse','key','lock','bell','fingerprint'],
@@ -337,6 +358,7 @@
             groups = groupByLibrary(all, libs);
         }
         buildData();
+        pruneRecent(libs);   // self-heal: drop recents from libraries removed elsewhere
 
         var overlay = document.createElement('div');
         overlay.id = 'ng-is-overlay';
@@ -485,9 +507,11 @@
                     rm.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
                     rm.addEventListener('click', function () {
                         var arr = readLibsRaw();
-                        arr.splice(i, 1);
+                        var removed = arr.splice(i, 1)[0];
                         saveLibsRaw(arr);
+                        if (removed && removed.id) delete _libIcons[removed.id];
                         refreshData();
+                        pruneRecent(libs);          // drop now-invalid recent icons
                         renderRail();
                         renderManage();
                     });
