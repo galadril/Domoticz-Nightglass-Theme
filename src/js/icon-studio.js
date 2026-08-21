@@ -190,17 +190,58 @@
         return Object.keys(out).sort();
     }
 
-    /* Load (and cache) a library's icon list. cb() fires when state changes. */
+    /* Persistent cache of parsed icon lists, keyed by stylesheet URL, in
+       localStorage — so opening the Studio is instant across page loads
+       instead of re-fetching every library each time. Entries carry a
+       timestamp; stale ones are still served immediately, then refreshed in
+       the background. Keyed by URL so a changed/versioned URL misses cleanly. */
+    var LIB_CACHE_KEY = 'dz-iconlib-cache';
+    var LIB_CACHE_TTL = 7 * 24 * 3600 * 1000;   // 7 days
+
+    function readLibCache() {
+        try { return JSON.parse(localStorage.getItem(LIB_CACHE_KEY) || '{}') || {}; }
+        catch (e) { return {}; }
+    }
+    function writeLibCache(url, icons) {
+        try {
+            var c = readLibCache();
+            c[url] = { icons: icons, ts: Date.now() };
+            localStorage.setItem(LIB_CACHE_KEY, JSON.stringify(c));
+        } catch (e) { /* quota / disabled — best effort, falls back to refetch */ }
+    }
+
+    function fetchLibrary(lib, cb, silent) {
+        fetch(lib.cssUrl, { credentials: 'omit' })
+            .then(function (r) { if (!r.ok) throw 0; return r.text(); })
+            .then(function (t) {
+                var icons = parseCssForIcons(t, lib.prefix);
+                _libIcons[lib.id] = icons;
+                writeLibCache(lib.cssUrl, icons);
+                cb();
+            })
+            .catch(function () { if (!silent) { _libIcons[lib.id] = 'error'; cb(); } });
+    }
+
+    /* Load a library's icon list. cb() fires when state changes.
+       Order: in-memory → localStorage (instant) → network fetch. */
     function loadLibraryIcons(lib, cb) {
         var st = _libIcons[lib.id];
         if (st === 'loading' || (st && st !== 'error')) { cb(); return; }
         if (!lib.cssUrl) { _libIcons[lib.id] = []; cb(); return; }
+
+        var entry = readLibCache()[lib.cssUrl];
+        if (entry && Array.isArray(entry.icons)) {
+            _libIcons[lib.id] = entry.icons;
+            cb();                                   // instant from cache
+            if (!entry.ts || (Date.now() - entry.ts) > LIB_CACHE_TTL) {
+                fetchLibrary(lib, cb, true);        // silently refresh stale cache
+            }
+            return;
+        }
+
         _libIcons[lib.id] = 'loading';
         cb();
-        fetch(lib.cssUrl, { credentials: 'omit' })
-            .then(function (r) { if (!r.ok) throw 0; return r.text(); })
-            .then(function (t) { _libIcons[lib.id] = parseCssForIcons(t, lib.prefix); cb(); })
-            .catch(function () { _libIcons[lib.id] = 'error'; cb(); });
+        fetchLibrary(lib, cb, false);
     }
 
     /* Which library a class belongs to (by prefix). */
