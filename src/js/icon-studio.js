@@ -94,7 +94,8 @@
             var arr = typeof raw === 'string' ? JSON.parse(raw) : (raw || []);
             (arr || []).forEach(function (l) {
                 if (l && l.prefix) libs.push({
-                    id: l.id || l.prefix, name: l.name || l.prefix, prefix: l.prefix
+                    id: l.id || l.prefix, name: l.name || l.prefix,
+                    prefix: l.prefix, cssUrl: l.cssUrl   // needed so reopen can re-fetch its icon list
                 });
             });
         } catch (e) {}
