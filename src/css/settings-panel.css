@@ -2251,4 +2251,423 @@ body.dz-light .ng-toast {
     }
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   ICON STUDIO overlay (icon-studio.js)
+   ══════════════════════════════════════════════════════════════════ */
+.ng-is-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+.ng-is-overlay.ng-is--open { opacity: 1; }
+
+.ng-is-dialog {
+    width: min(920px, 94vw);
+    height: min(680px, 88vh);
+    display: flex;
+    flex-direction: column;
+    background: var(--dz-modal-bg);
+    color: var(--dz-text);
+    border: 1px solid var(--dz-border);
+    border-radius: 14px;
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+    overflow: hidden;
+    transform: translateY(8px) scale(0.99);
+    transition: transform 0.2s ease;
+}
+.ng-is-overlay.ng-is--open .ng-is-dialog { transform: none; }
+
+/* Header */
+.ng-is-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--dz-border);
+    background: var(--dz-modal-header-bg);
+    flex-shrink: 0;
+}
+.ng-is-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.98rem;
+    font-weight: 600;
+    color: var(--dz-text);
+    white-space: nowrap;
+}
+    .ng-is-title i { color: var(--dz-accent); }
+.ng-is-search-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--dz-input-bg);
+    border: 1px solid var(--dz-border);
+    border-radius: 9px;
+    padding: 0 12px;
+}
+    .ng-is-search-wrap i { color: var(--dz-text-muted); }
+.ng-is-search {
+    flex: 1;
+    background: none !important;
+    border: none !important;
+    outline: none !important;
+    color: var(--dz-input-text) !important;
+    font-size: 0.9rem;
+    padding: 9px 0 !important;
+}
+.ng-is-close {
+    flex-shrink: 0;
+    width: 32px; height: 32px;
+    border: none;
+    border-radius: 8px;
+    background: var(--dz-surface-2);
+    color: var(--dz-text-muted);
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+}
+    .ng-is-close:hover { background: rgba(var(--dz-danger-rgb), 0.15); color: var(--dz-danger); }
+
+/* Body: rail + main */
+.ng-is-body {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+}
+.ng-is-rail {
+    width: 210px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--dz-border);
+    padding: 10px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--dz-border) transparent;
+}
+.ng-is-rail-item, .ng-is-rail-manage {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 11px;
+    border: none;
+    border-radius: 8px;
+    background: none;
+    color: var(--dz-text-soft);
+    font-size: 0.85rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+}
+    .ng-is-rail-item i, .ng-is-rail-manage i { width: 16px; text-align: center; color: var(--dz-text-muted); }
+    .ng-is-rail-item span, .ng-is-rail-manage span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ng-is-rail-item:hover, .ng-is-rail-manage:hover { background: rgba(var(--dz-accent-rgb), 0.08); color: var(--dz-text); }
+.ng-is-rail-count {
+    font-style: normal;
+    font-size: 0.7rem;
+    color: var(--dz-text-muted);
+    background: var(--dz-surface-2);
+    border-radius: 10px;
+    padding: 1px 7px;
+}
+.ng-is-rail-item--active {
+    background: rgba(var(--dz-accent-rgb), 0.14) !important;
+    color: var(--dz-accent) !important;
+}
+    .ng-is-rail-item--active i { color: var(--dz-accent); }
+.ng-is-rail-manage {
+    margin-top: auto;
+    border: 1px dashed var(--dz-border-b);
+    color: var(--dz-text-muted);
+}
+    .ng-is-rail-manage:hover { border-color: var(--dz-accent); color: var(--dz-accent); }
+
+.ng-is-main {
+    flex: 1;
+    min-width: 0;
+    padding: 14px 16px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--dz-border) transparent;
+}
+
+/* Grid + tiles */
+.ng-is-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+    gap: 8px;
+}
+.ng-is-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 6px;
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color 0.1s, background 0.1s, transform 0.08s;
+}
+    .ng-is-tile i { font-size: 22px; color: var(--dz-text); }
+    .ng-is-tile span {
+        font-size: 0.66rem;
+        color: var(--dz-text-muted);
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .ng-is-tile:hover {
+        border-color: var(--dz-accent);
+        background: var(--dz-surface-3);
+        transform: translateY(-1px);
+    }
+        .ng-is-tile:hover i { color: var(--dz-accent); }
+.ng-is-tile--active {
+    border-color: var(--dz-accent);
+    background: rgba(var(--dz-accent-rgb), 0.14);
+    box-shadow: inset 0 0 0 1px var(--dz-accent);
+}
+
+.ng-is-note {
+    grid-column: 1 / -1;
+    padding: 10px 2px;
+    font-size: 0.8rem;
+    color: var(--dz-text-muted);
+    line-height: 1.5;
+}
+    .ng-is-note a { color: var(--dz-accent); }
+    .ng-is-note code {
+        background: var(--dz-surface-2);
+        border-radius: 4px;
+        padding: 1px 5px;
+        font-size: 0.9em;
+    }
+.ng-is-section-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--dz-text-soft);
+    margin-bottom: 10px;
+}
+
+/* Category chips (Font Awesome) */
+.ng-is-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+.ng-is-chip {
+    padding: 5px 12px;
+    font-size: 0.76rem;
+    border: 1px solid var(--dz-border-b);
+    border-radius: 20px;
+    background: var(--dz-surface-2);
+    color: var(--dz-text-soft);
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+    .ng-is-chip:hover { border-color: var(--dz-accent); color: var(--dz-text); }
+.ng-is-chip--active {
+    background: var(--dz-accent);
+    border-color: transparent;
+    color: #fff;
+}
+
+/* Collapsible sections (All view) */
+.ng-is-section { margin-bottom: 14px; }
+.ng-is-section-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 4px;
+    border: none;
+    background: none;
+    color: var(--dz-text);
+    font-size: 0.86rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 1px solid var(--dz-border);
+    margin-bottom: 10px;
+}
+    .ng-is-section-head i { color: var(--dz-text-muted); width: 12px; }
+    .ng-is-section-head em {
+        font-style: normal;
+        font-weight: 500;
+        font-size: 0.72rem;
+        color: var(--dz-text-muted);
+        background: var(--dz-surface-2);
+        border-radius: 10px;
+        padding: 1px 7px;
+    }
+.ng-is-section--collapsed .ng-is-section-body { display: none; }
+
+/* Footer manual-class field */
+.ng-is-foot {
+    flex-shrink: 0;
+    border-top: 1px solid var(--dz-border);
+    background: var(--dz-modal-header-bg);
+    padding: 12px 16px;
+}
+.ng-is-manual {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.ng-is-manual-preview {
+    width: 38px; height: 38px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--dz-surface);
+    border: 1px solid var(--dz-border);
+    border-radius: 9px;
+    font-size: 18px;
+    color: var(--dz-accent);
+}
+.ng-is-manual-input {
+    flex: 1;
+    background: var(--dz-input-bg) !important;
+    color: var(--dz-input-text) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 9px !important;
+    padding: 9px 12px !important;
+    font-size: 0.85rem;
+    outline: none;
+}
+.ng-is-manual-use {
+    flex-shrink: 0;
+    padding: 9px 18px;
+    border: none;
+    border-radius: 9px;
+    background: var(--dz-accent);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+    .ng-is-manual-use:hover { background: var(--dz-accent-light, var(--dz-accent)); }
+
+/* Library manager */
+.ng-is-lib-list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 14px; }
+.ng-is-lib-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-radius: 9px;
+}
+.ng-is-lib-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .ng-is-lib-meta strong { font-size: 0.85rem; color: var(--dz-text); }
+    .ng-is-lib-meta span {
+        font-size: 0.72rem; color: var(--dz-text-muted);
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+.ng-is-lib-remove {
+    flex-shrink: 0;
+    width: 30px; height: 30px;
+    border: 1px solid var(--dz-border-b);
+    border-radius: 8px;
+    background: var(--dz-surface);
+    color: var(--dz-text-muted);
+    cursor: pointer;
+}
+    .ng-is-lib-remove:hover { border-color: var(--dz-danger); color: var(--dz-danger); }
+.ng-is-lib-form { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ng-is-lib-form input {
+        flex: 1 1 180px;
+        background: var(--dz-input-bg) !important;
+        color: var(--dz-input-text) !important;
+        border: 1px solid var(--dz-border) !important;
+        border-radius: 8px !important;
+        padding: 8px 11px !important;
+        font-size: 0.82rem;
+        outline: none;
+    }
+    .ng-is-lib-form input.ng-is-invalid { border-color: var(--dz-danger) !important; }
+.ng-is-lib-add {
+    flex: 0 0 auto;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    background: var(--dz-accent);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+
+/* Picker launcher (inside the override row editor) */
+.ng-ov-picker-current {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+    .ng-ov-picker-current > i {
+        width: 34px; height: 34px;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--dz-surface); border: 1px solid var(--dz-border);
+        border-radius: 8px; font-size: 17px; color: var(--dz-accent);
+        flex-shrink: 0;
+    }
+.ng-ov-picker-label {
+    flex: 1;
+    font-size: 0.8rem;
+    color: var(--dz-text-muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ng-ov-picker-change {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border: 1px solid var(--dz-border-b);
+    border-radius: 8px;
+    background: var(--dz-surface-2);
+    color: var(--dz-text-soft);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+    .ng-ov-picker-change:hover {
+        background: rgba(var(--dz-accent-rgb), 0.12);
+        border-color: var(--dz-accent);
+        color: var(--dz-accent);
+    }
+
+/* Responsive: stack rail on top for narrow screens */
+@media (max-width: 640px) {
+    .ng-is-dialog { width: 96vw; height: 90vh; }
+    .ng-is-body { flex-direction: column; }
+    .ng-is-rail {
+        width: auto;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--dz-border);
+    }
+    .ng-is-rail-manage { margin-top: 0; margin-left: auto; }
+    .ng-is-head { flex-wrap: wrap; }
+    .ng-is-search-wrap { order: 3; flex-basis: 100%; }
+}
+
 

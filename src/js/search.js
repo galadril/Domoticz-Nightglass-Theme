@@ -602,6 +602,11 @@
 
         deviceIconOverrides: '{}',
 
+        /* Extra icon-font libraries the user added (issue #129) — JSON array of
+           { id, name, cssUrl, prefix }. Injected as <link>s so their glyphs
+           render and (if same-origin) show up in the Icon Studio picker. */
+        iconLibraries:      '[]',
+
         userPresets:        '[]',   /* user-saved color presets — JSON array */
 
         debugLogs:          false   /* session-only — never persisted */
@@ -1714,6 +1719,11 @@
             } catch (e) {
                 window._dzSetDeviceIconOverrides({});
             }
+        }
+
+        // Load any user-added icon libraries so their glyphs render + enumerate.
+        if (typeof window.dzInjectIconLibraries === 'function') {
+            window.dzInjectIconLibraries(_settings.iconLibraries || '[]');
         }
     }
 
@@ -2996,92 +3006,53 @@
             });
         }
 
-        /* Build an inline FA icon picker, calls onSelect(cls) on pick */
+        /* Icon picker → opens the full Icon Studio overlay (icon-studio.js).
+           Shows the current icon + a Change button; calls onSelect(cls) on
+           pick. The heavy lifting (all-FA enumeration, custom libraries,
+           search, categories, Recent, manual class) lives in the Studio. */
+        function pickerLabel(cls) {
+            return (cls || '').replace(/^fa-\w+\s+fa-/, '').replace(/^mdi\s+mdi-/, '')
+                              .replace(/^[a-z0-9]+[\s-]/, '').replace(/-/g, ' ').trim() || 'No icon';
+        }
+
         function buildIconPicker(initialCls, onSelect) {
             var wrap = document.createElement('div');
             wrap.className = 'ng-ov-picker';
 
-            var si = document.createElement('input');
-            si.type = 'text';
-            si.className = 'ng-ov-picker-search';
-            si.placeholder = 'Search all icons… (wifi, fan, bolt, car…)';
-            si.autocomplete = 'off';
-            wrap.appendChild(si);
+            var current = initialCls;
 
-            var grid = document.createElement('div');
-            grid.className = 'ng-ov-icon-grid';
-            wrap.appendChild(grid);
+            var row = document.createElement('div');
+            row.className = 'ng-ov-picker-current';
 
-            var activeCls = initialCls;
+            var prev = document.createElement('i');
+            prev.className = current || 'fa-solid fa-question';
+            row.appendChild(prev);
 
-            /* Full searchable pool: every glyph the browser has (all of FA 7 +
-               any extra icon-font library the user loaded) unioned with the
-               curated list (keeps nice names even if enumeration is partial).
-               Falls back to the curated list if enumeration finds nothing. */
-            var MAX_RESULTS = 400;
-            var pool = (function () {
-                var seen = {}, out = [];
-                enumerateIconClasses().concat(FA_ICONS_ALL).forEach(function (c) {
-                    if (!seen[c]) { seen[c] = true; out.push(c); }
+            var lbl = document.createElement('span');
+            lbl.className = 'ng-ov-picker-label';
+            lbl.textContent = pickerLabel(current);
+            row.appendChild(lbl);
+
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'ng-ov-picker-change';
+            btn.innerHTML = '<i class="fa-solid fa-icons"></i> Change icon…';
+            btn.addEventListener('click', function () {
+                if (typeof window.dzOpenIconStudio !== 'function') return;
+                window.dzOpenIconStudio({
+                    current: current,
+                    title: 'Choose an icon',
+                    onPick: function (cls) {
+                        current = cls;
+                        prev.className = cls;
+                        lbl.textContent = pickerLabel(cls);
+                        onSelect(cls);
+                    }
                 });
-                return out.length ? out : FA_ICONS_ALL;
-            })();
-
-            function iconLabel(cls) {
-                return cls.replace(/^fa-solid\s+fa-/, '').replace(/^mdi\s+mdi-/, '')
-                          .replace(/^fa-/, '').replace(/-/g, ' ');
-            }
-
-            function renderGrid(q) {
-                q = (q || '').toLowerCase().replace(/^fa-solid\s+fa-/, '').replace(/^mdi\s+mdi-/, '').trim();
-                var hits;
-                if (q) {
-                    hits = pool.filter(function (c) { return iconLabel(c).indexOf(q) !== -1; });
-                } else {
-                    hits = FA_ICONS_PRESET;
-                }
-                grid.innerHTML = '';
-                var capped = hits.length > MAX_RESULTS;
-                hits.slice(0, MAX_RESULTS).forEach(function (cls) {
-                    var btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.className = 'ng-ov-icon-btn' + (cls === activeCls ? ' ng-ov-icon-btn--active' : '');
-                    btn.title = iconLabel(cls);
-                    btn.setAttribute('data-icon', cls);
-                    var ic = document.createElement('i');
-                    ic.className = cls;
-                    btn.appendChild(ic);
-                    grid.appendChild(btn);
-                });
-                if (capped) {
-                    var more = document.createElement('div');
-                    more.className = 'ng-ov-icon-more';
-                    more.textContent = 'Showing first ' + MAX_RESULTS + ' of ' + hits.length +
-                                       ' — keep typing to narrow down.';
-                    grid.appendChild(more);
-                }
-                if (!hits.length) {
-                    var none = document.createElement('div');
-                    none.className = 'ng-ov-icon-more';
-                    none.textContent = 'No icons match “' + q + '”.';
-                    grid.appendChild(none);
-                }
-            }
-
-            renderGrid('');
-
-            si.addEventListener('input', function () { renderGrid(this.value); });
-
-            grid.addEventListener('click', function (e) {
-                var btn = e.target.closest('.ng-ov-icon-btn');
-                if (!btn) return;
-                activeCls = btn.getAttribute('data-icon');
-                grid.querySelectorAll('.ng-ov-icon-btn').forEach(function (b) {
-                    b.classList.toggle('ng-ov-icon-btn--active', b === btn);
-                });
-                onSelect(activeCls);
             });
+            row.appendChild(btn);
 
+            wrap.appendChild(row);
             return wrap;
         }
 
