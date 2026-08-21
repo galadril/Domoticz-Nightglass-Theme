@@ -2536,6 +2536,59 @@
         return null;
     }
 
+    /* Enumerate every icon-font glyph the browser actually has loaded, by
+       scanning the stylesheets — so the picker offers the full Font Awesome 7
+       set (~2000 glyphs incl. aliases) instead of a hand-curated subset, and
+       automatically picks up any additional icon-font library the user has
+       loaded (Material Design Icons, etc. — issue #129).
+
+       Detection per CSS rule:
+         • Font Awesome 7 declares glyphs as `.fa-name{--fa:"\e00d"}`.
+         • Older FA / MDI / most icon fonts use `.prefix-name::before{content}`.
+       Cross-origin sheets throw on .cssRules and are skipped (so a CDN library
+       won't enumerate — host its CSS on Domoticz for auto-discovery).
+       Result: array of ready-to-use class strings, cached. */
+    var _iconSetCache = null;
+    var ICON_STYLE_CLASSES = /^fa-(solid|regular|brands|light|thin|duotone|sharp|classic|2xs|xs|sm|lg|xl|2xl|1x|2x|3x|4x|5x|6x|7x|8x|9x|10x|fw|ul|li|border|pull-left|pull-right|spin|spin-pulse|spin-reverse|pulse|beat|fade|beat-fade|bounce|flip|flip-horizontal|flip-vertical|flip-both|rotate-90|rotate-180|rotate-270|rotate-by|stack|stack-1x|stack-2x|inverse|sr-only|sr-only-focusable|swap-opacity)$/;
+
+    function enumerateIconClasses() {
+        if (_iconSetCache) return _iconSetCache;
+        var set = {};
+        var sheets = document.styleSheets || [];
+        for (var i = 0; i < sheets.length; i++) {
+            var rules;
+            try { rules = sheets[i].cssRules || sheets[i].rules; }
+            catch (e) { continue; }          // cross-origin — not readable
+            if (!rules) continue;
+            for (var j = 0; j < rules.length; j++) {
+                var r = rules[j];
+                if (!r || !r.selectorText || !r.style) continue;
+                var faVar = r.style.getPropertyValue('--fa');
+                var content = r.style.content;
+                var isGlyph = (faVar && faVar !== 'none') ||
+                              (/::?before/.test(r.selectorText) &&
+                               content && content !== 'none' && content !== 'normal' && content !== '""');
+                if (!isGlyph) continue;
+                var sels = r.selectorText.split(',');
+                for (var k = 0; k < sels.length; k++) {
+                    var m = sels[k].match(/\.((?:fa|mdi|ph|bi|ri|ti|material-icons)[a-z0-9]*-[a-z0-9-]+)/i);
+                    if (!m) continue;
+                    var name = m[1];
+                    if (name.indexOf('fa-') === 0) {
+                        if (ICON_STYLE_CLASSES.test(name)) continue;   // style/util, not a glyph
+                        set['fa-solid ' + name] = true;
+                    } else if (name.indexOf('mdi-') === 0) {
+                        set['mdi ' + name] = true;
+                    } else {
+                        set[name] = true;      // other libs: class == prefix-name
+                    }
+                }
+            }
+        }
+        _iconSetCache = Object.keys(set).sort();
+        return _iconSetCache;
+    }
+
     function openDeviceIconOverrideDialog(presetIdx) {
         /* Only accept a real device IDX. Guards against a click handler passing
            its Event object as the argument (would prefill "[object …]") — #225. */
@@ -2951,7 +3004,7 @@
             var si = document.createElement('input');
             si.type = 'text';
             si.className = 'ng-ov-picker-search';
-            si.placeholder = 'Search icons… (wifi, fan, bolt, car…)';
+            si.placeholder = 'Search all icons… (wifi, fan, bolt, car…)';
             si.autocomplete = 'off';
             wrap.appendChild(si);
 
@@ -2961,23 +3014,58 @@
 
             var activeCls = initialCls;
 
+            /* Full searchable pool: every glyph the browser has (all of FA 7 +
+               any extra icon-font library the user loaded) unioned with the
+               curated list (keeps nice names even if enumeration is partial).
+               Falls back to the curated list if enumeration finds nothing. */
+            var MAX_RESULTS = 400;
+            var pool = (function () {
+                var seen = {}, out = [];
+                enumerateIconClasses().concat(FA_ICONS_ALL).forEach(function (c) {
+                    if (!seen[c]) { seen[c] = true; out.push(c); }
+                });
+                return out.length ? out : FA_ICONS_ALL;
+            })();
+
+            function iconLabel(cls) {
+                return cls.replace(/^fa-solid\s+fa-/, '').replace(/^mdi\s+mdi-/, '')
+                          .replace(/^fa-/, '').replace(/-/g, ' ');
+            }
+
             function renderGrid(q) {
-                q = (q || '').toLowerCase().replace(/^fa-solid\s+fa-/, '').trim();
-                var hits = q
-                    ? FA_ICONS_ALL.filter(function (c) { return c.replace('fa-solid fa-', '').replace(/-/g, ' ').indexOf(q) !== -1; })
-                    : FA_ICONS_PRESET;
+                q = (q || '').toLowerCase().replace(/^fa-solid\s+fa-/, '').replace(/^mdi\s+mdi-/, '').trim();
+                var hits;
+                if (q) {
+                    hits = pool.filter(function (c) { return iconLabel(c).indexOf(q) !== -1; });
+                } else {
+                    hits = FA_ICONS_PRESET;
+                }
                 grid.innerHTML = '';
-                hits.forEach(function (cls) {
+                var capped = hits.length > MAX_RESULTS;
+                hits.slice(0, MAX_RESULTS).forEach(function (cls) {
                     var btn = document.createElement('button');
                     btn.type = 'button';
                     btn.className = 'ng-ov-icon-btn' + (cls === activeCls ? ' ng-ov-icon-btn--active' : '');
-                    btn.title = cls.replace('fa-solid fa-', '').replace(/-/g, ' ');
+                    btn.title = iconLabel(cls);
                     btn.setAttribute('data-icon', cls);
                     var ic = document.createElement('i');
                     ic.className = cls;
                     btn.appendChild(ic);
                     grid.appendChild(btn);
                 });
+                if (capped) {
+                    var more = document.createElement('div');
+                    more.className = 'ng-ov-icon-more';
+                    more.textContent = 'Showing first ' + MAX_RESULTS + ' of ' + hits.length +
+                                       ' — keep typing to narrow down.';
+                    grid.appendChild(more);
+                }
+                if (!hits.length) {
+                    var none = document.createElement('div');
+                    none.className = 'ng-ov-icon-more';
+                    none.textContent = 'No icons match “' + q + '”.';
+                    grid.appendChild(none);
+                }
             }
 
             renderGrid('');
