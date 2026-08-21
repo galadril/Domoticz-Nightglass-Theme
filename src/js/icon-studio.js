@@ -136,6 +136,51 @@
         _cache = null;   // force re-enumeration next time
     }
 
+    /* ── Cross-origin library enumeration via fetch + parse ───────────
+       Reading a cross-origin <link>'s .cssRules throws (SecurityError), so
+       CDN libraries can't be listed that way. But fetching the same URL is a
+       normal CORS request, and the big icon CDNs (jsDelivr, cdnjs, unpkg…)
+       send Access-Control-Allow-Origin: *, so we can fetch the CSS text and
+       parse the glyph classes out of it ourselves — same-origin URLs work too.
+       Values: undefined = not loaded, 'loading', 'error', or class[]. */
+    var _libIcons = {};
+
+    /* Parse an icon-font stylesheet for `<prefix>-<name>` glyph classes.
+       Splits into rule blocks and keeps selectors whose body actually declares
+       a glyph (content: or an --fa/-style icon var), so utility classes
+       (sizes, rotations…) are ignored. Handles grouped selectors. */
+    function parseCssForIcons(cssText, prefix) {
+        var out = {};
+        var pfx = prefix.replace(/[^a-z0-9]/gi, '');
+        var selRe = new RegExp('\\.(' + pfx + '-[a-z0-9-]+)', 'gi');
+        var chunks = cssText.split('}');
+        for (var i = 0; i < chunks.length; i++) {
+            var brace = chunks[i].indexOf('{');
+            if (brace < 0) continue;
+            var sel  = chunks[i].slice(0, brace);
+            var body = chunks[i].slice(brace + 1);
+            if (!/content\s*:/i.test(body) && !/--fa\b/i.test(body)) continue;
+            var mm; selRe.lastIndex = 0;
+            while ((mm = selRe.exec(sel)) !== null) {
+                out[prefix + ' ' + mm[1]] = true;   // e.g. "mdi mdi-home"
+            }
+        }
+        return Object.keys(out).sort();
+    }
+
+    /* Load (and cache) a library's icon list. cb() fires when state changes. */
+    function loadLibraryIcons(lib, cb) {
+        var st = _libIcons[lib.id];
+        if (st === 'loading' || (st && st !== 'error')) { cb(); return; }
+        if (!lib.cssUrl) { _libIcons[lib.id] = []; cb(); return; }
+        _libIcons[lib.id] = 'loading';
+        cb();
+        fetch(lib.cssUrl, { credentials: 'omit' })
+            .then(function (r) { if (!r.ok) throw 0; return r.text(); })
+            .then(function (t) { _libIcons[lib.id] = parseCssForIcons(t, lib.prefix); cb(); })
+            .catch(function () { _libIcons[lib.id] = 'error'; cb(); });
+    }
+
     /* Which library a class belongs to (by prefix). */
     function libIdOf(cls, libs) {
         var token = cls.split(/\s+/)[0];              // e.g. "fa-solid" | "mdi" | "bi"
@@ -207,12 +252,28 @@
         opts = opts || {};
         if (_overlay) close();
 
-        var libs      = configuredLibraries();
-        var all       = enumerate();
-        var groups    = groupByLibrary(all, libs);
+        var libs, all, groups;
         var chosen    = opts.current || '';
         var scope     = 'all';           // 'all' | 'recent' | libId
         var query     = '';
+
+        /* Merge same-origin/loaded glyphs (enumerate) with the fetched CDN
+           library icons (_libIcons) into the flat pool + per-library groups. */
+        function buildData() {
+            libs = configuredLibraries();
+            var valid = {};
+            libs.forEach(function (l) { valid[l.id] = true; });
+            var merged = {}, out = [];
+            enumerate().forEach(function (c) { merged[c] = true; });
+            Object.keys(_libIcons).forEach(function (id) {
+                if (!valid[id]) return;   // library was removed — don't leak its icons
+                if (Array.isArray(_libIcons[id])) _libIcons[id].forEach(function (c) { merged[c] = true; });
+            });
+            Object.keys(merged).sort().forEach(function (c) { out.push(c); });
+            all = out;
+            groups = groupByLibrary(all, libs);
+        }
+        buildData();
 
         var overlay = document.createElement('div');
         overlay.id = 'ng-is-overlay';
@@ -312,10 +373,18 @@
             railEl.appendChild(mng);
         }
 
-        function refreshData() {
-            libs = configuredLibraries();
-            all = enumerate();
-            groups = groupByLibrary(all, libs);
+        function refreshData() { buildData(); }
+
+        /* Fetch+parse any not-yet-loaded library, re-rendering as each lands. */
+        function loadLibraries() {
+            configuredLibraries().forEach(function (l) {
+                if (l.id === 'fa') return;
+                loadLibraryIcons(l, function () {
+                    buildData();
+                    renderRail();
+                    renderMain();
+                });
+            });
         }
 
         /* ── Library manager ── */
@@ -417,12 +486,16 @@
                 var arr = readLibsRaw();
                 arr.push({ id: prefix, name: name || prefix, cssUrl: url, prefix: prefix });
                 saveLibsRaw(arr);
+                delete _libIcons[prefix];     // ensure a fresh fetch
                 refreshData();
-                scope = prefix;
+                scope = prefix;               // jump to the new library (shows loading)
                 renderRail();
-                /* Give the stylesheet a moment to load, then show its icons. */
-                setTimeout(function () { refreshData(); renderRail(); if (scope === prefix) renderMain(); }, 600);
                 renderMain();
+                /* Fetch+parse it (and inject its <link> for rendering), then
+                   re-render when the icon list lands. */
+                loadLibraryIcons({ id: prefix, name: name || prefix, cssUrl: url, prefix: prefix }, function () {
+                    buildData(); renderRail(); if (scope === prefix) renderMain();
+                });
             });
         }
 
@@ -503,12 +576,18 @@
 
             if (scope !== 'all') {
                 /* A specific configured library */
+                if (_libIcons[scope] === 'loading') {
+                    mainEl.innerHTML = '<div class="ng-is-note"><i class="fa-solid fa-spinner fa-spin"></i> ' +
+                        'Loading icons…</div>';
+                    return;
+                }
                 var g = groups[scope];
                 if (!g || !g.icons.length) {
-                    mainEl.innerHTML = '<div class="ng-is-note"><i class="fa-solid fa-circle-info"></i> ' +
-                        'No icons could be listed for this library. If it loads from another domain ' +
-                        '(CDN), the browser won’t let us read its icon list — paste the exact class ' +
-                        'below instead.</div>';
+                    var reason = _libIcons[scope] === 'error'
+                        ? 'Couldn’t load this library’s icon list (the CDN blocked the request, or it’s offline). ' +
+                          'It will still render — paste the exact class below, or host the CSS on Domoticz for a full list.'
+                        : 'No icons found in this library’s stylesheet. Paste the exact class below instead.';
+                    mainEl.innerHTML = '<div class="ng-is-note"><i class="fa-solid fa-circle-info"></i> ' + reason + '</div>';
                     return;
                 }
                 mainEl.appendChild(gridOf(g.icons, true));
@@ -557,6 +636,7 @@
 
         renderRail();
         renderMain();
+        loadLibraries();          // fetch+parse CDN/custom libraries in the background
         setTimeout(function () { try { searchEl.focus(); } catch (e) {} }, 60);
     }
 
