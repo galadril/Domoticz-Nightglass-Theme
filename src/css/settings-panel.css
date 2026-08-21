@@ -1831,75 +1831,11 @@
     letter-spacing: 0.04em;
 }
 
-/* Icon picker */
+/* Icon picker (launcher into the Icon Studio; grid styles live with the
+   Studio in the ICON STUDIO section) */
 .ng-ov-picker {
     margin-bottom: 12px;
 }
-
-.ng-ov-picker-search {
-    width: 100%;
-    padding: 7px 12px;
-    font-size: 0.83rem;
-    background: var(--dz-surface);
-    border: 1px solid var(--dz-border);
-    border-radius: 8px;
-    color: var(--dz-text);
-    margin-bottom: 8px;
-    box-sizing: border-box;
-}
-
-    .ng-ov-picker-search:focus {
-        outline: none;
-        border-color: var(--dz-accent);
-    }
-
-.ng-ov-icon-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
-    gap: 4px;
-    max-height: 220px;
-    overflow-y: auto;
-    padding: 4px;
-    background: var(--dz-surface);
-    border: 1px solid var(--dz-border);
-    border-radius: 8px;
-}
-
-/* Full-width footnote in the icon grid (result cap / no matches). */
-.ng-ov-icon-more {
-    grid-column: 1 / -1;
-    padding: 6px 4px 2px;
-    font-size: 0.72rem;
-    color: var(--dz-text-muted);
-    text-align: center;
-}
-
-.ng-ov-icon-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border: 1px solid transparent;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--dz-text-soft);
-    font-size: 1rem;
-    cursor: pointer;
-    transition: background 0.12s, color 0.12s, border-color 0.12s;
-}
-
-    .ng-ov-icon-btn:hover {
-        background: rgba(var(--dz-accent-rgb), 0.12);
-        color: var(--dz-text);
-        border-color: rgba(var(--dz-accent-rgb), 0.25);
-    }
-
-    .ng-ov-icon-btn--active {
-        background: rgba(var(--dz-accent-rgb), 0.2) !important;
-        color: var(--dz-accent) !important;
-        border-color: var(--dz-accent) !important;
-    }
 
 /* Color row */
 .ng-ov-color-row {
@@ -2222,10 +2158,6 @@
 
 .ng-ov-row-icon--multi .ng-ov-row-fa {
     font-size: 0.95rem;
-}
-
-body.dz-light .ng-ov-icon-btn {
-    color: var(--dz-text-muted);
 }
 
 body.dz-light .ng-ov-dialog {
@@ -2589,6 +2521,29 @@ body.dz-light .ng-toast {
     cursor: pointer;
 }
     .ng-is-lib-remove:hover { border-color: var(--dz-danger); color: var(--dz-danger); }
+.ng-is-lib-suggest { margin: 4px 0 14px; }
+.ng-is-lib-suggest-label {
+    font-size: 0.76rem;
+    color: var(--dz-text-muted);
+    margin-bottom: 6px;
+}
+.ng-is-lib-suggest-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ng-is-lib-suggest-chip {
+    padding: 5px 12px;
+    font-size: 0.76rem;
+    border: 1px dashed var(--dz-border-b);
+    border-radius: 20px;
+    background: var(--dz-surface-2);
+    color: var(--dz-text-soft);
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+    .ng-is-lib-suggest-chip:hover {
+        border-style: solid;
+        border-color: var(--dz-accent);
+        color: var(--dz-accent);
+    }
+
 .ng-is-lib-form { display: flex; flex-wrap: wrap; gap: 8px; }
     .ng-is-lib-form input {
         flex: 1 1 180px;

@@ -295,11 +295,26 @@
 
             var setBtn = mkBtn('ng-dd-icon-btn--primary',
                 '<i class="fa-solid fa-wand-magic-sparkles"></i> ' +
-                (src.kind === 'override' ? 'Edit Nightglass icon' : 'Set Nightglass icon'),
+                (src.kind === 'override' ? 'Change Nightglass icon' : 'Set Nightglass icon'),
                 function () {
                     var s = settings();
-                    if (s && s.openIconOverride) s.openIconOverride(surface.idx);
-                    scheduleRefresh(surface);
+                    /* Open the Icon Studio directly for this device and apply
+                       the pick as an override (preserving any existing colors).
+                       Falls back to the full override dialog if the Studio
+                       module isn't available. */
+                    if (typeof window.dzOpenIconStudio === 'function' && s && s.setDeviceOverrideIcon) {
+                        window.dzOpenIconStudio({
+                            current: src.iconCls || '',
+                            title: 'Set icon for ' + ((device && device.Name) || 'device'),
+                            onPick: function (cls) {
+                                s.setDeviceOverrideIcon(surface.idx, cls, device && device.Name);
+                                render(surface);
+                            }
+                        });
+                    } else if (s && s.openIconOverride) {
+                        s.openIconOverride(surface.idx);
+                        scheduleRefresh(surface);
+                    }
                 });
             actions.appendChild(setBtn);
 

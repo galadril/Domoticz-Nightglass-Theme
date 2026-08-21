@@ -2546,59 +2546,6 @@
         return null;
     }
 
-    /* Enumerate every icon-font glyph the browser actually has loaded, by
-       scanning the stylesheets — so the picker offers the full Font Awesome 7
-       set (~2000 glyphs incl. aliases) instead of a hand-curated subset, and
-       automatically picks up any additional icon-font library the user has
-       loaded (Material Design Icons, etc. — issue #129).
-
-       Detection per CSS rule:
-         • Font Awesome 7 declares glyphs as `.fa-name{--fa:"\e00d"}`.
-         • Older FA / MDI / most icon fonts use `.prefix-name::before{content}`.
-       Cross-origin sheets throw on .cssRules and are skipped (so a CDN library
-       won't enumerate — host its CSS on Domoticz for auto-discovery).
-       Result: array of ready-to-use class strings, cached. */
-    var _iconSetCache = null;
-    var ICON_STYLE_CLASSES = /^fa-(solid|regular|brands|light|thin|duotone|sharp|classic|2xs|xs|sm|lg|xl|2xl|1x|2x|3x|4x|5x|6x|7x|8x|9x|10x|fw|ul|li|border|pull-left|pull-right|spin|spin-pulse|spin-reverse|pulse|beat|fade|beat-fade|bounce|flip|flip-horizontal|flip-vertical|flip-both|rotate-90|rotate-180|rotate-270|rotate-by|stack|stack-1x|stack-2x|inverse|sr-only|sr-only-focusable|swap-opacity)$/;
-
-    function enumerateIconClasses() {
-        if (_iconSetCache) return _iconSetCache;
-        var set = {};
-        var sheets = document.styleSheets || [];
-        for (var i = 0; i < sheets.length; i++) {
-            var rules;
-            try { rules = sheets[i].cssRules || sheets[i].rules; }
-            catch (e) { continue; }          // cross-origin — not readable
-            if (!rules) continue;
-            for (var j = 0; j < rules.length; j++) {
-                var r = rules[j];
-                if (!r || !r.selectorText || !r.style) continue;
-                var faVar = r.style.getPropertyValue('--fa');
-                var content = r.style.content;
-                var isGlyph = (faVar && faVar !== 'none') ||
-                              (/::?before/.test(r.selectorText) &&
-                               content && content !== 'none' && content !== 'normal' && content !== '""');
-                if (!isGlyph) continue;
-                var sels = r.selectorText.split(',');
-                for (var k = 0; k < sels.length; k++) {
-                    var m = sels[k].match(/\.((?:fa|mdi|ph|bi|ri|ti|material-icons)[a-z0-9]*-[a-z0-9-]+)/i);
-                    if (!m) continue;
-                    var name = m[1];
-                    if (name.indexOf('fa-') === 0) {
-                        if (ICON_STYLE_CLASSES.test(name)) continue;   // style/util, not a glyph
-                        set['fa-solid ' + name] = true;
-                    } else if (name.indexOf('mdi-') === 0) {
-                        set['mdi ' + name] = true;
-                    } else {
-                        set[name] = true;      // other libs: class == prefix-name
-                    }
-                }
-            }
-        }
-        _iconSetCache = Object.keys(set).sort();
-        return _iconSetCache;
-    }
-
     function openDeviceIconOverrideDialog(presetIdx) {
         /* Only accept a real device IDX. Guards against a click handler passing
            its Event object as the argument (would prefill "[object …]") — #225. */
@@ -2638,195 +2585,6 @@
             { label: 'Vacuum Robot',    icon: 'fa-solid fa-robot',             on: '#4e9af1', off: '#555770' }
         ];
 
-        // FA 7 Free icon picker sets.
-        // FA_ICONS_PRESET — shown by default (curated home-automation icons).
-        // FA_ICONS_ALL    — searched when the user types in the picker search box.
-        var FA_ICONS_PRESET = [
-            // Networking
-            'fa-solid fa-wifi',              'fa-solid fa-network-wired',     'fa-solid fa-ethernet',
-            'fa-solid fa-satellite-dish',    'fa-solid fa-tower-broadcast',   'fa-solid fa-signal',
-            // House & Rooms
-            'fa-solid fa-house',             'fa-solid fa-house-chimney',     'fa-solid fa-house-signal',
-            'fa-solid fa-door-closed',       'fa-solid fa-door-open',         'fa-solid fa-window-maximize',
-            'fa-solid fa-warehouse',         'fa-solid fa-building',          'fa-solid fa-couch',
-            'fa-solid fa-bed',               'fa-solid fa-bath',              'fa-solid fa-sink',
-            'fa-solid fa-toilet',            'fa-solid fa-stairs',            'fa-solid fa-table',
-            'fa-solid fa-chair',             'fa-solid fa-shower',
-            // Lighting
-            'fa-solid fa-lightbulb',         'fa-solid fa-circle-half-stroke','fa-solid fa-sun',
-            'fa-solid fa-moon',              'fa-solid fa-star',              'fa-solid fa-wand-magic-sparkles',
-            // Tech & AV
-            'fa-solid fa-tv',                'fa-solid fa-display',           'fa-solid fa-computer',
-            'fa-solid fa-server',            'fa-solid fa-hard-drive',        'fa-solid fa-print',
-            'fa-solid fa-phone',             'fa-solid fa-mobile-screen',     'fa-solid fa-tablet-screen-button',
-            'fa-solid fa-headphones',        'fa-solid fa-volume-high',       'fa-solid fa-music',
-            'fa-solid fa-gamepad',           'fa-solid fa-camera',            'fa-solid fa-video',
-            // Appliances
-            'fa-solid fa-blender',           'fa-solid fa-mug-hot',           'fa-solid fa-utensils',
-            'fa-solid fa-shirt',             'fa-solid fa-broom',             'fa-solid fa-baby',
-            'fa-solid fa-carriage-baby',     'fa-solid fa-robot',
-            // Energy & Power
-            'fa-solid fa-bolt',              'fa-solid fa-plug',              'fa-solid fa-charging-station',
-            'fa-solid fa-solar-panel',       'fa-solid fa-car-battery',       'fa-solid fa-battery-full',
-            'fa-solid fa-power-off',         'fa-solid fa-toggle-on',
-            // Climate & Sensors
-            'fa-solid fa-fire',              'fa-solid fa-fire-flame-curved', 'fa-solid fa-gauge',
-            'fa-solid fa-temperature-half',  'fa-solid fa-temperature-full',  'fa-solid fa-snowflake',
-            'fa-solid fa-fan',               'fa-solid fa-wind',              'fa-solid fa-cloud',
-            'fa-solid fa-cloud-rain',        'fa-solid fa-umbrella',          'fa-solid fa-droplet',
-            'fa-solid fa-temperature-low',   'fa-solid fa-temperature-high',  'fa-solid fa-smog',
-            // Garden & Nature
-            'fa-solid fa-seedling',          'fa-solid fa-leaf',              'fa-solid fa-tree',
-            'fa-solid fa-trowel',            'fa-solid fa-water-ladder',
-            // Security
-            'fa-solid fa-lock',              'fa-solid fa-lock-open',         'fa-solid fa-shield-halved',
-            'fa-solid fa-bell',              'fa-solid fa-bell-concierge',    'fa-solid fa-triangle-exclamation',
-            'fa-solid fa-circle-exclamation','fa-solid fa-eye',               'fa-solid fa-person-running',
-            // Pets & Animals
-            'fa-solid fa-dog',               'fa-solid fa-paw',               'fa-solid fa-cat',
-            // Transport
-            'fa-solid fa-car',               'fa-solid fa-car-side',          'fa-solid fa-truck',
-            'fa-solid fa-motorcycle',        'fa-solid fa-bicycle',           'fa-solid fa-plane',
-            'fa-solid fa-tractor',           'fa-solid fa-bus',
-            // Water & Plumbing
-            'fa-solid fa-hand-holding-droplet','fa-solid fa-faucet',          'fa-solid fa-pump-soap',
-            'fa-solid fa-spray-can',
-            // Health
-            'fa-solid fa-heart-pulse',       'fa-solid fa-weight-scale',      'fa-solid fa-lungs',
-            'fa-solid fa-syringe',           'fa-solid fa-pills',             'fa-solid fa-hospital',
-            // Tools
-            'fa-solid fa-gear',              'fa-solid fa-wrench',            'fa-solid fa-screwdriver',
-            'fa-solid fa-toolbox',
-            // Controls & Misc
-            'fa-solid fa-box',               'fa-solid fa-bookmark',          'fa-solid fa-flag',
-            'fa-solid fa-circle-dot',        'fa-solid fa-sliders',           'fa-solid fa-clock',
-            'fa-solid fa-calendar',          'fa-solid fa-location-dot',      'fa-solid fa-map-location-dot',
-            'fa-solid fa-microchip',         'fa-solid fa-database',          'fa-solid fa-bars-progress'
-        ];
-
-        // All searchable icons — FA 7 Free Solid, verified against the Domoticz bundle.
-        // Shown only when the user types a search query in the icon picker.
-        var FA_ICONS_ALL = [
-            // Networking
-            'fa-solid fa-wifi',              'fa-solid fa-network-wired',     'fa-solid fa-ethernet',
-            'fa-solid fa-satellite-dish',    'fa-solid fa-satellite',         'fa-solid fa-tower-broadcast',
-            'fa-solid fa-tower-cell',        'fa-solid fa-signal',            'fa-solid fa-globe',
-            'fa-solid fa-server',            'fa-solid fa-database',          'fa-solid fa-microchip',
-            'fa-solid fa-hard-drive',        'fa-solid fa-radio',             'fa-solid fa-walkie-talkie',
-            // House & Rooms
-            'fa-solid fa-house',             'fa-solid fa-house-chimney',     'fa-solid fa-house-signal',
-            'fa-solid fa-house-lock',        'fa-solid fa-house-fire',        'fa-solid fa-house-flood-water',
-            'fa-solid fa-house-laptop',      'fa-solid fa-house-user',        'fa-solid fa-house-chimney-window',
-            'fa-solid fa-house-medical',     'fa-solid fa-house-chimney-crack','fa-solid fa-building',
-            'fa-solid fa-building-columns',  'fa-solid fa-building-lock',     'fa-solid fa-warehouse',
-            'fa-solid fa-igloo',             'fa-solid fa-door-closed',       'fa-solid fa-door-open',
-            'fa-solid fa-window-maximize',   'fa-solid fa-window-restore',    'fa-solid fa-window-minimize',
-            'fa-solid fa-couch',             'fa-solid fa-bed',               'fa-solid fa-chair',
-            'fa-solid fa-table',             'fa-solid fa-bath',              'fa-solid fa-sink',
-            'fa-solid fa-toilet',            'fa-solid fa-toilet-paper',      'fa-solid fa-shower',
-            'fa-solid fa-stairs',            'fa-solid fa-archway',
-            // Lighting
-            'fa-solid fa-lightbulb',         'fa-solid fa-circle-half-stroke','fa-solid fa-sun',
-            'fa-solid fa-moon',              'fa-solid fa-star',              'fa-solid fa-wand-magic-sparkles',
-            'fa-solid fa-wand-magic',        'fa-solid fa-wand-sparkles',
-            // Tech & AV
-            'fa-solid fa-tv',                'fa-solid fa-display',           'fa-solid fa-computer',
-            'fa-solid fa-computer-mouse',    'fa-solid fa-keyboard',          'fa-solid fa-print',
-            'fa-solid fa-phone',             'fa-solid fa-mobile-screen',     'fa-solid fa-mobile-screen-button',
-            'fa-solid fa-tablet-screen-button','fa-solid fa-headphones',      'fa-solid fa-volume-high',
-            'fa-solid fa-volume-low',        'fa-solid fa-volume-off',        'fa-solid fa-volume-xmark',
-            'fa-solid fa-microphone',        'fa-solid fa-camera',            'fa-solid fa-video',
-            'fa-solid fa-music',             'fa-solid fa-gamepad',           'fa-solid fa-record-vinyl',
-            'fa-solid fa-fax',
-            // Appliances & Home
-            'fa-solid fa-blender',           'fa-solid fa-mug-hot',           'fa-solid fa-mug-saucer',
-            'fa-solid fa-utensils',          'fa-solid fa-pizza-slice',       'fa-solid fa-broom',
-            'fa-solid fa-shirt',             'fa-solid fa-soap',              'fa-solid fa-spray-can',
-            'fa-solid fa-spray-can-sparkles','fa-solid fa-baby',              'fa-solid fa-carriage-baby',
-            'fa-solid fa-robot',
-            // Energy & Power
-            'fa-solid fa-bolt',              'fa-solid fa-bolt-lightning',    'fa-solid fa-plug',
-            'fa-solid fa-plug-circle-bolt',  'fa-solid fa-plug-circle-check', 'fa-solid fa-plug-circle-exclamation',
-            'fa-solid fa-charging-station',  'fa-solid fa-solar-panel',       'fa-solid fa-car-battery',
-            'fa-solid fa-battery-full',      'fa-solid fa-battery-three-quarters','fa-solid fa-battery-half',
-            'fa-solid fa-battery-quarter',   'fa-solid fa-battery-empty',     'fa-solid fa-power-off',
-            'fa-solid fa-toggle-on',         'fa-solid fa-toggle-off',
-            // Climate & Weather sensors
-            'fa-solid fa-temperature-half',  'fa-solid fa-temperature-full',  'fa-solid fa-temperature-empty',
-            'fa-solid fa-temperature-quarter','fa-solid fa-temperature-three-quarters','fa-solid fa-temperature-high',
-            'fa-solid fa-temperature-low',   'fa-solid fa-temperature-up',    'fa-solid fa-temperature-down',
-            'fa-solid fa-thermometer',       'fa-solid fa-thermometer-half',  'fa-solid fa-thermometer-full',
-            'fa-solid fa-snowflake',         'fa-solid fa-fan',               'fa-solid fa-wind',
-            'fa-solid fa-cloud',             'fa-solid fa-cloud-sun',         'fa-solid fa-cloud-rain',
-            'fa-solid fa-cloud-bolt',        'fa-solid fa-cloud-showers-heavy','fa-solid fa-cloud-showers-water',
-            'fa-solid fa-umbrella',          'fa-solid fa-droplet',           'fa-solid fa-smog',
-            'fa-solid fa-gauge',             'fa-solid fa-gauge-high',        'fa-solid fa-tornado',
-            'fa-solid fa-hurricane',         'fa-solid fa-sun-plant-wilt',    'fa-solid fa-rainbow',
-            // Fire & Safety
-            'fa-solid fa-fire',              'fa-solid fa-fire-flame-curved', 'fa-solid fa-fire-flame-simple',
-            'fa-solid fa-fire-extinguisher', 'fa-solid fa-bell',              'fa-solid fa-bell-slash',
-            'fa-solid fa-bell-concierge',    'fa-solid fa-radiation',
-            // Security
-            'fa-solid fa-lock',              'fa-solid fa-lock-open',         'fa-solid fa-unlock',
-            'fa-solid fa-unlock-keyhole',    'fa-solid fa-shield',            'fa-solid fa-shield-halved',
-            'fa-solid fa-shield-heart',      'fa-solid fa-eye',               'fa-solid fa-eye-slash',
-            'fa-solid fa-person-running',    'fa-solid fa-triangle-exclamation','fa-solid fa-circle-exclamation',
-            // Garden & Nature
-            'fa-solid fa-seedling',          'fa-solid fa-leaf',              'fa-solid fa-tree',
-            'fa-solid fa-tree-city',         'fa-solid fa-spa',               'fa-solid fa-water',
-            'fa-solid fa-water-ladder',      'fa-solid fa-hand-holding-droplet','fa-solid fa-hand-holding-water',
-            'fa-solid fa-faucet',            'fa-solid fa-faucet-drip',       'fa-solid fa-tractor',
-            'fa-solid fa-trowel',            'fa-solid fa-trowel-bricks',     'fa-solid fa-recycle',
-            // Transport
-            'fa-solid fa-car',               'fa-solid fa-car-side',          'fa-solid fa-car-battery',
-            'fa-solid fa-truck',             'fa-solid fa-truck-fast',        'fa-solid fa-van-shuttle',
-            'fa-solid fa-bus',               'fa-solid fa-motorcycle',        'fa-solid fa-bicycle',
-            'fa-solid fa-plane',             'fa-solid fa-train',             'fa-solid fa-train-subway',
-            'fa-solid fa-helicopter',        'fa-solid fa-route',             'fa-solid fa-traffic-light',
-            // Health & Wellness
-            'fa-solid fa-heart-pulse',       'fa-solid fa-weight-scale',      'fa-solid fa-lungs',
-            'fa-solid fa-syringe',           'fa-solid fa-pills',             'fa-solid fa-hospital',
-            'fa-solid fa-stethoscope',       'fa-solid fa-wheelchair',        'fa-solid fa-dumbbell',
-            'fa-solid fa-tooth',             'fa-solid fa-pump-medical',
-            // Water & Plumbing
-            'fa-solid fa-pump-soap',         'fa-solid fa-spray-can',         'fa-solid fa-glass-water',
-            // Tools & Work
-            'fa-solid fa-gear',              'fa-solid fa-gears',             'fa-solid fa-wrench',
-            'fa-solid fa-screwdriver',       'fa-solid fa-screwdriver-wrench','fa-solid fa-toolbox',
-            'fa-solid fa-ruler',             'fa-solid fa-ruler-combined',    'fa-solid fa-paintbrush',
-            'fa-solid fa-hammer',
-            // Animals & Pets
-            'fa-solid fa-dog',               'fa-solid fa-paw',               'fa-solid fa-cat',
-            'fa-solid fa-fish',              'fa-solid fa-kiwi-bird',         'fa-solid fa-hippo',
-            'fa-solid fa-frog',
-            // People
-            'fa-solid fa-baby',              'fa-solid fa-carriage-baby',     'fa-solid fa-person',
-            'fa-solid fa-user',              'fa-solid fa-users',             'fa-solid fa-person-walking',
-            'fa-solid fa-person-running',    'fa-solid fa-person-hiking',     'fa-solid fa-person-biking',
-            'fa-solid fa-person-swimming',   'fa-solid fa-person-pregnant',   'fa-solid fa-child',
-            'fa-solid fa-wheelchair',
-            // Controls & Status
-            'fa-solid fa-sliders',           'fa-solid fa-power-off',         'fa-solid fa-toggle-on',
-            'fa-solid fa-toggle-off',        'fa-solid fa-circle-dot',        'fa-solid fa-layer-group',
-            'fa-solid fa-palette',           'fa-solid fa-arrows-rotate',     'fa-solid fa-rotate',
-            'fa-solid fa-expand',            'fa-solid fa-compress',          'fa-solid fa-check',
-            'fa-solid fa-check-double',      'fa-solid fa-list-check',        'fa-solid fa-bars-progress',
-            // Time & Location
-            'fa-solid fa-clock',             'fa-solid fa-calendar',          'fa-solid fa-stopwatch',
-            'fa-solid fa-hourglass-half',    'fa-solid fa-location-dot',      'fa-solid fa-map-location-dot',
-            'fa-solid fa-map',               'fa-solid fa-map-pin',           'fa-solid fa-compass',
-            // Misc Utility
-            'fa-solid fa-box',               'fa-solid fa-bookmark',          'fa-solid fa-flag',
-            'fa-solid fa-tag',               'fa-solid fa-tags',              'fa-solid fa-barcode',
-            'fa-solid fa-qrcode',            'fa-solid fa-clipboard',         'fa-solid fa-microchip',
-            'fa-solid fa-database',          'fa-solid fa-server',            'fa-solid fa-graduation-cap',
-            'fa-solid fa-trophy',            'fa-solid fa-medal',             'fa-solid fa-crown',
-            'fa-solid fa-piggy-bank',        'fa-solid fa-coins',             'fa-solid fa-gift',
-            'fa-solid fa-cart-shopping',     'fa-solid fa-scissors',          'fa-solid fa-anchor',
-            'fa-solid fa-dice',              'fa-solid fa-handshake',         'fa-solid fa-heart',
-            'fa-solid fa-infinity',          'fa-solid fa-rocket',            'fa-solid fa-spinner',
-            'fa-solid fa-hourglass'
-        ];
 
         // Mutable copy of current overrides — copy every stored field so the
         // sidebar and row editors reflect the saved state when the dialog reopens.
@@ -4369,6 +4127,28 @@
             var m = readOverrideMap();
             if (!m[String(idx)]) return false;
             delete m[String(idx)];
+            saveSetting('deviceIconOverrides', JSON.stringify(m));
+            if (typeof window._dzSetDeviceIconOverrides === 'function') {
+                window._dzSetDeviceIconOverrides(m);
+            }
+            return true;
+        },
+        /* Set (or update) just the icon of a device's override, preserving any
+           existing on/off colors. Used by the device-detail / utility box so
+           "Set Nightglass icon" can apply an Icon Studio pick directly without
+           the full override dialog. */
+        setDeviceOverrideIcon: function (idx, iconCls, deviceName) {
+            if (!idx || !iconCls) return false;
+            var m = readOverrideMap();
+            var ex = m[String(idx)] || {};
+            m[String(idx)] = {
+                iconOn:    iconCls,
+                iconOff:   ex.iconOff,
+                on:        ex.on  || '#4e9af1',
+                off:       ex.off || '#555770',
+                keepColor: ex.keepColor,
+                name:      ex.name || deviceName || ('IDX ' + idx)
+            };
             saveSetting('deviceIconOverrides', JSON.stringify(m));
             if (typeof window._dzSetDeviceIconOverrides === 'function') {
                 window._dzSetDeviceIconOverrides(m);

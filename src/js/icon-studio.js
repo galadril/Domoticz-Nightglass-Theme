@@ -25,6 +25,20 @@
     var RECENT_MAX = 24;
     var RESULT_CAP = 300;
 
+    /* Popular icon-font libraries offered as one-click suggestions in the
+       manager (prefilled, NOT auto-enabled). CDN URLs render fine; because
+       they're cross-origin the picker can't auto-list them, so those are
+       chosen via the manual class field (or host the CSS on Domoticz to get
+       auto-listing). */
+    var SUGGESTED_LIBS = [
+        { name: 'Material Design Icons', prefix: 'mdi', cssUrl: 'https://cdn.jsdelivr.net/npm/@mdi/font@7/css/materialdesignicons.min.css' },
+        { name: 'Bootstrap Icons',       prefix: 'bi',  cssUrl: 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1/font/bootstrap-icons.min.css' },
+        { name: 'Phosphor Icons',        prefix: 'ph',  cssUrl: 'https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2/src/regular/style.css' },
+        { name: 'Remix Icon',            prefix: 'ri',  cssUrl: 'https://cdn.jsdelivr.net/npm/remixicon@4/fonts/remixicon.css' },
+        { name: 'Tabler Icons',          prefix: 'ti',  cssUrl: 'https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2/tabler-icons.min.css' },
+        { name: 'Weather Icons',         prefix: 'wi',  cssUrl: 'https://cdn.jsdelivr.net/npm/weather-icons@2/css/weather-icons.min.css' }
+    ];
+
     /* FA style/utility classes that are not glyphs. */
     var FA_STYLE = /^fa-(solid|regular|brands|light|thin|duotone|sharp|classic|2xs|xs|sm|lg|xl|2xl|[0-9]+x|fw|ul|li|border|pull-left|pull-right|spin|spin-pulse|spin-reverse|pulse|beat|fade|beat-fade|bounce|flip|flip-horizontal|flip-vertical|flip-both|rotate-90|rotate-180|rotate-270|rotate-by|stack|stack-1x|stack-2x|inverse|sr-only|sr-only-focusable|swap-opacity)$/;
 
@@ -350,6 +364,37 @@
                 });
             }
             mainEl.appendChild(listWrap);
+
+            /* One-click suggestions for popular libraries (prefill only). */
+            var addedPrefixes = {};
+            raw.forEach(function (l) { if (l && l.prefix) addedPrefixes[l.prefix] = true; });
+            var suggestable = SUGGESTED_LIBS.filter(function (s) { return !addedPrefixes[s.prefix]; });
+            if (suggestable.length) {
+                var sug = document.createElement('div');
+                sug.className = 'ng-is-lib-suggest';
+                var sLbl = document.createElement('div');
+                sLbl.className = 'ng-is-lib-suggest-label';
+                sLbl.textContent = 'Popular libraries — click to prefill, then review & Add:';
+                sug.appendChild(sLbl);
+                var chips = document.createElement('div');
+                chips.className = 'ng-is-lib-suggest-chips';
+                suggestable.forEach(function (s) {
+                    var chip = document.createElement('button');
+                    chip.type = 'button';
+                    chip.className = 'ng-is-lib-suggest-chip';
+                    chip.textContent = s.name;
+                    chip.addEventListener('click', function () {
+                        form.querySelector('.ng-is-lib-name').value   = s.name;
+                        form.querySelector('.ng-is-lib-url').value     = s.cssUrl;
+                        form.querySelector('.ng-is-lib-prefix').value  = s.prefix;
+                        form.querySelector('.ng-is-lib-url').classList.remove('ng-is-invalid');
+                        form.querySelector('.ng-is-lib-prefix').classList.remove('ng-is-invalid');
+                    });
+                    chips.appendChild(chip);
+                });
+                sug.appendChild(chips);
+                mainEl.appendChild(sug);
+            }
 
             var form = document.createElement('div');
             form.className = 'ng-is-lib-form';
