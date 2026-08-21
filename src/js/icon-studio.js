@@ -102,21 +102,42 @@
         return libs;
     }
 
-    /* Inject <link> for each library stylesheet so glyphs render and (if
-       same-origin) become enumerable. Called by the settings module. */
+    /* Inject/update/remove <link>s for the configured libraries so glyphs
+       render (and same-origin ones enumerate). Called by the settings module.
+       Crucially it UPDATES a link whose URL changed and REMOVES links for
+       libraries no longer configured — otherwise a library re-added with a
+       corrected URL keeps its stale (often 404, font-less) stylesheet and the
+       icons list but render blank. */
     window.dzInjectIconLibraries = function (list) {
         try {
             var arr = typeof list === 'string' ? JSON.parse(list) : (list || []);
+            var want = {};
             (arr || []).forEach(function (l) {
                 if (!l || !l.cssUrl) return;
-                var id = 'ng-iconlib-' + (l.id || l.prefix || l.cssUrl).replace(/[^\w-]/g, '');
-                if (document.getElementById(id)) return;
-                var link = document.createElement('link');
-                link.id = id;
-                link.rel = 'stylesheet';
-                link.href = l.cssUrl;
-                document.head.appendChild(link);
+                var libId = l.id || l.prefix;
+                var domId = 'ng-iconlib-' + String(libId || l.cssUrl).replace(/[^\w-]/g, '');
+                want[domId] = true;
+                var link = document.getElementById(domId);
+                if (link) {
+                    if (link.getAttribute('data-url') !== l.cssUrl) {
+                        link.href = l.cssUrl;
+                        link.setAttribute('data-url', l.cssUrl);
+                        if (libId) delete _libIcons[libId];   // URL changed → re-fetch its icon list
+                    }
+                } else {
+                    link = document.createElement('link');
+                    link.id = domId;
+                    link.rel = 'stylesheet';
+                    link.href = l.cssUrl;
+                    link.setAttribute('data-url', l.cssUrl);
+                    document.head.appendChild(link);
+                }
             });
+            /* Drop links (and cached icons) for removed libraries. */
+            var stale = document.querySelectorAll('link[id^="ng-iconlib-"]');
+            for (var i = 0; i < stale.length; i++) {
+                if (!want[stale[i].id]) stale[i].parentNode.removeChild(stale[i]);
+            }
             _cache = null;   // new glyphs may have loaded — re-enumerate lazily
         } catch (e) {}
     };
