@@ -24,6 +24,7 @@
     var RECENT_KEY = 'dz-icon-recent';
     var RECENT_MAX = 24;
     var RESULT_CAP = 300;
+    var LIB_DEFAULT_PATH_PREFIX = 'templates/icon-libs/';
 
     /* Popular icon-font libraries offered as one-click suggestions in the
        manager (prefilled, NOT auto-enabled). CDN URLs render fine; because
@@ -194,7 +195,10 @@
                                     _cache = null;
                                 }
                             })
-                            .catch(function () {});
+                            .catch(function () {
+                                if (styleEl.getAttribute('data-url') !== expectedUrl) return;
+                                styleEl.setAttribute('data-src', styleEl.textContent ? 'cache-error' : 'error');
+                            });
                     }(style, l.cssUrl, libId, l.prefix));
                 }
             });
@@ -650,7 +654,7 @@
                     chip.className = 'ng-is-lib-suggest-chip';
                     chip.textContent = s.name;
                     chip.addEventListener('click', function () {
-                        var localPath = 'templates/icon-libs/' + s.prefix + '.css';
+                        var localPath = LIB_DEFAULT_PATH_PREFIX + s.prefix + '.css';
                         form.querySelector('.ng-is-lib-name').value   = s.name;
                         form.querySelector('.ng-is-lib-url').value     = localPath;
                         form.querySelector('.ng-is-lib-prefix').value  = s.prefix;
