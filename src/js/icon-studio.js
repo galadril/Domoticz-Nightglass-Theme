@@ -479,7 +479,7 @@
        Order: in-memory → localStorage (instant) → IndexedDB/local download. */
     function loadLibraryIcons(lib, cb, force) {
         var st = _libIcons[lib.id];
-        if (st === 'loading' || (st && st !== 'error')) { cb(); return; }
+        if (!force && (st === 'loading' || (st && st !== 'error'))) { cb(); return; }
         if (!lib.cssUrl) { _libIcons[lib.id] = []; cb(); return; }
 
         var entry = !force && readLibCache()[lib.cssUrl];
