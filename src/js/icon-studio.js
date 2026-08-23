@@ -120,12 +120,21 @@
             localStorage.setItem(LIB_STYLE_CACHE_KEY, JSON.stringify(all));
         } catch (e) {}
     }
+    function removeStyleCache(url) {
+        try {
+            if (!url) return;
+            var all = readStyleCache();
+            if (!all[url]) return;
+            delete all[url];
+            localStorage.setItem(LIB_STYLE_CACHE_KEY, JSON.stringify(all));
+        } catch (e) {}
+    }
     function isStyleCacheStale(entry) {
         return !entry || !entry.ts || (Date.now() - entry.ts) > LIB_STYLE_CACHE_TTL;
     }
     function fetchLibraryCss(url) {
         return fetch(url, { credentials: 'omit' })
-            .then(function (r) { if (!r.ok) throw 0; return r.text(); })
+            .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
             .then(function (css) { writeStyleCache(url, css); return css; });
     }
 
@@ -152,6 +161,7 @@
                 }
 
                 if (style.getAttribute('data-url') !== l.cssUrl) {
+                    removeStyleCache(style.getAttribute('data-url'));
                     style.setAttribute('data-url', l.cssUrl);
                     style.textContent = '';
                     if (libId) delete _libIcons[libId];   // URL changed → re-fetch its icon list
@@ -164,15 +174,20 @@
                 }
 
                 if (!cached || isStyleCacheStale(cached)) {
-                    (function (styleEl, expectedUrl) {
+                    (function (styleEl, expectedUrl, expectedLibId, expectedPrefix) {
                         fetchLibraryCss(expectedUrl)
                             .then(function (cssText) {
                                 if (styleEl.getAttribute('data-url') !== expectedUrl) return;
                                 styleEl.textContent = cssText;
                                 styleEl.setAttribute('data-src', 'network');
+                                if (expectedLibId && expectedPrefix) {
+                                    _libIcons[expectedLibId] = parseCssForIcons(cssText, expectedPrefix);
+                                    writeLibCache(expectedUrl, _libIcons[expectedLibId]);
+                                    _cache = null;
+                                }
                             })
                             .catch(function () {});
-                    }(style, l.cssUrl));
+                    }(style, l.cssUrl, libId, l.prefix));
                 }
             });
             /* Drop stale injected library styles/links for removed libraries. */
@@ -253,7 +268,6 @@
     }
 
     function fetchLibrary(lib, cb, silent) {
-        var cached = getCachedStyleEntry(lib.cssUrl);
         fetchLibraryCss(lib.cssUrl)
             .then(function (cssText) {
                 var icons = parseCssForIcons(cssText, lib.prefix);
@@ -262,6 +276,7 @@
                 cb();
             })
             .catch(function () {
+                var cached = getCachedStyleEntry(lib.cssUrl);
                 if (cached && cached.css) {
                     var icons = parseCssForIcons(cached.css, lib.prefix);
                     _libIcons[lib.id] = icons;
