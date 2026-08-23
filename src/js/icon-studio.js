@@ -195,6 +195,21 @@
         return String((lib && (lib.id || lib.prefix)) || '') + '|' + String((lib && lib.cssUrl) || '');
     }
 
+    function libraryStillConfigured(lib) {
+        var key = libraryKey(lib);
+        var arr = readLibsRaw();
+        for (var i = 0; i < arr.length; i++) {
+            if (libraryKey(arr[i]) === key) return true;
+        }
+        return false;
+    }
+
+    function replaceMarker(text, marker, value) {
+        var at = text.indexOf(marker);
+        if (at < 0) return text;
+        return text.slice(0, at) + value + text.slice(at + marker.length);
+    }
+
     function blobToDataUrl(blob) {
         return new Promise(function (resolve, reject) {
             var reader = new FileReader();
@@ -294,7 +309,7 @@
         if (!tasks.length) return Promise.resolve(out);
         return Promise.all(tasks).then(function (repl) {
             repl.forEach(function (val, i) {
-                out = out.replace('__NG_ICONLIB_URL_' + i + '__', val);
+                out = replaceMarker(out, '__NG_ICONLIB_URL_' + i + '__', val);
             });
             return out;
         });
@@ -319,7 +334,7 @@
             });
             return Promise.all(imports).then(function (chunks) {
                 chunks.forEach(function (chunk, i) {
-                    out = out.replace('__NG_ICONLIB_IMPORT_' + i + '__', chunk);
+                    out = replaceMarker(out, '__NG_ICONLIB_IMPORT_' + i + '__', chunk);
                 });
                 return localizeCssAssets(out, url, assetCache);
             });
@@ -339,11 +354,13 @@
                 icons: parseCssForIcons(cssText, lib.prefix),
                 ts: Date.now()
             };
+            if (!libraryStillConfigured(lib)) throw { removed: true };
             _libIcons[id] = entry.icons;
             writeLibCache(lib.cssUrl, entry.icons);
             setLibStatus(id, 'cached', { ts: entry.ts });
             return writeLibPackage(entry).catch(function () { return entry; });
         }).catch(function (err) {
+            if (err && err.removed) throw err;
             setLibStatus(id, 'error');
             throw err;
         });
@@ -407,6 +424,7 @@
         }).catch(function () {
             var current = document.getElementById(domId);
             if (!current || current.getAttribute('data-url') !== lib.cssUrl) return;
+            if (!libraryStillConfigured(lib)) return;
             revokeLibraryBlobUrl(domId);
             setLibStatus(lib.id || lib.prefix, 'remote');
             setLibraryLinkHref(current, domId, lib.cssUrl, lib.cssUrl, false);
@@ -492,6 +510,7 @@
         var key = libraryKey(lib);
         delete _libIcons[lib.id];
         delete _libStatus[lib.id];
+        delete _libPackageLoads[key];
         deleteLibPackage(key).catch(function () {});
     }
 
