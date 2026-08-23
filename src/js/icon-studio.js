@@ -93,7 +93,7 @@
                        window.dzNightglassSettings.get('iconLibraries')) || '[]';
             var arr = typeof raw === 'string' ? JSON.parse(raw) : (raw || []);
             (arr || []).forEach(function (l) {
-                if (l && l.prefix) libs.push({
+                if (l && l.prefix && isLocalStylesheetUrl(l.cssUrl)) libs.push({
                     id: l.id || l.prefix, name: l.name || l.prefix,
                     prefix: l.prefix, cssUrl: l.cssUrl   // needed so reopen can re-fetch its icon list
                 });
@@ -137,6 +137,14 @@
             .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
             .then(function (css) { writeStyleCache(url, css); return css; });
     }
+    function isLocalStylesheetUrl(url) {
+        var u = String(url || '').trim();
+        if (!u) return false;
+        if (/^https?:\/\//i.test(u) || /^\/\//.test(u)) return false;
+        if (/^(data|blob|javascript):/i.test(u)) return false;
+        if (/^[a-z][a-z0-9+.-]*:/i.test(u)) return false;
+        return true;
+    }
 
     /* Inject/update/remove inline <style> tags for configured libraries.
        We download and store library CSS locally, then render from cached CSS so
@@ -146,7 +154,7 @@
             var arr = typeof list === 'string' ? JSON.parse(list) : (list || []);
             var want = {};
             (arr || []).forEach(function (l) {
-                if (!l || !l.cssUrl) return;
+                if (!l || !l.cssUrl || !isLocalStylesheetUrl(l.cssUrl)) return;
                 var libId = l.id || l.prefix;
                 var domId = 'ng-iconlib-' + String(libId || l.cssUrl).replace(/[^\w-]/g, '');
                 want[domId] = true;
@@ -265,6 +273,15 @@
             c[url] = { icons: icons, ts: Date.now() };
             localStorage.setItem(LIB_CACHE_KEY, JSON.stringify(c));
         } catch (e) { /* quota / disabled — best effort, falls back to refetch */ }
+    }
+    function removeLibCache(url) {
+        try {
+            if (!url) return;
+            var c = readLibCache();
+            if (!c[url]) return;
+            delete c[url];
+            localStorage.setItem(LIB_CACHE_KEY, JSON.stringify(c));
+        } catch (e) {}
     }
 
     function fetchLibrary(lib, cb, silent) {
@@ -550,8 +567,8 @@
             desc.className = 'ng-is-note';
             desc.innerHTML = 'Add an icon font such as ' +
                 '<a href="https://pictogrammers.com/library/mdi/" target="_blank" rel="noopener">Material Design Icons</a>. ' +
-                'Give its stylesheet URL and class prefix (e.g. <code>mdi</code>). Nightglass downloads and stores ' +
-                'the library stylesheet locally, then reuses that stored copy after reloads and while offline.';
+                'Download the stylesheet to your Domoticz filesystem first, then use a local path (e.g. <code>templates/icon-libs/mdi.css</code>) and class prefix (e.g. <code>mdi</code>). ' +
+                'Use <strong>Refresh</strong> to force a re-read after replacing local files.';
             mainEl.appendChild(desc);
 
             var listWrap = document.createElement('div');
@@ -563,9 +580,35 @@
                 raw.forEach(function (l, i) {
                     var rowEl = document.createElement('div');
                     rowEl.className = 'ng-is-lib-row';
+                    var urlOk = isLocalStylesheetUrl(l.cssUrl);
                     rowEl.innerHTML =
                         '<div class="ng-is-lib-meta"><strong>' + (l.name || l.prefix || '?') + '</strong>' +
-                        '<span>' + (l.prefix ? l.prefix + '-*' : '') + ' · ' + (l.cssUrl || '') + '</span></div>';
+                        '<span>' + (l.prefix ? l.prefix + '-*' : '') + ' · ' + (l.cssUrl || '') +
+                        (urlOk ? '' : ' · local path required') + '</span></div>';
+                    var actions = document.createElement('div');
+                    actions.className = 'ng-is-lib-actions';
+                    var rf = document.createElement('button');
+                    rf.type = 'button';
+                    rf.className = 'ng-is-lib-refresh';
+                    rf.innerHTML = '<i class="fa-solid fa-rotate-right"></i>';
+                    rf.title = urlOk ? 'Refresh this local library now' : 'Set a local path first';
+                    rf.disabled = !urlOk;
+                    rf.addEventListener('click', function () {
+                        if (!urlOk) return;
+                        removeStyleCache(l.cssUrl);
+                        removeLibCache(l.cssUrl);
+                        if (l.id) delete _libIcons[l.id];
+                        var domId = 'ng-iconlib-' + String((l.id || l.prefix || l.cssUrl) || '').replace(/[^\w-]/g, '');
+                        var style = document.getElementById(domId);
+                        if (style && style.tagName === 'STYLE') {
+                            style.textContent = '';
+                            style.setAttribute('data-src', 'loading');
+                        }
+                        if (window.dzInjectIconLibraries) window.dzInjectIconLibraries(JSON.stringify(readLibsRaw()));
+                        loadLibraryIcons({ id: l.id || l.prefix, name: l.name || l.prefix, cssUrl: l.cssUrl, prefix: l.prefix }, function () {
+                            buildData(); renderRail(); renderMain();
+                        });
+                    });
                     var rm = document.createElement('button');
                     rm.type = 'button';
                     rm.className = 'ng-is-lib-remove';
@@ -580,7 +623,9 @@
                         renderRail();
                         renderManage();
                     });
-                    rowEl.appendChild(rm);
+                    actions.appendChild(rf);
+                    actions.appendChild(rm);
+                    rowEl.appendChild(actions);
                     listWrap.appendChild(rowEl);
                 });
             }
@@ -605,8 +650,9 @@
                     chip.className = 'ng-is-lib-suggest-chip';
                     chip.textContent = s.name;
                     chip.addEventListener('click', function () {
+                        var localPath = 'templates/icon-libs/' + s.prefix + '.css';
                         form.querySelector('.ng-is-lib-name').value   = s.name;
-                        form.querySelector('.ng-is-lib-url').value     = s.cssUrl;
+                        form.querySelector('.ng-is-lib-url').value     = localPath;
                         form.querySelector('.ng-is-lib-prefix').value  = s.prefix;
                         form.querySelector('.ng-is-lib-url').classList.remove('ng-is-invalid');
                         form.querySelector('.ng-is-lib-prefix').classList.remove('ng-is-invalid');
@@ -630,8 +676,9 @@
                 var name   = form.querySelector('.ng-is-lib-name').value.trim();
                 var url    = form.querySelector('.ng-is-lib-url').value.trim();
                 var prefix = form.querySelector('.ng-is-lib-prefix').value.trim().replace(/-.*$/, '').replace(/[^a-z0-9]/gi, '');
-                if (!url || !prefix) {
-                    form.querySelector('.ng-is-lib-url').classList.toggle('ng-is-invalid', !url);
+                var localOk = isLocalStylesheetUrl(url);
+                if (!url || !prefix || !localOk) {
+                    form.querySelector('.ng-is-lib-url').classList.toggle('ng-is-invalid', !url || !localOk);
                     form.querySelector('.ng-is-lib-prefix').classList.toggle('ng-is-invalid', !prefix);
                     return;
                 }

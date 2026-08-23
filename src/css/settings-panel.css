@@ -2521,6 +2521,18 @@ body.dz-light .ng-toast {
     cursor: pointer;
 }
     .ng-is-lib-remove:hover { border-color: var(--dz-danger); color: var(--dz-danger); }
+.ng-is-lib-actions { display: flex; align-items: center; gap: 6px; }
+.ng-is-lib-refresh {
+    flex-shrink: 0;
+    width: 30px; height: 30px;
+    border: 1px solid var(--dz-border-b);
+    border-radius: 8px;
+    background: var(--dz-surface);
+    color: var(--dz-text-muted);
+    cursor: pointer;
+}
+    .ng-is-lib-refresh:hover:not(:disabled) { border-color: var(--dz-accent); color: var(--dz-accent); }
+    .ng-is-lib-refresh:disabled { opacity: 0.45; cursor: not-allowed; }
 .ng-is-lib-suggest { margin: 4px 0 14px; }
 .ng-is-lib-suggest-label {
     font-size: 0.76rem;
@@ -2624,5 +2636,4 @@ body.dz-light .ng-toast {
     .ng-is-head { flex-wrap: wrap; }
     .ng-is-search-wrap { order: 3; flex-basis: 100%; }
 }
-
 
