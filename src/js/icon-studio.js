@@ -102,12 +102,36 @@
         return libs;
     }
 
-    /* Inject/update/remove <link>s for the configured libraries so glyphs
-       render (and same-origin ones enumerate). Called by the settings module.
-       Crucially it UPDATES a link whose URL changed and REMOVES links for
-       libraries no longer configured — otherwise a library re-added with a
-       corrected URL keeps its stale (often 404, font-less) stylesheet and the
-       icons list but render blank. */
+    var LIB_STYLE_CACHE_KEY = 'dz-iconlib-style-cache';
+    var LIB_STYLE_CACHE_TTL = 7 * 24 * 3600 * 1000;   // 7 days
+
+    function readStyleCache() {
+        try { return JSON.parse(localStorage.getItem(LIB_STYLE_CACHE_KEY) || '{}') || {}; }
+        catch (e) { return {}; }
+    }
+    function getCachedStyleEntry(url) {
+        var all = readStyleCache();
+        return all[url] && typeof all[url].css === 'string' ? all[url] : null;
+    }
+    function writeStyleCache(url, cssText) {
+        try {
+            var all = readStyleCache();
+            all[url] = { css: cssText, ts: Date.now() };
+            localStorage.setItem(LIB_STYLE_CACHE_KEY, JSON.stringify(all));
+        } catch (e) {}
+    }
+    function isStyleCacheStale(entry) {
+        return !entry || !entry.ts || (Date.now() - entry.ts) > LIB_STYLE_CACHE_TTL;
+    }
+    function fetchLibraryCss(url) {
+        return fetch(url, { credentials: 'omit' })
+            .then(function (r) { if (!r.ok) throw 0; return r.text(); })
+            .then(function (css) { writeStyleCache(url, css); return css; });
+    }
+
+    /* Inject/update/remove inline <style> tags for configured libraries.
+       We download and store library CSS locally, then render from cached CSS so
+       icon libraries still load after reloads and during offline use. */
     window.dzInjectIconLibraries = function (list) {
         try {
             var arr = typeof list === 'string' ? JSON.parse(list) : (list || []);
@@ -117,24 +141,42 @@
                 var libId = l.id || l.prefix;
                 var domId = 'ng-iconlib-' + String(libId || l.cssUrl).replace(/[^\w-]/g, '');
                 want[domId] = true;
-                var link = document.getElementById(domId);
-                if (link) {
-                    if (link.getAttribute('data-url') !== l.cssUrl) {
-                        link.href = l.cssUrl;
-                        link.setAttribute('data-url', l.cssUrl);
-                        if (libId) delete _libIcons[libId];   // URL changed → re-fetch its icon list
-                    }
-                } else {
-                    link = document.createElement('link');
-                    link.id = domId;
-                    link.rel = 'stylesheet';
-                    link.href = l.cssUrl;
-                    link.setAttribute('data-url', l.cssUrl);
-                    document.head.appendChild(link);
+                var style = document.getElementById(domId);
+                if (!style || style.tagName !== 'STYLE') {
+                    if (style && style.parentNode) style.parentNode.removeChild(style);
+                    style = document.createElement('style');
+                    style.id = domId;
+                    style.setAttribute('data-url', l.cssUrl);
+                    style.setAttribute('data-src', 'loading');
+                    document.head.appendChild(style);
+                }
+
+                if (style.getAttribute('data-url') !== l.cssUrl) {
+                    style.setAttribute('data-url', l.cssUrl);
+                    style.textContent = '';
+                    if (libId) delete _libIcons[libId];   // URL changed → re-fetch its icon list
+                }
+
+                var cached = getCachedStyleEntry(l.cssUrl);
+                if (cached && cached.css) {
+                    style.textContent = cached.css;
+                    style.setAttribute('data-src', 'cache');
+                }
+
+                if (!cached || isStyleCacheStale(cached)) {
+                    (function (styleEl, expectedUrl) {
+                        fetchLibraryCss(expectedUrl)
+                            .then(function (cssText) {
+                                if (styleEl.getAttribute('data-url') !== expectedUrl) return;
+                                styleEl.textContent = cssText;
+                                styleEl.setAttribute('data-src', 'network');
+                            })
+                            .catch(function () {});
+                    }(style, l.cssUrl));
                 }
             });
-            /* Drop links (and cached icons) for removed libraries. */
-            var stale = document.querySelectorAll('link[id^="ng-iconlib-"]');
+            /* Drop stale injected library styles/links for removed libraries. */
+            var stale = document.querySelectorAll('style[id^="ng-iconlib-"],link[id^="ng-iconlib-"]');
             for (var i = 0; i < stale.length; i++) {
                 if (!want[stale[i].id]) stale[i].parentNode.removeChild(stale[i]);
             }
@@ -211,15 +253,24 @@
     }
 
     function fetchLibrary(lib, cb, silent) {
-        fetch(lib.cssUrl, { credentials: 'omit' })
-            .then(function (r) { if (!r.ok) throw 0; return r.text(); })
-            .then(function (t) {
-                var icons = parseCssForIcons(t, lib.prefix);
+        var cached = getCachedStyleEntry(lib.cssUrl);
+        fetchLibraryCss(lib.cssUrl)
+            .then(function (cssText) {
+                var icons = parseCssForIcons(cssText, lib.prefix);
                 _libIcons[lib.id] = icons;
                 writeLibCache(lib.cssUrl, icons);
                 cb();
             })
-            .catch(function () { if (!silent) { _libIcons[lib.id] = 'error'; cb(); } });
+            .catch(function () {
+                if (cached && cached.css) {
+                    var icons = parseCssForIcons(cached.css, lib.prefix);
+                    _libIcons[lib.id] = icons;
+                    writeLibCache(lib.cssUrl, icons);
+                    cb();
+                    return;
+                }
+                if (!silent) { _libIcons[lib.id] = 'error'; cb(); }
+            });
     }
 
     /* Load a library's icon list. cb() fires when state changes.
@@ -484,9 +535,8 @@
             desc.className = 'ng-is-note';
             desc.innerHTML = 'Add an icon font such as ' +
                 '<a href="https://pictogrammers.com/library/mdi/" target="_blank" rel="noopener">Material Design Icons</a>. ' +
-                'Give its stylesheet URL and class prefix (e.g. <code>mdi</code>). Libraries hosted on ' +
-                'this Domoticz server are listed automatically; libraries loaded from another domain still ' +
-                'render but must be picked via the “paste any class” field below.';
+                'Give its stylesheet URL and class prefix (e.g. <code>mdi</code>). Nightglass downloads and stores ' +
+                'the library stylesheet locally, then reuses that stored copy after reloads and while offline.';
             mainEl.appendChild(desc);
 
             var listWrap = document.createElement('div');
