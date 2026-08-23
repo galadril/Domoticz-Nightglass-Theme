@@ -135,6 +135,11 @@ Fine-tune every color with live preview:
 - Visual icon picker with search
 - Perfect for personalizing your dashboard
 
+### 📦 Extra Icon Libraries
+- Add third-party icon sets with just a name, source URL, and class prefix
+- Nightglass downloads the stylesheet/fonts into a local browser cache automatically
+- Refresh/redownload any configured library from the Icon Studio manager
+
 ### 💾 Import/Export & Sync
 - **Export Settings** - Save your custom theme as a JSON file
 - **Import Settings** - Load themes shared by the community
@@ -211,4 +216,3 @@ Feel free to open an issue or submit a PR on GitHub.
 If you like to say thanks, you could always buy me a cup of coffee (/beer)!   
 (Thanks!)  
 [![PayPal donate button](https://img.shields.io/badge/paypal-donate-yellow.svg)](https://www.paypal.me/markheinis)
-
