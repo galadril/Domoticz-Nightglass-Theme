@@ -7,7 +7,12 @@
        Font Awesome 7 + any extra library the user added), grouped by
        library with counts;
      • supports user-added icon libraries (Material Design Icons, etc.)
-       via a settings-managed stylesheet URL + prefix (issue #129);
+       via a settings-managed stylesheet URL + prefix (issue #129). Each
+       library is downloaded once, its fonts inlined, and then stored ON THE
+       DOMOTICZ SERVER (www/assets/ via the `uploadwebasset` API) so every
+       browser loads it locally. Where that isn't possible (non-admin session,
+       or a Domoticz without the endpoint) it falls back to a per-browser
+       IndexedDB copy, and finally to the source URL;
      • offers search, a Recent row, Font Awesome category chips, per-
        library collapsible browsing, and a manual "enter any class"
        field with live preview (covers cross-origin / CDN libraries the
@@ -94,7 +99,11 @@
             (arr || []).forEach(function (l) {
                 if (l && l.prefix) libs.push({
                     id: l.id || l.prefix, name: l.name || l.prefix,
-                    prefix: l.prefix, cssUrl: l.cssUrl
+                    prefix: l.prefix, cssUrl: l.cssUrl,
+                    /* assetPath = stored on this Domoticz server; must be
+                       carried through so loads/reopens use the local copy
+                       instead of going back out to the source URL. */
+                    assetPath: l.assetPath
                 });
             });
         } catch (e) {}
@@ -155,13 +164,15 @@
         return Object.keys(out).sort();
     }
 
-    /* Persistent cache of parsed icon lists, keyed by stylesheet URL, in
-       localStorage — so opening the Studio is instant across page loads
-       instead of re-fetching every library each time. Entries carry a
-       timestamp; stale ones are still served immediately, then refreshed in
-       the background. Keyed by URL so a changed/versioned URL misses cleanly. */
+    /* Two local stores, both keyed by stylesheet URL so a changed/versioned
+       URL misses cleanly:
+         • localStorage (LIB_CACHE_KEY) — the parsed icon-class list, so the
+           Studio grid opens instantly;
+         • IndexedDB (LIB_DB_*) — the downloaded stylesheet with its fonts
+           inlined as data: URLs, so rendering needs no network at all.
+       Neither ever expires on its own: refreshing is an explicit user action,
+       so a stored library never quietly calls out to the source again. */
     var LIB_CACHE_KEY = 'dz-iconlib-cache';
-    var LIB_CACHE_TTL = 7 * 24 * 3600 * 1000;   // 7 days
     var LIB_DB_NAME = 'dz-nightglass-iconlib-packages';
     var LIB_DB_STORE = 'packages';
 
@@ -341,6 +352,81 @@
         });
     }
 
+    /* ── Server-side hosting (Domoticz `uploadwebasset`) ───────────────
+       Best case: we store the downloaded, self-contained stylesheet in the
+       Domoticz web root (www/assets/<name>) so EVERY browser and device loads
+       it from this server — no CDN, no per-browser download, and because it's
+       same-origin its glyphs also enumerate straight from document.styleSheets
+       (no fetch needed for the picker).
+
+       The store is Domoticz-wide rather than theme-scoped, so the same webfont
+       is shared instead of each theme keeping its own copy, and it survives
+       both theme reinstalls and Domoticz updates.
+
+       Requires an admin session and a Domoticz build that has the endpoint;
+       when either is missing we silently keep the per-browser IndexedDB copy,
+       so nothing breaks on older servers. */
+
+    function utf8ToBase64(str) {
+        var bytes = new TextEncoder().encode(str);
+        var bin = '';
+        var CHUNK = 0x8000;                       // avoid apply() arg limits
+        for (var i = 0; i < bytes.length; i += CHUNK) {
+            bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+        }
+        return btoa(bin);
+    }
+
+    function uploadWebAsset(name, content) {
+        var body = 'name=' + encodeURIComponent(name) +
+                   '&data=' + encodeURIComponent(utf8ToBase64(content));
+        return fetch('json.htm?type=command&param=uploadwebasset', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body
+        }).then(function (r) { return r.json(); }).then(function (d) {
+            if (!d || d.status !== 'OK' || !d.path) throw (d && d.error) || 0;
+            return d.path;
+        });
+    }
+
+    /* The asset store is shared Domoticz-wide, so namespace the filename to
+       make its provenance obvious and avoid clashing with other uploads. */
+    function assetFileName(lib) {
+        return 'iconfont-' + String(lib.prefix || lib.id || 'lib').replace(/[^a-z0-9_-]/gi, '') + '.css';
+    }
+
+    /* Persist the server path onto the library's settings entry so later page
+       loads can point the <link> straight at it. */
+    function setLibraryAssetPath(lib, path) {
+        var arr = readLibsRaw();
+        var changed = false;
+        for (var i = 0; i < arr.length; i++) {
+            if (libraryKey(arr[i]) === libraryKey(lib)) {
+                if (arr[i].assetPath !== path) { arr[i].assetPath = path; changed = true; }
+                break;
+            }
+        }
+        if (changed) saveLibsRaw(arr);
+    }
+
+    /* Best-effort publish; resolves to the path or null (never rejects). */
+    function publishLibraryToServer(lib, cssText) {
+        if (!cssText) return Promise.resolve(null);
+        return uploadWebAsset(assetFileName(lib), cssText)
+            .then(function (path) {
+                if (!libraryStillConfigured(lib)) return null;
+                /* Refreshing overwrites the same filename, so version the URL —
+                   otherwise the browser keeps serving the previous copy. */
+                var versioned = path + '?v=' + Date.now();
+                setLibraryAssetPath(lib, versioned);
+                setLibStatus(lib.id || lib.prefix, 'server', { path: versioned, ts: Date.now() });
+                return versioned;
+            })
+            .catch(function () { return null; });   // no admin / older Domoticz
+    }
+
     function downloadLibraryPackage(lib) {
         var id = lib.id || lib.prefix;
         setLibStatus(id, 'downloading');
@@ -358,7 +444,13 @@
             _libIcons[id] = entry.icons;
             writeLibCache(lib.cssUrl, entry.icons);
             setLibStatus(id, 'cached', { ts: entry.ts });
-            return writeLibPackage(entry).catch(function () { return entry; });
+            return writeLibPackage(entry)
+                .catch(function () { return entry; })
+                .then(function () {
+                    /* Try to hand it to the server too; keeps the local copy
+                       either way so this can never make things worse. */
+                    return publishLibraryToServer(lib, entry.cssText).then(function () { return entry; });
+                });
         }).catch(function (err) {
             if (err && err.removed) throw err;
             setLibStatus(id, 'error');
@@ -380,10 +472,9 @@
                     _libIcons[id] = Array.isArray(entry.icons) ? entry.icons : [];
                     writeLibCache(lib.cssUrl, _libIcons[id]);
                     setLibStatus(id, 'cached', { ts: entry.ts || 0 });
-                    if (!entry.ts || (Date.now() - entry.ts) > LIB_CACHE_TTL) {
-                        delete _libPackageLoads[key];
-                        downloadLibraryPackage(lib).catch(function () {});
-                    }
+                    /* Deliberately no age-based auto re-download: a locally
+                       stored library must never quietly hit the network again.
+                       Updating is an explicit action (the Refresh button). */
                     return entry;
                 }
                 return downloadLibraryPackage(lib);
@@ -410,6 +501,20 @@
         link.href = href;
         link.setAttribute('data-url', originalUrl || '');
         link.setAttribute('data-local', isLocal ? '1' : '0');
+    }
+
+    /* Claim the <link> for a library WITHOUT giving it an href yet.
+       This is what stops a remote request on every page load: previously the
+       link was pointed at the CDN synchronously and only swapped to the local
+       copy afterwards, so each load still pulled the remote CSS (and the fonts
+       it references). Now applyLibraryStylesheet() points it at the locally
+       cached blob — and only falls back to the source URL if no local copy can
+       be produced. href is removed rather than blanked, because an empty href
+       resolves to the page itself and would fire a pointless request. */
+    function markLibraryLink(link, url) {
+        link.removeAttribute('href');
+        link.setAttribute('data-url', url || '');
+        link.setAttribute('data-local', '0');
     }
 
     function applyLibraryStylesheet(link, domId, lib) {
@@ -444,24 +549,57 @@
                 var domId = 'ng-iconlib-' + String(libId || l.cssUrl).replace(/[^\w-]/g, '');
                 want[domId] = true;
                 var link = document.getElementById(domId);
-                if (!link) {
+                if (link) {
+                    var prevUrl = link.getAttribute('data-url');
+                    /* Already serving the local copy for this exact URL — leave
+                       it alone so re-running (e.g. on settings save) doesn't
+                       drop a working stylesheet and re-flash the icons. */
+                    if (prevUrl === l.cssUrl &&
+                        link.getAttribute('data-local') === '1' &&
+                        link.getAttribute('href')) return;
+                    if (prevUrl && prevUrl !== l.cssUrl) {
+                        revokeLibraryBlobUrl(domId);
+                        if (libId) delete _libIcons[libId];
+                    }
+                } else {
                     link = document.createElement('link');
                     link.id = domId;
                     link.rel = 'stylesheet';
                     document.head.appendChild(link);
                 }
-                var prevUrl = link.getAttribute('data-url');
-                if (prevUrl && prevUrl !== l.cssUrl) {
-                    revokeLibraryBlobUrl(domId);
-                    if (libId) delete _libIcons[libId];
-                }
-                setLibraryLinkHref(link, domId, l.cssUrl, l.cssUrl, false);
-                applyLibraryStylesheet(link, domId, {
+                var lib = {
                     id: libId,
                     name: l.name || l.prefix,
                     cssUrl: l.cssUrl,
-                    prefix: l.prefix
-                });
+                    prefix: l.prefix,
+                    assetPath: l.assetPath
+                };
+
+                /* Best case: the library is hosted on this Domoticz server —
+                   point straight at it. Same-origin, so it costs one ordinary
+                   (browser-cached) request and its glyphs enumerate directly
+                   from document.styleSheets. */
+                if (l.assetPath) {
+                    markLibraryLink(link, l.cssUrl);
+                    link.setAttribute('data-local', '1');
+                    link.onerror = function () {
+                        /* Asset vanished (theme reinstalled/upgraded): forget the
+                           path and fall back to the local/remote flow. */
+                        link.onerror = null;
+                        setLibraryAssetPath(lib, '');
+                        setLibStatus(libId, 'error');
+                        markLibraryLink(link, l.cssUrl);
+                        applyLibraryStylesheet(link, domId, lib);
+                    };
+                    link.href = l.assetPath;
+                    setLibStatus(libId, 'server', { path: l.assetPath });
+                    return;
+                }
+
+                /* Claim the link but leave href unset; the local copy (or a
+                   remote fallback) is applied asynchronously below. */
+                markLibraryLink(link, l.cssUrl);
+                applyLibraryStylesheet(link, domId, lib);
             });
             /* Drop links (and cached icons) for removed libraries. */
             var stale = document.querySelectorAll('link[id^="ng-iconlib-"]');
@@ -480,18 +618,27 @@
     function loadLibraryIcons(lib, cb, force) {
         var st = _libIcons[lib.id];
         if (!force && (st === 'loading' || (st && st !== 'error'))) { cb(); return; }
-        if (!lib.cssUrl) { _libIcons[lib.id] = []; cb(); return; }
+        if (!lib.cssUrl && !lib.assetPath) { _libIcons[lib.id] = []; cb(); return; }
 
         var entry = !force && readLibCache()[lib.cssUrl];
         if (entry && Array.isArray(entry.icons)) {
             _libIcons[lib.id] = entry.icons;
+            cb();     // instant from cache; refreshing is an explicit action
+            return;
+        }
+
+        /* Hosted on this server: read the local copy for the icon list. Never
+           reach for the source URL here — that's what Refresh is for. */
+        if (lib.assetPath && !force) {
+            _libIcons[lib.id] = 'loading';
             cb();
-            if (!entry.ts || (Date.now() - entry.ts) > LIB_CACHE_TTL) {
-                ensureLibraryPackage(lib).then(function (pkg) {
-                    _libIcons[lib.id] = Array.isArray(pkg.icons) ? pkg.icons : [];
-                    cb();
-                }).catch(function () {});
-            }
+            fetchCssText(lib.assetPath).then(function (cssText) {
+                var icons = parseCssForIcons(cssText, lib.prefix);
+                _libIcons[lib.id] = icons;
+                writeLibCache(lib.cssUrl, icons);
+                setLibStatus(lib.id, 'server', { path: lib.assetPath });
+                cb();
+            }).catch(function () { _libIcons[lib.id] = 'error'; cb(); });
             return;
         }
 
@@ -512,6 +659,13 @@
         delete _libStatus[lib.id];
         delete _libPackageLoads[key];
         deleteLibPackage(key).catch(function () {});
+        /* Also drop the copy stored on the server, so removing a library
+           doesn't leave an orphaned file in www/assets/. */
+        if (lib.assetPath) {
+            fetch('json.htm?type=command&param=deletewebasset' +
+                  '&name=' + encodeURIComponent(assetFileName(lib)),
+                  { credentials: 'same-origin' }).catch(function () {});
+        }
     }
 
     /* Which library a class belongs to (by prefix). */
@@ -554,11 +708,12 @@
 
     function libraryStatusSummary(lib) {
         var st = _libStatus[lib.id || lib.prefix] || {};
-        if (st.state === 'downloading') return 'Downloading locally…';
-        if (st.state === 'cached') return 'Downloaded locally' + (st.ts ? ' · updated ' + formatAge(st.ts) : '');
+        if (st.state === 'downloading') return 'Downloading…';
+        if (st.state === 'server') return 'Stored on this server — shared by all devices';
+        if (st.state === 'cached') return 'Stored in this browser' + (st.ts ? ' · updated ' + formatAge(st.ts) : '');
         if (st.state === 'remote') return 'Using source URL fallback';
-        if (st.state === 'error') return 'Local download failed';
-        return 'Waiting to download locally';
+        if (st.state === 'error') return 'Download failed';
+        return 'Waiting to download';
     }
 
     /* ── Recent (localStorage) ────────────────────────────────────── */
@@ -774,8 +929,9 @@
             desc.innerHTML = 'Add an icon font such as ' +
                 '<a href="https://pictogrammers.com/library/mdi/" target="_blank" rel="noopener">Material Design Icons</a>. ' +
                 'Give its stylesheet URL and class prefix (e.g. <code>mdi</code>) and Nightglass downloads ' +
-                'the stylesheet + fonts into its own local browser cache for you. Use refresh to redownload ' +
-                'a library after upstream changes.';
+                'the stylesheet + fonts once and stores them <strong>on this Domoticz server</strong>, so every ' +
+                'browser loads them locally. If the server can’t store them (not an admin session, or an older ' +
+                'Domoticz), it falls back to a per-browser copy. Use refresh to redownload after upstream changes.';
             mainEl.appendChild(desc);
 
             var listWrap = document.createElement('div');
@@ -825,7 +981,7 @@
                         var arr = readLibsRaw();
                         var removed = arr.splice(i, 1)[0];
                         saveLibsRaw(arr);
-                        if (removed && removed.prefix) removeLibraryCache({ id: removed.id || removed.prefix, prefix: removed.prefix, cssUrl: removed.cssUrl });
+                        if (removed && removed.prefix) removeLibraryCache({ id: removed.id || removed.prefix, prefix: removed.prefix, cssUrl: removed.cssUrl, assetPath: removed.assetPath });
                         refreshData();
                         pruneRecent(libs);          // drop now-invalid recent icons
                         renderRail();
@@ -895,7 +1051,7 @@
                     if ((item.id || item.prefix) === prefix) existing = idx;
                 });
                 if (existing >= 0) {
-                    removeLibraryCache({ id: arr[existing].id || arr[existing].prefix, prefix: arr[existing].prefix, cssUrl: arr[existing].cssUrl });
+                    removeLibraryCache({ id: arr[existing].id || arr[existing].prefix, prefix: arr[existing].prefix, cssUrl: arr[existing].cssUrl, assetPath: arr[existing].assetPath });
                     arr[existing] = next;
                 } else {
                     arr.push(next);
