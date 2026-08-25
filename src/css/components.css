@@ -1592,6 +1592,9 @@ body.dz-light .dd-page {
     position: sticky;
     top: 48px; /* below the sticky search bar */
     z-index: 1;
+    /* Pure text — never let a pinned label intercept a click aimed at the row
+       underneath it (part of issue #228). */
+    pointer-events: none;
     background: rgba(var(--dz-surface-rgb), 0.94);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
@@ -1682,6 +1685,12 @@ body.dz-light .dd-page {
 }
 
 .dd-library-recent-label {
+    /* This block is injected ABOVE the sticky search bar, so it must not keep
+       the .dd-library-category-label sticky offset: `top: 48px` would hold the
+       label 48px down from the top even though it starts there, shoving it over
+       its own first row and hiding it (issue #228). */
+    position: static;
+    top: auto;
     font-size: 0.72rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;

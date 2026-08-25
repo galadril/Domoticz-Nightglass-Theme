@@ -767,9 +767,48 @@
 
     /* ── Overlay ──────────────────────────────────────────────────── */
     var _overlay = null;
+    var _relaxedDialogs = [];
+
+    /* jQuery UI modal dialogs (Domoticz's Utility "edit device" dialogs use
+       modal: true) install a document-wide focusin trap. jQuery UI 1.12's
+       _allowInteraction() only permits focus inside .ui-dialog / .ui-datepicker
+       and drags it back otherwise — so our overlay, which lives on <body>,
+       could not focus its own search box. Pressing Escape closed the dialog,
+       removing the trap, which is why the field then became usable (#230).
+
+       Teach any OPEN dialog to treat our overlay as legitimate, per instance so
+       nothing global is monkey-patched, and undo it when we close. Doing this
+       on the live instances (rather than the widget prototype) also works when
+       the dialog was created before this module loaded. */
+    function relaxOpenModalDialogs() {
+        var $ = window.jQuery;
+        if (!$ || !$.fn || !$.fn.jquery) return;
+        try {
+            $('.ui-dialog-content').each(function () {
+                var inst = $(this).data('uiDialog') || $(this).data('dialog');
+                if (!inst || typeof inst._allowInteraction !== 'function') return;
+                if (inst._ngIsRelaxed) return;
+                var orig = inst._allowInteraction;
+                inst._allowInteraction = function (event) {
+                    if ($(event.target).closest('.ng-is-overlay').length) return true;
+                    return orig.call(this, event);
+                };
+                inst._ngIsRelaxed = true;
+                _relaxedDialogs.push({ inst: inst, orig: orig });
+            });
+        } catch (e) {}
+    }
+
+    function restoreRelaxedDialogs() {
+        _relaxedDialogs.forEach(function (r) {
+            try { r.inst._allowInteraction = r.orig; delete r.inst._ngIsRelaxed; } catch (e) {}
+        });
+        _relaxedDialogs = [];
+    }
 
     function close() {
         if (!_overlay) return;
+        restoreRelaxedDialogs();
         _overlay.classList.remove('ng-is--open');
         var el = _overlay;
         _overlay = null;
@@ -1211,6 +1250,10 @@
         renderRail();
         renderMain();
         loadLibraries();          // fetch+parse CDN/custom libraries in the background
+
+        /* Must happen before we take focus: an open jQuery UI modal would
+           otherwise steal it straight back (#230). */
+        relaxOpenModalDialogs();
         setTimeout(function () { try { searchEl.focus(); } catch (e) {} }, 60);
     }
 
