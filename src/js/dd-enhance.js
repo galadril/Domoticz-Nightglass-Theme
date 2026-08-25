@@ -234,9 +234,15 @@
         try { localStorage.setItem(LS_RECENT, JSON.stringify(list)); } catch (e) {}
     }
 
+    /* Find the REAL (Angular-bound) library row for a label.
+       Must skip our own injected "Recently Added" rows: they carry the same
+       label and are inserted as the panel's first child, so they matched first
+       and a recent row ended up forwarding its click to itself — recursing
+       until the call stack blew, which is why the + button did nothing (#228). */
     function findLibraryItemByLabel(label) {
         var items = document.querySelectorAll('.dd-library-panel .dd-library-item');
         for (var i = 0; i < items.length; i++) {
+            if (items[i].closest('.dd-library-recent')) { continue; }
             var lbl = items[i].querySelector('.dd-library-item-label');
             if (lbl && lbl.textContent.trim() === label) { return items[i]; }
         }

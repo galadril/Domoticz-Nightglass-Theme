@@ -398,7 +398,12 @@ body table#itemtablesmalltrippleicon tr td#status {
     background-image: none !important;
 }
 
-.ui-widget-header {
+/* jQuery UI builds the slider fill as
+   `<div class="ui-slider-range ui-corner-all ui-widget-header">`, so this
+   catch-all has to carry the same exclusions as the two rules above —
+   otherwise it strips the dimmer's fill colour (issue #227). It only lost to
+   the slider rules by specificity/source-order accident before. */
+.ui-widget-header:not(.ui-slider-handle):not(.ui-slider-range) {
     background: none !important;
     background-image: none !important;
     background-color: transparent !important;
@@ -544,10 +549,15 @@ body table[id^="itemtable"] tr .ui-slider {
     overflow: visible !important;
 }
 
-    /* Slider fill / range */
+    /* Slider fill / range — jQuery UI creates this element for the dimmer
+       (range: "min"), so it already spans 0 → current value.
+       NOTE: do NOT add `background-image: none` here. It was copied from the
+       track rule above (where killing Domoticz's default gradient IS wanted),
+       but on this element it overrode the `background` shorthand set on the
+       line before, wiping the gradient and leaving the fill invisible — the
+       dimmer looked unfilled up to the knob (issue #227). */
     body table[id^="itemtable"] tr .ui-slider .ui-slider-range {
         background: linear-gradient(90deg, var(--dz-accent), var(--dz-accent-light)) !important;
-        background-image: none !important;
         border-radius: 6px !important;
         height: 100% !important;
         top: 0 !important;

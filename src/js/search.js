@@ -603,8 +603,8 @@
         deviceIconOverrides: '{}',
 
         /* Extra icon-font libraries the user added (issue #129) — JSON array of
-           { id, name, cssUrl, prefix }. Injected as <link>s so their glyphs
-           render and (if same-origin) show up in the Icon Studio picker. */
+           { id, name, cssUrl, prefix }. Nightglass downloads + caches them
+           locally in the browser so users only need the source URL + prefix. */
         iconLibraries:      '[]',
 
         userPresets:        '[]',   /* user-saved color presets — JSON array */
