@@ -750,8 +750,16 @@
         var isOn;
         if (base === 'blinds' || base === 'blindsopen') {
             isOn = !!(parsedSrc && parsedSrc.state === 'on');
+        } else if (parsedSrc) {
+            isOn = parsedSrc.state !== 'off';
         } else {
-            isOn = !parsedSrc || parsedSrc.state !== 'off';
+            /* DEVICE_RE only matches letter-only bases, so a Domoticz custom
+               icon whose Base contains digits or hyphens (AWTRIX3,
+               xiaomi-mi-robot-vacuum-icon…) doesn't parse and used to fall
+               through as permanently "on". Domoticz always writes
+               <Base>48_On.png / <Base>48_Off.png, so read the state off the
+               filename suffix instead. */
+            isOn = !/[_-]off\.png$/i.test(src);
         }
 
         /* Select icon by image slot:
@@ -818,6 +826,16 @@
                 imgs[i].removeAttribute('data-dz-src');
                 updateReplacedIcon(imgs[i]);
             }
+            /* Reconsider images we previously skipped. An unmapped Domoticz
+               custom icon gets marked dz-icon-skipped, and skipped images are
+               excluded from every later pass — so without this a freshly added
+               override for such a device would never show up on the card.
+               Genuinely excluded images simply get re-skipped by processImg(). */
+            var skipped = document.querySelectorAll('img.dz-icon-skipped');
+            for (var s = 0; s < skipped.length; s++) {
+                skipped[s].classList.remove('dz-icon-skipped');
+                processImg(skipped[s]);
+            }
         } catch (e) { /* best-effort — burst below is the safety net */ }
         if (typeof window._dzScheduleBurst === 'function') window._dzScheduleBurst();
     };
@@ -862,8 +880,20 @@
 
         var resolved = resolveIcon(src);
         if (!resolved) {
-            img.classList.add('dz-icon-skipped');
-            return false;
+            /* A Domoticz custom icon (CustomImage) renders as
+               images/<Base>48_On.png, and <Base> has no DEVICE_MAP entry, so
+               resolveIcon() returns null. Bailing out here meant a per-device
+               override could never reach such a device: the card kept showing
+               the PNG even though the detail page reported the override.
+               Give the override a chance before writing the image off. */
+            var unmappedIdx = (src.indexOf('48') !== -1) ? deviceIdxForIcon(img) : '';
+            var unmappedOv  = unmappedIdx ? applyDeviceOverride(unmappedIdx, src, null) : null;
+            if (!unmappedOv) {
+                img.classList.add('dz-icon-skipped');
+                return false;
+            }
+            img.setAttribute('data-dz-dev-idx', unmappedIdx);
+            resolved = unmappedOv;
         }
 
         /* Per-device icon override — for 48px device state icons and the blinds stop button.
@@ -1031,7 +1061,17 @@
             }
         }
 
-        if (!resolved) return;
+        if (!resolved) {
+            /* Nothing maps this src and there's no override any more — e.g. the
+               user just removed an override from a device that uses a Domoticz
+               custom icon. Put the original <img> back rather than leaving a
+               stale Font Awesome icon in place. */
+            if (icon.parentNode) icon.parentNode.removeChild(icon);
+            try { iconMap.delete(img); } catch (e) {}
+            img.classList.remove('dz-icon-replaced');
+            img.removeAttribute('data-dz-src');
+            return;
+        }
 
         if (resolved.type === 'fav') {
             icon.className = resolved.cls;
