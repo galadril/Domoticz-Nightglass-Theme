@@ -1,8 +1,7 @@
 /* ══════════════════════════════════════════════════════════════════
    DEVICE ICON — Nightglass takeover of the native icon pickers
    ──────────────────────────────────────────────────────────────────
-   Domoticz lets you set a device icon in two places, both via a ddslick
-   combo listing the ENTIRE built-in icon set:
+   Domoticz lets you set a device icon in two places:
 
      1. Setup ▸ Devices ▸ a device — Angular <device-icon-select>
         (ng-model vm.device.CustomImage; persisted by the page's Save).
@@ -10,17 +9,23 @@
         (persisted by the dialog's Update button, which reads
         $.ddData[selectedIndex].value → &customimage=).
 
-   Nightglass replaces BOTH combos with one consistent UI that:
-     • shows where the icon currently comes from (Nightglass override /
-       theme icon / Domoticz built-in / uploaded custom image),
-     • sets a Font-Awesome icon through our Device Icon Overrides dialog,
-     • and — for the old-school path — offers ONLY the user's own uploaded
-       custom images (getcustomiconset), not the whole built-in list.
+   Nightglass replaces both with ONE control, and that control is
+   deliberately the shape Domoticz itself settled on for its native
+   picker: the current icon at 28px, then a small "Change…" button.
+   Same markup, same class names (.dz-icon-field / -preview / -btn), so
+   on a Domoticz that ships the native picker our field is visually the
+   native field — only the button routes to Nightglass's Icon Studio
+   instead of Domoticz's own dialog. On a Domoticz without it, the theme
+   CSS supplies the same appearance from scratch.
 
-   The native combo stays in the DOM (hidden) purely as the persistence
-   bridge: we drive its selection / ng-model, so Domoticz's own Save /
-   Update code writes CustomImage exactly as before. Custom-icon ZIP
-   uploads (Setup ▸ More Options ▸ Custom Icons) remain fully supported.
+   "Use default" sits in the field rather than inside the Studio: the
+   Studio is shared with the settings panel's override editor, where
+   "default" means nothing, and keeping the reset next to the preview
+   puts the state and the action that clears it in one place.
+
+   The native combo / picker stays in the DOM (hidden) purely as the
+   persistence bridge: we drive its selection / ng-model, so Domoticz's
+   own Save / Update code writes CustomImage exactly as before.
    ══════════════════════════════════════════════════════════════════ */
 (function () {
     'use strict';
@@ -170,16 +175,19 @@
         };
     }
 
-    /* ── Provenance + preview ─────────────────────────────────────── */
+    /* ── Provenance + preview ─────────────────────────────────────────
+       The compact field has room for one line of text, so provenance moves
+       into the preview's tooltip: what the icon is, then where it came
+       from. Native puts the class string there for the same reason. */
 
     function resolveSource(surface, device) {
         var s = settings();
         var ov = s && s.getDeviceOverride ? s.getDeviceOverride(surface.idx) : null;
         if (ov && (ov.iconOn || ov.iconOpen || ov.icon)) {
+            var cls = ov.iconOn || ov.iconOpen || ov.icon;
             return {
-                kind: 'override', label: 'Nightglass override',
-                hint: 'A Font Awesome icon you set for this device in Nightglass.',
-                iconCls: ov.iconOn || ov.iconOpen || ov.icon, color: ov.on || '#4e9af1'
+                kind: 'override', name: cls, origin: 'Nightglass override',
+                iconCls: cls, color: ov.on || '#4e9af1', isDefault: false
             };
         }
 
@@ -187,30 +195,31 @@
         if (ci >= 100) {
             var up = findUploaded(ci);
             return {
-                kind: 'custom', label: 'Uploaded custom image',
-                hint: 'One of your own uploaded custom icons (Setup ▸ More Options ▸ Custom Icons).',
+                kind: 'custom', name: (up && up.Title) || ('#' + ci),
+                origin: 'Uploaded custom image',
                 pngSrc: up ? up.IconFile48On : (selectedImg(surface) || null),
-                iconCls: null, color: null
+                iconCls: null, color: null, isDefault: false
             };
         }
         if (ci > 0) {
             var spec = device && typeof window._dzIconForDevice === 'function'
                 ? window._dzIconForDevice(device) : null;
             return {
-                kind: 'builtin', label: 'Domoticz built-in icon',
-                hint: 'A stock Domoticz icon. Prefer a Nightglass icon for a themed look.',
+                kind: 'builtin', name: device && device.Image ? String(device.Image) : ('#' + ci),
+                origin: 'Domoticz built-in icon',
                 iconCls: (spec && spec.icon) || null,
                 color:   (spec && spec.color) || null,
-                pngSrc:  (spec && spec.icon) ? null : (selectedImg(surface) || null)
+                pngSrc:  (spec && spec.icon) ? null : (selectedImg(surface) || null),
+                isDefault: false
             };
         }
         var themeSpec = device && typeof window._dzIconForDevice === 'function'
             ? window._dzIconForDevice(device) : null;
         return {
-            kind: 'theme', label: 'Nightglass theme icon',
-            hint: 'Automatically chosen by Nightglass from the device type.',
+            kind: 'theme', name: 'Default', origin: 'chosen from the device type',
             iconCls: (themeSpec && themeSpec.icon)  || 'fa-solid fa-circle-question',
-            color:   (themeSpec && themeSpec.color) || '#4e9af1'
+            color:   (themeSpec && themeSpec.color) || '#4e9af1',
+            isDefault: true
         };
     }
 
@@ -229,8 +238,9 @@
     }
 
     function buildPreview(src) {
-        var wrap = document.createElement('div');
-        wrap.className = 'ng-dd-icon-preview';
+        var wrap = document.createElement('span');
+        wrap.className = 'dz-icon-field-preview';
+        wrap.title = src.name + ' — ' + src.origin;
         if (src.pngSrc) {
             var im = document.createElement('img');
             im.src = src.pngSrc; im.alt = '';
@@ -238,8 +248,8 @@
             return wrap;
         }
         var i = document.createElement('i');
-        i.className = src.iconCls || 'fa-solid fa-image';
-        i.style.color = src.color || 'var(--dz-accent)';
+        i.className = src.iconCls || 'fa-regular fa-square';
+        if (src.color) i.style.color = src.color;
         wrap.appendChild(i);
         return wrap;
     }
@@ -250,14 +260,17 @@
         var td = surface.td;
         if (!td) return;
 
-        /* Create the box synchronously so concurrent async (device-fetch)
-           renders can't each insert a duplicate. The native combo is a
+        /* Create the field synchronously so concurrent async (device-fetch)
+           renders can't each insert a duplicate. The native combo/picker is a
            persistence bridge only — never shown. */
         var box = td.querySelector('#' + BOX_ID);
         if (!box) {
-            box = document.createElement('div');
+            box = document.createElement('span');
             box.id = BOX_ID;
-            box.className = 'ng-dd-icon-box';
+            /* Native's own class names first: on a Domoticz that ships the
+               native picker this inherits its layout verbatim, so the two
+               fields cannot drift apart. ng-icon-field is our own hook. */
+            box.className = 'dz-icon-field ng-icon-field';
             td.insertBefore(box, surface.comboEl);
         }
         surface.comboEl.style.display = 'none';
@@ -267,149 +280,83 @@
             var src = resolveSource(surface, device);
             var ci  = surface.getCustomImage();
 
-            var pickerOpen = box.getAttribute('data-picker-open') === '1';
+            /* An uploaded image only knows its title and PNG once the set has
+               been read; re-render when it lands rather than showing "#101". */
+            if (ci >= 100 && !_customSet) fetchCustomSet(function () { render(surface); });
 
             var sig = [surface.idx, src.kind, src.iconCls || '', src.color || '',
-                       src.pngSrc || '', ci, pickerOpen ? 1 : 0].join('|');
+                       src.pngSrc || '', ci, box.getAttribute('data-dirty') || ''].join('|');
             if (box.getAttribute('data-sig') === sig) return;
-
             box.setAttribute('data-sig', sig);
-            box.setAttribute('data-picker-open', pickerOpen ? '1' : '0');
 
             box.innerHTML = '';
+            box.appendChild(buildPreview(src));
 
-            var head = document.createElement('div');
-            head.className = 'ng-dd-icon-head';
-            head.appendChild(buildPreview(src));
-            var info = document.createElement('div');
-            info.className = 'ng-dd-icon-info';
-            info.innerHTML =
-                '<div class="ng-dd-icon-source ng-dd-icon-source--' + src.kind + '">' +
-                '<span class="ng-dd-icon-dot"></span>' + src.label + '</div>' +
-                '<div class="ng-dd-icon-hint">' + src.hint + '</div>';
-            head.appendChild(info);
-            box.appendChild(head);
+            box.appendChild(mkBtn('dz-icon-field-btn', 'Change…', function () {
+                openStudio(surface, device, src);
+            }));
 
-            var actions = document.createElement('div');
-            actions.className = 'ng-dd-icon-actions';
+            if (!src.isDefault) {
+                box.appendChild(mkBtn('ng-icon-field-reset', 'Use default', function () {
+                    useDefault(surface);
+                }));
+            }
 
-            var setBtn = mkBtn('ng-dd-icon-btn--primary',
-                '<i class="fa-solid fa-wand-magic-sparkles"></i> ' +
-                (src.kind === 'override' ? 'Change Nightglass icon' : 'Set Nightglass icon'),
-                function () {
-                    var s = settings();
-                    /* Open the Icon Studio directly for this device and apply
-                       the pick as an override (preserving any existing colors).
-                       Falls back to the full override dialog if the Studio
-                       module isn't available. */
-                    if (typeof window.dzOpenIconStudio === 'function' && s && s.setDeviceOverrideIcon) {
-                        window.dzOpenIconStudio({
-                            current: src.iconCls || '',
-                            title: 'Set icon for ' + ((device && device.Name) || 'device'),
-                            onPick: function (cls) {
-                                s.setDeviceOverrideIcon(surface.idx, cls, device && device.Name);
-                                render(surface);
-                            }
-                        });
-                    } else if (s && s.openIconOverride) {
-                        s.openIconOverride(surface.idx);
-                        scheduleRefresh(surface);
-                    }
-                });
-            actions.appendChild(setBtn);
+            /* Neither surface saves on pick — the page's Save / the dialog's
+               Update does. Say so, but only once there is something to lose. */
+            if (box.getAttribute('data-dirty') === '1') {
+                var note = document.createElement('em');
+                note.className = 'ng-icon-field-note';
+                note.textContent = 'click ' + surface.applyLabel + ' to save';
+                box.appendChild(note);
+            }
+        });
+    }
 
-            var pickBtn = mkBtn('ng-dd-icon-btn--link',
-                pickerOpen
-                    ? '<i class="fa-solid fa-chevron-up"></i> Hide custom images'
-                    : '<i class="fa-solid fa-images"></i> Use a custom uploaded image',
-                function () {
-                    box.setAttribute('data-picker-open', pickerOpen ? '0' : '1');
+    /* Domoticz renders its own Change… as an <a class="btnsmall">; match that
+       so the button is a real Domoticz small button on either build. */
+    function mkBtn(cls, text, onClick) {
+        var a = document.createElement('a');
+        a.className = 'btnsmall ' + cls;
+        a.setAttribute('role', 'button');
+        a.appendChild(document.createTextNode(text));
+        a.addEventListener('click', function (e) { e.preventDefault(); onClick(); });
+        return a;
+    }
+
+    function openStudio(surface, device, src) {
+        var s = settings();
+        /* Open the Icon Studio for this device and apply the pick as an
+           override (preserving any existing colors). Falls back to the full
+           override dialog if the Studio module isn't available. */
+        if (typeof window.dzOpenIconStudio === 'function' && s && s.setDeviceOverrideIcon) {
+            window.dzOpenIconStudio({
+                current: src.iconCls || '',
+                title: 'Set icon for ' + ((device && device.Name) || 'device'),
+                onPick: function (cls) {
+                    s.setDeviceOverrideIcon(surface.idx, cls, device && device.Name);
                     render(surface);
-                });
-            actions.appendChild(pickBtn);
-
-            if (src.kind === 'override') {
-                actions.appendChild(mkBtn('ng-dd-icon-btn--danger',
-                    '<i class="fa-solid fa-rotate-left"></i> Remove override',
-                    function () {
-                        var s = settings();
-                        if (s && s.removeDeviceOverride) s.removeDeviceOverride(surface.idx);
-                        render(surface);
-                    }));
-            } else if (ci > 0) {
-                actions.appendChild(mkBtn('ng-dd-icon-btn--danger',
-                    '<i class="fa-solid fa-rotate-left"></i> Reset to default',
-                    function () {
-                        surface.setCustomImage(0);
-                        render(surface);
-                    }));
-            }
-
-            box.appendChild(actions);
-
-            if (pickerOpen) box.appendChild(buildPicker(surface));
-        });
-    }
-
-    function mkBtn(cls, html, onClick) {
-        var b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'ng-dd-icon-btn ' + cls;
-        b.innerHTML = html;
-        b.addEventListener('click', onClick);
-        return b;
-    }
-
-    /* Our own custom-image picker — uploaded icons ONLY (getcustomiconset). */
-    function buildPicker(surface) {
-        var panel = document.createElement('div');
-        panel.className = 'ng-dd-icon-picker';
-        panel.innerHTML = '<div class="ng-dd-icon-picker-loading">' +
-            '<i class="fa-solid fa-spinner fa-spin"></i> Loading your custom images…</div>';
-
-        fetchCustomSet(function (list) {
-            panel.innerHTML = '';
-            var note = document.createElement('div');
-            note.className = 'ng-dd-icon-picker-note';
-            note.innerHTML = '<i class="fa-solid fa-circle-info"></i> Your own uploaded ' +
-                'custom images. Manage them in Setup ▸ More Options ▸ Custom Icons. ' +
-                'Selecting one sets it as the Domoticz image — click <strong>' +
-                surface.applyLabel + '</strong> to save.';
-            panel.appendChild(note);
-
-            if (!list.length) {
-                var empty = document.createElement('div');
-                empty.className = 'ng-dd-icon-picker-empty';
-                empty.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> ' +
-                    'No custom images uploaded yet. Upload a ZIP via ' +
-                    'Setup ▸ More Options ▸ Custom Icons.';
-                panel.appendChild(empty);
-                return;
-            }
-
-            var grid = document.createElement('div');
-            grid.className = 'ng-dd-icon-grid';
-            var curCi = surface.getCustomImage();
-
-            list.forEach(function (icon) {
-                var value = (parseInt(icon.idx, 10) || 0) + 100;   // stored CustomImage
-                var tile = document.createElement('button');
-                tile.type = 'button';
-                tile.className = 'ng-dd-icon-tile' + (value === curCi ? ' ng-dd-icon-tile--active' : '');
-                tile.title = (icon.Title || '') + (icon.Description ? ' — ' + icon.Description : '');
-                tile.innerHTML =
-                    '<img src="' + icon.IconFile48On + '" alt="">' +
-                    '<span>' + (icon.Title || ('#' + icon.idx)) + '</span>';
-                tile.addEventListener('click', function () {
-                    surface.setCustomImage(value);
-                    render(surface);              // reflect new provenance immediately
-                });
-                grid.appendChild(tile);
+                }
             });
-            panel.appendChild(grid);
-        });
+        } else if (s && s.openIconOverride) {
+            s.openIconOverride(surface.idx);
+            scheduleRefresh(surface);
+        }
+    }
 
-        return panel;
+    function useDefault(surface) {
+        var s = settings();
+        if (s && s.removeDeviceOverride) s.removeDeviceOverride(surface.idx);
+        if (surface.getCustomImage() > 0) {
+            surface.setCustomImage(0);
+            markDirty(surface);
+        }
+        render(surface);
+    }
+
+    function markDirty(surface) {
+        var box = surface.td && surface.td.querySelector('#' + BOX_ID);
+        if (box) box.setAttribute('data-dirty', '1');
     }
 
     /* The override dialog saves asynchronously; poll briefly so provenance

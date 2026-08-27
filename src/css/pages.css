@@ -981,242 +981,82 @@
         white-space: nowrap;
     }
 
-/* ── Device icon: Nightglass picker box (device-detail.js) ────────────
-   Replaces the native icon combo on the Angular device page AND the
-   jQuery utility edit dialogs with one provenance + actions + custom-
-   image-picker control. The native combo stays hidden in the DOM as the
-   persistence bridge. */
+/* ── Device icon field (device-detail.js) ─────────────────────────────
+   Nightglass injects the same control Domoticz's native picker renders —
+   a 28px preview plus a small "Change…" button — and reuses its class
+   names, so on a build that ships the native picker the field IS the
+   native field and cannot drift from it. These rules restate that layout
+   in theme tokens, which is also what a Domoticz without the native
+   picker (and therefore without icons-chrome.css) needs. Scoped under
+   .ng-icon-field so only our own field is affected. */
 
-/* Hide the native icon combos from first paint (device-detail.js sets
-   .ng-dd-icons-managed as soon as it loads) so our box replaces them with no
+/* Hide the native icon controls from first paint (device-detail.js sets
+   .ng-dd-icons-managed as soon as it loads) so our field replaces them with no
    visible old→new swap. Absent the class (module didn't load), the native
-   combos remain as a graceful fallback. */
+   controls remain as a graceful fallback. */
 .ng-dd-icons-managed device-icon-select,
+.ng-dd-icons-managed .dz-icon-picker-host,
 .ng-dd-icons-managed #combosensoricon {
     display: none !important;
 }
 
-.ng-dd-icon-box {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 12px 14px;
-    /* Fade/slide in so appearing after the (already-hidden) native combo
-       reads as intentional rather than a flicker. */
-    animation: ngDdIconIn 0.16s ease both;
-    /* The surrounding container is --dz-surface-2, so use the lighter
-       surface-3 + an accent left bar to read as a distinct Nightglass
-       control rather than a flat table cell. */
-    background: var(--dz-surface-3);
-    border: 1px solid var(--dz-border-b);
-    border-left: 3px solid var(--dz-accent);
-    border-radius: 10px;
-    max-width: 520px;
-}
-
-@keyframes ngDdIconIn {
-    from { opacity: 0; transform: translateY(2px); }
-    to   { opacity: 1; transform: none; }
-}
-
-.ng-dd-icon-head {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-}
-
-.ng-dd-icon-preview {
-    width: 46px;
-    height: 46px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--dz-surface);
-    border: 1px solid var(--dz-border);
-    border-radius: 10px;
-    font-size: 22px;
-}
-
-    .ng-dd-icon-preview img {
-        width: 28px;
-        height: 28px;
-        object-fit: contain;
-    }
-
-.ng-dd-icon-info {
-    flex: 1 1 160px;
-    min-width: 0;
-}
-
-.ng-dd-icon-source {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-weight: 600;
-    font-size: 0.86rem;
-    color: var(--dz-text);
-}
-
-.ng-dd-icon-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    background: var(--dz-text-muted);
-}
-
-.ng-dd-icon-source--override .ng-dd-icon-dot { background: var(--dz-accent); }
-.ng-dd-icon-source--theme    .ng-dd-icon-dot { background: #4caf7d; }
-.ng-dd-icon-source--custom   .ng-dd-icon-dot { background: #f0a832; }
-.ng-dd-icon-source--builtin  .ng-dd-icon-dot { background: #b0b3c6; }
-
-.ng-dd-icon-hint {
-    margin-top: 2px;
-    font-size: 0.74rem;
-    color: var(--dz-text-muted);
-    line-height: 1.35;
-}
-
-.ng-dd-icon-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-
-/* ── Custom uploaded-image picker (our own — getcustomiconset) ──── */
-.ng-dd-icon-picker {
-    border-top: 1px solid var(--dz-border);
-    padding-top: 10px;
-}
-
-.ng-dd-icon-picker-loading,
-.ng-dd-icon-picker-empty {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.78rem;
-    color: var(--dz-text-muted);
-    padding: 6px 2px;
-}
-
-.ng-dd-icon-picker-note {
-    display: flex;
-    align-items: flex-start;
-    gap: 6px;
-    font-size: 0.73rem;
-    line-height: 1.4;
-    color: var(--dz-text-muted);
-    margin-bottom: 8px;
-}
-
-    .ng-dd-icon-picker-note i,
-    .ng-dd-icon-picker-empty i { color: var(--dz-accent); margin-top: 1px; }
-
-    .ng-dd-icon-picker-note strong { color: var(--dz-text-soft); }
-
-.ng-dd-icon-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
-    gap: 8px;
-    max-height: 260px;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: var(--dz-border) transparent;
-}
-
-.ng-dd-icon-tile {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-    padding: 8px 6px;
-    background: var(--dz-surface-2);
-    border: 1px solid var(--dz-border);
-    border-radius: 9px;
-    cursor: pointer;
-    transition: border-color 0.12s, background 0.12s, transform 0.08s;
-}
-
-    .ng-dd-icon-tile:hover {
-        border-color: var(--dz-accent);
-        background: var(--dz-surface);
-        transform: translateY(-1px);
-    }
-
-    .ng-dd-icon-tile img {
-        width: 32px;
-        height: 32px;
-        object-fit: contain;
-    }
-
-    .ng-dd-icon-tile span {
-        font-size: 0.68rem;
-        color: var(--dz-text-soft);
-        text-align: center;
-        line-height: 1.2;
-        max-width: 100%;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-.ng-dd-icon-tile--active {
-    border-color: var(--dz-accent);
-    background: rgba(var(--dz-accent-rgb), 0.14);
-    box-shadow: inset 0 0 0 1px var(--dz-accent);
-}
-
-.ng-dd-icon-btn {
+.ng-icon-field {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    border-radius: 7px;
-    border: 1px solid var(--dz-border-b);
-    background: var(--dz-surface-2);
-    color: var(--dz-text-soft);
+    gap: 8px;
+    /* Fade in so appearing after the (already-hidden) native control reads
+       as intentional rather than a flicker. */
+    animation: ngIconFieldIn 0.16s ease both;
+}
+
+@keyframes ngIconFieldIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.ng-icon-field .dz-icon-field-preview {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    min-width: 28px;
+    height: 28px;
+    font-size: 22px;
+    line-height: 1;
+    color: var(--dz-accent);
+}
+
+    .ng-icon-field .dz-icon-field-preview img {
+        max-width: 26px;
+        max-height: 26px;
+        object-fit: contain;
+    }
+
+/* .btnsmall carries Domoticz's own button styling; only the stray table
+   margins it inherits need neutralising here. */
+.ng-icon-field .btnsmall {
+    margin: 0;
     cursor: pointer;
-    transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 
-    .ng-dd-icon-btn:hover {
-        background: var(--dz-surface);
-        border-color: var(--dz-accent);
-        color: var(--dz-text);
+/* The reset is the quieter of the two actions and only appears when there
+   is something to reset, so it reads as text until hovered. */
+.ng-icon-field-reset {
+    background: transparent !important;
+    border-color: transparent !important;
+    color: var(--dz-text-muted) !important;
+}
+
+    .ng-icon-field-reset:hover {
+        color: var(--dz-danger) !important;
+        border-color: var(--dz-danger) !important;
     }
 
-.ng-dd-icon-btn--primary {
-    background: var(--dz-accent);
-    border-color: transparent;
-    color: #fff;
-}
-
-    .ng-dd-icon-btn--primary:hover {
-        background: var(--dz-accent-light, var(--dz-accent));
-        color: #fff;
-    }
-
-.ng-dd-icon-btn--danger:hover {
-    background: rgba(var(--dz-danger-rgb), 0.15);
-    border-color: var(--dz-danger);
-    color: var(--dz-danger);
-}
-
-.ng-dd-icon-btn--link {
-    background: transparent;
-    border-color: transparent;
+.ng-icon-field-note {
+    font-size: 0.72rem;
+    font-style: normal;
     color: var(--dz-text-muted);
-    padding-left: 4px;
-    padding-right: 4px;
 }
-
-    .ng-dd-icon-btn--link:hover {
-        background: transparent;
-        color: var(--dz-accent);
-    }
 
 @media (max-width: 767px) {
     /* Header: stack title + buttons vertically */
