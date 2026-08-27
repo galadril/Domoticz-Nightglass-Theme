@@ -1023,6 +1023,13 @@ document.addEventListener('DOMContentLoaded', function () {
         var stateObs = new MutationObserver(function (mutations) {
             mutations.forEach(function (m) {
                 if (m.attributeName !== 'data-dz-state') return;
+                /* First appearance of the attribute is not a state *change*.
+                   PNG-era icons were built detached and inserted with
+                   data-dz-state already set, so this observer only ever saw
+                   real transitions. Native glyphs are already in the document
+                   when the adapter tags them, so without this guard every card
+                   would flash once on load and on every SPA navigation. */
+                if (m.oldValue === null) return;
                 var icon = m.target;
                 var newState = icon.getAttribute('data-dz-state');
                 // Walk up to card (desktop: .item.itemBlock; mobile: <tr id="...">)
@@ -1059,6 +1066,7 @@ document.addEventListener('DOMContentLoaded', function () {
             stateObs.observe(document.body, {
                 subtree: true,
                 attributes: true,
+                attributeOldValue: true,
                 attributeFilter: ['data-dz-state']
             });
         }

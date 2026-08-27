@@ -1607,6 +1607,156 @@
         return null;
     };
 
+    /* ── Native Font Awesome rendering adapter ─────────────────────
+       Newer Domoticz resolves device icons itself and renders them as
+       glyphs through its own <dz-device-icon> component:
+
+         <dz-device-icon class="dz-icon-48">
+             <i class="dz-icon-glyph fa-solid fa-fan dz-icon--on"></i>
+         </dz-device-icon>
+
+       There is no <img> left to replace, so replaceImage() never runs and
+       the two hooks it used to apply — the dz-fa-device class and the
+       data-dz-state attribute — are never applied.  Everything keyed on
+       them is silently orphaned: the nine icon animations in
+       animations.css, the sizing/hover/fa-stop rules in layout.css, the
+       wind rotation, and the state-change flash observer in
+       card-features.js.
+
+       Rather than duplicate Domoticz's icon resolution we decorate its
+       own glyph with those two hooks, which makes every existing selector
+       match again without touching a single line of CSS.
+
+       Stable Domoticz emits no <dz-device-icon> at all, so this block
+       short-circuits on its first querySelector and behaviour there is
+       unchanged.                                                        */
+
+    /* Only widget icons put dz-icon-48 / dz-icon-40 on the host element.
+       Chrome — row action buttons, table type indicators, favourite stars —
+       uses .dz-chrome-icon or .dz-icon-glyph.dz-icon-16, and the scene
+       on/off buttons carry .dz-icon-glyph on the <td> itself.  Matching
+       only an <i> inside a 48/40 host keeps table buttons and stars out of
+       the animation and sizing rules. */
+    var NATIVE_GLYPH_SEL = '.dz-icon-48 > i.dz-icon-glyph, .dz-icon-40 > i.dz-icon-glyph';
+
+    /* True once native glyph rendering has been observed.  Re-evaluated on
+       every burst pass rather than latched at load: the SPA only mounts
+       <dz-device-icon> on pages that show device widgets, and a cold start
+       may land on Setup or the Dynamic Dashboard first. */
+    var _nativeSeen = false;
+
+    /* The "Device Icons" setting means "let Nightglass restyle device
+       icons".  With it off, search.js injects
+         i.dz-fa-device, i.dz-wind { display: none !important }
+       and un-hides the original PNGs.  Under native rendering there is no
+       PNG to fall back to, so an undecorated glyph *is* the off state —
+       hence we must not add dz-fa-device at all while the setting is off,
+       or the card would go blank.  A live toggle takes effect on the next
+       burst (route change, device update, or tab refocus). */
+    function nativeDecorEnabled() {
+        try {
+            var s = window.dzNightglassSettings;
+            if (s && typeof s.get === 'function') {
+                var v = s.get('deviceIcons');
+                if (v !== undefined && v !== null) return !!v;
+            }
+        } catch (e) { /* settings module not loaded yet */ }
+        return true; /* shipped default */
+    }
+
+    /* Read the state that dzDeviceIcon published.  It only emits
+       dz-icon--on / dz-icon--off when its isActive binding resolves to a
+       boolean; a read-only sensor (temperature, wind, UV, rain, counter…)
+       reports neither, because it has no on/off state.
+
+       When there is no state class we leave data-dz-state ABSENT rather
+       than guessing.  data-dz-state drives the animations, and every rule
+       that consumes it — all nine in animations.css plus the
+       animation-suppression rule search.js injects — requires the exact
+       value "on"; nothing keys on "off" or on the attribute merely being
+       present.  So an absent attribute is inert, whereas a fabricated
+       "on" would spin / flicker / shake every sensor whose glyph happens
+       to be a fan, flame or bell, forever, and a fabricated "off" would
+       trip the state-change flash the first time the device reports a real
+       state.  Absent it is. */
+    function nativeGlyphState(glyph) {
+        if (glyph.classList.contains('dz-icon--on'))  return 'on';
+        if (glyph.classList.contains('dz-icon--off')) return 'off';
+        return null;
+    }
+
+    function decorateNativeGlyph(glyph) {
+        /* Idempotent: Nightglass's own <i>s never carry dz-icon-glyph, so
+           this can never re-process an icon we created ourselves, and
+           re-running over an already-decorated glyph is a no-op. */
+        if (!glyph.classList.contains('dz-fa-device')) {
+            glyph.classList.add('dz-fa-device');
+        }
+
+        var state = nativeGlyphState(glyph);
+        var cur   = glyph.getAttribute('data-dz-state');
+        /* Write only on a genuine change.  Every data-dz-state mutation
+           wakes the flash observer in card-features.js, so a blind
+           setAttribute on each burst pass would strobe every card. */
+        if (state === null) {
+            if (cur !== null) glyph.removeAttribute('data-dz-state');
+        } else if (cur !== state) {
+            glyph.setAttribute('data-dz-state', state);
+        }
+    }
+
+    function undecorateNativeGlyph(glyph) {
+        glyph.classList.remove('dz-fa-device', 'dz-wind');
+        glyph.removeAttribute('data-dz-state');
+        glyph.style.color = '';
+        glyph.style.transform = '';
+    }
+
+    /* dzDeviceIcon renders an <img> fallback while dzIconService is still
+       fetching the built-in icon table, then swaps it for the glyph.  Our
+       MutationObserver replaces that transient <img> with an <i>, and
+       cleanupOrphan() deliberately leaves stray <i>s in the DOM (Pass 2
+       normally re-adopts them once the <img> reappears).  Here the <img> is
+       gone for good, so the shim survives as a permanent duplicate beside
+       the native glyph — two icons on one card.  Drop it.
+
+       Hosts that still contain an <img> are the useGlyph="false" path
+       (alert level, temperature range, wind direction PNGs), where the
+       <img> is the real icon and our replacement is the point. */
+    function dropStaleNativeShims() {
+        var shims = document.querySelectorAll(
+            'dz-device-icon > i.dz-fa-device:not(.dz-icon-glyph)');
+        for (var i = 0; i < shims.length; i++) {
+            var host = shims[i].parentNode;
+            if (host && !host.querySelector('img')) host.removeChild(shims[i]);
+        }
+    }
+
+    function processNativeGlyphs() {
+        var glyphs = document.querySelectorAll(NATIVE_GLYPH_SEL);
+        if (!glyphs.length) {
+            /* Cheapest possible exit on a Domoticz without native glyph
+               rendering, and on native pages that show no device widgets. */
+            return;
+        }
+        _nativeSeen = true;
+        dropStaleNativeShims();
+
+        var enabled = nativeDecorEnabled();
+        for (var i = 0; i < glyphs.length; i++) {
+            if (enabled) decorateNativeGlyph(glyphs[i]);
+            else         undecorateNativeGlyph(glyphs[i]);
+        }
+    }
+
+    /* Registered as an extra processor so it runs inside the existing
+       icon-replacement burst — same batch, no second MutationObserver.
+       Bursts already fire on route change, $viewContentLoaded,
+       device_update / scene_update, DataTables draws and tab refocus,
+       which covers every path that can mount or restate a glyph. */
+    window._dzExtraProcessors = window._dzExtraProcessors || [];
+    window._dzExtraProcessors.push(processNativeGlyphs);
+
     /* ── Floorplan popup: immediate icon replacement + theme patch ───
        Device.popupRedraw recreates the popup SVG content each time it
        is shown, including new <image> elements for the device icon.
