@@ -44,6 +44,96 @@
     function settings() { return window.dzNightglassSettings || null; }
     function jq()       { return window.jQuery || window.$ || null; }
 
+    function injector() {
+        try {
+            return (window.angular && angular.element(document.body).injector()) || null;
+        } catch (e) { return null; }
+    }
+
+    /* ── Where an icon choice is stored ───────────────────────────────
+       Domoticz grew a per-device icon of its own: a DeviceStatus.Icon
+       column holding {"t":"<prefix>","on":"<class>"[,"off":"<class>"]},
+       written by setused's &icon=, plus CustomImage for an uploaded PNG.
+       Where that exists it is the right home for a Nightglass pick — the
+       server renders it, so the choice survives without the theme, and
+       the theme's own override blob stays what it always was rather than
+       growing a second, parallel icon store.
+
+       Stable Domoticz has neither the column nor the endpoint, and
+       silently posting &icon= there would be rejected ("Invalid icon")
+       or ignored. So this is version-gated: without native storage the
+       behaviour below is byte-for-byte what it was — glyph to the theme
+       blob, image to the ddslick.
+
+       The gate is dzIconService: it owns the Icon column's JSON contract
+       on the client, and www ships with the binary, so its presence IS
+       the server's. It is route-loaded, which is fine — the two routes
+       that load it are exactly the two surfaces this module drives. The
+       DOM check covers the Utility dialogs, which are jQuery and may run
+       before the injector is reachable. Latched: once seen, never
+       re-probed, so a route that hasn't loaded the module yet cannot
+       downgrade a device page mid-edit. */
+    var _nativeStore = false;
+    function nativeIconStorage() {
+        if (_nativeStore) return true;
+        var inj = injector();
+        try {
+            if (inj && inj.has('dzIconService')) { _nativeStore = true; return true; }
+        } catch (e) {}
+        if (document.querySelector('dz-icon-picker, .dz-icon-picker-host')) {
+            _nativeStore = true;
+            return true;
+        }
+        return false;
+    }
+
+    /* The Icon JSON, exactly as dzIconPicker.serializeIcon() writes it and
+       NormaliseDeviceIcon() in main/WebServerCmds.cpp accepts it: "t" is the
+       library prefix (required, no spaces, ≤32 chars), "on" the full class
+       string (≤128, spaces allowed) and "off" is omitted when it would equal
+       "on" — dzIconService.resolveIconClass() reads `off || on`. Classes are
+       restricted to [A-Za-z0-9 _-]; anything else is refused outright with
+       {"error":"Invalid icon"} and nothing is written. The server re-serialises
+       what it accepts, so only the values have to match, not the key order. */
+    function iconProviderOf(cls) {
+        var token = String(cls || '').trim().split(/\s+/)[0] || '';
+        return (token === 'fa' || token.indexOf('fa-') === 0) ? 'fa' : token;
+    }
+
+    function serializeIcon(on, off) {
+        on = String(on || '').replace(/\s+/g, ' ').trim();
+        if (!on) return '';
+        var payload = { t: iconProviderOf(on), on: on };
+        if (off && off !== on) payload.off = off;
+        return JSON.stringify(payload);
+    }
+
+    function parseIcon(json) {
+        if (!json) return null;
+        var parsed = json;
+        if (typeof json === 'string') {
+            try { parsed = JSON.parse(json); } catch (e) { return null; }
+        }
+        if (!parsed || typeof parsed !== 'object' || typeof parsed.on !== 'string') return null;
+        var on = parsed.on.replace(/\s+/g, ' ').trim();
+        if (!on) return null;
+        return { on: on, off: (typeof parsed.off === 'string' ? parsed.off.trim() : '') };
+    }
+
+    /* A pick is not saved until the page's Save / the dialog's Update, so it
+       has to be remembered somewhere until then. The Angular surface has the
+       live scope model for that; the Utility dialogs don't, and detectSurface()
+       rebuilds their surface object on every mutation burst, so the pending
+       choice lives here instead of in the surface closure. Keyed by idx so
+       opening a different device drops it. */
+    var _pending = null;
+    function pendingFor(idx) {
+        return (_pending && _pending.idx === String(idx)) ? _pending : null;
+    }
+    function setPending(idx, ci, icon) {
+        _pending = { idx: String(idx), ci: ci, icon: icon || '' };
+    }
+
     /* ── Data ─────────────────────────────────────────────────────── */
 
     function fetchCustomSet(cb) {
@@ -124,20 +214,53 @@
             device: device,
             applyLabel: 'Save',
             getCustomImage: function () { return parseInt(device.CustomImage, 10) || 0; },
+            /* vm.device is the model the page's Save serialises (customimage +
+               icon), so it is both the store and the source of truth here — no
+               pending copy needed. */
+            getIcon: function () { return device.Icon || ''; },
             withDevice: function (cb) { cb(device); },
-            setCustomImage: function (value) {
+            setCustomImage: function (value) { this.setSelection(value, this.getIcon()); },
+            setSelection: function (value, icon) {
                 var dev = scope.vm ? scope.vm.device : scope.device;
+                var native = nativeIconStorage();
+                function assign() {
+                    dev.CustomImage = value;
+                    /* Only touch Icon where the column exists: on stable it is
+                       not in the model and setused would reject &icon=. */
+                    if (native) dev.Icon = icon || '';
+                }
                 /* Our click runs outside Angular, so a digest usually isn't in
                    flight — $apply commits the model + updates Save. Guard on
                    $$phase to avoid "digest already in progress". */
                 if (scope.$$phase || (scope.$root && scope.$root.$$phase)) {
-                    dev.CustomImage = value;
+                    assign();
                 } else {
-                    scope.$apply(function () { dev.CustomImage = value; });
+                    scope.$apply(assign);
                 }
                 device.CustomImage = value;
+                if (native) device.Icon = icon || '';
+                return native;
             }
         };
+    }
+
+    /* On native, the Utility dialog's persistence bridge is
+       dzIconPickerService: UtilityController.iconParams() reads
+       getCustomImage()/getIcon() off it when Update is pressed. mount() is its
+       only setter, so re-mount the (CSS-hidden) native field with the new
+       values — the same "drive the native control, let Domoticz save" trick the
+       ddslick path uses, one API up. */
+    function mountNativeBridge(surface, value, icon) {
+        var inj = injector();
+        if (!inj) return false;
+        var svc;
+        try { svc = inj.get('dzIconPickerService'); } catch (e) { return false; }
+        var host = surface.td && surface.td.querySelector('.dz-icon-picker-host');
+        if (!host || !svc || typeof svc.mount !== 'function') return false;
+        try {
+            svc.mount(host, { customImage: value, icon: icon || '', device: surface.device });
+            return true;
+        } catch (e) { return false; }
     }
 
     function makeJquerySurface(comboEl, idx) {
@@ -151,8 +274,15 @@
             device: _devByIdx[idx] || null,
             applyLabel: 'Update',
             getCustomImage: function () {
+                var p = pendingFor(idx);
+                if (p) return p.ci;
                 var v = comboEl.querySelector('.dd-selected-value');
                 return v ? (parseInt(v.value, 10) || 0) : curVal;
+            },
+            getIcon: function () {
+                var p = pendingFor(idx);
+                if (p) return p.icon;
+                return (this.device && this.device.Icon) || '';
             },
             withDevice: function (cb) {
                 if (this.device) { cb(this.device); return; }
@@ -160,9 +290,14 @@
                 var self = this;
                 fetchDevice(idx, function (d) { self.device = d; cb(d); });
             },
-            setCustomImage: function (value) {
+            setCustomImage: function (value) { this.setSelection(value, this.getIcon()); },
+            setSelection: function (value, icon) {
+                if (nativeIconStorage() && mountNativeBridge(this, value, icon)) {
+                    setPending(idx, value, icon);
+                    return true;
+                }
                 var $ = jq();
-                if (!$) return;
+                if (!$) return false;
                 var data = $.ddData || [];
                 var sel = -1;
                 for (var i = 0; i < data.length; i++) {
@@ -171,6 +306,7 @@
                 }
                 if (sel < 0 && value === 0) sel = 0;   // Default row
                 if (sel >= 0) { try { $(comboEl).ddslick('select', { index: sel }); } catch (e) {} }
+                return false;
             }
         };
     }
@@ -183,11 +319,27 @@
     function resolveSource(surface, device) {
         var s = settings();
         var ov = s && s.getDeviceOverride ? s.getDeviceOverride(surface.idx) : null;
-        if (ov && (ov.iconOn || ov.iconOpen || ov.icon)) {
-            var cls = ov.iconOn || ov.iconOpen || ov.icon;
+        var ovCls = ov && (ov.iconOn || ov.iconOpen || ov.icon);
+        var native = nativeIconStorage();
+
+        /* Native fields first where they exist: Domoticz renders the Icon
+           column / CustomImage itself, so that is what is actually on screen
+           — the theme blob only tints a native glyph, it cannot reshape it.
+           Without native storage the blob comes first, exactly as before. */
+        if (native) {
+            var icon = parseIcon(surface.getIcon());
+            if (icon) {
+                return {
+                    kind: 'nativeIcon',
+                    name: icon.on + (icon.off ? ' / ' + icon.off : ''),
+                    origin: 'icon set on this device',
+                    iconCls: icon.on, color: null, isDefault: false
+                };
+            }
+        } else if (ovCls) {
             return {
-                kind: 'override', name: cls, origin: 'Nightglass override',
-                iconCls: cls, color: ov.on || '#4e9af1', isDefault: false
+                kind: 'override', name: ovCls, origin: 'Nightglass override',
+                iconCls: ovCls, color: (ov && ov.on) || '#4e9af1', isDefault: false
             };
         }
 
@@ -213,6 +365,16 @@
                 isDefault: false
             };
         }
+        /* Nothing native is set, so an override written before this Domoticz
+           had the Icon column is still the effective shape everywhere the
+           theme replaces PNGs, and reads as the current pick here too. */
+        if (native && ovCls) {
+            return {
+                kind: 'override', name: ovCls, origin: 'Nightglass override (theme-only)',
+                iconCls: ovCls, color: (ov && ov.on) || '#4e9af1', isDefault: false
+            };
+        }
+
         var themeSpec = device && typeof window._dzIconForDevice === 'function'
             ? window._dzIconForDevice(device) : null;
         return {
@@ -326,17 +488,13 @@
 
     function openStudio(surface, device, src) {
         var s = settings();
-        /* Open the Icon Studio for this device and apply the pick as an
-           override (preserving any existing colors). Falls back to the full
-           override dialog if the Studio module isn't available. */
-        if (typeof window.dzOpenIconStudio === 'function' && s && s.setDeviceOverrideIcon) {
+        /* Open the Icon Studio for this device. Falls back to the full override
+           dialog if the Studio module isn't available. */
+        if (typeof window.dzOpenIconStudio === 'function') {
             window.dzOpenIconStudio({
                 current: src.iconCls || '',
                 title: 'Set icon for ' + ((device && device.Name) || 'device'),
-                onPick: function (cls) {
-                    s.setDeviceOverrideIcon(surface.idx, cls, device && device.Name);
-                    render(surface);
-                }
+                onPick: function (cls) { applyGlyph(surface, device, cls); }
             });
         } else if (s && s.openIconOverride) {
             s.openIconOverride(surface.idx);
@@ -344,11 +502,40 @@
         }
     }
 
+    /* A glyph goes to Domoticz's Icon column where there is one, and to the
+       theme's override blob where there isn't. Only the "on" class is written:
+       the Studio picks one icon, and native reads `off || on`, so one class
+       means one shape in both states — the same thing a Nightglass override
+       has always meant.
+
+       On native the colour is not written with it. DEVICE_MAP still tints the
+       glyph by device type, and a per-device colour remains the settings
+       panel's override editor to set; what does not happen any more is the
+       shape being recorded in two places at once. */
+    function applyGlyph(surface, device, cls) {
+        if (nativeIconStorage()) {
+            /* Icon and CustomImage are alternatives, not layers —
+               dzIconService.resolve() gives Icon precedence, so leaving a stale
+               CustomImage behind would only confuse a later read. */
+            surface.setSelection(0, serializeIcon(cls, null));
+            markDirty(surface);
+        } else {
+            var s = settings();
+            if (s && s.setDeviceOverrideIcon) {
+                s.setDeviceOverrideIcon(surface.idx, cls, device && device.Name);
+            }
+        }
+        render(surface);
+    }
+
     function useDefault(surface) {
         var s = settings();
+        /* Clear every layer in one press rather than peeling them off one at a
+           time: "Use default" should mean the device is back to what Domoticz
+           picks for its type, whichever store the current icon came from. */
         if (s && s.removeDeviceOverride) s.removeDeviceOverride(surface.idx);
-        if (surface.getCustomImage() > 0) {
-            surface.setCustomImage(0);
+        if (surface.getCustomImage() > 0 || parseIcon(surface.getIcon())) {
+            surface.setSelection(0, '');
             markDirty(surface);
         }
         render(surface);
@@ -388,9 +575,15 @@
     function init() {
         mo.observe(document.body, { childList: true, subtree: true });
         [200, 600, 1400].forEach(function (d) { setTimeout(enhance, d); });
+        var $ = jq();
+        /* Closing a Utility dialog without pressing Update abandons the pick.
+           Forget it, or the next open of the same device would show it as
+           though it had been saved. */
+        if ($) $(document).on('dialogclose', function () { _pending = null; });
         try {
             var $rootScope = angular.element(document.body).injector().get('$rootScope');
             $rootScope.$on('$routeChangeSuccess', function () {
+                _pending = null;
                 [200, 700, 1500].forEach(function (d) { setTimeout(enhance, d); });
             });
         } catch (e) {}
