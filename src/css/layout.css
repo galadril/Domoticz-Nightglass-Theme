@@ -370,6 +370,14 @@ i.dz-fa-device {
    table indicators, chrome icons and scene buttons are unaffected. */
 i.dz-fa-device.dz-icon-glyph {
     font-size: calc(1.5rem * var(--ng-icon-scale, 1));
+    /* Domoticz centres its glyph by having it fill the sized host
+       (display:block; width/height:100%). That rule scores the same as
+       i.dz-fa-device, so the theme's own 40px inline-flex box won on load
+       order and left the glyph inline at the bottom-left of the frame.
+       Fill the host again and centre with flex instead of line-height. */
+    display: flex;
+    width: 100%;
+    height: 100%;
 }
 
 /* Wind direction arrow — smooth rotation transitions */
