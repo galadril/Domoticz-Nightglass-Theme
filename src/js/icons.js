@@ -730,10 +730,66 @@
     /* ── Per-device icon overrides ─────────────────────────────────
        Keyed by device IDX string.
        Schema: { iconOn, iconOff?, iconOpen?, iconClose?, iconStop?,
-                 on, off, keepColor?, name }
+                 on, off, keepColor?, anim?, name }
        Legacy field 'icon' is treated as iconOn for backward compat.
        Populated by the settings module via window._dzSetDeviceIconOverrides. */
     var DEVICE_ICON_OVERRIDES = {};
+
+    /* ── Icon animations ───────────────────────────────────────────
+       The animations themselves are section 25 of animations.css; all this
+       side owns is which one an icon carries.  Named for the job rather
+       than for the motion, because the choice is made per device.
+
+       Why this lives in the theme's override blob and not on the device:
+       Domoticz's own Icon column is server-validated to {"t","on","off"}
+       and capped at 512 chars (NormaliseDeviceIcon()), so an extra key
+       would come straight back as "Invalid icon".  Icon identity is the
+       device's; colour and motion are presentation and stay ours. */
+    var ICON_ANIMATIONS = [
+        { id: 'spin',    label: 'Spin',    hint: 'Fans, motors, pumps' },
+        { id: 'breathe', label: 'Breathe', hint: 'Motion, presence, heart rate' },
+        { id: 'flicker', label: 'Flicker', hint: 'Flame, candle, fireplace' },
+        { id: 'ring',    label: 'Ring',    hint: 'Bells, sirens, alarms' },
+        { id: 'bounce',  label: 'Bounce',  hint: 'Doorbells, notifications' },
+        { id: 'glow',    label: 'Glow',    hint: 'Lights, lamps, strips' },
+        { id: 'blink',   label: 'Blink',   hint: 'Recording, faults' },
+        { id: 'swing',   label: 'Swing',   hint: 'Doors, gates, blinds' },
+        { id: 'drift',   label: 'Drift',   hint: 'Wind, water, air quality' }
+    ];
+    var ANIM_PREFIX = 'dz-anim-';
+    var ANIM_KNOWN = {};
+    ICON_ANIMATIONS.forEach(function (a) { ANIM_KNOWN[a.id] = true; });
+
+    /* The catalogue is read by the Icon Studio (tiles + previews), the
+       settings panel and the device icon field, so it is published once
+       here rather than transcribed into each of them. */
+    window.dzIconAnimations = ICON_ANIMATIONS;
+
+    /* Whitelisted, never interpolated: the value comes out of
+       user-editable settings storage and ends up in a class attribute. */
+    window.dzIconAnimClass = function (id) {
+        return ANIM_KNOWN[id] ? ANIM_PREFIX + id : '';
+    };
+
+    function animClassFor(devIdx) {
+        var ov = devIdx ? DEVICE_ICON_OVERRIDES[devIdx] : null;
+        return (ov && ANIM_KNOWN[ov.anim]) ? ANIM_PREFIX + ov.anim : '';
+    }
+
+    /* Apply the device's chosen animation class to an icon element.
+       Writes only on a change: decorateNativeGlyph() runs on every burst
+       pass, and re-adding the class would restart the keyframes from frame
+       zero each time — visible as a stutter every few hundred ms. */
+    function applyIconAnim(el, devIdx) {
+        var want = animClassFor(devIdx);
+        var cur  = '';
+        for (var i = 0; i < el.classList.length; i++) {
+            if (el.classList[i].indexOf(ANIM_PREFIX) === 0) { cur = el.classList[i]; break; }
+        }
+        if (cur === want) return;
+        if (cur)  el.classList.remove(cur);
+        if (want) el.classList.add(want);
+    }
 
     /* Bumped whenever the map above changes.  Read by the native-glyph
        colour cache further down, which keys off the device rather than off
@@ -814,9 +870,11 @@
        Schedules a replacement burst so already-rendered icons update. */
     window._dzSetDeviceIconOverrides = function (overrides) {
         DEVICE_ICON_OVERRIDES = overrides || {};
-        /* Invalidate the native-glyph colour cache: an override added,
+        /* Invalidate the native-glyph resolution cache: an override added,
            changed or removed at runtime must re-resolve on the next pass
-           even though the glyph's own identity did not change. */
+           even though the glyph's own identity did not change.  Covers a
+           changed animation as well as a changed colour — the entry holds
+           the device idx both are read from. */
         _nativeColorGen++;
         /* Re-apply to already-rendered device icons right away so overrides
            added, changed, or removed at runtime take effect immediately —
@@ -959,6 +1017,12 @@
             if (resolved.color) icon.style.color = resolved.color;
             var rot = WIND_ROTATION[resolved.dir];
             if (rot !== null) icon.style.transform = 'rotate(' + rot + 'deg)';
+            /* Wind icons never went through the override block above, so they
+               carry no IDX tag yet — and Drift is the animation they are most
+               likely to be given.  Pure DOM, no scope walk. */
+            var windIdx = deviceIdxFromDom(img);
+            if (windIdx) img.setAttribute('data-dz-dev-idx', windIdx);
+            applyIconAnim(icon, windIdx);
         } else if (resolved.type === 'device') {
             icon.className = resolved.cls;
             if (resolved.color) icon.style.color = resolved.color;
@@ -966,6 +1030,11 @@
             if (resolved.colorOn)  icon.setAttribute('data-dz-color-on',  resolved.colorOn);
             if (resolved.colorOff) icon.setAttribute('data-dz-color-off', resolved.colorOff);
             icon.setAttribute('data-dz-state', resolved.color === resolved.colorOn ? 'on' : 'off');
+            /* Chosen animation.  Read from the attribute rather than the local:
+               an icon whose src carries no override still gets tagged above,
+               and a device with an animation but no icon override never enters
+               that branch at all. */
+            applyIconAnim(icon, img.getAttribute('data-dz-dev-idx') || '');
             /* Optimistic toggle: immediately swap color on click so the user
                sees instant visual feedback before Angular/API round-trip.
                Only fires for devices whose click actually sends a binary
@@ -1065,6 +1134,9 @@
                 icon.setAttribute('data-dz-color-on',  ovSpec.colorOn);
                 icon.setAttribute('data-dz-color-off', ovSpec.colorOff);
                 icon.setAttribute('data-dz-state', ovSpec.color === ovSpec.colorOn ? 'on' : 'off');
+                /* className was just rewritten, which dropped the animation
+                   class with it — put it back. */
+                applyIconAnim(icon, devIdx);
                 img.setAttribute('data-dz-src', curSrc);
                 return;
             }
@@ -1090,6 +1162,7 @@
             var rot = WIND_ROTATION[resolved.dir];
             icon.style.transform = (rot !== undefined && rot !== null)
                 ? 'rotate(' + rot + 'deg)' : '';
+            applyIconAnim(icon, img.getAttribute('data-dz-dev-idx') || '');
         } else if (resolved.type === 'device') {
             icon.className = resolved.cls;
             icon.style.color = resolved.color || '';
@@ -1098,6 +1171,7 @@
             if (resolved.colorOn)  icon.setAttribute('data-dz-color-on',  resolved.colorOn);
             if (resolved.colorOff) icon.setAttribute('data-dz-color-off', resolved.colorOff);
             icon.setAttribute('data-dz-state', resolved.color === resolved.colorOn ? 'on' : 'off');
+            applyIconAnim(icon, devIdx || '');
         } else {
             icon.className = resolved.cls + ' ' + getSizeClass(img, curSrc);
             icon.style.color = resolved.color || '';
@@ -1191,6 +1265,7 @@
                 prevIcon.style.color = newResolved.color || '';
                 var rot = WIND_ROTATION[newResolved.dir];
                 prevIcon.style.transform = rot !== null ? 'rotate(' + rot + 'deg)' : '';
+                applyIconAnim(prevIcon, rImg.getAttribute('data-dz-dev-idx') || '');
             } else if (newResolved.type === 'device') {
                 /* Prefer per-device override if one is configured */
                 var p2DevIdx = rImg.getAttribute('data-dz-dev-idx');
@@ -1201,6 +1276,7 @@
                 if (p2Final.colorOn)  prevIcon.setAttribute('data-dz-color-on',  p2Final.colorOn);
                 if (p2Final.colorOff) prevIcon.setAttribute('data-dz-color-off', p2Final.colorOff);
                 prevIcon.setAttribute('data-dz-state', p2Final.color === p2Final.colorOn ? 'on' : 'off');
+                applyIconAnim(prevIcon, p2DevIdx || '');
             }
 
             rImg.setAttribute('data-dz-src', curSrc);
@@ -1627,7 +1703,7 @@
        There is no <img> left to replace, so replaceImage() never runs and
        the two hooks it used to apply — the dz-fa-device class and the
        data-dz-state attribute — are never applied.  Everything keyed on
-       them is silently orphaned: the nine icon animations in
+       them is silently orphaned: the icon-animation gate in
        animations.css, the sizing/hover/fa-stop rules in layout.css, the
        wind rotation, and the state-change flash observer in
        card-features.js.
@@ -1679,15 +1755,12 @@
        reports neither, because it has no on/off state.
 
        When there is no state class we leave data-dz-state ABSENT rather
-       than guessing.  data-dz-state drives the animations, and every rule
-       that consumes it — all nine in animations.css plus the
-       animation-suppression rule search.js injects — requires the exact
-       value "on"; nothing keys on "off" or on the attribute merely being
-       present.  So an absent attribute is inert, whereas a fabricated
-       "on" would spin / flicker / shake every sensor whose glyph happens
-       to be a fan, flame or bell, forever, and a fabricated "off" would
-       trip the state-change flash the first time the device reports a real
-       state.  Absent it is. */
+       than guessing.  Absent is the useful value: the animation gate stops
+       an icon that reports "off", and a sensor that reports nothing keeps
+       whatever animation the user picked for it — which is the only reason
+       it would have one.  A fabricated "off" would instead cancel that
+       animation outright and trip the state-change flash in
+       card-features.js the first time the device reports a real state. */
     function nativeGlyphState(glyph) {
         if (glyph.classList.contains('dz-icon--on'))  return 'on';
         if (glyph.classList.contains('dz-icon--off')) return 'off';
@@ -1792,14 +1865,17 @@
     var nativeColorCache = new WeakMap();
 
     /* Identity signature: the device idx plus the icon classes, ignoring
-       the volatile ones (native's state classes and our own hooks). */
+       the volatile ones (native's state classes and our own hooks — the
+       animation class among them, or adding it would invalidate the entry
+       we just wrote it from). */
     function nativeColorSig(glyph, devIdx) {
         var sig = _nativeColorGen + '|' + devIdx + '|';
         var cl  = glyph.classList;
         for (var i = 0; i < cl.length; i++) {
             var c = cl[i];
             if (c === 'dz-icon-glyph' || c === 'dz-fa-device' ||
-                c === 'dz-wind' || c.indexOf('dz-icon--') === 0) continue;
+                c === 'dz-wind' || c.indexOf('dz-icon--') === 0 ||
+                c.indexOf(ANIM_PREFIX) === 0) continue;
             sig += c + ' ';
         }
         return sig;
@@ -1814,7 +1890,8 @@
 
         if (!entry || entry.sig !== sig) {
             var spec = resolveNativeSpec(glyph, devIdx);
-            entry = { sig: sig, on: spec.on, off: spec.off, wind: spec.wind, applied: null };
+            entry = { sig: sig, idx: devIdx, on: spec.on, off: spec.off,
+                      wind: spec.wind, applied: null };
             nativeColorCache.set(glyph, entry);
         }
         return entry;
@@ -1893,6 +1970,10 @@
         var entry = nativeEntryFor(glyph);
         applyNativeColor(glyph, entry, state);
         if (entry.wind) applyNativeWind(glyph);
+        /* Native owns the glyph, Nightglass owns its motion.  The gate in
+           animations.css keeps an off device still, so this is applied
+           regardless of state. */
+        applyIconAnim(glyph, entry.idx);
 
         var cur = glyph.getAttribute('data-dz-state');
         /* Write only on a genuine change.  Every data-dz-state mutation
@@ -1907,6 +1988,7 @@
 
     function undecorateNativeGlyph(glyph) {
         glyph.classList.remove('dz-fa-device', 'dz-wind');
+        applyIconAnim(glyph, '');
         glyph.removeAttribute('data-dz-state');
         glyph.style.color = '';
         glyph.style.transform = '';
