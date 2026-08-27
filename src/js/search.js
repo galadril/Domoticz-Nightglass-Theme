@@ -1006,14 +1006,32 @@
     /* ── Settings persistence ─────────────────────────────────────── */
 
     /* Strip empty/default fields from each device-icon override.  A stored
-       entry can carry up to 10 fields (icon, iconOn/Off/Open/Close/Stop,
-       keepColor, on, off, name) but most are blank — keeping only the set
-       ones cuts a typical entry from ~230 to ~90 chars, the single biggest
-       contributor to ThemeSettings bloat (issue #203). */
+       entry can carry up to 11 fields (icon, iconOn/Off/Open/Close/Stop,
+       keepColor, on, off, anim, name) but most are blank — keeping only the
+       set ones cuts a typical entry from ~230 to ~90 chars, the single
+       biggest contributor to ThemeSettings bloat (issue #203). */
+    /* Domoticz's own per-device Icon column, as dzIconPicker serialises it:
+       { "t":<prefix>, "on":<class>[, "off":<class>] }. Read-only here — the
+       override editor shows it as the effective default so a device the user
+       set natively (e.g. a ventilator given mdi-fan-remove on the device page)
+       reads as that icon rather than the theme's type default. */
+    function parseNativeDeviceIcon(v) {
+        if (!v) return null;
+        var p = v;
+        if (typeof v === 'string') { try { p = JSON.parse(v); } catch (e) { return null; } }
+        if (!p || typeof p !== 'object' || typeof p.on !== 'string') return null;
+        var on = p.on.replace(/\s+/g, ' ').trim();
+        if (!on) return null;
+        return { on: on, off: (typeof p.off === 'string' ? p.off.trim() : '') };
+    }
+
     function pruneOverrides(ov) {
         if (!ov || typeof ov !== 'object') return {};
+        /* 'anim' is an id, so an unset animation is '' and drops out here
+           along with every other blank field — no animation is the default
+           and costs nothing to store. */
         var KEEP = ['icon', 'iconOn', 'iconOff', 'iconOpen', 'iconClose',
-                    'iconStop', 'on', 'off', 'name'];
+                    'iconStop', 'on', 'off', 'anim', 'name'];
         var out = {};
         Object.keys(ov).forEach(function (idx) {
             var s = ov[idx] || {};
@@ -1276,14 +1294,17 @@
             devIconStyle.remove();
         }
 
-        // Animate device icons (spinning fans, flickering flames, etc.)
+        // Animate device icons — master switch over the per-device choices
         var animStyle = document.getElementById('dz-ng-anim-icon-style');
         if (!_settings.animateDeviceIcons || !_settings.deviceIcons) {
             if (!animStyle) {
                 animStyle = document.createElement('style');
                 animStyle.id = 'dz-ng-anim-icon-style';
+                /* Not gated on data-dz-state: a read-only sensor publishes no
+                   state and would otherwise keep animating with the switch
+                   off.  Device icons carry no other animation to lose. */
                 animStyle.textContent =
-                    'i.dz-fa-device[data-dz-state="on"] { animation: none !important; }';
+                    'i.dz-fa-device { animation: none !important; }';
                 document.head.appendChild(animStyle);
             }
         } else if (animStyle) {
@@ -1840,7 +1861,7 @@
             '<div class="ng-settings-section">' +
             '<div class="ng-section-header"><i class="fa-solid fa-cube"></i> Device &amp; Card Icons</div>' +
             toggle('deviceIcons', 'Device Icons', 'Replace 48px PNG device icons with Font Awesome on cards') +
-            toggle('animateDeviceIcons', 'Animate Device Icons', 'Spin fans, flicker flames, pulse presence sensors when active') +
+            toggle('animateDeviceIcons', 'Animate Device Icons', 'Play the animation each device was given in the Icon Studio — spin, glow, flicker and six more') +
             toggle('favStarIcons', 'Favorite Star Icons', 'Replace PNG stars with Font Awesome star icons') +
             toggle('trendArrowIcons', 'Trend Arrow Icons', 'Replace PNG trend arrows with Font Awesome arrows') +
             toggle('actionIcons', 'Action Icons', 'Replace PNG action icons (delete, rename, add) in data tables') +
@@ -2604,6 +2625,7 @@
                 keepColor: s.keepColor,
                 on:        s.on,
                 off:       s.off,
+                anim:      s.anim,
                 name:      s.name || ''
             };
         });
@@ -2686,7 +2708,8 @@
                 var item = document.createElement('div');
                 item.className = 'ng-ov-si';
                 item.dataset.idx = idxStr;
-                item.title = 'Jump to ' + name;
+                item.title = 'Jump to ' + name +
+                             (ov.anim ? ' — animation: ' + ov.anim : '');
 
                 var icon = document.createElement('i');
                 icon.className = (ov.iconOn || ov.iconOpen || ov.icon || 'fa-solid fa-circle-question') + ' ng-ov-si-icon';
@@ -2779,7 +2802,20 @@
             return token.replace(/^[a-z0-9]+-/i, '').replace(/-/g, ' ').trim() || 'No icon';
         }
 
-        function buildIconPicker(initialCls, onSelect) {
+        /* Display name of an animation id, from icons.js's catalogue. */
+        function animLabel(id) {
+            var list = window.dzIconAnimations || [];
+            for (var i = 0; i < list.length; i++) {
+                if (list[i].id === id) return list[i].label;
+            }
+            return '';
+        }
+
+        /* `anim` is optional: { get, set }. Passing it hands the Studio the
+           animation row as well, so it is given to the picker that edits the
+           device's primary (on / open) icon and to no other — an animation
+           belongs to the device, not to one of its icon slots. */
+        function buildIconPicker(initialCls, onSelect, anim) {
             var wrap = document.createElement('div');
             wrap.className = 'ng-ov-picker';
 
@@ -2797,21 +2833,48 @@
             lbl.textContent = pickerLabel(current);
             row.appendChild(lbl);
 
+            /* Says what is set without having to open the Studio; empty
+               collapses out of the layout (CSS :empty). */
+            var animChip = null;
+            if (anim) {
+                animChip = document.createElement('span');
+                animChip.className = 'ng-ov-picker-anim';
+                row.appendChild(animChip);
+            }
+            function paintAnim() {
+                if (!animChip) return;
+                var label = animLabel(anim.get());
+                animChip.innerHTML = label
+                    ? '<i class="fa-solid fa-wand-magic-sparkles"></i>' + label : '';
+            }
+            /* Lets the row's Remove button clear the chip this drew. */
+            if (anim) anim.repaint = paintAnim;
+            paintAnim();
+
             var btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'ng-ov-picker-change';
-            btn.innerHTML = '<i class="fa-solid fa-icons"></i> Change icon…';
+            btn.innerHTML = '<i class="fa-solid fa-icons"></i> ' +
+                            (anim ? 'Change icon or animation…' : 'Change icon…');
             btn.addEventListener('click', function () {
                 if (typeof window.dzOpenIconStudio !== 'function') return;
                 window.dzOpenIconStudio({
                     current: current,
-                    title: 'Choose an icon',
+                    title: anim ? 'Choose an icon and animation' : 'Choose an icon',
+                    animation: anim ? anim.get() : '',
+                    /* Preview the animations on the icon this row is editing,
+                       not on the Studio's own placeholder. */
+                    animationGlyph: current,
                     onPick: function (cls) {
                         current = cls;
                         prev.className = cls;
                         lbl.textContent = pickerLabel(cls);
                         onSelect(cls);
-                    }
+                    },
+                    onPickAnimation: anim ? function (id) {
+                        anim.set(id);
+                        paintAnim();
+                    } : undefined
                 });
             });
             row.appendChild(btn);
@@ -2836,6 +2899,18 @@
             var defIconOpen  = defIconOn;
             var defIconClose = defIconOn;
 
+            /* Prefer Domoticz's own per-device icon where the device carries
+               one: on a build with the Icon column, that shape is what is
+               actually rendered, so the row's default has to be it rather than
+               the theme's type guess. Colour is unaffected — the Icon column
+               carries none, so the theme still supplies it. */
+            var nativeIcon = parseNativeDeviceIcon(d.Icon);
+            if (nativeIcon) {
+                defIconOn    = nativeIcon.on;
+                defIconOpen  = nativeIcon.on;
+                defIconClose = nativeIcon.off || nativeIcon.on;
+            }
+
             if (model === 'blinds-2' || model === 'blinds-3') {
                 var sOp = dzIcon ? dzIcon({ TypeImg: (d.TypeImg || '') + 'open', Status: 'On'  }) : null;
                 var sCl = dzIcon ? dzIcon({ TypeImg:  d.TypeImg  || 'blinds',   Status: 'Off' }) : null;
@@ -2853,6 +2928,9 @@
             var curOn        = hasOv ? (ov.on  || defColorOn)  : defColorOn;
             var curOff       = hasOv ? (ov.off || defColorOff) : defColorOff;
             var keepColor    = ov ? !!(ov.keepColor) : (model === 'sensor');
+            /* Read off the entry rather than off hasOv: an animation is
+               stored on its own and does not need an icon override to exist. */
+            var curAnim      = (ov && ov.anim) || '';
 
             /* ── Row element ──────────────────────────────────────────────── */
             var row = document.createElement('div');
@@ -3090,8 +3168,10 @@
                 if (ic) { ic.className = iconCls + ' ng-ov-preview-icon'; ic.style.color = color; }
             }
 
-            /* Labeled wrapper around an icon picker grid */
-            function makePickerSection(labelText, noteText, initialCls, onSelectFn) {
+            /* Labeled wrapper around an icon picker grid. `anim` is passed
+               through to buildIconPicker — see there for why only one
+               section per row gets it. */
+            function makePickerSection(labelText, noteText, initialCls, onSelectFn, anim) {
                 var wrap = document.createElement('div');
                 wrap.className = 'ng-ov-picker-section';
                 if (labelText) {
@@ -3106,9 +3186,18 @@
                     note.textContent = noteText;
                     wrap.appendChild(note);
                 }
-                wrap.appendChild(buildIconPicker(initialCls, onSelectFn));
+                wrap.appendChild(buildIconPicker(initialCls, onSelectFn, anim));
                 return wrap;
             }
+
+            /* The row's animation accessor, handed to exactly one picker
+               section below.  Setting it commits, so the choice sticks the
+               moment it is made in the Studio — same as a colour. */
+            var animAccess = {
+                get: function () { return curAnim; },
+                set: function (id) { curAnim = id; commitOverride(); },
+                repaint: function () {}      // replaced by buildIconPicker
+            };
 
             /* Sync the summary's single primary icon */
             function updateSummaryPrimary() {
@@ -3159,6 +3248,7 @@
                 } else {
                     obj.iconOn = curIconOn;
                 }
+                if (curAnim) obj.anim = curAnim;
                 pending[idxStr] = obj;
                 row.classList.add('ng-ov-row--active');
                 var eb = summary.querySelector('.ng-ov-edit-btn');
@@ -3185,7 +3275,7 @@
                         updateSlotIcon(slotOpen, curIconOpen, curOn);
                         updateSummaryBlinds();
                         commitOverride();
-                    }));
+                    }, animAccess));
                 if (model === 'blinds-3') {
                     editor.appendChild(makePickerSection('Stop button icon',
                         'Middle icon — click to stop movement', curIconStop, function (cls) {
@@ -3211,6 +3301,7 @@
                 colorRow.appendChild(buildRemoveBtn(function () {
                     curIconOpen = defIconOpen; curIconClose = defIconClose; curIconStop = 'fa-solid fa-stop';
                     curOn = defColorOn; curOff = defColorOff;
+                    curAnim = ''; animAccess.repaint();
                     updateSummaryBlinds();
                     var fo = summary.querySelector('.ng-ov-row-fa--open');
                     var fc = summary.querySelector('.ng-ov-row-fa--close');
@@ -3236,7 +3327,7 @@
                         updateSlotIcon(slotSensor, curIconOn, keepColor ? defColorOn : curOn);
                         updateSummaryPrimary();
                         commitOverride();
-                    }));
+                    }, animAccess));
 
                 var keepWrap = document.createElement('div');
                 keepWrap.className = 'ng-ov-keepcolor-wrap';
@@ -3263,6 +3354,7 @@
                 }));
                 colorRow.appendChild(buildRemoveBtn(function () {
                     curIconOn = defIconOn; curOn = defColorOn; keepColor = true;
+                    curAnim = ''; animAccess.repaint();
                     var fa = summary.querySelector('.ng-ov-row-fa');
                     if (fa) { fa.className = defIconOn + ' ng-ov-row-fa'; fa.style.color = defColorOn; fa.style.opacity = '.55'; }
                 }));
@@ -3284,7 +3376,7 @@
                     updateSlotIcon(slotActive, curIconOn, curOn);
                     updateSummaryPrimary();
                     commitOverride();
-                }));
+                }, animAccess));
                 editor.appendChild(makePickerSection(inactiveLabel + ' icon', null, curIconOff, function (cls) {
                     curIconOff = cls;
                     updateSlotIcon(slotInactive, curIconOff, curOff);
@@ -3299,6 +3391,7 @@
                 }));
                 colorRow.appendChild(buildRemoveBtn(function () {
                     curIconOn = defIconOn; curIconOff = defIconOn; curOn = defColorOn; curOff = defColorOff;
+                    curAnim = ''; animAccess.repaint();
                     var fa = summary.querySelector('.ng-ov-row-fa');
                     if (fa) { fa.className = defIconOn + ' ng-ov-row-fa'; fa.style.color = defColorOn; fa.style.opacity = '.55'; }
                 }));
@@ -3323,7 +3416,7 @@
                     updateSlotIcon(slotMain, curIconOn, curOn);
                     updateSummaryPrimary();
                     commitOverride();
-                }));
+                }, animAccess));
 
                 colorRow.appendChild(makeOvColorPicker(labelOn, curOn, function (v) {
                     curOn = v; updateSlotIcon(slotMain, curIconOn, v); updateSummaryPrimary(); commitOverride();
@@ -3333,6 +3426,7 @@
                 }));
                 colorRow.appendChild(buildRemoveBtn(function () {
                     curIconOn = defIconOn; curOn = defColorOn; curOff = defColorOff;
+                    curAnim = ''; animAccess.repaint();
                     var fa = summary.querySelector('.ng-ov-row-fa');
                     if (fa) { fa.className = defIconOn + ' ng-ov-row-fa'; fa.style.color = defColorOn; fa.style.opacity = '.55'; }
                 }));
@@ -4139,22 +4233,58 @@
             }
             return true;
         },
-        /* Set (or update) just the icon of a device's override, preserving any
-           existing on/off colors. Used by the device-detail / utility box so
-           "Set Nightglass icon" can apply an Icon Studio pick directly without
-           the full override dialog. */
-        setDeviceOverrideIcon: function (idx, iconCls, deviceName) {
-            if (!idx || !iconCls) return false;
-            var m = readOverrideMap();
+        /* Set the on (and optionally off) icon of a device's override,
+           preserving any existing colours and animation. Used by the
+           device-detail / utility box so an Icon Studio pick applies directly
+           without the full override dialog. An empty off clears the stored
+           off, falling back to the on shape — the single-icon default. */
+        setDeviceOverrideIcons: function (idx, onCls, offCls, deviceName) {
+            if (!idx || !onCls) return false;
+            var m  = readOverrideMap();
             var ex = m[String(idx)] || {};
-            m[String(idx)] = {
-                iconOn:    iconCls,
-                iconOff:   ex.iconOff,
-                on:        ex.on  || '#4e9af1',
-                off:       ex.off || '#555770',
-                keepColor: ex.keepColor,
-                name:      ex.name || deviceName || ('IDX ' + idx)
-            };
+            ex.iconOn    = onCls;
+            ex.iconOff   = String(offCls || '').trim() || undefined;
+            ex.on        = ex.on  || '#4e9af1';
+            ex.off       = ex.off || '#555770';
+            ex.name      = ex.name || deviceName || ('IDX ' + idx);
+            m[String(idx)] = ex;
+            saveSetting('deviceIconOverrides', JSON.stringify(m));
+            if (typeof window._dzSetDeviceIconOverrides === 'function') {
+                window._dzSetDeviceIconOverrides(m);
+            }
+            return true;
+        },
+        /* Set (or clear) just the animation.  Separate from the icon because
+           the two no longer share a home: on a Domoticz with the Icon column
+           the shape is the device's and only the animation is ours, so the
+           device icon field has to be able to write one without the other.
+           An entry that ends up holding nothing but a name is dropped rather
+           than left behind as a stored no-op. */
+        setDeviceOverrideAnim: function (idx, animId, deviceName) {
+            if (!idx) return false;
+            var key = String(idx);
+            var m   = readOverrideMap();
+            var ex  = m[key] || {};
+            var id  = String(animId || '');
+            /* Whitelisted against the catalogue icons.js publishes, so a typo
+               or a stale id cannot be persisted. */
+            var known = (window.dzIconAnimations || []).some(function (a) {
+                return a.id === id;
+            });
+            if (id && !known) return false;
+
+            if (id) {
+                ex.anim = id;
+                ex.name = ex.name || deviceName || ('IDX ' + key);
+                m[key]  = ex;
+            } else {
+                delete ex.anim;
+                var meaningful = ['icon', 'iconOn', 'iconOff', 'iconOpen',
+                                  'iconClose', 'iconStop', 'on', 'off',
+                                  'keepColor'].some(function (f) { return ex[f]; });
+                if (meaningful) m[key] = ex;
+                else delete m[key];
+            }
             saveSetting('deviceIconOverrides', JSON.stringify(m));
             if (typeof window._dzSetDeviceIconOverrides === 'function') {
                 window._dzSetDeviceIconOverrides(m);

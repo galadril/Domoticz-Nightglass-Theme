@@ -399,10 +399,33 @@
         return null;
     }
 
-    function buildPreview(src) {
+    /* ── Animation ────────────────────────────────────────────────────
+       An animation cannot go where the icon goes: Domoticz validates the
+       Icon column to {"t","on","off"} and rejects anything else outright,
+       so motion stays in the theme's own override blob even on a build
+       that owns the icon itself. That also means it saves on the spot,
+       unlike a pick, which waits for the page's Save. */
+
+    function currentAnim(surface) {
+        var s  = settings();
+        var ov = s && s.getDeviceOverride ? s.getDeviceOverride(surface.idx) : null;
+        return (ov && ov.anim) || '';
+    }
+
+    function animLabel(id) {
+        var list = window.dzIconAnimations || [];
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].id === id) return list[i].label;
+        }
+        return '';
+    }
+
+    function buildPreview(src, anim) {
         var wrap = document.createElement('span');
         wrap.className = 'dz-icon-field-preview';
-        wrap.title = src.name + ' — ' + src.origin;
+        var label = animLabel(anim);
+        wrap.title = src.name + ' — ' + src.origin +
+                     (label ? '; ' + label + ' animation' : '');
         if (src.pngSrc) {
             var im = document.createElement('img');
             im.src = src.pngSrc; im.alt = '';
@@ -410,7 +433,12 @@
             return wrap;
         }
         var i = document.createElement('i');
-        i.className = src.iconCls || 'fa-regular fa-square';
+        /* The preview animates too — the field is the one place that shows
+           what this device's icon actually does. */
+        var animCls = (typeof window.dzIconAnimClass === 'function')
+            ? window.dzIconAnimClass(anim) : '';
+        i.className = (src.iconCls || 'fa-regular fa-square') +
+                      (animCls ? ' ' + animCls : '');
         if (src.color) i.style.color = src.color;
         wrap.appendChild(i);
         return wrap;
@@ -446,13 +474,15 @@
                been read; re-render when it lands rather than showing "#101". */
             if (ci >= 100 && !_customSet) fetchCustomSet(function () { render(surface); });
 
+            var anim = currentAnim(surface);
             var sig = [surface.idx, src.kind, src.iconCls || '', src.color || '',
-                       src.pngSrc || '', ci, box.getAttribute('data-dirty') || ''].join('|');
+                       src.pngSrc || '', ci, anim,
+                       box.getAttribute('data-dirty') || ''].join('|');
             if (box.getAttribute('data-sig') === sig) return;
             box.setAttribute('data-sig', sig);
 
             box.innerHTML = '';
-            box.appendChild(buildPreview(src));
+            box.appendChild(buildPreview(src, anim));
 
             box.appendChild(mkBtn('dz-icon-field-btn', 'Change…', function () {
                 openStudio(surface, device, src);
@@ -486,14 +516,33 @@
         return a;
     }
 
+    /* The on/off glyph pair currently in effect for a device, from whichever
+       store holds it. Domoticz's Icon column IS an {on, off} pair; the theme
+       blob carries iconOn/iconOff — so both halves come from one place and the
+       Studio's two slots start on what is really set. */
+    function currentIconPair(surface, src) {
+        if (nativeIconStorage()) {
+            var icon = parseIcon(surface.getIcon());
+            if (icon) return { on: icon.on, off: icon.off || '' };
+            return { on: src.iconCls || '', off: '' };
+        }
+        var s  = settings();
+        var ov = s && s.getDeviceOverride ? s.getDeviceOverride(surface.idx) : null;
+        return {
+            on:  (ov && (ov.iconOn || ov.icon)) || src.iconCls || '',
+            off: (ov && ov.iconOff) || ''
+        };
+    }
+
     function openStudio(surface, device, src) {
         var s = settings();
         /* Open the Icon Studio for this device. Falls back to the full override
            dialog if the Studio module isn't available. */
         if (typeof window.dzOpenIconStudio === 'function') {
-            var ci = surface.getCustomImage();
+            var ci   = surface.getCustomImage();
+            var pair = currentIconPair(surface, src);
             window.dzOpenIconStudio({
-                current: src.iconCls || '',
+                current: pair.on,
                 /* Only an uploaded image (>= 100) is offered, so only that can
                    be the current pick; a built-in is not in the grid to mark. */
                 currentImage: ci >= 100 ? ci : 0,
@@ -504,9 +553,25 @@
                    only, so there is nowhere to put an image and the source
                    stays hidden rather than offering a dead end. */
                 allowImages: nativeIconStorage(),
+                /* Two slots so the off state can differ from the on state, the
+                   way Domoticz's own native picker now offers. An off left
+                   unset falls back to on in every store, so leaving it alone
+                   keeps the old single-icon behaviour. */
+                slots: [
+                    { key: 'on',  label: 'On / active',    cls: pair.on },
+                    { key: 'off', label: 'Off / inactive', cls: pair.off }
+                ],
+                /* One device in view, so an animation has somewhere to
+                   belong — offer the row and preview it on this icon. */
+                animation: currentAnim(surface),
+                animationGlyph: pair.on,
                 title: 'Set icon for ' + ((device && device.Name) || 'device'),
-                onPick: function (cls) { applyGlyph(surface, device, cls); },
-                onPickImage: function (customImage) { applyImage(surface, customImage); }
+                onPickSlot: function (key, cls) {
+                    pair[key] = cls;
+                    applyGlyph(surface, device, pair.on, pair.off);
+                },
+                onPickImage: function (customImage) { applyImage(surface, customImage); },
+                onPickAnimation: function (id) { applyAnim(surface, device, id); }
             });
         } else if (s && s.openIconOverride) {
             s.openIconOverride(surface.idx);
@@ -514,28 +579,41 @@
         }
     }
 
-    /* A glyph goes to Domoticz's Icon column where there is one, and to the
-       theme's override blob where there isn't. Only the "on" class is written:
-       the Studio picks one icon, and native reads `off || on`, so one class
-       means one shape in both states — the same thing a Nightglass override
-       has always meant.
+    /* The on/off glyph pair goes to Domoticz's Icon column where there is one,
+       and to the theme's override blob where there isn't. An off equal to (or
+       absent alongside) on is stored as a single shape — native reads
+       `off || on`, and the blob's applyDeviceOverride does the same — so a
+       device the user never gave a distinct off icon behaves exactly as before.
 
-       On native the colour is not written with it. DEVICE_MAP still tints the
-       glyph by device type, and a per-device colour remains the settings
-       panel's override editor to set; what does not happen any more is the
-       shape being recorded in two places at once. */
-    function applyGlyph(surface, device, cls) {
+       Nothing here writes colour. DEVICE_MAP still tints the glyph by device
+       type, and a per-device colour remains the settings panel's override
+       editor to set; the shape is not recorded in two places at once. */
+    function applyGlyph(surface, device, onCls, offCls) {
+        onCls  = String(onCls || '').trim();
+        offCls = String(offCls || '').trim();
+        if (!onCls) return;                    // an icon needs at least an on state
         if (nativeIconStorage()) {
             /* Icon and CustomImage are alternatives, not layers —
                dzIconService.resolve() gives Icon precedence, so leaving a stale
                CustomImage behind would only confuse a later read. */
-            surface.setSelection(0, serializeIcon(cls, null));
+            surface.setSelection(0, serializeIcon(onCls, offCls || null));
             markDirty(surface);
         } else {
             var s = settings();
-            if (s && s.setDeviceOverrideIcon) {
-                s.setDeviceOverrideIcon(surface.idx, cls, device && device.Name);
+            if (s && s.setDeviceOverrideIcons) {
+                s.setDeviceOverrideIcons(surface.idx, onCls, offCls, device && device.Name);
             }
+        }
+        render(surface);
+    }
+
+    /* The theme blob is the only store for an animation, so this one takes
+       effect immediately rather than waiting for Save — and it is not marked
+       dirty, because there is nothing left for Save to write. */
+    function applyAnim(surface, device, animId) {
+        var s = settings();
+        if (s && s.setDeviceOverrideAnim) {
+            s.setDeviceOverrideAnim(surface.idx, animId, device && device.Name);
         }
         render(surface);
     }

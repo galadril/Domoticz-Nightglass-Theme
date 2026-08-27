@@ -22,13 +22,22 @@
    icons. Those are PNGs, not glyphs, so they carry a CustomImage number
    rather than a class and come back through onPickImage.
 
+   Callers that are editing ONE device may likewise opt into the animation
+   row, which is the same opt-in shape: it needs somewhere to store the
+   choice, so it appears only for a caller that passes onPickAnimation.
+   Animation is a second axis rather than part of the pick, so clicking a
+   tile reports it and leaves the dialog open.
+
    Public API:
      window.dzOpenIconStudio({
          current,        // class string of the current pick, if any
          currentImage,   // CustomImage number of the current pick, if any
          allowImages,    // offer the Custom (uploaded image) source
+         animation,      // animation id currently set, '' for none
+         animationGlyph, // glyph to preview the animations on (default: current)
          onPick,         // fn(classString)
          onPickImage,    // fn(customImage, item)
+         onPickAnimation,// fn(animationId) — offers the animation row
          title
      })
      window.dzMigrateIconLibraries()      // called by the settings module
@@ -447,6 +456,28 @@
         return glyphTokenOf(cls).replace(/^[a-z0-9]+-/i, '').replace(/-/g, ' ').trim();
     }
 
+    /* ── Animations ───────────────────────────────────────────────────
+       The catalogue is icons.js's (window.dzIconAnimations); this module
+       only renders it. Both reads are guarded so the row degrades to
+       nothing at all rather than half a row if that module is absent. */
+    function animCatalogue() {
+        return (window.dzIconAnimations || []);
+    }
+    function animClassOf(id) {
+        return (typeof window.dzIconAnimClass === 'function')
+            ? window.dzIconAnimClass(id) : '';
+    }
+    /* '' for anything not in the catalogue — including a stale id from an
+       override written by a later version of the theme. */
+    function animIdOf(value) {
+        var v = String(value == null ? '' : value);
+        var list = animCatalogue();
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].id === v) return v;
+        }
+        return '';
+    }
+
     /* An override stored before base classes were emitted is a bare token
        ("bi-alarm"); still mark its tile ("bi bi-alarm") as the current pick.
        Only a bare token may match loosely, so "fa-solid fa-house" and
@@ -621,6 +652,31 @@
         /* Images need somewhere to go, so the source is only offered to a
            caller that can store one. */
         var allowImg  = !!opts.allowImages && typeof opts.onPickImage === 'function';
+        /* Same rule for the animation row: no store, no row. That also keeps
+           it out of callers with no device to attach it to. */
+        var allowAnim = typeof opts.onPickAnimation === 'function' &&
+                        animCatalogue().length > 0;
+        var animPick  = animIdOf(opts.animation);
+
+        /* On/off (and beyond) target slots.  Domoticz's own native picker
+           gained a distinct off-state icon, and this mirrors it: each slot is
+           { key, label, cls }, the grid assigns to whichever is active, and
+           onPickSlot(key, cls) reports it.  A caller that passes no slots gets
+           the classic single-target picker unchanged. */
+        var slots = (Array.isArray(opts.slots) &&
+                     typeof opts.onPickSlot === 'function')
+            ? opts.slots.map(function (s) {
+                  return { key: s.key, label: s.label, cls: cleanClass(s.cls) };
+              })
+            : null;
+        var activeSlot = 0;
+        if (slots && slots.length) chosen = slots[0].cls || chosen;
+
+        /* With a second axis to set — an off icon, an animation, or both — an
+           icon click refines the choice rather than finishing it, so the dialog
+           stays open and the user closes it with Done / Esc.  Without one it is
+           still pick-and-go. */
+        var keepOpen  = !!(slots && slots.length) || allowAnim;
         var scope     = 'all';           // 'all' | 'recent' | 'custom' | libId
         var query     = '';
 
@@ -654,15 +710,18 @@
             '    </div>' +
             '    <button class="ng-is-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>' +
             '  </div>' +
+            (slots ? '  <div class="ng-is-slotbar"></div>' : '') +
             '  <div class="ng-is-body">' +
             '    <div class="ng-is-rail"></div>' +
             '    <div class="ng-is-main"></div>' +
             '  </div>' +
             '  <div class="ng-is-foot">' +
+            (allowAnim ? '    <div class="ng-is-anim"></div>' : '') +
             '    <div class="ng-is-manual">' +
             '      <span class="ng-is-manual-preview"><i class="' + (chosen || 'fa-solid fa-question') + '"></i></span>' +
             '      <input class="ng-is-manual-input" type="text" placeholder="Or paste any icon class (e.g. mdi mdi-home, fa-brands fa-github)" autocomplete="off">' +
             '      <button class="ng-is-manual-use" type="button">Use</button>' +
+            (keepOpen ? '      <button class="ng-is-done" type="button">Done</button>' : '') +
             '    </div>' +
             '    <div class="ng-is-manual-msg" role="alert"></div>' +
             '  </div>' +
@@ -680,12 +739,33 @@
         var mInput   = overlay.querySelector('.ng-is-manual-input');
         var mPrev    = overlay.querySelector('.ng-is-manual-preview i');
         var mMsg     = overlay.querySelector('.ng-is-manual-msg');
+        var slotbarEl = overlay.querySelector('.ng-is-slotbar');
 
         function apply(cls) {
             cls = cleanClass(cls);
             if (!cls) return false;
             pushRecent(cls);
+            if (slots) {
+                /* Assign to the active slot and stay put: the user is likely to
+                   set the other slot next. */
+                slots[activeSlot].cls = cls;
+                chosen = cls;
+                opts.onPickSlot(slots[activeSlot].key, cls);
+                renderSlots();
+                renderMain();          // move the grid's "current" marker
+                if (allowAnim) renderAnimRow();   // preview on the new on-icon
+                if (mPrev) mPrev.className = cls;
+                return true;
+            }
             if (typeof opts.onPick === 'function') opts.onPick(cls);
+            if (keepOpen) {
+                /* Animation-only caller (the override editor): report the icon
+                   but leave the dialog up so the animation row is still there. */
+                chosen = cls;
+                renderMain();
+                if (mPrev) mPrev.className = cls;
+                return true;
+            }
             close();
             return true;
         }
@@ -694,8 +774,46 @@
             if (!allowImg || !item || !(item.value > 0)) return false;
             pushRecent(item);
             opts.onPickImage(item.value, item);
+            /* An uploaded image is a whole-icon choice — there is no separate
+               off PNG — so it finishes the icon axis.  Keep the dialog open
+               only if there is still an animation to set. */
+            if (keepOpen) return true;
             close();
             return true;
+        }
+
+        /* On/off target bar (only when the caller passes slots). */
+        function renderSlots() {
+            if (!slotbarEl) return;
+            slotbarEl.innerHTML = '';
+            var lead = document.createElement('span');
+            lead.className = 'ng-is-slotbar-lead';
+            lead.textContent = 'Editing';
+            slotbarEl.appendChild(lead);
+            slots.forEach(function (s, i) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'ng-is-slot' + (i === activeSlot ? ' ng-is-slot--active' : '');
+                var ic = document.createElement('i');
+                ic.className = s.cls || 'fa-regular fa-square';
+                var lab = document.createElement('span');
+                lab.className = 'ng-is-slot-label';
+                lab.textContent = s.label;
+                var sub = document.createElement('em');
+                sub.className = 'ng-is-slot-cls';
+                sub.textContent = s.cls ? labelOf(s.cls) : 'not set';
+                b.appendChild(ic);
+                b.appendChild(lab);
+                b.appendChild(sub);
+                b.addEventListener('click', function () {
+                    activeSlot = i;
+                    chosen = s.cls;
+                    renderSlots();
+                    renderMain();
+                    if (mPrev) mPrev.className = s.cls || 'fa-solid fa-question';
+                });
+                slotbarEl.appendChild(b);
+            });
         }
 
         /* One tile for both kinds. An entry is a class string (glyph) or an
@@ -794,8 +912,11 @@
         }
 
         function onGridKeydown(e) {
-            /* The manual-class field owns its own Enter/arrow behaviour. */
-            if (e.target && e.target.closest && e.target.closest('.ng-is-manual')) return;
+            /* The footer owns its own Enter/arrow behaviour: the manual-class
+               field types, and an animation tile is a plain focusable button
+               whose native Enter must not be stolen by the grid cursor. */
+            if (e.target && e.target.closest &&
+                e.target.closest('.ng-is-manual, .ng-is-anim')) return;
 
             var list = tiles();
             if (e.key === 'Enter') {
@@ -981,6 +1102,62 @@
             });
         }
 
+        /* ── Animation row ────────────────────────────────────────────
+           A row of tiles, each rendering the icon that is actually selected
+           with one catalogue animation applied — the same .dz-anim-* class
+           the card icon gets, so what the tile does is what the device will
+           do. The choice is made by watching rather than by reading a name,
+           which is why there is no dropdown here. */
+        function renderAnimRow() {
+            var wrap = overlay.querySelector('.ng-is-anim');
+            if (!wrap) return;
+            /* Preview on the icon under discussion — the on/active icon, which
+               is what animates on the card.  `chosen` follows the active slot,
+               and apply() re-renders this row when the icon changes, so the
+               previews always animate the glyph the user just picked. */
+            var glyph = (slots && slots[0].cls) || cleanClass(opts.animationGlyph) ||
+                        chosen || 'fa-solid fa-lightbulb';
+
+            wrap.innerHTML =
+                '<div class="ng-is-anim-head">Animation ' +
+                '<em>plays while the device is on</em></div>' +
+                '<div class="ng-is-anim-strip"></div>';
+            var strip = wrap.querySelector('.ng-is-anim-strip');
+
+            /* "No animation" is the default, so it leads the row. */
+            var entries = [{ id: '', label: 'No animation', hint: 'Holds still' }]
+                .concat(animCatalogue());
+
+            entries.forEach(function (a) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'ng-is-anim-tile' +
+                    (a.id ? '' : ' ng-is-anim-tile--off') +
+                    (a.id === animPick ? ' ng-is-anim-tile--active' : '');
+                b.title = a.hint ? a.label + ' — ' + a.hint : a.label;
+
+                var ic = document.createElement('i');
+                ic.className = glyph + (a.id ? ' ' + animClassOf(a.id) : '');
+                var lbl = document.createElement('span');
+                lbl.textContent = a.label;
+                b.appendChild(ic);
+                b.appendChild(lbl);
+
+                b.addEventListener('click', function () {
+                    animPick = a.id;
+                    strip.querySelectorAll('.ng-is-anim-tile').forEach(function (t) {
+                        t.classList.remove('ng-is-anim-tile--active');
+                    });
+                    b.classList.add('ng-is-anim-tile--active');
+                    /* Reported straight away and the dialog stays open: this is
+                       a second axis, not the pick, and the user may well want to
+                       change the icon in the same visit. */
+                    opts.onPickAnimation(a.id);
+                });
+                strip.appendChild(b);
+            });
+        }
+
         /* ── Wire ── */
         /* Every keystroke would otherwise re-filter and re-tile a pool of
            thousands. Only the re-render is deferred, so the field itself stays
@@ -1022,6 +1199,8 @@
             if (e.key === 'Enter') { e.preventDefault(); useManual(); }
         });
         overlay.querySelector('.ng-is-manual-use').addEventListener('click', useManual);
+        var doneBtn = overlay.querySelector('.ng-is-done');
+        if (doneBtn) doneBtn.addEventListener('click', close);
         overlay.querySelector('.ng-is-close').addEventListener('click', close);
         overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
         overlay.addEventListener('keydown', onGridKeydown);
@@ -1041,6 +1220,8 @@
 
         renderRail();
         renderMain();
+        if (slots)     renderSlots();
+        if (allowAnim) renderAnimRow();
 
         /* Reconcile with the registry on every open, so the Studio also
            self-heals on builds that never broadcast dz-webassets-changed. The
