@@ -82,7 +82,14 @@
             if (!r.selectorText || !r.style) continue;
             var faVar = r.style.getPropertyValue('--fa');
             var content = r.style.content;
+            /* Not every set is a font. Iconoir and friends ship no @font-face and
+               draw each icon as an SVG mask, so they declare mask-image and never
+               a codepoint; requiring content would enumerate nothing for them.
+               Utility classes declare neither, which is what this really excludes. */
+            var mask = r.style.getPropertyValue('mask-image') ||
+                       r.style.getPropertyValue('-webkit-mask-image');
             var isGlyph = (faVar && faVar !== 'none') ||
+                          (mask && mask !== 'none') ||
                           (/::?before/.test(r.selectorText) && content &&
                            content !== 'none' && content !== 'normal' && content !== '""');
             if (!isGlyph) continue;
