@@ -2525,6 +2525,13 @@ body.dz-light .ng-toast {
     border-radius: 9px;
 }
 .ng-is-lib-row--busy { opacity: 0.85; }
+/* Its stored copy vanished from the server (removed on Domoticz's own Custom
+   Icons page) — the entry is kept, but flagged as not currently usable. */
+.ng-is-lib-row--missing {
+    border-color: rgba(var(--dz-warning-rgb), 0.5);
+    background: rgba(var(--dz-warning-rgb), 0.08);
+}
+    .ng-is-lib-row--missing .ng-is-lib-status { color: var(--dz-warning); }
 .ng-is-lib-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .ng-is-lib-meta strong { font-size: 0.85rem; color: var(--dz-text); }
     .ng-is-lib-meta span {

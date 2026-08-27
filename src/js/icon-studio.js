@@ -128,25 +128,50 @@
     window.dzEnumerateIcons = enumerate;
 
     /* ── Libraries ────────────────────────────────────────────────── */
-    /* Returns [{ id, name, prefix }] — the implicit Font Awesome library
-       plus any user-configured ones. */
+    /* Returns [{ id, name, prefix }] — the implicit Font Awesome library, any
+       user-configured ones, and any library Domoticz itself manages. */
     function configuredLibraries() {
         var libs = [{ id: 'fa', name: 'Font Awesome', prefix: 'fa' }];
+        var byPrefix = {};
         try {
             var raw = (window.dzNightglassSettings &&
                        window.dzNightglassSettings.get('iconLibraries')) || '[]';
             var arr = typeof raw === 'string' ? JSON.parse(raw) : (raw || []);
             (arr || []).forEach(function (l) {
-                if (l && l.prefix) libs.push({
+                if (!l || !l.prefix) return;
+                var entry = {
                     id: l.id || l.prefix, name: l.name || l.prefix,
                     prefix: l.prefix, cssUrl: l.cssUrl,
                     /* assetPath = stored on this Domoticz server; must be
                        carried through so loads/reopens use the local copy
                        instead of going back out to the source URL. */
-                    assetPath: l.assetPath
-                });
+                    assetPath: l.assetPath,
+                    unavailable: !!_nativeGone[l.id || l.prefix]
+                };
+                byPrefix[entry.prefix] = entry;
+                libs.push(entry);
             });
         } catch (e) {}
+
+        /* Domoticz's own registry is APPENDED, never substituted. On a prefix
+           collision the Nightglass entry wins because it carries the cssUrl and
+           assetPath a registry row has no equivalent of — but the registry's
+           Title is a real display name, so adopt it when ours is nothing better
+           than the bare prefix. */
+        nativeLibraries().forEach(function (n) {
+            var mine = byPrefix[n.prefix];
+            if (mine) {
+                if (n.title && mine.name === mine.prefix) mine.name = n.title;
+                return;
+            }
+            /* `managed` records provenance for the code, not for the UI: it is
+               what tells the loader this library is Domoticz's to fetch. */
+            libs.push({
+                id: n.id, name: n.name, prefix: n.prefix,
+                cssUrl: n.cssUrl, assetPath: n.assetPath,
+                managed: 'domoticz'
+            });
+        });
         return libs;
     }
 
@@ -164,6 +189,166 @@
         if (window.dzNightglassSettings) window.dzNightglassSettings.set('iconLibraries', json);
         if (window.dzInjectIconLibraries) window.dzInjectIconLibraries(json);
         _cache = null;   // force re-enumeration next time
+    }
+
+    /* ── Domoticz's own icon-library registry ──────────────────────────
+       Newer Domoticz manages icon libraries itself: they live in the WebAssets
+       table, are added/removed on Setup → Custom Icons, and are listed by the
+       `getwebassets` command. Without this, adding or removing a library there
+       was invisible to the Studio — new ones never showed up and removed ones
+       lingered as broken entries.
+
+       It is strictly an ADDITIONAL source. Stable Domoticz has none of it, so
+       every read is guarded and a missing or failing endpoint must leave
+       behaviour byte-for-byte as it was: nothing is cleared, no <link> is
+       dropped and no recent is pruned off the back of a failed fetch.
+
+       _nativeLibs stays null until one read actually succeeds, which is also
+       its permanent value on a Domoticz without the endpoint. */
+    var _nativeLibs = null;
+    var _nativeFetch = null;
+    var _nativeGone = {};        // our libs whose uploaded asset has vanished
+    var _onNativeChange = null;  // set while the Studio is open
+
+    function nativeLibraries() { return _nativeLibs || []; }
+
+    /* Nightglass uploads its own packaged copies as `iconfont-<prefix>.css`
+       (see assetFileName below) and Domoticz lists those rows too. They are
+       already represented by the iconLibraries entry that owns them, and their
+       stem would derive the bogus prefix "iconfont-mdi", so they are not
+       libraries as far as this merge is concerned. */
+    function isOwnAssetName(name) {
+        return /^iconfont-/i.test(String(name || ''));
+    }
+
+    /* `assets/iconfont-mdi.css?v=1756…` → `iconfont-mdi.css`. The cache-busting
+       query is ours alone and registry rows never carry one, so removal
+       detection has to compare on the bare file name. */
+    function assetNameOf(path) {
+        var clean = String(path || '').split('?')[0].split('#')[0];
+        return clean.slice(clean.lastIndexOf('/') + 1).toLowerCase();
+    }
+
+    function deriveNativeLib(asset) {
+        var name = String((asset && asset.name) || '');
+        if (!/\.css$/i.test(name) || isOwnAssetName(name)) return null;
+        /* Same derivation as Domoticz's own Custom Icons page: the file stem IS
+           the class prefix, because that page builds the name from the prefix
+           the user typed (`<prefix>.css`). */
+        var prefix = name.replace(/\.css$/i, '').replace(/[^a-z0-9]/gi, '');
+        if (!prefix) return null;
+        var title = String(asset.Title || '').trim();
+        var path = asset.path || ('assets/' + name);
+        /* cssUrl here is a cache key and a same-origin read path, not a download
+           source — Domoticz owns fetching this library. Folding LastUpdate in
+           makes a refresh on the native page miss the stored class list instead
+           of serving the previous copy's glyphs. */
+        var stamp = String(asset.LastUpdate || '').replace(/[^0-9]/g, '');
+        return {
+            id: prefix,
+            name: title || prefix,
+            prefix: prefix,
+            title: title,
+            assetPath: path,
+            cssUrl: path + (stamp ? '?ts=' + stamp : '')
+        };
+    }
+
+    function fetchNativeLibraries(force) {
+        if (_nativeFetch && !force) return _nativeFetch;
+        var job = fetch('json.htm?type=command&param=getwebassets',
+                        { credentials: 'same-origin' })
+            .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+            .then(function (d) {
+                /* A Domoticz without the command 404s (thrown above) or answers
+                   with an error payload. Either way there is no registry, and
+                   "no registry" must never be read as "everything was deleted". */
+                if (!d || d.status !== 'OK' || !Array.isArray(d.result)) throw 0;
+                var libs = [], seen = {};
+                d.result.forEach(function (a) {
+                    var lib = deriveNativeLib(a);
+                    if (!lib || seen[lib.prefix]) return;
+                    seen[lib.prefix] = true;
+                    libs.push(lib);
+                });
+                _nativeLibs = libs;
+                reconcileOwnAssets(d.result);
+                return libs;
+            })
+            .catch(function () {
+                /* Retry on the next open rather than caching the failure, and
+                   hand back whatever was last known good. */
+                if (_nativeFetch === job) _nativeFetch = null;
+                return nativeLibraries();
+            });
+        _nativeFetch = job;
+        return job;
+    }
+
+    /* One of our own libraries whose uploaded copy is gone from the registry was
+       removed on the native Custom Icons page. Treat it as gone — but keep the
+       user's iconLibraries entry, since a settings entry still holds the source
+       URL needed to reinstall it. Only ever reached from a SUCCESSFUL read. */
+    function reconcileOwnAssets(rows) {
+        var present = {};
+        rows.forEach(function (a) {
+            if (a && a.name) present[String(a.name).toLowerCase()] = true;
+        });
+        var changed = false;
+        readLibsRaw().forEach(function (l) {
+            if (!l || !l.assetPath) return;
+            var id = l.id || l.prefix;
+            if (present[assetNameOf(l.assetPath)]) {
+                if (_nativeGone[id]) { delete _nativeGone[id]; changed = true; }
+                return;
+            }
+            if (_nativeGone[id]) return;
+            _nativeGone[id] = true;
+            changed = true;
+            forgetVanishedLibrary(l);
+        });
+        if (!changed) return;
+        _cache = null;
+        /* Re-run injection so a library that came BACK gets its <link> again;
+           the ones still flagged are skipped there and swept away. */
+        if (window.dzInjectIconLibraries) window.dzInjectIconLibraries(readLibsRaw());
+    }
+
+    function forgetVanishedLibrary(l) {
+        var id = l.id || l.prefix;
+        var domId = libraryDomId(l);
+        var link = document.getElementById(domId);
+        if (link && link.parentNode) {
+            revokeLibraryBlobUrl(domId);
+            link.parentNode.removeChild(link);
+        }
+        delete _libIcons[id];
+        delete _libPackageLoads[libraryKey(l)];
+        setLibStatus(id, 'missing');
+        /* Both keys: the class list may have been stored under the source URL or
+           under the server path, depending on which route loaded it. */
+        dropLibCache(l.cssUrl);
+        dropLibCache(l.assetPath);
+    }
+
+    /* Domoticz's Custom Icons page broadcasts after every successful add,
+       refresh and delete. Angular, the injector and the event are all optional
+       — on older builds none of the three exists, and the per-open refetch below
+       is what keeps the Studio correct there. */
+    function subscribeToNativeChanges() {
+        try {
+            var injector = window.angular &&
+                           window.angular.element(document.body).injector();
+            if (!injector) return false;
+            injector.get('$rootScope').$on('dz-webassets-changed', function () {
+                _nativeFetch = null;
+                _cache = null;
+                fetchNativeLibraries(true).then(function () {
+                    if (typeof _onNativeChange === 'function') _onNativeChange();
+                });
+            });
+            return true;
+        } catch (e) { return false; }
     }
 
     /* ── Cross-origin library download + local caching ────────────────
@@ -226,11 +411,21 @@
         catch (e) { return {}; }
     }
     function writeLibCache(url, icons) {
+        if (!url) return;                 // no key = nothing worth storing
         try {
             var c = readLibCache();
             c[url] = { icons: icons, ts: Date.now() };
             localStorage.setItem(LIB_CACHE_KEY, JSON.stringify(c));
         } catch (e) { /* quota / disabled — best effort, falls back to refetch */ }
+    }
+    function dropLibCache(url) {
+        if (!url) return;
+        try {
+            var c = readLibCache();
+            if (!Object.prototype.hasOwnProperty.call(c, url)) return;
+            delete c[url];
+            localStorage.setItem(LIB_CACHE_KEY, JSON.stringify(c));
+        } catch (e) {}
     }
 
     function setLibStatus(id, state, extra) {
@@ -249,6 +444,13 @@
 
     function libraryKey(lib) {
         return String((lib && (lib.id || lib.prefix)) || '') + '|' + String((lib && lib.cssUrl) || '');
+    }
+
+    /* The id of the <link> this library owns. Shared by the injector and the
+       removal path so both address the same element. */
+    function libraryDomId(lib) {
+        var libId = (lib && (lib.id || lib.prefix)) || (lib && lib.cssUrl) || '';
+        return 'ng-iconlib-' + String(libId).replace(/[^\w-]/g, '');
     }
 
     function libraryStillConfigured(lib) {
@@ -422,8 +624,12 @@
         return btoa(bin);
     }
 
-    function uploadWebAsset(name, content) {
+    /* `title` is display-only and ignored by Domoticz builds that predate it;
+       sending it means our uploads are labelled with their library name on the
+       native Custom Icons page instead of the bare `iconfont-<prefix>` stem. */
+    function uploadWebAsset(name, content, title) {
         var body = 'name=' + encodeURIComponent(name) +
+                   '&title=' + encodeURIComponent(title || '') +
                    '&data=' + encodeURIComponent(utf8ToBase64(content));
         return fetch('json.htm?type=command&param=uploadwebasset', {
             method: 'POST',
@@ -459,7 +665,7 @@
     /* Best-effort publish; resolves to the path or null (never rejects). */
     function publishLibraryToServer(lib, cssText) {
         if (!cssText) return Promise.resolve(null);
-        return uploadWebAsset(assetFileName(lib), cssText)
+        return uploadWebAsset(assetFileName(lib), cssText, lib.name || lib.prefix)
             .then(function (path) {
                 if (!libraryStillConfigured(lib)) return null;
                 /* Refreshing overwrites the same filename, so version the URL —
@@ -591,7 +797,12 @@
             (arr || []).forEach(function (l) {
                 if (!l || !l.cssUrl) return;
                 var libId = l.id || l.prefix;
-                var domId = 'ng-iconlib-' + String(libId || l.cssUrl).replace(/[^\w-]/g, '');
+                /* Its asset was deleted on Domoticz's Custom Icons page, so
+                   re-creating the <link> would only request a 404 and re-flash
+                   the icons. Left out of `want` on purpose: the sweep below then
+                   removes any link still hanging around. Refresh clears this. */
+                if (_nativeGone[libId]) return;
+                var domId = libraryDomId(l);
                 want[domId] = true;
                 var link = document.getElementById(domId);
                 if (link) {
@@ -768,6 +979,9 @@
     function libraryStatusSummary(lib) {
         var st = _libStatus[lib.id || lib.prefix] || {};
         if (st.state === 'downloading') return 'Downloading…';
+        if (st.state === 'missing') {
+            return 'Removed from this server on Domoticz’s Custom Icons page — refresh to reinstall';
+        }
         if (st.state === 'server') return 'Stored on this server — shared by all devices';
         if (st.state === 'cached') return 'Stored in this browser' + (st.ts ? ' · updated ' + formatAge(st.ts) : '');
         if (st.state === 'remote') return 'Using source URL fallback';
@@ -880,6 +1094,7 @@
             _escHandler = null;
         }
         restoreRelaxedDialogs();
+        _onNativeChange = null;
         _overlay.classList.remove('ng-is--open');
         var el = _overlay;
         _overlay = null;
@@ -920,7 +1135,10 @@
             groups = groupByLibrary(all, libs);
         }
         buildData();
-        pruneRecent(libs);   // self-heal: drop recents from libraries removed elsewhere
+        /* pruneRecent() is deliberately NOT called here — it runs once the
+           native registry has been consulted (see the bottom of this function),
+           because until then a recent icon from a Domoticz-managed library has
+           no library to be recognised by and would be thrown away. */
 
         var overlay = document.createElement('div');
         overlay.id = 'ng-is-overlay';
@@ -1085,6 +1303,10 @@
         function loadLibraries() {
             configuredLibraries().forEach(function (l) {
                 if (l.id === 'fa') return;
+                /* Domoticz serves its own libraries same-origin and injects the
+                   <link> itself, so their glyphs normally arrive via enumerate()
+                   already; only read the stylesheet when that found none. */
+                if (l.managed === 'domoticz' && groups[l.id] && groups[l.id].icons.length) return;
                 loadLibraryIcons(l, function () {
                     buildData();
                     renderRail();
@@ -1123,6 +1345,9 @@
                     if ((_libStatus[l.id || l.prefix] || {}).state === 'downloading') {
                         rowEl.className += ' ng-is-lib-row--busy';
                     }
+                    if (_nativeGone[l.id || l.prefix]) {
+                        rowEl.className += ' ng-is-lib-row--missing';
+                    }
                     rowEl.innerHTML =
                         '<div class="ng-is-lib-meta"><strong>' + (l.name || l.prefix || '?') + '</strong>' +
                         '<span>' + (l.prefix ? l.prefix + '-*' : '') + ' · ' + (l.cssUrl || '') + '</span>' +
@@ -1138,6 +1363,9 @@
                     refresh.addEventListener('click', function () {
                         var lib = { id: l.id || l.prefix, name: l.name || l.prefix, cssUrl: l.cssUrl, prefix: l.prefix };
                         setLibStatus(lib.id, 'downloading');
+                        /* Redownloading re-uploads it, so a library that was
+                           deleted server-side is no longer "gone". */
+                        delete _nativeGone[lib.id];
                         delete _libIcons[lib.id];
                         renderManage();
                         renderRail();
@@ -1175,6 +1403,9 @@
             /* One-click suggestions for popular libraries (prefill only). */
             var addedPrefixes = {};
             raw.forEach(function (l) { if (l && l.prefix) addedPrefixes[l.prefix] = true; });
+            /* Hide the suggestion for anything Domoticz already serves —
+               accepting it would just add a second copy under the same prefix. */
+            nativeLibraries().forEach(function (n) { addedPrefixes[n.prefix] = true; });
             var suggestable = SUGGESTED_LIBS.filter(function (s) { return !addedPrefixes[s.prefix]; });
             if (suggestable.length) {
                 var sug = document.createElement('div');
@@ -1336,7 +1567,13 @@
                 }
                 var g = groups[scope];
                 if (!g || !g.icons.length) {
-                    var reason = _libIcons[scope] === 'error'
+                    var scoped = null;
+                    libs.forEach(function (l) { if (l.id === scope) scoped = l; });
+                    var reason = (scoped && scoped.unavailable)
+                        ? 'This library was removed from this server on Domoticz’s ' +
+                          'Custom Icons page. Use Refresh under “Add / manage ' +
+                          'libraries” to reinstall it.'
+                        : _libIcons[scope] === 'error'
                         ? 'Couldn’t download this library into the local cache. ' +
                           'Nightglass will fall back to the source URL if the browser can load it.'
                         : 'No icons found in this library’s stylesheet. Paste the exact class below instead.';
@@ -1434,6 +1671,22 @@
         renderMain();
         loadLibraries();          // fetch+parse CDN/custom libraries in the background
 
+        /* Reconcile with Domoticz's registry on every open, so the Studio also
+           self-heals on builds that never broadcast dz-webassets-changed. The
+           same handler serves the broadcast while this overlay is on screen.
+           fetchNativeLibraries() always resolves: on a Domoticz without the
+           command it yields the empty list, which leaves every step below
+           behaving exactly as it did before the registry existed. */
+        _onNativeChange = function () {
+            if (_overlay !== overlay) return;      // a newer overlay owns the UI
+            buildData();
+            pruneRecent(libs);    // self-heal: drop recents from removed libraries
+            renderRail();
+            renderMain();
+            loadLibraries();
+        };
+        fetchNativeLibraries(true).then(_onNativeChange);
+
         /* Must happen before we take focus: an open jQuery UI modal would
            otherwise steal it straight back (#230). */
         relaxOpenModalDialogs();
@@ -1441,4 +1694,14 @@
     }
 
     window.dzOpenIconStudio = openIconStudio;
+
+    /* Angular bootstraps after this file runs, so the injector is usually not
+       there yet; retry briefly and then give up for good — on a Domoticz without
+       the feature it will never appear, and the per-open refetch covers it. */
+    if (!subscribeToNativeChanges()) {
+        var tries = 0;
+        var timer = setInterval(function () {
+            if (subscribeToNativeChanges() || ++tries >= 20) clearInterval(timer);
+        }, 500);
+    }
 })();
