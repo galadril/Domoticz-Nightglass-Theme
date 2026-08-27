@@ -17,8 +17,20 @@
    Because the stylesheets are therefore same-origin, their glyphs come
    straight out of document.styleSheets and need no fetching at all.
 
+   Callers that can store an image (the device / Utility icon field) may
+   also opt into a Custom source listing the user's ZIP-uploaded custom
+   icons. Those are PNGs, not glyphs, so they carry a CustomImage number
+   rather than a class and come back through onPickImage.
+
    Public API:
-     window.dzOpenIconStudio({ current, onPick, title })
+     window.dzOpenIconStudio({
+         current,        // class string of the current pick, if any
+         currentImage,   // CustomImage number of the current pick, if any
+         allowImages,    // offer the Custom (uploaded image) source
+         onPick,         // fn(classString)
+         onPickImage,    // fn(customImage, item)
+         title
+     })
      window.dzMigrateIconLibraries()      // called by the settings module
      window.dzEnumerateIcons()            // cached flat class list
    ══════════════════════════════════════════════════════════════════ */
@@ -331,6 +343,77 @@
     }
     window.dzMigrateIconLibraries = migrateLegacyLibraries;
 
+    /* ── Domoticz's uploaded custom icons ──────────────────────────────
+       The ZIP uploads on Setup → More Options → Custom Icons. They are PNGs,
+       so they are the one thing an icon class cannot express, and the only
+       reason this module talks about images at all.
+
+       Only the uploads are offered — not Domoticz's 38 built-in switch icons.
+       Every one of those now carries an FaClass (verified against
+       custom_light_icons on 2026.3), which is what Domoticz renders for
+       CustomImage 1..99 and what Nightglass substitutes for their PNGs on
+       older builds. So a "Domoticz" source would be a second, worse-labelled
+       route to glyphs the Font Awesome source already lists: picking "Alarm"
+       and picking fa-solid fa-bell produce the identical result. Native
+       offers both because its glyph source is a separate opt-in; here glyphs
+       are the default, so the built-ins are pure duplication. */
+    var _imgSet = null;      // null = never read; [] = read, none uploaded
+    var _imgFetch = null;
+
+    function customImages() { return _imgSet || []; }
+
+    function fetchCustomImages(force) {
+        if (_imgFetch && !force) return _imgFetch;
+        var job = fetch('json.htm?type=command&param=getcustomiconset',
+                        { credentials: 'same-origin' })
+            .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+            .then(function (d) {
+                if (!d || d.status !== 'OK' || !Array.isArray(d.result)) throw 0;
+                var list = [];
+                d.result.forEach(function (it) {
+                    var id = parseInt(it && it.idx, 10);
+                    if (isNaN(id)) return;
+                    var src = String(it.IconFile48On || it.IconFile16 || '');
+                    if (!src) return;
+                    list.push({
+                        kind: 'img',
+                        /* Cmd_GetCustomIconSet (main/WebServerCmds.cpp) emits
+                           only icons whose internal idx is >= 100 — the
+                           CustomImages table, i.e. the uploads — and reports
+                           `icon.idx - 100`. DeviceStatus.CustomImage stores the
+                           internal value, so the 100 that
+                           ReloadCustomSwitchIcons() added has to go back on.
+                           Get this wrong and a pick silently lands on a
+                           different icon, so it is stored resolved, once,
+                           here rather than re-derived at each use site. */
+                        value: id + 100,
+                        src: src,
+                        name: String(it.Title || '').trim() || ('#' + id),
+                        desc: String(it.Description || '').trim()
+                    });
+                });
+                _imgSet = list;
+                return list;
+            })
+            .catch(function () {
+                /* A Domoticz that refuses the command (or a session without
+                   rights) leaves the source absent rather than empty, and gets
+                   another chance on the next open. */
+                if (_imgFetch === job) _imgFetch = null;
+                return customImages();
+            });
+        _imgFetch = job;
+        return job;
+    }
+
+    function findCustomImage(value) {
+        var list = customImages();
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].value === value) return list[i];
+        }
+        return null;
+    }
+
     /* Which library a class belongs to (by prefix). */
     function libIdOf(cls, libs) {
         var token = cls.split(/\s+/)[0];              // e.g. "fa-solid" | "mdi" | "bi"
@@ -373,24 +456,56 @@
         return a === b || a === glyphTokenOf(b) || b === glyphTokenOf(a);
     }
 
-    /* ── Recent (localStorage) ────────────────────────────────────── */
-    /* Guarded on read as well as write: the list is user-editable storage that
+    /* ── Recent (localStorage) ──────────────────────────────────────
+       An entry is either a class string (a glyph) or { kind:'img', value:N }
+       (an uploaded image, N = CustomImage). On disk images are stored as
+       { ci: N }: an older Nightglass runs cleanClass() over every entry, which
+       turns an object into "[object Object]", fails SAFE_CLASS_RE and drops it
+       — so a mixed list degrades to the glyphs it can use instead of rendering
+       a broken tile.
+
+       Guarded on read as well as write: the list is user-editable storage that
        gets interpolated into a class attribute. */
+    function isImgEntry(e) { return !!(e && typeof e === 'object' && e.kind === 'img'); }
+    function entryKey(e)   { return isImgEntry(e) ? 'ci:' + e.value : String(e); }
+
     function getRecent() {
         try {
             var list = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]') || [];
-            return list.map(cleanClass).filter(Boolean);
+            var out = [];
+            list.forEach(function (e) {
+                if (e && typeof e === 'object') {
+                    var ci = parseInt(e.ci, 10);
+                    if (ci > 0) out.push({ kind: 'img', value: ci });
+                    return;
+                }
+                var cls = cleanClass(e);
+                if (cls) out.push(cls);
+            });
+            return out;
         }
         catch (e) { return []; }
     }
-    function pushRecent(cls) {
-        cls = cleanClass(cls);
-        if (!cls) return;
+    function storeRecent(list) {
         try {
-            var list = getRecent().filter(function (c) { return c !== cls; });
-            list.unshift(cls);
-            localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, RECENT_MAX)));
+            localStorage.setItem(RECENT_KEY, JSON.stringify(
+                list.slice(0, RECENT_MAX).map(function (e) {
+                    return isImgEntry(e) ? { ci: e.value } : e;
+                })));
         } catch (e) {}
+    }
+    function pushRecent(entry) {
+        if (isImgEntry(entry)) {
+            if (!(parseInt(entry.value, 10) > 0)) return;
+            entry = { kind: 'img', value: parseInt(entry.value, 10) };
+        } else {
+            entry = cleanClass(entry);
+            if (!entry) return;
+        }
+        var key = entryKey(entry);
+        var list = getRecent().filter(function (e) { return entryKey(e) !== key; });
+        list.unshift(entry);
+        storeRecent(list);
     }
 
     /* Is this icon class still backed by an available library? Font Awesome is
@@ -405,13 +520,16 @@
         return false;
     }
 
-    /* Drop recent icons whose library has been removed, so they don't linger as
-       blank/invalid glyphs. */
+    /* Drop recent icons whose library has been removed, or whose uploaded image
+       has been deleted, so they don't linger as blank tiles. An image is only
+       judged once the set has actually been read: before that, "not in the
+       list" means "list not loaded", not "deleted". */
     function pruneRecent(libs) {
-        try {
-            var kept = getRecent().filter(function (c) { return isKnownIcon(c, libs); });
-            localStorage.setItem(RECENT_KEY, JSON.stringify(kept));
-        } catch (e) {}
+        var kept = getRecent().filter(function (e) {
+            if (isImgEntry(e)) return _imgSet === null || !!findCustomImage(e.value);
+            return isKnownIcon(e, libs);
+        });
+        storeRecent(kept);
     }
 
     /* ── Font Awesome category chips (curated) ────────────────────── */
@@ -496,16 +614,21 @@
             if (prev.parentNode) prev.remove();
         }
 
-        var libs, all, groups;
+        var libs, all, groups, imgs;
         /* Sanitised: it is interpolated into the preview's class attribute. */
         var chosen    = cleanClass(opts.current);
-        var scope     = 'all';           // 'all' | 'recent' | libId
+        var chosenImg = parseInt(opts.currentImage, 10) || 0;
+        /* Images need somewhere to go, so the source is only offered to a
+           caller that can store one. */
+        var allowImg  = !!opts.allowImages && typeof opts.onPickImage === 'function';
+        var scope     = 'all';           // 'all' | 'recent' | 'custom' | libId
         var query     = '';
 
         function buildData() {
             libs = configuredLibraries();
             all = enumerate();
             groups = groupByLibrary(all, libs);
+            imgs = allowImg ? customImages() : [];
         }
         /* A library may have been installed or removed since the last open, and
            its stylesheet is loaded by then either way, so never open on a stale
@@ -567,30 +690,79 @@
             return true;
         }
 
-        /* Icon tile */
-        function tile(cls) {
+        function applyImage(item) {
+            if (!allowImg || !item || !(item.value > 0)) return false;
+            pushRecent(item);
+            opts.onPickImage(item.value, item);
+            close();
+            return true;
+        }
+
+        /* One tile for both kinds. An entry is a class string (glyph) or an
+           uploaded-image record; everything above this point keeps them in the
+           same arrays so search, the cap and the keyboard cursor need no idea
+           which is which. */
+        function tile(entry) {
             var b = document.createElement('button');
             b.type = 'button';
-            b.className = 'ng-is-tile' + (sameIcon(cls, chosen) ? ' ng-is-tile--active' : '');
-            b.title = labelOf(cls);
-            b.innerHTML = '<i class="' + cls + '"></i><span>' + labelOf(cls) + '</span>';
-            b.addEventListener('click', function () { apply(cls); });
+            var isImg = isImgEntry(entry);
+            var active = isImg ? (entry.value === chosenImg) : sameIcon(entry, chosen);
+            b.className = 'ng-is-tile' + (active ? ' ng-is-tile--active' : '');
+
+            if (isImg) {
+                b.classList.add('ng-is-tile--img');
+                b.title = entry.desc ? entry.name + ' — ' + entry.desc : entry.name;
+                var im = document.createElement('img');
+                im.src = entry.src;
+                im.alt = '';
+                var label = document.createElement('span');
+                /* Title and Description come from the server; set as text so a
+                   name with markup in it stays a name. */
+                label.textContent = entry.name;
+                b.appendChild(im);
+                b.appendChild(label);
+                b.addEventListener('click', function () { applyImage(entry); });
+                return b;
+            }
+
+            b.title = labelOf(entry);
+            b.innerHTML = '<i class="' + entry + '"></i><span>' + labelOf(entry) + '</span>';
+            b.addEventListener('click', function () { apply(entry); });
             return b;
         }
 
-        function gridOf(classes, capped) {
+        function gridOf(entries, capped) {
             var grid = document.createElement('div');
             grid.className = 'ng-is-grid';
-            var list = capped ? classes.slice(0, RESULT_CAP) : classes;
-            list.forEach(function (c) { grid.appendChild(tile(c)); });
-            if (capped && classes.length > RESULT_CAP) {
+            var list = capped ? entries.slice(0, RESULT_CAP) : entries;
+            list.forEach(function (e) { grid.appendChild(tile(e)); });
+            if (capped && entries.length > RESULT_CAP) {
                 var more = document.createElement('div');
                 more.className = 'ng-is-note';
-                more.textContent = 'Showing ' + RESULT_CAP + ' of ' + classes.length +
+                more.textContent = 'Showing ' + RESULT_CAP + ' of ' + entries.length +
                                    ' — search to narrow down.';
                 grid.appendChild(more);
             }
             return grid;
+        }
+
+        /* A recent image is stored as just its number; the name and PNG live in
+           the uploaded set, which may not be read yet. Entries the current
+           caller cannot pick are dropped rather than shown as dead tiles. */
+        function recentEntries() {
+            return getRecent().filter(function (e) {
+                return allowImg || !isImgEntry(e);
+            }).map(function (e) {
+                if (!isImgEntry(e)) return e;
+                return findCustomImage(e.value) ||
+                       { kind: 'img', value: e.value, src: '', name: '#' + e.value, desc: '' };
+            });
+        }
+
+        function imageHits(q) {
+            return imgs.filter(function (it) {
+                return !q || (it.name + ' ' + it.desc).toLowerCase().indexOf(q) !== -1;
+            });
         }
 
         /* ── Keyboard navigation over the rendered tiles ──────────────
@@ -647,8 +819,17 @@
         /* ── Left rail ── */
         function renderRail() {
             railEl.innerHTML = '';
-            var items = [{ id: 'all', name: 'All icons', icon: 'fa-layer-group', count: all.length },
-                         { id: 'recent', name: 'Recent', icon: 'fa-clock-rotate-left', count: getRecent().length }];
+            var items = [{ id: 'all', name: 'All icons', icon: 'fa-layer-group',
+                           count: all.length + imgs.length },
+                         { id: 'recent', name: 'Recent', icon: 'fa-clock-rotate-left',
+                           count: recentEntries().length }];
+            /* Only when there is something in it: an empty source in the rail
+               is a dead end, and the note in the main pane cannot be seen
+               without clicking it. */
+            if (imgs.length) {
+                items.push({ id: 'custom', name: 'Custom images', icon: 'fa-upload',
+                             count: imgs.length });
+            }
             libs.forEach(function (l) {
                 items.push({ id: l.id, name: l.name, icon: 'fa-icons',
                              count: (groups[l.id] ? groups[l.id].icons.length : 0) });
@@ -672,6 +853,11 @@
             if (query) {
                 var q = query.toLowerCase();
                 var hits = all.filter(function (c) { return labelOf(c).indexOf(q) !== -1; });
+                /* Images lead. There are a handful of them against thousands of
+                   glyphs, so appending would push them past RESULT_CAP and the
+                   one source the user cannot reach any other way would be the
+                   one that got truncated away. */
+                if (allowImg) hits = imageHits(q).concat(hits);
                 var h = document.createElement('div');
                 h.className = 'ng-is-section-title';
                 h.textContent = hits.length + ' result' + (hits.length === 1 ? '' : 's') + ' for “' + query + '”';
@@ -688,12 +874,23 @@
             }
 
             if (scope === 'recent') {
-                var recent = getRecent();
+                var recent = recentEntries();
                 if (!recent.length) {
                     mainEl.innerHTML = '<div class="ng-is-note">No recent icons yet — the ones you pick will appear here.</div>';
                     return;
                 }
                 mainEl.appendChild(gridOf(recent, false));
+                return;
+            }
+
+            if (scope === 'custom') {
+                if (!imgs.length) {
+                    mainEl.innerHTML = '<div class="ng-is-note"><i class="fa-solid fa-cloud-arrow-up"></i> ' +
+                        'No custom icons uploaded yet. Add them on Setup ▸ More Options ▸ Custom Icons.' +
+                        '</div>';
+                    return;
+                }
+                mainEl.appendChild(gridOf(imgs, false));
                 return;
             }
 
@@ -752,20 +949,18 @@
                 return;
             }
 
-            /* All: collapsible section per library */
-            libs.forEach(function (l) {
-                var g = groups[l.id];
-                var icons = g ? g.icons : [];
+            /* All: collapsible section per source */
+            function section(name, entries) {
                 var sec = document.createElement('div');
                 sec.className = 'ng-is-section';
                 var head = document.createElement('button');
                 head.type = 'button';
                 head.className = 'ng-is-section-head';
-                head.innerHTML = '<i class="fa-solid fa-chevron-down"></i> ' + l.name +
-                                 ' <em>' + icons.length + '</em>';
+                head.innerHTML = '<i class="fa-solid fa-chevron-down"></i> ' + name +
+                                 ' <em>' + entries.length + '</em>';
                 var body = document.createElement('div');
                 body.className = 'ng-is-section-body';
-                body.appendChild(gridOf(icons, true));
+                body.appendChild(gridOf(entries, true));
                 head.addEventListener('click', function () {
                     var open = sec.classList.toggle('ng-is-section--collapsed');
                     head.querySelector('i').className = open ? 'fa-solid fa-chevron-right'
@@ -774,6 +969,15 @@
                 sec.appendChild(head);
                 sec.appendChild(body);
                 mainEl.appendChild(sec);
+            }
+
+            /* Uploaded images first: it is the shortest list and the only one
+               whose contents are the user's own. */
+            if (imgs.length) section('Custom images', imgs);
+
+            libs.forEach(function (l) {
+                var g = groups[l.id];
+                section(l.name, g ? g.icons : []);
             });
         }
 
@@ -853,6 +1057,13 @@
             renderMain();
         };
         fetchNativeLibraries(true).then(_onNativeChange);
+
+        /* Same deal for the uploaded icons: they are added and deleted on
+           Domoticz's Custom Icons page, so re-read them on every open rather
+           than trusting a set fetched at some earlier point in the session.
+           Only for a caller that can store one — nothing else has any use for
+           the request. */
+        if (allowImg) fetchCustomImages(true).then(_onNativeChange);
 
         /* Must happen before we take focus: an open jQuery UI modal would
            otherwise steal it straight back (#230). */

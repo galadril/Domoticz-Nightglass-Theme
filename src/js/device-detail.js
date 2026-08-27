@@ -491,10 +491,22 @@
         /* Open the Icon Studio for this device. Falls back to the full override
            dialog if the Studio module isn't available. */
         if (typeof window.dzOpenIconStudio === 'function') {
+            var ci = surface.getCustomImage();
             window.dzOpenIconStudio({
                 current: src.iconCls || '',
+                /* Only an uploaded image (>= 100) is offered, so only that can
+                   be the current pick; a built-in is not in the grid to mark. */
+                currentImage: ci >= 100 ? ci : 0,
+                /* Uploaded PNGs are the one choice a class string cannot carry,
+                   and CustomImage is where they go — which only exists as a
+                   destination once Domoticz owns the pick. Without native
+                   storage the theme blob is the store, and it holds classes
+                   only, so there is nowhere to put an image and the source
+                   stays hidden rather than offering a dead end. */
+                allowImages: nativeIconStorage(),
                 title: 'Set icon for ' + ((device && device.Name) || 'device'),
-                onPick: function (cls) { applyGlyph(surface, device, cls); }
+                onPick: function (cls) { applyGlyph(surface, device, cls); },
+                onPickImage: function (customImage) { applyImage(surface, customImage); }
             });
         } else if (s && s.openIconOverride) {
             s.openIconOverride(surface.idx);
@@ -525,6 +537,21 @@
                 s.setDeviceOverrideIcon(surface.idx, cls, device && device.Name);
             }
         }
+        render(surface);
+    }
+
+    /* An uploaded image is the mirror image of a glyph: CustomImage carries it
+       and Icon must be cleared, or dzIconService.resolve() would keep returning
+       the glyph it prefers and the pick would appear to do nothing.
+
+       customImage arrives already resolved to the value DeviceStatus.CustomImage
+       stores — the Studio adds back the 100 that getcustomiconset subtracts —
+       so there is no offset left to apply here. */
+    function applyImage(surface, customImage) {
+        customImage = parseInt(customImage, 10) || 0;
+        if (customImage <= 0) return;
+        surface.setSelection(customImage, '');
+        markDirty(surface);
         render(surface);
     }
 

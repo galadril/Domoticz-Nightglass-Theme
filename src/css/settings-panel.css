@@ -2361,6 +2361,15 @@ body.dz-light .ng-toast {
         transform: translateY(-1px);
     }
         .ng-is-tile:hover i { color: var(--dz-accent); }
+
+/* Uploaded custom icons are PNGs, so they get no colour treatment — only a
+   box the same height as a glyph tile's 22px line, so a mixed grid keeps one
+   baseline instead of images making their rows taller. */
+    .ng-is-tile--img img {
+        width: 26px;
+        height: 26px;
+        object-fit: contain;
+    }
 .ng-is-tile--active {
     border-color: var(--dz-accent);
     background: rgba(var(--dz-accent-rgb), 0.14);
