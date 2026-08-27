@@ -1774,7 +1774,14 @@
             if (ov.off) off = ov.off;
         }
 
-        return { on: on, off: off };
+        return {
+            on:   on,
+            off:  off,
+            /* Same test dzUtilityWidget.isValueDrivenIcon() uses to decide
+               a reading is encoded in the icon rather than a device state. */
+            wind: !!(device && device.Direction !== undefined &&
+                     device.Direction !== null && device.Direction !== '')
+        };
     }
 
     /* Resolving the device costs an Angular scope walk, and a burst runs
@@ -1807,7 +1814,7 @@
 
         if (!entry || entry.sig !== sig) {
             var spec = resolveNativeSpec(glyph, devIdx);
-            entry = { sig: sig, on: spec.on, off: spec.off, applied: null };
+            entry = { sig: sig, on: spec.on, off: spec.off, wind: spec.wind, applied: null };
             nativeColorCache.set(glyph, entry);
         }
         return entry;
@@ -1834,6 +1841,46 @@
         }
     }
 
+    /* ── Wind direction ────────────────────────────────────────────
+       The rotation used to come from the compass letters in the PNG
+       filename (images/WindNNE.png → WIND_ROTATION).  Native resolves the
+       icon from the device, so there is no filename; take the direction
+       from the device record instead.  weather_widget.html binds
+       item.Direction — the true direction in degrees — alongside
+       item.DirectionStr, the (possibly localised) compass abbreviation.
+       Degrees are exact and need no compass table, so prefer them and
+       keep WIND_ROTATION/WIND_ALIASES as the fallback for feeds that only
+       publish the abbreviation.
+
+       Native draws fa-wind here, not the fa-arrow-up the PNG era
+       substituted, and Nightglass must not override Domoticz's icon
+       choice — so the rotation orients a windsock instead of pointing an
+       arrow.  Utility-page wind widgets are unaffected: they render with
+       use-glyph="false", i.e. still as a WindNNE.png <img>, which the
+       existing replacement path handles unchanged. */
+    function nativeWindRotation(device) {
+        if (!device) return null;
+        var deg = parseFloat(device.Direction);
+        if (!isNaN(deg)) return ((deg % 360) + 360) % 360;
+        var str = String(device.DirectionStr || '').toUpperCase();
+        if (!str) return null;
+        var rot = WIND_ROTATION[WIND_ALIASES[str] || str];
+        return (rot === undefined) ? null : rot;
+    }
+
+    function applyNativeWind(glyph) {
+        /* The reading changes without the glyph's identity changing, so
+           this cannot be cached with the colour — re-read the device.
+           Only wind devices get here, so it stays a handful of walks. */
+        var rot = nativeWindRotation(getDeviceFromIcon(glyph));
+        /* Direction unreachable: degrade cleanly — no rotation, no log. */
+        if (rot === null) return;
+
+        if (!glyph.classList.contains('dz-wind')) glyph.classList.add('dz-wind');
+        var tf = 'rotate(' + rot + 'deg)';
+        if (glyph.style.transform !== tf) glyph.style.transform = tf;
+    }
+
     function decorateNativeGlyph(glyph) {
         /* Idempotent: Nightglass's own <i>s never carry dz-icon-glyph, so
            this can never re-process an icon we created ourselves, and
@@ -1845,6 +1892,7 @@
         var state = nativeGlyphState(glyph);
         var entry = nativeEntryFor(glyph);
         applyNativeColor(glyph, entry, state);
+        if (entry.wind) applyNativeWind(glyph);
 
         var cur = glyph.getAttribute('data-dz-state');
         /* Write only on a genuine change.  Every data-dz-state mutation
