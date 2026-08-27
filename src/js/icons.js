@@ -735,6 +735,11 @@
        Populated by the settings module via window._dzSetDeviceIconOverrides. */
     var DEVICE_ICON_OVERRIDES = {};
 
+    /* Bumped whenever the map above changes.  Read by the native-glyph
+       colour cache further down, which keys off the device rather than off
+       an image src and so has nothing else to invalidate on. */
+    var _nativeColorGen = 0;
+
     /* Returns an overridden resolved spec for a given device IDX + src,
        or null when no override is configured for that device.             */
     function applyDeviceOverride(devIdx, src, fallbackResolved) {
@@ -809,6 +814,10 @@
        Schedules a replacement burst so already-rendered icons update. */
     window._dzSetDeviceIconOverrides = function (overrides) {
         DEVICE_ICON_OVERRIDES = overrides || {};
+        /* Invalidate the native-glyph colour cache: an override added,
+           changed or removed at runtime must re-resolve on the next pass
+           even though the glyph's own identity did not change. */
+        _nativeColorGen++;
         /* Re-apply to already-rendered device icons right away so overrides
            added, changed, or removed at runtime take effect immediately —
            without waiting for a device state change or a page refresh.  A plain
@@ -1685,6 +1694,146 @@
         return null;
     }
 
+    /* ── Colour layer ──────────────────────────────────────────────
+       Native paints every device glyph the same blue (#43A4D3) with a
+       grey off-state; it has no per-device-type colour.  DEVICE_MAP stays
+       the colour source, but there is no PNG filename left to key it
+       with, so key it off the device record instead — mirroring the
+       precedence dzIconService.resolve() uses to pick the glyph itself:
+       a built-in CustomImage wins over TypeImg.  Keying off the same
+       fields as the glyph means the colour always agrees with the shape
+       that is actually on screen.
+
+       device.Icon — the per-device pick in Domoticz's own icon picker —
+       carries no type information, so those devices fall through to
+       CustomImage / TypeImg for their colour: the user chose the shape,
+       Nightglass still supplies the type colour.
+
+       DEVICE_MAP's icon field is unused here; native owns icon identity. */
+
+    /* TypeImg values that differ from the DEVICE_MAP key.  Mirrors
+       dzIconService's TYPE_ALIASES, so a device whose glyph Domoticz
+       resolved through an alias gets the colour of that same entry. */
+    var TYPEIMG_ALIASES = {
+        'hardware':      'gauge',
+        'hum':           'humidity',
+        'temphum':       'temp',
+        'temphumbaroew': 'temp',
+        'zwavemelding':  'alarm',
+        'elec':          'electricityusage',
+        'lightbulb':     'light',
+        'temperature':   'temp',
+        'temp + rain':   'temp',
+        'setpoint':      'temp',
+        'bbq':           'temp',
+        'evohome':       'heating',
+        'weather':       'sun',
+        'general':       'gauge',
+        'utility':       'gauge',
+        'siren':         'alarm',
+        'pushoff':       'push',
+        'override_mini': 'adjust'
+    };
+
+    function deviceMapSpecFor(device) {
+        if (!device) return null;
+        /* CustomImage 1..99 is Domoticz's built-in icon library and
+           device.Image carries its name ('Fan', 'Alarm', 'WallSocket'),
+           which is exactly the DEVICE_MAP key.  100+ are user-uploaded
+           icon sets and carry no device-type meaning. */
+        var ci = parseInt(device.CustomImage, 10);
+        if (ci > 0 && ci < 100 && device.Image) {
+            var imgKey = String(device.Image).toLowerCase();
+            if (DEVICE_MAP[imgKey]) return DEVICE_MAP[imgKey];
+        }
+        var ti = String(device.TypeImg || '').toLowerCase();
+        if (!ti) return null;
+        return DEVICE_MAP[ti] || DEVICE_MAP[TYPEIMG_ALIASES[ti]] || null;
+    }
+
+    /* Resolve the on/off colour pair for a native glyph.  Either side may
+       come back empty, which means "do not colour" — DEVICE_MAP stores
+       null for entries that must keep the stock colour ('onoff',
+       'remote', 'security', and the off-state of read-only sensors), and
+       under native the stock colour is Domoticz's own, which is already
+       right for those. */
+    function resolveNativeSpec(glyph, devIdx) {
+        var device = getDeviceFromIcon(glyph);
+        var spec   = deviceMapSpecFor(device);
+        var on     = spec ? spec.on  : null;
+        var off    = spec ? spec.off : null;
+
+        /* A per-device colour the user set in Nightglass must win over
+           DEVICE_MAP.  keepColor means "override the shape only, keep the
+           resolver's dynamic colour"; native owns the shape, so it
+           degrades to "leave the colour alone". */
+        var idx = devIdx || (device && String(device.idx || device.IDX || '')) || '';
+        var ov  = idx ? DEVICE_ICON_OVERRIDES[idx] : null;
+        if (ov && !ov.keepColor) {
+            if (ov.on)  on  = ov.on;
+            if (ov.off) off = ov.off;
+        }
+
+        return { on: on, off: off };
+    }
+
+    /* Resolving the device costs an Angular scope walk, and a burst runs
+       several passes, so cache the result per element and recompute only
+       when the glyph's identity changes (different device in the slot, or
+       Domoticz re-resolved the icon).  WeakMap so entries go away with
+       the element. */
+    var nativeColorCache = new WeakMap();
+
+    /* Identity signature: the device idx plus the icon classes, ignoring
+       the volatile ones (native's state classes and our own hooks). */
+    function nativeColorSig(glyph, devIdx) {
+        var sig = _nativeColorGen + '|' + devIdx + '|';
+        var cl  = glyph.classList;
+        for (var i = 0; i < cl.length; i++) {
+            var c = cl[i];
+            if (c === 'dz-icon-glyph' || c === 'dz-fa-device' ||
+                c === 'dz-wind' || c.indexOf('dz-icon--') === 0) continue;
+            sig += c + ' ';
+        }
+        return sig;
+    }
+
+    function nativeEntryFor(glyph) {
+        /* deviceIdxFromDom is pure DOM (card id / td#name[data-idx]), so
+           it is cheap enough to run on every pass as the cache key. */
+        var devIdx = deviceIdxFromDom(glyph);
+        var entry  = nativeColorCache.get(glyph);
+        var sig    = nativeColorSig(glyph, devIdx);
+
+        if (!entry || entry.sig !== sig) {
+            var spec = resolveNativeSpec(glyph, devIdx);
+            entry = { sig: sig, on: spec.on, off: spec.off, applied: null };
+            nativeColorCache.set(glyph, entry);
+        }
+        return entry;
+    }
+
+    function applyNativeColor(glyph, entry, state) {
+        /* A state-less glyph (read-only sensor) takes the on colour: that
+           is what the PNG era did for the same devices, whose filenames
+           carried no _On/_Off suffix either. */
+        var want = (state === 'off') ? entry.off : entry.on;
+
+        /* Write only when our own target changed.  card-features.js also
+           writes inline colour on these elements (temperature accent, bar
+           ranges) and runs later in the same burst pass — re-asserting our
+           colour every pass would fight it for no reason. */
+        if (want) {
+            if (entry.applied !== want) {
+                glyph.style.color = want;
+                entry.applied = want;
+            }
+        } else if (entry.applied) {
+            glyph.style.color = '';
+            entry.applied = null;
+        }
+    }
+
     function decorateNativeGlyph(glyph) {
         /* Idempotent: Nightglass's own <i>s never carry dz-icon-glyph, so
            this can never re-process an icon we created ourselves, and
@@ -1694,7 +1843,10 @@
         }
 
         var state = nativeGlyphState(glyph);
-        var cur   = glyph.getAttribute('data-dz-state');
+        var entry = nativeEntryFor(glyph);
+        applyNativeColor(glyph, entry, state);
+
+        var cur = glyph.getAttribute('data-dz-state');
         /* Write only on a genuine change.  Every data-dz-state mutation
            wakes the flash observer in card-features.js, so a blind
            setAttribute on each burst pass would strobe every card. */
@@ -1710,6 +1862,9 @@
         glyph.removeAttribute('data-dz-state');
         glyph.style.color = '';
         glyph.style.transform = '';
+        /* Drop the cached colour too, or a later re-enable would see its
+           own value as already applied and never re-paint. */
+        nativeColorCache.delete(glyph);
     }
 
     /* dzDeviceIcon renders an <img> fallback while dzIconService is still
