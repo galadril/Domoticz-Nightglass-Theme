@@ -1725,6 +1725,13 @@
         if (typeof window.dzInjectIconLibraries === 'function') {
             window.dzInjectIconLibraries(_settings.iconLibraries || '[]');
         }
+
+        // Hand libraries the theme used to host over to Domoticz's own icon
+        // library registry, which manages them from now on. Runs once, and only
+        // when there is something to move.
+        if (typeof window.dzMigrateIconLibraries === 'function') {
+            window.dzMigrateIconLibraries();
+        }
     }
 
     /* ── Build the settings panel HTML ─────────────────────────── */

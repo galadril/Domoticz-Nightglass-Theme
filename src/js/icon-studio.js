@@ -351,6 +351,115 @@
         } catch (e) { return false; }
     }
 
+    /* ── One-shot migration onto Domoticz's registry ───────────────────
+       Nightglass used to install icon libraries itself and remembered them in
+       the `iconLibraries` setting. Domoticz owns that job now, and every stored
+       entry already holds what a native install needs — source URL, prefix and
+       display name — so hand them over once and stop remembering them.
+
+       An entry is only dropped once it is definitely safe to forget: that
+       source URL is the sole record of where the library came from, so anything
+       that fails (a session without admin rights, or a URL the server refuses)
+       stays exactly as it is and gets another chance on a later page load. */
+    var LEGACY_KEY = 'iconLibraries';
+    var _migrationDone = false;
+
+    /* `<prefix>.css` is the name Domoticz's own Custom Icons page derives from
+       a prefix, so a migrated library is indistinguishable from a hand-added
+       one — including having the prefix read back off the file stem. */
+    function nativeAssetName(prefix) {
+        return String(prefix || '') + '.css';
+    }
+
+    function normalizePrefix(prefix) {
+        return String(prefix || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+    }
+
+    /* Resolves true only on a recorded install. Every failure — 403 for a
+       non-admin session, a refused URL, an unreachable server — is one value:
+       "not migrated", which is what keeps the stored entry alive. */
+    function installFromUrl(name, url, title) {
+        return fetch('json.htm?type=command&param=uploadwebasset' +
+                     '&name=' + encodeURIComponent(name) +
+                     '&url=' + encodeURIComponent(url) +
+                     '&title=' + encodeURIComponent(title || ''),
+                     { credentials: 'same-origin' })
+            /* A non-admin session is answered with 403 and no JSON body. */
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (d) { return !!(d && d.status === 'OK'); })
+            .catch(function () { return false; });
+    }
+
+    /* The theme's own upload for a library it has just handed over. Left in
+       place it would keep its Domoticz-injected <link>, so the same font would
+       be fetched and declared twice for the rest of the install's life. Scoped
+       to our own `iconfont-` naming and only ever reached after that library's
+       migration succeeded. */
+    function dropOwnUpload(assetPath) {
+        var name = assetNameOf(assetPath);
+        if (!/^iconfont-[a-z0-9_-]+\.css$/.test(name)) return;
+        fetch('json.htm?type=command&param=deletewebasset&name=' + encodeURIComponent(name),
+              { credentials: 'same-origin' }).catch(function () {});
+    }
+
+    function migrateLegacyLibraries() {
+        if (_migrationDone) return;
+        var stored = readLibsRaw();
+        /* Nothing to migrate — but settings load asynchronously, so this may
+           simply be too early to tell. Stay un-done and let the next call
+           decide. */
+        if (!stored.length) return;
+        _migrationDone = true;
+
+        fetchNativeLibraries(true).then(function () {
+            /* No registry on this build: there is nowhere to migrate TO, and
+               the entries have to keep working the way they always did. */
+            if (!_nativeLibs) return;
+            var registered = {};
+            _nativeLibs.forEach(function (n) { registered[normalizePrefix(n.prefix)] = true; });
+
+            return Promise.all(stored.map(function (l) {
+                var prefix = normalizePrefix(l && l.prefix);
+                /* Already Domoticz's, whether this run put it there or an
+                   earlier one did — which is what makes this idempotent. */
+                if (prefix && registered[prefix]) return true;
+                /* The server installs from a public http(s) URL only; a
+                   relative path or a LAN address is refused. Don't ask, and
+                   above all don't discard the only copy of that URL. */
+                if (!prefix || !/^https?:\/\//i.test(String((l && l.cssUrl) || ''))) return false;
+                return installFromUrl(nativeAssetName(prefix), l.cssUrl, l.name || prefix)
+                    .then(function (ok) {
+                        if (ok && l.assetPath) dropOwnUpload(l.assetPath);
+                        return ok;
+                    });
+            })).then(function (moved) {
+                var keep = stored.filter(function (l, i) { return !moved[i]; });
+                if (keep.length === stored.length) return null;
+                /* saveLibsRaw() re-runs the injector, which sweeps the <link>s
+                   of the entries that just left. */
+                saveLibsRaw(keep);
+                _nativeFetch = null;
+                _cache = null;
+                return fetchNativeLibraries(true).then(function () {
+                    reloadNativeStylesheets();
+                    if (typeof _onNativeChange === 'function') _onNativeChange();
+                });
+            });
+        });
+    }
+    window.dzMigrateIconLibraries = migrateLegacyLibraries;
+
+    /* Domoticz injects a <link> per asset when the app boots and has no reason
+       to look again mid-session, so nudge its loader — otherwise a library that
+       just migrated renders nothing until the next page load. */
+    function reloadNativeStylesheets() {
+        try {
+            var injector = window.angular &&
+                           window.angular.element(document.body).injector();
+            if (injector) injector.get('iconLibraries').load();
+        } catch (e) {}
+    }
+
     /* ── Cross-origin library download + local caching ────────────────
        Nightglass keeps the user-facing config simple (name + URL + prefix)
        but downloads the stylesheet and its assets itself, rewrites those
