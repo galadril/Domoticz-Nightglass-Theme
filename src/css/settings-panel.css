@@ -2287,7 +2287,7 @@ body.dz-light .ng-toast {
     scrollbar-width: thin;
     scrollbar-color: var(--dz-border) transparent;
 }
-.ng-is-rail-item, .ng-is-rail-manage {
+.ng-is-rail-item {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -2302,9 +2302,9 @@ body.dz-light .ng-toast {
     cursor: pointer;
     transition: background 0.12s, color 0.12s;
 }
-    .ng-is-rail-item i, .ng-is-rail-manage i { width: 16px; text-align: center; color: var(--dz-text-muted); }
-    .ng-is-rail-item span, .ng-is-rail-manage span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .ng-is-rail-item:hover, .ng-is-rail-manage:hover { background: rgba(var(--dz-accent-rgb), 0.08); color: var(--dz-text); }
+    .ng-is-rail-item i { width: 16px; text-align: center; color: var(--dz-text-muted); }
+    .ng-is-rail-item span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ng-is-rail-item:hover { background: rgba(var(--dz-accent-rgb), 0.08); color: var(--dz-text); }
 .ng-is-rail-count {
     font-style: normal;
     font-size: 0.7rem;
@@ -2318,12 +2318,6 @@ body.dz-light .ng-toast {
     color: var(--dz-accent) !important;
 }
     .ng-is-rail-item--active i { color: var(--dz-accent); }
-.ng-is-rail-manage {
-    margin-top: auto;
-    border: 1px dashed var(--dz-border-b);
-    color: var(--dz-text-muted);
-}
-    .ng-is-rail-manage:hover { border-color: var(--dz-accent); color: var(--dz-accent); }
 
 .ng-is-main {
     flex: 1;
@@ -2513,100 +2507,6 @@ body.dz-light .ng-toast {
 }
     .ng-is-manual-msg:empty { display: none; }
 
-/* Library manager */
-.ng-is-lib-list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 14px; }
-.ng-is-lib-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
-    background: var(--dz-surface-2);
-    border: 1px solid var(--dz-border);
-    border-radius: 9px;
-}
-.ng-is-lib-row--busy { opacity: 0.85; }
-/* Its stored copy vanished from the server (removed on Domoticz's own Custom
-   Icons page) — the entry is kept, but flagged as not currently usable. */
-.ng-is-lib-row--missing {
-    border-color: rgba(var(--dz-warning-rgb), 0.5);
-    background: rgba(var(--dz-warning-rgb), 0.08);
-}
-    .ng-is-lib-row--missing .ng-is-lib-status { color: var(--dz-warning); }
-.ng-is-lib-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-    .ng-is-lib-meta strong { font-size: 0.85rem; color: var(--dz-text); }
-    .ng-is-lib-meta span {
-        font-size: 0.72rem; color: var(--dz-text-muted);
-        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-.ng-is-lib-status {
-    margin-top: 3px;
-    font-style: normal;
-    font-size: 0.7rem;
-    color: var(--dz-text-dim);
-}
-.ng-is-lib-actions { display: flex; align-items: center; gap: 6px; }
-.ng-is-lib-refresh, .ng-is-lib-remove {
-    flex-shrink: 0;
-    width: 30px; height: 30px;
-    border: 1px solid var(--dz-border-b);
-    border-radius: 8px;
-    background: var(--dz-surface);
-    color: var(--dz-text-muted);
-    cursor: pointer;
-}
-.ng-is-lib-refresh:disabled, .ng-is-lib-remove:disabled {
-    opacity: 0.6;
-    cursor: default;
-}
-.ng-is-lib-refresh:hover { border-color: var(--dz-accent); color: var(--dz-accent); }
-    .ng-is-lib-remove:hover { border-color: var(--dz-danger); color: var(--dz-danger); }
-.ng-is-lib-suggest { margin: 4px 0 14px; }
-.ng-is-lib-suggest-label {
-    font-size: 0.76rem;
-    color: var(--dz-text-muted);
-    margin-bottom: 6px;
-}
-.ng-is-lib-suggest-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.ng-is-lib-suggest-chip {
-    padding: 5px 12px;
-    font-size: 0.76rem;
-    border: 1px dashed var(--dz-border-b);
-    border-radius: 20px;
-    background: var(--dz-surface-2);
-    color: var(--dz-text-soft);
-    cursor: pointer;
-    transition: background 0.12s, color 0.12s, border-color 0.12s;
-}
-    .ng-is-lib-suggest-chip:hover {
-        border-style: solid;
-        border-color: var(--dz-accent);
-        color: var(--dz-accent);
-    }
-
-.ng-is-lib-form { display: flex; flex-wrap: wrap; gap: 8px; }
-    .ng-is-lib-form input {
-        flex: 1 1 180px;
-        background: var(--dz-input-bg) !important;
-        color: var(--dz-input-text) !important;
-        border: 1px solid var(--dz-border) !important;
-        border-radius: 8px !important;
-        padding: 8px 11px !important;
-        font-size: 0.82rem;
-        outline: none;
-    }
-    .ng-is-lib-form input.ng-is-invalid { border-color: var(--dz-danger) !important; }
-.ng-is-lib-add {
-    flex: 0 0 auto;
-    padding: 8px 16px;
-    border: none;
-    border-radius: 8px;
-    background: var(--dz-accent);
-    color: #fff;
-    font-weight: 600;
-    font-size: 0.82rem;
-    cursor: pointer;
-}
-
 /* Picker launcher (inside the override row editor) */
 .ng-ov-picker-current {
     display: flex;
@@ -2659,7 +2559,6 @@ body.dz-light .ng-toast {
         border-right: none;
         border-bottom: 1px solid var(--dz-border);
     }
-    .ng-is-rail-manage { margin-top: 0; margin-left: auto; }
     .ng-is-head { flex-wrap: wrap; }
     .ng-is-search-wrap { order: 3; flex-basis: 100%; }
 }

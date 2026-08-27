@@ -602,10 +602,11 @@
 
         deviceIconOverrides: '{}',
 
-        /* Extra icon-font libraries the user added (issue #129) — JSON array of
-           { id, name, cssUrl, prefix }. Nightglass downloads + caches them
-           locally in the browser so users only need the source URL + prefix. */
-        iconLibraries:      '[]',
+        /* No iconLibraries key: extra icon fonts are Domoticz's own feature now
+           (Setup → Custom Icons). Any value left over from when the theme
+           managed them is still read straight out of storage by the one-shot
+           migration in icon-studio.js — a key absent from DEFAULTS survives
+           both (de)serialize paths untouched. */
 
         userPresets:        '[]',   /* user-saved color presets — JSON array */
 
@@ -1719,11 +1720,6 @@
             } catch (e) {
                 window._dzSetDeviceIconOverrides({});
             }
-        }
-
-        // Load any user-added icon libraries so their glyphs render + enumerate.
-        if (typeof window.dzInjectIconLibraries === 'function') {
-            window.dzInjectIconLibraries(_settings.iconLibraries || '[]');
         }
 
         // Hand libraries the theme used to host over to Domoticz's own icon

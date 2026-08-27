@@ -136,9 +136,8 @@ Fine-tune every color with live preview:
 - Perfect for personalizing your dashboard
 
 ### 📦 Extra Icon Libraries
-- Add third-party icon sets with just a name, source URL, and class prefix
-- Nightglass downloads the stylesheet/fonts into a local browser cache automatically
-- Refresh/redownload any configured library from the Icon Studio manager
+- Install third-party icon sets in Domoticz itself, under **Setup → Custom Icons**
+- Every installed library shows up in the Icon Studio automatically, grouped and searchable
 
 ### 💾 Import/Export & Sync
 - **Export Settings** - Save your custom theme as a JSON file
