@@ -29,6 +29,7 @@
     var RECENT_KEY = 'dz-icon-recent';
     var RECENT_MAX = 24;
     var RESULT_CAP = 300;
+    var SEARCH_DELAY = 200;          // ms; matches the native Domoticz picker
 
     /* Popular icon-font libraries offered as one-click suggestions in the
        manager (prefilled, NOT auto-enabled). Nightglass downloads + caches
@@ -46,8 +47,64 @@
     /* FA style/utility classes that are not glyphs. */
     var FA_STYLE = /^fa-(solid|regular|brands|light|thin|duotone|sharp|classic|2xs|xs|sm|lg|xl|2xl|[0-9]+x|fw|ul|li|border|pull-left|pull-right|spin|spin-pulse|spin-reverse|pulse|beat|fade|beat-fade|bounce|flip|flip-horizontal|flip-vertical|flip-both|rotate-90|rotate-180|rotate-270|rotate-by|stack|stack-1x|stack-2x|inverse|sr-only|sr-only-focusable|swap-opacity)$/;
 
+    /* Icon classes are only ever letters, digits, spaces, dashes and
+       underscores. Anything else is a typo or an attempt to smuggle markup
+       into the class attribute we build, so it never gets applied or stored. */
+    var SAFE_CLASS_RE = /^[A-Za-z0-9 _-]+$/;
+    function cleanClass(cls) {
+        var v = String(cls == null ? '' : cls).replace(/\s+/g, ' ').trim();
+        return SAFE_CLASS_RE.test(v) ? v : '';
+    }
+
+    /* Rightmost `prefix-name` class token in one selector.
+       Weight-variant sheets declare the glyph on a compound selector whose
+       LEADING token is the variant (`.ph-fill.ph-acorn::before`), so taking
+       the first match would collapse a whole library to a single bogus
+       "ph-fill" entry. */
+    var GLYPH_CLASS_RE = /\.([a-z][a-z0-9]*-[a-z0-9-]+)/gi;
+    function glyphClassOf(selector) {
+        var m, name = null;
+        GLYPH_CLASS_RE.lastIndex = 0;
+        while ((m = GLYPH_CLASS_RE.exec(selector)) !== null) name = m[1];
+        return name;
+    }
+
     /* ── Enumeration (cached) ─────────────────────────────────────── */
     var _cache = null;
+    function collectGlyphs(rules, set) {
+        for (var j = 0; j < rules.length; j++) {
+            var r = rules[j];
+            if (!r) continue;
+            /* @media / @supports / @layer wrap their contents in a grouping
+               rule that has no selectorText of its own; descend or the glyphs
+               inside are never seen. */
+            if (r.cssRules && r.cssRules.length) { collectGlyphs(r.cssRules, set); continue; }
+            if (!r.selectorText || !r.style) continue;
+            var faVar = r.style.getPropertyValue('--fa');
+            var content = r.style.content;
+            var isGlyph = (faVar && faVar !== 'none') ||
+                          (/::?before/.test(r.selectorText) && content &&
+                           content !== 'none' && content !== 'normal' && content !== '""');
+            if (!isGlyph) continue;
+            var sels = r.selectorText.split(',');
+            for (var k = 0; k < sels.length; k++) {
+                var name = glyphClassOf(sels[k]);
+                if (!name) continue;
+                if (name.indexOf('fa-') === 0) {
+                    if (FA_STYLE.test(name)) continue;
+                    set['fa-solid ' + name] = true;
+                } else {
+                    /* Emit the base class alongside the glyph class. Phosphor,
+                       Tabler and Weather Icons hang `font-family` on the base
+                       (`.ph`), so `class="ph-acorn"` alone renders as a
+                       zero-width Times New Roman blank. Libraries that key off
+                       an attribute selector instead (Bootstrap, Remix) don't
+                       need it but are unharmed by it. */
+                    set[name.slice(0, name.indexOf('-')) + ' ' + name] = true;
+                }
+            }
+        }
+    }
     function enumerate() {
         if (_cache) return _cache;
         var set = {};
@@ -56,31 +113,7 @@
             var rules;
             try { rules = sheets[i].cssRules || sheets[i].rules; }
             catch (e) { continue; }               // cross-origin — unreadable
-            if (!rules) continue;
-            for (var j = 0; j < rules.length; j++) {
-                var r = rules[j];
-                if (!r || !r.selectorText || !r.style) continue;
-                var faVar = r.style.getPropertyValue('--fa');
-                var content = r.style.content;
-                var isGlyph = (faVar && faVar !== 'none') ||
-                              (/::?before/.test(r.selectorText) && content &&
-                               content !== 'none' && content !== 'normal' && content !== '""');
-                if (!isGlyph) continue;
-                var sels = r.selectorText.split(',');
-                for (var k = 0; k < sels.length; k++) {
-                    var m = sels[k].match(/\.([a-z][a-z0-9]*-[a-z0-9-]+)/i);
-                    if (!m) continue;
-                    var name = m[1];
-                    if (name.indexOf('fa-') === 0) {
-                        if (FA_STYLE.test(name)) continue;
-                        set['fa-solid ' + name] = true;
-                    } else if (name.indexOf('mdi-') === 0) {
-                        set['mdi ' + name] = true;
-                    } else {
-                        set[name] = true;         // other libs: class == prefix-name
-                    }
-                }
-            }
+            if (rules) collectGlyphs(rules, set);
         }
         _cache = Object.keys(set).sort();
         return _cache;
@@ -156,10 +189,15 @@
             var sel  = chunks[i].slice(0, brace);
             var body = chunks[i].slice(brace + 1);
             if (!/content\s*:/i.test(body) && !/--fa\b/i.test(body)) continue;
-            var mm; selRe.lastIndex = 0;
-            while ((mm = selRe.exec(sel)) !== null) {
-                out[prefix + ' ' + mm[1]] = true;   // e.g. "mdi mdi-home"
-            }
+            /* Rightmost token per selector, as in enumerate(): a weight-variant
+               sheet reads `.ph-fill.ph-acorn:before`, where only the last token
+               is the glyph and the first is the variant. */
+            sel.split(',').forEach(function (one) {
+                var mm, name = null;
+                selRe.lastIndex = 0;
+                while ((mm = selRe.exec(one)) !== null) name = mm[1];
+                if (name) out[prefix + ' ' + name] = true;   // e.g. "mdi mdi-home"
+            });
         }
         return Object.keys(out).sort();
     }
@@ -690,10 +728,24 @@
         return groups;
     }
 
+    /* The glyph is always the last whitespace token; the ones before it are
+       style/base classes. "ph ph-acorn" → "ph-acorn". */
+    function glyphTokenOf(cls) {
+        return String(cls || '').trim().split(/\s+/).pop() || '';
+    }
+
+    /* "ph ph-acorn" → "acorn" */
     function labelOf(cls) {
-        return cls.replace(/^fa-solid\s+fa-/, '').replace(/^fa-\w+\s+fa-/, '')
-                  .replace(/^mdi\s+mdi-/, '').replace(/^[a-z0-9]+[\s-]/, '')
-                  .replace(/-/g, ' ').trim();
+        return glyphTokenOf(cls).replace(/^[a-z0-9]+-/i, '').replace(/-/g, ' ').trim();
+    }
+
+    /* An override stored before base classes were emitted is a bare token
+       ("bi-alarm"); still mark its tile ("bi bi-alarm") as the current pick.
+       Only a bare token may match loosely, so "fa-solid fa-house" and
+       "fa-brands fa-house" stay distinct. */
+    function sameIcon(a, b) {
+        if (!a || !b) return false;
+        return a === b || a === glyphTokenOf(b) || b === glyphTokenOf(a);
     }
 
     function formatAge(ts) {
@@ -717,11 +769,18 @@
     }
 
     /* ── Recent (localStorage) ────────────────────────────────────── */
+    /* Guarded on read as well as write: the list is user-editable storage that
+       gets interpolated into a class attribute. */
     function getRecent() {
-        try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]') || []; }
+        try {
+            var list = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]') || [];
+            return list.map(cleanClass).filter(Boolean);
+        }
         catch (e) { return []; }
     }
     function pushRecent(cls) {
+        cls = cleanClass(cls);
+        if (!cls) return;
         try {
             var list = getRecent().filter(function (c) { return c !== cls; });
             list.unshift(cls);
@@ -768,6 +827,7 @@
     /* ── Overlay ──────────────────────────────────────────────────── */
     var _overlay = null;
     var _relaxedDialogs = [];
+    var _escHandler = null;
 
     /* jQuery UI modal dialogs (Domoticz's Utility "edit device" dialogs use
        modal: true) install a document-wide focusin trap. jQuery UI 1.12's
@@ -808,6 +868,10 @@
 
     function close() {
         if (!_overlay) return;
+        if (_escHandler) {
+            document.removeEventListener('keydown', _escHandler, true);
+            _escHandler = null;
+        }
         restoreRelaxedDialogs();
         _overlay.classList.remove('ng-is--open');
         var el = _overlay;
@@ -817,10 +881,18 @@
 
     function openIconStudio(opts) {
         opts = opts || {};
-        if (_overlay) close();
+        if (_overlay) {
+            /* Drop the outgoing overlay now rather than letting it fade: a new
+               dialog is replacing it on screen anyway, and leaving it in the
+               document would duplicate #ng-is-overlay. */
+            var prev = _overlay;
+            close();
+            if (prev.parentNode) prev.remove();
+        }
 
         var libs, all, groups;
-        var chosen    = opts.current || '';
+        /* Sanitised: it is interpolated into the preview's class attribute. */
+        var chosen    = cleanClass(opts.current);
         var scope     = 'all';           // 'all' | 'recent' | libId
         var query     = '';
 
@@ -858,8 +930,8 @@
             '    <button class="ng-is-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>' +
             '  </div>' +
             '  <div class="ng-is-body">' +
-            '    <div class="ng-is-rail" id="ng-is-rail"></div>' +
-            '    <div class="ng-is-main" id="ng-is-main"></div>' +
+            '    <div class="ng-is-rail"></div>' +
+            '    <div class="ng-is-main"></div>' +
             '  </div>' +
             '  <div class="ng-is-foot">' +
             '    <div class="ng-is-manual">' +
@@ -867,6 +939,7 @@
             '      <input class="ng-is-manual-input" type="text" placeholder="Or paste any icon class (e.g. mdi mdi-home, fa-brands fa-github)" autocomplete="off">' +
             '      <button class="ng-is-manual-use" type="button">Use</button>' +
             '    </div>' +
+            '    <div class="ng-is-manual-msg" role="alert"></div>' +
             '  </div>' +
             '</div>';
 
@@ -874,24 +947,29 @@
         _overlay = overlay;
         requestAnimationFrame(function () { overlay.classList.add('ng-is--open'); });
 
-        var railEl   = overlay.querySelector('#ng-is-rail');
-        var mainEl   = overlay.querySelector('#ng-is-main');
+        /* Class, not id: these lived under ids nothing else referenced, and a
+           document-level id lookup can land on a still-fading overlay. */
+        var railEl   = overlay.querySelector('.ng-is-rail');
+        var mainEl   = overlay.querySelector('.ng-is-main');
         var searchEl = overlay.querySelector('.ng-is-search');
         var mInput   = overlay.querySelector('.ng-is-manual-input');
         var mPrev    = overlay.querySelector('.ng-is-manual-preview i');
+        var mMsg     = overlay.querySelector('.ng-is-manual-msg');
 
         function apply(cls) {
-            if (!cls) return;
+            cls = cleanClass(cls);
+            if (!cls) return false;
             pushRecent(cls);
             if (typeof opts.onPick === 'function') opts.onPick(cls);
             close();
+            return true;
         }
 
         /* Icon tile */
         function tile(cls) {
             var b = document.createElement('button');
             b.type = 'button';
-            b.className = 'ng-is-tile' + (cls === chosen ? ' ng-is-tile--active' : '');
+            b.className = 'ng-is-tile' + (sameIcon(cls, chosen) ? ' ng-is-tile--active' : '');
             b.title = labelOf(cls);
             b.innerHTML = '<i class="' + cls + '"></i><span>' + labelOf(cls) + '</span>';
             b.addEventListener('click', function () { apply(cls); });
@@ -911,6 +989,59 @@
                 grid.appendChild(more);
             }
             return grid;
+        }
+
+        /* ── Keyboard navigation over the rendered tiles ──────────────
+           Index into whatever the main pane currently shows; -1 = nothing
+           highlighted. renderMain() resets it because the tiles it points
+           at are replaced wholesale. */
+        var hi = -1;
+        function tiles() { return mainEl.querySelectorAll('.ng-is-tile'); }
+
+        /* Up/Down step by a full row, so they need the live column count.
+           .ng-is-grid in settings-panel.css is `repeat(auto-fill, minmax(…))`,
+           i.e. it varies with the dialog width — read the resolved track list
+           back instead of hardcoding a number that would silently drift. */
+        function columnsOf(tileEl) {
+            var grid = tileEl && tileEl.parentNode;
+            if (!grid) return 1;
+            var tracks = (window.getComputedStyle(grid).gridTemplateColumns || '').trim();
+            var n = tracks ? tracks.split(/\s+/).length : 0;
+            return n > 0 ? n : 1;
+        }
+
+        function setHighlight(i, list) {
+            if (hi >= 0 && list[hi]) list[hi].classList.remove('ng-is-tile--hi');
+            hi = i;
+            var el = list[hi];
+            if (!el) return;
+            el.classList.add('ng-is-tile--hi');
+            if (el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+        }
+
+        function onGridKeydown(e) {
+            /* The manual-class field and the library form own their own
+               Enter/arrow behaviour. */
+            if (e.target && e.target.closest &&
+                e.target.closest('.ng-is-manual, .ng-is-lib-form')) return;
+
+            var list = tiles();
+            if (e.key === 'Enter') {
+                if (hi >= 0 && list[hi]) { e.preventDefault(); list[hi].click(); }
+                return;
+            }
+            var step;
+            if (e.key === 'ArrowLeft')       step = -1;
+            else if (e.key === 'ArrowRight') step = 1;
+            else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') step = 0;
+            else return;
+            /* Left/Right belong to the caret while the user is typing. */
+            if (step !== 0 && e.target === searchEl) return;
+            if (!list.length) return;
+            e.preventDefault();
+            if (hi < 0) { setHighlight(0, list); return; }
+            if (step === 0) step = (e.key === 'ArrowUp' ? -1 : 1) * columnsOf(list[hi]);
+            setHighlight(Math.max(0, Math.min(list.length - 1, hi + step)), list);
         }
 
         /* ── Left rail ── */
@@ -1115,6 +1246,7 @@
         /* ── Main pane ── */
         function renderMain() {
             mainEl.innerHTML = '';
+            hi = -1;               // the tiles it indexed no longer exist
 
             if (scope === 'manage') { renderManage(); return; }
 
@@ -1155,6 +1287,7 @@
 
                 function showCat(cat) {
                     activeCat = cat;
+                    hi = -1;              // swapping the grid drops the tiles
                     chipBar.querySelectorAll('.ng-is-chip').forEach(function (c) {
                         c.classList.toggle('ng-is-chip--active', c.getAttribute('data-cat') === (cat || ''));
                     });
@@ -1233,19 +1366,62 @@
         }
 
         /* ── Wire ── */
-        searchEl.addEventListener('input', function () { query = this.value.trim(); renderMain(); });
+        /* Every keystroke would otherwise re-filter and re-tile a pool of
+           thousands. Only the re-render is deferred, so the field itself stays
+           responsive. */
+        var searchTimer = null;
+        searchEl.addEventListener('input', function () {
+            var value = this.value.trim();
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(function () {
+                if (!_overlay) return;            // closed while waiting
+                query = value;
+                renderMain();
+            }, SEARCH_DELAY);
+        });
+
+        function manualFeedback(msg) {
+            mMsg.textContent = msg || '';
+            mInput.classList.toggle('ng-is-invalid', !!msg);
+        }
+        function useManual() {
+            var raw = mInput.value.trim();
+            if (!raw) { manualFeedback('Enter an icon class first, e.g. mdi mdi-home.'); return; }
+            var cls = cleanClass(raw);
+            if (!cls) {
+                manualFeedback('An icon class can only contain letters, numbers, spaces, - and _.');
+                return;
+            }
+            manualFeedback('');
+            apply(cls);
+        }
         mInput.addEventListener('input', function () {
-            mPrev.className = this.value.trim() || 'fa-solid fa-question';
+            var raw = this.value.trim();
+            var cls = cleanClass(raw);
+            mPrev.className = cls || 'fa-solid fa-question';
+            manualFeedback(raw && !cls
+                ? 'An icon class can only contain letters, numbers, spaces, - and _.' : '');
         });
         mInput.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') { e.preventDefault(); if (this.value.trim()) apply(this.value.trim()); }
+            if (e.key === 'Enter') { e.preventDefault(); useManual(); }
         });
-        overlay.querySelector('.ng-is-manual-use').addEventListener('click', function () {
-            if (mInput.value.trim()) apply(mInput.value.trim());
-        });
+        overlay.querySelector('.ng-is-manual-use').addEventListener('click', useManual);
         overlay.querySelector('.ng-is-close').addEventListener('click', close);
         overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
-        overlay.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+        overlay.addEventListener('keydown', onGridKeydown);
+
+        /* Escape goes on the document in the CAPTURE phase: bound to the
+           overlay it was missed as soon as focus left the dialog, and an open
+           jQuery UI modal underneath would see the key first and close itself
+           instead of us. Cancel only the picker, and drop the listener on
+           close() so it never outlives this instance. */
+        _escHandler = function (e) {
+            if (e.key !== 'Escape') return;
+            e.preventDefault();
+            e.stopPropagation();
+            close();
+        };
+        document.addEventListener('keydown', _escHandler, true);
 
         renderRail();
         renderMain();

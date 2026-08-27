@@ -2768,9 +2768,12 @@
            Shows the current icon + a Change button; calls onSelect(cls) on
            pick. The heavy lifting (all-FA enumeration, custom libraries,
            search, categories, Recent, manual class) lives in the Studio. */
+        /* The glyph is the last whitespace token ("ph ph-acorn" → "acorn");
+           anything before it is a style or base class. Mirrors labelOf() in
+           icon-studio.js, which produces the classes shown here. */
         function pickerLabel(cls) {
-            return (cls || '').replace(/^fa-\w+\s+fa-/, '').replace(/^mdi\s+mdi-/, '')
-                              .replace(/^[a-z0-9]+[\s-]/, '').replace(/-/g, ' ').trim() || 'No icon';
+            var token = String(cls || '').trim().split(/\s+/).pop() || '';
+            return token.replace(/^[a-z0-9]+-/i, '').replace(/-/g, ' ').trim() || 'No icon';
         }
 
         function buildIconPicker(initialCls, onSelect) {

@@ -2372,6 +2372,15 @@ body.dz-light .ng-toast {
     background: rgba(var(--dz-accent-rgb), 0.14);
     box-shadow: inset 0 0 0 1px var(--dz-accent);
 }
+/* Keyboard cursor. Deliberately louder than :hover so it stays findable
+   while arrow-keying, and distinct from --active (the current selection). */
+.ng-is-tile--hi {
+    border-color: var(--dz-accent);
+    background: var(--dz-surface-3);
+    outline: 2px solid var(--dz-accent);
+    outline-offset: 1px;
+}
+    .ng-is-tile--hi i { color: var(--dz-accent); }
 
 .ng-is-note {
     grid-column: 1 / -1;
@@ -2493,6 +2502,16 @@ body.dz-light .ng-toast {
     cursor: pointer;
 }
     .ng-is-manual-use:hover { background: var(--dz-accent-light, var(--dz-accent)); }
+    .ng-is-manual-input.ng-is-invalid { border-color: var(--dz-danger) !important; }
+/* Rejected-input message. Collapses out of the layout when empty so the
+   footer keeps its height until there is something to say. */
+.ng-is-manual-msg {
+    margin-top: 6px;
+    padding-left: 48px;            /* clears the 38px preview swatch + gap */
+    font-size: 0.76rem;
+    color: var(--dz-danger);
+}
+    .ng-is-manual-msg:empty { display: none; }
 
 /* Library manager */
 .ng-is-lib-list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 14px; }
