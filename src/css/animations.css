@@ -99,25 +99,9 @@ body table[id^="itemtable"] tr td:first-child + td + td:hover img {
     transform: scale(1.12);
 }
 
-/* Fan spinning (keep from extras) */
-@keyframes rotation {
-    from {
-        transform: rotate(0deg);
-    }
-
-    to {
-        transform: rotate(359deg);
-    }
-}
-
-body.dashboard div.item.Fan.onn .img1 img {
-    animation: rotation 15s infinite linear;
-    border-radius: 50% !important;
-}
-
-    body.dashboard div.item.Fan.onn .img1 img:hover {
-        animation: rotation 0.5s infinite linear;
-    }
+/* The PNG fan used to spin here purely because Domoticz had labelled the
+   card .item.Fan.  Animation is a per-device choice now (section 25), so a
+   device no longer animates on the strength of what type it is. */
 
 /* Dragging */
 .ui-draggable-dragging tr {
@@ -622,71 +606,151 @@ body.dashboard div.item.Fan.onn .img1 img {
 
 
 /* ══════════════════════════════════════════════════════════════════
-   25. ANIMATED DEVICE ICONS
+   25. DEVICE ICON ANIMATIONS
+   ══════════════════════════════════════════════════════════════════
+   Which icon animates is a per-device choice, made in the Icon Studio
+   and stored in the theme's own deviceIconOverrides blob.  icons.js
+   turns that choice into exactly one .dz-anim-<id> class on the icon.
+   Nothing animates on the strength of which glyph it is: an icon holds
+   still until somebody picks an animation for it.
+
+   Every keyframe list here animates transform and opacity only, with
+   one documented exception (glow).  A dashboard can have dozens of
+   icons animating at once, and those are the properties a browser can
+   run on the compositor without laying out or painting again.
+
+   The classes carry no element or state requirement, so the very same
+   class drives the live preview tiles in the picker.  A real device
+   icon is the one place that needs a gate, at the bottom of this
+   section: off means off.
    ══════════════════════════════════════════════════════════════════ */
 
-@keyframes dz-spin {
-    from {
-        transform: rotate(0deg);
-    }
-
-    to {
-        transform: rotate(360deg);
-    }
+/* Spin — fans, motors, pumps, vacuum robots. */
+@keyframes dz-anim-spin {
+    to { transform: rotate(360deg); }
 }
 
-@keyframes dz-flicker {
-    0%,100% {
-        opacity: 1;
-        transform: scaleY(1) scaleX(1);
-    }
-
-    25% {
-        opacity: 0.85;
-        transform: scaleY(1.05) scaleX(0.96);
-    }
-
-    50% {
-        opacity: 0.9;
-        transform: scaleY(0.96) scaleX(1.03);
-    }
-
-    75% {
-        opacity: 0.95;
-        transform: scaleY(1.03) scaleX(0.97);
-    }
+.dz-anim-spin {
+    animation: dz-anim-spin 3s linear infinite;
 }
 
-@keyframes dz-pulse-icon {
-    0%,100% {
-        transform: scale(1);
-    }
-
-    50% {
-        transform: scale(1.14);
-    }
+/* Breathe — presence, motion, occupancy, heart rate. */
+@keyframes dz-anim-breathe {
+    0%, 100% { transform: scale(1);    opacity: 0.82; }
+    50%      { transform: scale(1.10); opacity: 1; }
 }
 
-/* Spinning fan */
-i.dz-fa-device.fa-fan[data-dz-state="on"] {
-    animation: dz-spin 1.6s linear infinite;
-}
-/* Flickering flame */
-i.dz-fa-device[data-dz-state="on"].fa-fire,
-i.dz-fa-device[data-dz-state="on"].fa-fire-flame-curved,
-i.dz-fa-device[data-dz-state="on"].fa-fire-burner {
-    animation: dz-flicker 1.2s ease-in-out infinite;
-}
-/* Pulsing presence / alarm */
-i.dz-fa-device[data-dz-state="on"].fa-person-walking,
-i.dz-fa-device[data-dz-state="on"].fa-person,
-i.dz-fa-device[data-dz-state="on"].fa-heart {
-    animation: dz-pulse-icon 1.1s ease-in-out infinite;
+.dz-anim-breathe {
+    animation: dz-anim-breathe 2.8s ease-in-out infinite;
 }
 
-i.dz-fa-device[data-dz-state="on"].fa-bell,
-i.dz-fa-device[data-dz-state="on"].fa-triangle-exclamation {
-    animation: dz-pulse-icon 0.5s ease-in-out infinite;
+/* Flicker — flame, candle, fireplace, burner.  Deliberately uneven
+   keyframes: an evenly spaced flicker reads as a fault light. */
+@keyframes dz-anim-flicker {
+    0%, 100% { opacity: 1;    transform: scale(1, 1); }
+    12%      { opacity: 0.82; transform: scale(0.97, 1.04); }
+    26%      { opacity: 1;    transform: scale(1.02, 0.98); }
+    41%      { opacity: 0.88; transform: scale(0.99, 1.02); }
+    58%      { opacity: 1;    transform: scale(1.01, 1); }
+    72%      { opacity: 0.84; transform: scale(0.98, 1.03); }
+    88%      { opacity: 0.97; transform: scale(1.01, 0.99); }
+}
+
+.dz-anim-flicker {
+    animation: dz-anim-flicker 2.4s ease-in-out infinite;
+}
+
+/* Ring — bells, sirens, alarms.  Most of the cycle is a rest so it
+   reads as a bell that rings now and then, not a permanent tremble. */
+@keyframes dz-anim-ring {
+    0%, 62%, 100% { transform: rotate(0); }
+    66%           { transform: rotate(13deg); }
+    70%           { transform: rotate(-11deg); }
+    74%           { transform: rotate(8deg); }
+    78%           { transform: rotate(-6deg); }
+    82%           { transform: rotate(3deg); }
+    86%           { transform: rotate(0); }
+}
+
+.dz-anim-ring {
+    /* A bell hangs from its crown, so the pivot belongs at the top. */
+    transform-origin: top center;
+    animation: dz-anim-ring 2.6s ease-in-out infinite;
+}
+
+/* Bounce — doorbells, notifications, incoming calls. */
+@keyframes dz-anim-bounce {
+    0%, 55%, 100% { transform: translateY(0); }
+    64%           { transform: translateY(-22%); }
+    72%           { transform: translateY(0); }
+    80%           { transform: translateY(-10%); }
+    88%           { transform: translateY(0); }
+}
+
+.dz-anim-bounce {
+    animation: dz-anim-bounce 2.2s ease-in-out infinite;
+}
+
+/* Glow — lights, lamps, LED strips.  The exception to transform/opacity:
+   a lit bulb wants to look brighter, not bigger or more transparent.
+   filter: brightness() is the cheap way to say that — it composites like
+   opacity does, whereas the box-shadow this would otherwise need repaints
+   a halo around every icon on every frame. */
+@keyframes dz-anim-glow {
+    0%, 100% { filter: brightness(1);    transform: scale(1); }
+    50%      { filter: brightness(1.5);  transform: scale(1.04); }
+}
+
+.dz-anim-glow {
+    animation: dz-anim-glow 3.2s ease-in-out infinite;
+}
+
+/* Blink — recording, faults, anything reporting a problem.  Crisper than
+   breathe: it holds at each end rather than easing through. */
+@keyframes dz-anim-blink {
+    0%, 45%  { opacity: 1; }
+    55%, 95% { opacity: 0.18; }
+    100%     { opacity: 1; }
+}
+
+.dz-anim-blink {
+    animation: dz-anim-blink 1.8s ease-in-out infinite;
+}
+
+/* Swing — doors, gates, blinds, curtains. */
+@keyframes dz-anim-swing {
+    0%, 100% { transform: rotate(-7deg); }
+    50%      { transform: rotate(7deg); }
+}
+
+.dz-anim-swing {
+    /* Hinged at the top so it swings like a hanging door rather than
+       pivoting around its own middle. */
+    transform-origin: top center;
+    animation: dz-anim-swing 3.6s ease-in-out infinite;
+}
+
+/* Drift — wind, water flow, ventilation, air quality.
+   Animates the individual `translate` property rather than `transform`:
+   icons.js writes the wind direction as an inline transform: rotate(),
+   and the two compose, so a wind glyph can drift and still point the way
+   the wind is blowing.  A transform-based drift would replace it. */
+@keyframes dz-anim-drift {
+    0%, 100% { translate: -8% 0; opacity: 0.8; }
+    50%      { translate: 8% 0;  opacity: 1; }
+}
+
+.dz-anim-drift {
+    animation: dz-anim-drift 4.5s ease-in-out infinite;
+}
+
+/* The gate.  An animation is only meaningful while the device is on, and
+   the classes above are otherwise unconditional so the picker previews
+   can use them.  A read-only sensor (temperature, wind, air quality…)
+   publishes no state at all and is deliberately NOT gated: there is no
+   "on" for it to wait for, and its animation was still asked for. */
+i.dz-fa-device[data-dz-state="off"] {
+    animation: none;
 }
 
 
@@ -1432,6 +1496,18 @@ div.item.itemBlock:hover .dz-sparkline-wrap,
 /* ══════════════════════════════════════════════════════════════════
    ACCESSIBILITY — prefers-reduced-motion
    ══════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+    /* Device icon animations (section 25) are decorative without
+       exception — the device's state is already carried by the icon's
+       colour and by the card's own text, so dropping the motion loses
+       nothing.  Matched by class prefix rather than by listing the
+       catalogue, so a tenth animation cannot forget to opt in.  Covers
+       the picker's preview tiles too, which use the same classes. */
+    [class*="dz-anim-"] {
+        animation: none !important;
+    }
+}
 
 /* ══════════════════════════════════════════════════════════════════
    LIGHT MODE — About page & Login page overrides

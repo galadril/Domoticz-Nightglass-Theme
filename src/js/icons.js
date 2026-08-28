@@ -730,17 +730,86 @@
     /* ── Per-device icon overrides ─────────────────────────────────
        Keyed by device IDX string.
        Schema: { iconOn, iconOff?, iconOpen?, iconClose?, iconStop?,
-                 on, off, keepColor?, name }
+                 on, off, keepColor?, anim?, name }
        Legacy field 'icon' is treated as iconOn for backward compat.
        Populated by the settings module via window._dzSetDeviceIconOverrides. */
     var DEVICE_ICON_OVERRIDES = {};
+
+    /* ── Icon animations ───────────────────────────────────────────
+       The animations themselves are section 25 of animations.css; all this
+       side owns is which one an icon carries.  Named for the job rather
+       than for the motion, because the choice is made per device.
+
+       Why this lives in the theme's override blob and not on the device:
+       Domoticz's own Icon column is server-validated to {"t","on","off"}
+       and capped at 512 chars (NormaliseDeviceIcon()), so an extra key
+       would come straight back as "Invalid icon".  Icon identity is the
+       device's; colour and motion are presentation and stay ours. */
+    var ICON_ANIMATIONS = [
+        { id: 'spin',    label: 'Spin',    hint: 'Fans, motors, pumps' },
+        { id: 'breathe', label: 'Breathe', hint: 'Motion, presence, heart rate' },
+        { id: 'flicker', label: 'Flicker', hint: 'Flame, candle, fireplace' },
+        { id: 'ring',    label: 'Ring',    hint: 'Bells, sirens, alarms' },
+        { id: 'bounce',  label: 'Bounce',  hint: 'Doorbells, notifications' },
+        { id: 'glow',    label: 'Glow',    hint: 'Lights, lamps, strips' },
+        { id: 'blink',   label: 'Blink',   hint: 'Recording, faults' },
+        { id: 'swing',   label: 'Swing',   hint: 'Doors, gates, blinds' },
+        { id: 'drift',   label: 'Drift',   hint: 'Wind, water, air quality' }
+    ];
+    var ANIM_PREFIX = 'dz-anim-';
+    var ANIM_KNOWN = {};
+    ICON_ANIMATIONS.forEach(function (a) { ANIM_KNOWN[a.id] = true; });
+
+    /* The catalogue is read by the Icon Studio (tiles + previews), the
+       settings panel and the device icon field, so it is published once
+       here rather than transcribed into each of them. */
+    window.dzIconAnimations = ICON_ANIMATIONS;
+
+    /* Whitelisted, never interpolated: the value comes out of
+       user-editable settings storage and ends up in a class attribute. */
+    window.dzIconAnimClass = function (id) {
+        return ANIM_KNOWN[id] ? ANIM_PREFIX + id : '';
+    };
+
+    function animClassFor(devIdx) {
+        var ov = devIdx ? DEVICE_ICON_OVERRIDES[devIdx] : null;
+        return (ov && ANIM_KNOWN[ov.anim]) ? ANIM_PREFIX + ov.anim : '';
+    }
+
+    /* Apply the device's chosen animation class to an icon element.
+       Writes only on a change: decorateNativeGlyph() runs on every burst
+       pass, and re-adding the class would restart the keyframes from frame
+       zero each time — visible as a stutter every few hundred ms. */
+    function applyIconAnim(el, devIdx) {
+        var want = animClassFor(devIdx);
+        var cur  = '';
+        for (var i = 0; i < el.classList.length; i++) {
+            if (el.classList[i].indexOf(ANIM_PREFIX) === 0) { cur = el.classList[i]; break; }
+        }
+        if (cur === want) return;
+        if (cur)  el.classList.remove(cur);
+        if (want) el.classList.add(want);
+    }
+
+    /* Bumped whenever the map above changes.  Read by the native-glyph
+       colour cache further down, which keys off the device rather than off
+       an image src and so has nothing else to invalidate on. */
+    var _nativeColorGen = 0;
 
     /* Returns an overridden resolved spec for a given device IDX + src,
        or null when no override is configured for that device.             */
     function applyDeviceOverride(devIdx, src, fallbackResolved) {
         if (!devIdx || !DEVICE_ICON_OVERRIDES[devIdx]) return null;
         var ov = DEVICE_ICON_OVERRIDES[devIdx];
-        if (!ov.iconOn && !ov.iconOpen && !ov.icon) return null;
+        /* An entry with colours but no shape is the normal case on a Domoticz
+           that owns the icon itself: the theme stores only colour and motion
+           there. It still has to tint the icon the resolver picked, so it can
+           no longer be dismissed as an empty entry. keepColor means "keep the
+           resolver's dynamic colour", which with no shape to change is
+           genuinely nothing to do. */
+        var hasShape = !!(ov.iconOn || ov.iconOpen || ov.icon || ov.iconStop);
+        var hasColor = !!(ov.on || ov.off) && !ov.keepColor;
+        if (!hasShape && !hasColor) return null;
 
         var parsedSrc = parseDeviceSrc(src);
         var base      = parsedSrc ? parsedSrc.base : null;
@@ -777,7 +846,19 @@
                 ? (ov.iconOn  || ov.icon)
                 : (ov.iconOff || ov.iconOn || ov.icon);
         }
-        if (!iconCls) return null;
+        if (!iconCls) {
+            /* Colour only: keep the shape the resolver picked (and its type —
+               blindsstop is an 'icon', not a device state) and just re-tint. */
+            if (!hasColor || !fallbackResolved) return null;
+            return {
+                type:     fallbackResolved.type || 'device',
+                cls:      fallbackResolved.cls,
+                color:    isOn ? (ov.on || fallbackResolved.colorOn)
+                               : (ov.off || fallbackResolved.colorOff),
+                colorOn:  ov.on  || fallbackResolved.colorOn,
+                colorOff: ov.off || fallbackResolved.colorOff
+            };
+        }
 
         var fbOn  = (fallbackResolved && fallbackResolved.colorOn)  || '#4e9af1';
         var fbOff = (fallbackResolved && fallbackResolved.colorOff) || '#555770';
@@ -809,6 +890,12 @@
        Schedules a replacement burst so already-rendered icons update. */
     window._dzSetDeviceIconOverrides = function (overrides) {
         DEVICE_ICON_OVERRIDES = overrides || {};
+        /* Invalidate the native-glyph resolution cache: an override added,
+           changed or removed at runtime must re-resolve on the next pass
+           even though the glyph's own identity did not change.  Covers a
+           changed animation as well as a changed colour — the entry holds
+           the device idx both are read from. */
+        _nativeColorGen++;
         /* Re-apply to already-rendered device icons right away so overrides
            added, changed, or removed at runtime take effect immediately —
            without waiting for a device state change or a page refresh.  A plain
@@ -950,6 +1037,12 @@
             if (resolved.color) icon.style.color = resolved.color;
             var rot = WIND_ROTATION[resolved.dir];
             if (rot !== null) icon.style.transform = 'rotate(' + rot + 'deg)';
+            /* Wind icons never went through the override block above, so they
+               carry no IDX tag yet — and Drift is the animation they are most
+               likely to be given.  Pure DOM, no scope walk. */
+            var windIdx = deviceIdxFromDom(img);
+            if (windIdx) img.setAttribute('data-dz-dev-idx', windIdx);
+            applyIconAnim(icon, windIdx);
         } else if (resolved.type === 'device') {
             icon.className = resolved.cls;
             if (resolved.color) icon.style.color = resolved.color;
@@ -957,6 +1050,11 @@
             if (resolved.colorOn)  icon.setAttribute('data-dz-color-on',  resolved.colorOn);
             if (resolved.colorOff) icon.setAttribute('data-dz-color-off', resolved.colorOff);
             icon.setAttribute('data-dz-state', resolved.color === resolved.colorOn ? 'on' : 'off');
+            /* Chosen animation.  Read from the attribute rather than the local:
+               an icon whose src carries no override still gets tagged above,
+               and a device with an animation but no icon override never enters
+               that branch at all. */
+            applyIconAnim(icon, img.getAttribute('data-dz-dev-idx') || '');
             /* Optimistic toggle: immediately swap color on click so the user
                sees instant visual feedback before Angular/API round-trip.
                Only fires for devices whose click actually sends a binary
@@ -1013,7 +1111,21 @@
         img.classList.add('dz-icon-replaced');
         iconMap.set(img, icon);
         img.parentNode.insertBefore(icon, img);
+        hideNativeNavGlyph(img);
         return true;
+    }
+
+    /* Domoticz's own "Icon style" setting puts a glyph of its own after each navbar
+       image and shows it instead of the image when the style is set to glyphs. The
+       theme already replaced that image, so both would render and the navbar would
+       show every icon twice. The theme owns the navbar look here, so its glyph is
+       hidden rather than removed — Angular re-renders these menus, and a removed
+       node would just come back. */
+    function hideNativeNavGlyph(img) {
+        var next = img.nextElementSibling;
+        if (next && next.tagName === 'I' && next.classList.contains('dz-nav-glyph')) {
+            next.classList.add('dz-nav-glyph-hidden');
+        }
     }
 
     /* -- Process unprocessed images (used by Pass 1 & recovery) -- */
@@ -1056,6 +1168,9 @@
                 icon.setAttribute('data-dz-color-on',  ovSpec.colorOn);
                 icon.setAttribute('data-dz-color-off', ovSpec.colorOff);
                 icon.setAttribute('data-dz-state', ovSpec.color === ovSpec.colorOn ? 'on' : 'off');
+                /* className was just rewritten, which dropped the animation
+                   class with it — put it back. */
+                applyIconAnim(icon, devIdx);
                 img.setAttribute('data-dz-src', curSrc);
                 return;
             }
@@ -1081,6 +1196,7 @@
             var rot = WIND_ROTATION[resolved.dir];
             icon.style.transform = (rot !== undefined && rot !== null)
                 ? 'rotate(' + rot + 'deg)' : '';
+            applyIconAnim(icon, img.getAttribute('data-dz-dev-idx') || '');
         } else if (resolved.type === 'device') {
             icon.className = resolved.cls;
             icon.style.color = resolved.color || '';
@@ -1089,6 +1205,7 @@
             if (resolved.colorOn)  icon.setAttribute('data-dz-color-on',  resolved.colorOn);
             if (resolved.colorOff) icon.setAttribute('data-dz-color-off', resolved.colorOff);
             icon.setAttribute('data-dz-state', resolved.color === resolved.colorOn ? 'on' : 'off');
+            applyIconAnim(icon, devIdx || '');
         } else {
             icon.className = resolved.cls + ' ' + getSizeClass(img, curSrc);
             icon.style.color = resolved.color || '';
@@ -1182,6 +1299,7 @@
                 prevIcon.style.color = newResolved.color || '';
                 var rot = WIND_ROTATION[newResolved.dir];
                 prevIcon.style.transform = rot !== null ? 'rotate(' + rot + 'deg)' : '';
+                applyIconAnim(prevIcon, rImg.getAttribute('data-dz-dev-idx') || '');
             } else if (newResolved.type === 'device') {
                 /* Prefer per-device override if one is configured */
                 var p2DevIdx = rImg.getAttribute('data-dz-dev-idx');
@@ -1192,6 +1310,7 @@
                 if (p2Final.colorOn)  prevIcon.setAttribute('data-dz-color-on',  p2Final.colorOn);
                 if (p2Final.colorOff) prevIcon.setAttribute('data-dz-color-off', p2Final.colorOff);
                 prevIcon.setAttribute('data-dz-state', p2Final.color === p2Final.colorOn ? 'on' : 'off');
+                applyIconAnim(prevIcon, p2DevIdx || '');
             }
 
             rImg.setAttribute('data-dz-src', curSrc);
@@ -1607,6 +1726,356 @@
         return null;
     };
 
+    /* ── Native Font Awesome rendering adapter ─────────────────────
+       Newer Domoticz resolves device icons itself and renders them as
+       glyphs through its own <dz-device-icon> component:
+
+         <dz-device-icon class="dz-icon-48">
+             <i class="dz-icon-glyph fa-solid fa-fan dz-icon--on"></i>
+         </dz-device-icon>
+
+       There is no <img> left to replace, so replaceImage() never runs and
+       the two hooks it used to apply — the dz-fa-device class and the
+       data-dz-state attribute — are never applied.  Everything keyed on
+       them is silently orphaned: the icon-animation gate in
+       animations.css, the sizing/hover/fa-stop rules in layout.css, the
+       wind rotation, and the state-change flash observer in
+       card-features.js.
+
+       Rather than duplicate Domoticz's icon resolution we decorate its
+       own glyph with those two hooks, which makes every existing selector
+       match again without touching a single line of CSS.
+
+       Stable Domoticz emits no <dz-device-icon> at all, so this block
+       short-circuits on its first querySelector and behaviour there is
+       unchanged.                                                        */
+
+    /* Only widget icons put dz-icon-48 / dz-icon-40 on the host element.
+       Chrome — row action buttons, table type indicators, favourite stars —
+       uses .dz-chrome-icon or .dz-icon-glyph.dz-icon-16, and the scene
+       on/off buttons carry .dz-icon-glyph on the <td> itself.  Matching
+       only an <i> inside a 48/40 host keeps table buttons and stars out of
+       the animation and sizing rules. */
+    var NATIVE_GLYPH_SEL = '.dz-icon-48 > i.dz-icon-glyph, .dz-icon-40 > i.dz-icon-glyph';
+
+    /* True once native glyph rendering has been observed.  Re-evaluated on
+       every burst pass rather than latched at load: the SPA only mounts
+       <dz-device-icon> on pages that show device widgets, and a cold start
+       may land on Setup or the Dynamic Dashboard first. */
+    var _nativeSeen = false;
+
+    /* The "Device Icons" setting means "let Nightglass restyle device
+       icons".  With it off, search.js injects
+         i.dz-fa-device, i.dz-wind { display: none !important }
+       and un-hides the original PNGs.  Under native rendering there is no
+       PNG to fall back to, so an undecorated glyph *is* the off state —
+       hence we must not add dz-fa-device at all while the setting is off,
+       or the card would go blank.  A live toggle takes effect on the next
+       burst (route change, device update, or tab refocus). */
+    function nativeDecorEnabled() {
+        try {
+            var s = window.dzNightglassSettings;
+            if (s && typeof s.get === 'function') {
+                var v = s.get('deviceIcons');
+                if (v !== undefined && v !== null) return !!v;
+            }
+        } catch (e) { /* settings module not loaded yet */ }
+        return true; /* shipped default */
+    }
+
+    /* Read the state that dzDeviceIcon published.  It only emits
+       dz-icon--on / dz-icon--off when its isActive binding resolves to a
+       boolean; a read-only sensor (temperature, wind, UV, rain, counter…)
+       reports neither, because it has no on/off state.
+
+       When there is no state class we leave data-dz-state ABSENT rather
+       than guessing.  Absent is the useful value: the animation gate stops
+       an icon that reports "off", and a sensor that reports nothing keeps
+       whatever animation the user picked for it — which is the only reason
+       it would have one.  A fabricated "off" would instead cancel that
+       animation outright and trip the state-change flash in
+       card-features.js the first time the device reports a real state. */
+    function nativeGlyphState(glyph) {
+        if (glyph.classList.contains('dz-icon--on'))  return 'on';
+        if (glyph.classList.contains('dz-icon--off')) return 'off';
+        return null;
+    }
+
+    /* ── Colour layer ──────────────────────────────────────────────
+       Native paints every device glyph the same blue (#43A4D3) with a
+       grey off-state; it has no per-device-type colour.  DEVICE_MAP stays
+       the colour source, but there is no PNG filename left to key it
+       with, so key it off the device record instead — mirroring the
+       precedence dzIconService.resolve() uses to pick the glyph itself:
+       a built-in CustomImage wins over TypeImg.  Keying off the same
+       fields as the glyph means the colour always agrees with the shape
+       that is actually on screen.
+
+       device.Icon — the per-device pick in Domoticz's own icon picker —
+       carries no type information, so those devices fall through to
+       CustomImage / TypeImg for their colour: the user chose the shape,
+       Nightglass still supplies the type colour.
+
+       DEVICE_MAP's icon field is unused here; native owns icon identity. */
+
+    /* TypeImg values that differ from the DEVICE_MAP key.  Mirrors
+       dzIconService's TYPE_ALIASES, so a device whose glyph Domoticz
+       resolved through an alias gets the colour of that same entry. */
+    var TYPEIMG_ALIASES = {
+        'hardware':      'gauge',
+        'hum':           'humidity',
+        'temphum':       'temp',
+        'temphumbaroew': 'temp',
+        'zwavemelding':  'alarm',
+        'elec':          'electricityusage',
+        'lightbulb':     'light',
+        'temperature':   'temp',
+        'temp + rain':   'temp',
+        'setpoint':      'temp',
+        'bbq':           'temp',
+        'evohome':       'heating',
+        'weather':       'sun',
+        'general':       'gauge',
+        'utility':       'gauge',
+        'siren':         'alarm',
+        'pushoff':       'push',
+        'override_mini': 'adjust'
+    };
+
+    function deviceMapSpecFor(device) {
+        if (!device) return null;
+        /* CustomImage 1..99 is Domoticz's built-in icon library and
+           device.Image carries its name ('Fan', 'Alarm', 'WallSocket'),
+           which is exactly the DEVICE_MAP key.  100+ are user-uploaded
+           icon sets and carry no device-type meaning. */
+        var ci = parseInt(device.CustomImage, 10);
+        if (ci > 0 && ci < 100 && device.Image) {
+            var imgKey = String(device.Image).toLowerCase();
+            if (DEVICE_MAP[imgKey]) return DEVICE_MAP[imgKey];
+        }
+        var ti = String(device.TypeImg || '').toLowerCase();
+        if (!ti) return null;
+        return DEVICE_MAP[ti] || DEVICE_MAP[TYPEIMG_ALIASES[ti]] || null;
+    }
+
+    /* Resolve the on/off colour pair for a native glyph.  Either side may
+       come back empty, which means "do not colour" — DEVICE_MAP stores
+       null for entries that must keep the stock colour ('onoff',
+       'remote', 'security', and the off-state of read-only sensors), and
+       under native the stock colour is Domoticz's own, which is already
+       right for those. */
+    function resolveNativeSpec(glyph, devIdx) {
+        var device = getDeviceFromIcon(glyph);
+        var spec   = deviceMapSpecFor(device);
+        var on     = spec ? spec.on  : null;
+        var off    = spec ? spec.off : null;
+
+        /* A per-device colour the user set in Nightglass must win over
+           DEVICE_MAP.  keepColor means "override the shape only, keep the
+           resolver's dynamic colour"; native owns the shape, so it
+           degrades to "leave the colour alone". */
+        var idx = devIdx || (device && String(device.idx || device.IDX || '')) || '';
+        var ov  = idx ? DEVICE_ICON_OVERRIDES[idx] : null;
+        if (ov && !ov.keepColor) {
+            if (ov.on)  on  = ov.on;
+            if (ov.off) off = ov.off;
+        }
+
+        return {
+            on:   on,
+            off:  off,
+            /* Same test dzUtilityWidget.isValueDrivenIcon() uses to decide
+               a reading is encoded in the icon rather than a device state. */
+            wind: !!(device && device.Direction !== undefined &&
+                     device.Direction !== null && device.Direction !== '')
+        };
+    }
+
+    /* Resolving the device costs an Angular scope walk, and a burst runs
+       several passes, so cache the result per element and recompute only
+       when the glyph's identity changes (different device in the slot, or
+       Domoticz re-resolved the icon).  WeakMap so entries go away with
+       the element. */
+    var nativeColorCache = new WeakMap();
+
+    /* Identity signature: the device idx plus the icon classes, ignoring
+       the volatile ones (native's state classes and our own hooks — the
+       animation class among them, or adding it would invalidate the entry
+       we just wrote it from). */
+    function nativeColorSig(glyph, devIdx) {
+        var sig = _nativeColorGen + '|' + devIdx + '|';
+        var cl  = glyph.classList;
+        for (var i = 0; i < cl.length; i++) {
+            var c = cl[i];
+            if (c === 'dz-icon-glyph' || c === 'dz-fa-device' ||
+                c === 'dz-wind' || c.indexOf('dz-icon--') === 0 ||
+                c.indexOf(ANIM_PREFIX) === 0) continue;
+            sig += c + ' ';
+        }
+        return sig;
+    }
+
+    function nativeEntryFor(glyph) {
+        /* deviceIdxFromDom is pure DOM (card id / td#name[data-idx]), so
+           it is cheap enough to run on every pass as the cache key. */
+        var devIdx = deviceIdxFromDom(glyph);
+        var entry  = nativeColorCache.get(glyph);
+        var sig    = nativeColorSig(glyph, devIdx);
+
+        if (!entry || entry.sig !== sig) {
+            var spec = resolveNativeSpec(glyph, devIdx);
+            entry = { sig: sig, idx: devIdx, on: spec.on, off: spec.off,
+                      wind: spec.wind, applied: null };
+            nativeColorCache.set(glyph, entry);
+        }
+        return entry;
+    }
+
+    function applyNativeColor(glyph, entry, state) {
+        /* A state-less glyph (read-only sensor) takes the on colour: that
+           is what the PNG era did for the same devices, whose filenames
+           carried no _On/_Off suffix either. */
+        var want = (state === 'off') ? entry.off : entry.on;
+
+        /* Write only when our own target changed.  card-features.js also
+           writes inline colour on these elements (temperature accent, bar
+           ranges) and runs later in the same burst pass — re-asserting our
+           colour every pass would fight it for no reason. */
+        if (want) {
+            if (entry.applied !== want) {
+                glyph.style.color = want;
+                entry.applied = want;
+            }
+        } else if (entry.applied) {
+            glyph.style.color = '';
+            entry.applied = null;
+        }
+    }
+
+    /* ── Wind direction ────────────────────────────────────────────
+       The rotation used to come from the compass letters in the PNG
+       filename (images/WindNNE.png → WIND_ROTATION).  Native resolves the
+       icon from the device, so there is no filename; take the direction
+       from the device record instead.  weather_widget.html binds
+       item.Direction — the true direction in degrees — alongside
+       item.DirectionStr, the (possibly localised) compass abbreviation.
+       Degrees are exact and need no compass table, so prefer them and
+       keep WIND_ROTATION/WIND_ALIASES as the fallback for feeds that only
+       publish the abbreviation.
+
+       Native draws fa-wind here, not the fa-arrow-up the PNG era
+       substituted, and Nightglass must not override Domoticz's icon
+       choice — so the rotation orients a windsock instead of pointing an
+       arrow.  Utility-page wind widgets are unaffected: they render with
+       use-glyph="false", i.e. still as a WindNNE.png <img>, which the
+       existing replacement path handles unchanged. */
+    function nativeWindRotation(device) {
+        if (!device) return null;
+        var deg = parseFloat(device.Direction);
+        if (!isNaN(deg)) return ((deg % 360) + 360) % 360;
+        var str = String(device.DirectionStr || '').toUpperCase();
+        if (!str) return null;
+        var rot = WIND_ROTATION[WIND_ALIASES[str] || str];
+        return (rot === undefined) ? null : rot;
+    }
+
+    function applyNativeWind(glyph) {
+        /* The reading changes without the glyph's identity changing, so
+           this cannot be cached with the colour — re-read the device.
+           Only wind devices get here, so it stays a handful of walks. */
+        var rot = nativeWindRotation(getDeviceFromIcon(glyph));
+        /* Direction unreachable: degrade cleanly — no rotation, no log. */
+        if (rot === null) return;
+
+        if (!glyph.classList.contains('dz-wind')) glyph.classList.add('dz-wind');
+        var tf = 'rotate(' + rot + 'deg)';
+        if (glyph.style.transform !== tf) glyph.style.transform = tf;
+    }
+
+    function decorateNativeGlyph(glyph) {
+        /* Idempotent: Nightglass's own <i>s never carry dz-icon-glyph, so
+           this can never re-process an icon we created ourselves, and
+           re-running over an already-decorated glyph is a no-op. */
+        if (!glyph.classList.contains('dz-fa-device')) {
+            glyph.classList.add('dz-fa-device');
+        }
+
+        var state = nativeGlyphState(glyph);
+        var entry = nativeEntryFor(glyph);
+        applyNativeColor(glyph, entry, state);
+        if (entry.wind) applyNativeWind(glyph);
+        /* Native owns the glyph, Nightglass owns its motion.  The gate in
+           animations.css keeps an off device still, so this is applied
+           regardless of state. */
+        applyIconAnim(glyph, entry.idx);
+
+        var cur = glyph.getAttribute('data-dz-state');
+        /* Write only on a genuine change.  Every data-dz-state mutation
+           wakes the flash observer in card-features.js, so a blind
+           setAttribute on each burst pass would strobe every card. */
+        if (state === null) {
+            if (cur !== null) glyph.removeAttribute('data-dz-state');
+        } else if (cur !== state) {
+            glyph.setAttribute('data-dz-state', state);
+        }
+    }
+
+    function undecorateNativeGlyph(glyph) {
+        glyph.classList.remove('dz-fa-device', 'dz-wind');
+        applyIconAnim(glyph, '');
+        glyph.removeAttribute('data-dz-state');
+        glyph.style.color = '';
+        glyph.style.transform = '';
+        /* Drop the cached colour too, or a later re-enable would see its
+           own value as already applied and never re-paint. */
+        nativeColorCache.delete(glyph);
+    }
+
+    /* dzDeviceIcon renders an <img> fallback while dzIconService is still
+       fetching the built-in icon table, then swaps it for the glyph.  Our
+       MutationObserver replaces that transient <img> with an <i>, and
+       cleanupOrphan() deliberately leaves stray <i>s in the DOM (Pass 2
+       normally re-adopts them once the <img> reappears).  Here the <img> is
+       gone for good, so the shim survives as a permanent duplicate beside
+       the native glyph — two icons on one card.  Drop it.
+
+       Hosts that still contain an <img> are the useGlyph="false" path
+       (alert level, temperature range, wind direction PNGs), where the
+       <img> is the real icon and our replacement is the point. */
+    function dropStaleNativeShims() {
+        var shims = document.querySelectorAll(
+            'dz-device-icon > i.dz-fa-device:not(.dz-icon-glyph)');
+        for (var i = 0; i < shims.length; i++) {
+            var host = shims[i].parentNode;
+            if (host && !host.querySelector('img')) host.removeChild(shims[i]);
+        }
+    }
+
+    function processNativeGlyphs() {
+        var glyphs = document.querySelectorAll(NATIVE_GLYPH_SEL);
+        if (!glyphs.length) {
+            /* Cheapest possible exit on a Domoticz without native glyph
+               rendering, and on native pages that show no device widgets. */
+            return;
+        }
+        _nativeSeen = true;
+        dropStaleNativeShims();
+
+        var enabled = nativeDecorEnabled();
+        for (var i = 0; i < glyphs.length; i++) {
+            if (enabled) decorateNativeGlyph(glyphs[i]);
+            else         undecorateNativeGlyph(glyphs[i]);
+        }
+    }
+
+    /* Registered as an extra processor so it runs inside the existing
+       icon-replacement burst — same batch, no second MutationObserver.
+       Bursts already fire on route change, $viewContentLoaded,
+       device_update / scene_update, DataTables draws and tab refocus,
+       which covers every path that can mount or restate a glyph. */
+    window._dzExtraProcessors = window._dzExtraProcessors || [];
+    window._dzExtraProcessors.push(processNativeGlyphs);
+
     /* ── Floorplan popup: immediate icon replacement + theme patch ───
        Device.popupRedraw recreates the popup SVG content each time it
        is shown, including new <image> elements for the device icon.
@@ -1682,4 +2151,43 @@
     } else {
         setTimeout(patchFloorplanPopup, 300);
     }
+})();
+
+/* ── Domoticz "Icon style" setting ────────────────────────────────
+   Domoticz can render its own interface with classic images or with Font
+   Awesome glyphs (Settings > Icon style, classic by default). Nightglass is
+   built on the glyphs throughout — per-device colours, the animation
+   catalogue and the navbar replacement all key off them — so the theme pins
+   the running config to glyphs and hides the control rather than offering a
+   choice half of the theme cannot render.
+
+   Only the in-memory config is forced; the stored preference is left alone,
+   so uninstalling the theme gives the user back whatever they had. */
+(function () {
+    'use strict';
+
+    function forceGlyphStyle() {
+        try {
+            var body = window.angular && angular.element(document.body);
+            var injector = body && body.injector && body.injector();
+            if (injector) {
+                var cfg = injector.get('$rootScope').config;
+                if (cfg && cfg.IconStyle != 1) cfg.IconStyle = 1;
+            }
+        } catch (e) { /* Angular not up yet; the next burst retries */ }
+
+        if (window.$ && $.myglobals) $.myglobals.iconGlyphs = true;
+        document.documentElement.classList.add('dz-icons-glyph');
+
+        var sel = document.getElementById('comboiconstyle');
+        if (sel) {
+            /* Hide the whole row, not just the select, so its label goes too. */
+            var row = sel.closest && sel.closest('tr');
+            if (row) row.style.display = 'none';
+        }
+    }
+
+    forceGlyphStyle();
+    window._dzExtraProcessors = window._dzExtraProcessors || [];
+    window._dzExtraProcessors.push(forceGlyphStyle);
 })();
