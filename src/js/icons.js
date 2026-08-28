@@ -1116,20 +1116,26 @@
         img.classList.add('dz-icon-replaced');
         iconMap.set(img, icon);
         img.parentNode.insertBefore(icon, img);
-        hideNativeNavGlyph(img);
+        hideNativeGlyph(img);
         return true;
     }
 
-    /* Domoticz's own "Icon style" setting puts a glyph of its own after each navbar
-       image and shows it instead of the image when the style is set to glyphs. The
-       theme already replaced that image, so both would render and the navbar would
-       show every icon twice. The theme owns the navbar look here, so its glyph is
-       hidden rather than removed — Angular re-renders these menus, and a removed
-       node would just come back. */
-    function hideNativeNavGlyph(img) {
+    /* Domoticz's own "Icon style" setting pairs each image with a glyph of its own and
+       shows the glyph instead of the image when the style is set to glyphs — navbar
+       images get a .dz-nav-glyph sibling, the blinds open/stop/close buttons a
+       .dz-glyph-only one. The theme pins that setting to glyphs and has already
+       replaced the image, so both would draw and the icon would render twice (the
+       doubled roller-shutter chevrons). The theme owns the look here, so the native
+       glyph is hidden rather than removed — Angular re-renders these nodes, and a
+       removed one would just come back.
+
+       Keyed off the sibling the image actually has, so an image the theme skipped
+       keeps Domoticz's glyph and never ends up with no icon at all. */
+    function hideNativeGlyph(img) {
         var next = img.nextElementSibling;
-        if (next && next.tagName === 'I' && next.classList.contains('dz-nav-glyph')) {
-            next.classList.add('dz-nav-glyph-hidden');
+        if (next && next.tagName === 'I' &&
+            (next.classList.contains('dz-nav-glyph') || next.classList.contains('dz-glyph-only'))) {
+            next.classList.add('dz-native-glyph-hidden');
         }
     }
 
@@ -1152,6 +1158,11 @@
 
         if (!curSrc || curSrc === prevSrc || curSrc.indexOf('{{') !== -1) return;
         if (shouldSkip(curSrc)) return;
+
+        /* A blinds button swaps its src on every open/close, and Angular may have
+           rebuilt the paired native glyph along the way, dropping the marker with it.
+           Re-applying here is a no-op when the class is already there. */
+        hideNativeGlyph(img);
 
         /* Resolve icon first so colors are available as fallback for overrides */
         var resolved = resolveIcon(curSrc);
