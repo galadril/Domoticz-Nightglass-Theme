@@ -1146,3 +1146,11 @@ SECTION.dashCategory .row,
 }
 
 
+
+/* Domoticz's Icon style setting adds a glyph of its own beside every navbar image.
+   The theme has already replaced that image, so the native one is suppressed to stop
+   the navbar rendering each icon twice in the glyph style. Hidden rather than removed
+   because Angular re-renders these menus. */
+i.dz-nav-glyph-hidden {
+    display: none !important;
+}

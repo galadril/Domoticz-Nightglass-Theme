@@ -1111,7 +1111,21 @@
         img.classList.add('dz-icon-replaced');
         iconMap.set(img, icon);
         img.parentNode.insertBefore(icon, img);
+        hideNativeNavGlyph(img);
         return true;
+    }
+
+    /* Domoticz's own "Icon style" setting puts a glyph of its own after each navbar
+       image and shows it instead of the image when the style is set to glyphs. The
+       theme already replaced that image, so both would render and the navbar would
+       show every icon twice. The theme owns the navbar look here, so its glyph is
+       hidden rather than removed — Angular re-renders these menus, and a removed
+       node would just come back. */
+    function hideNativeNavGlyph(img) {
+        var next = img.nextElementSibling;
+        if (next && next.tagName === 'I' && next.classList.contains('dz-nav-glyph')) {
+            next.classList.add('dz-nav-glyph-hidden');
+        }
     }
 
     /* -- Process unprocessed images (used by Pass 1 & recovery) -- */
