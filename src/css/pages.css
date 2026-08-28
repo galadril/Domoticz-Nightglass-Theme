@@ -2359,12 +2359,20 @@ body.dz-light #dz-cmd-box {
     scrollbar-color: var(--dz-surface-3) transparent;
 }
 
+/* Domoticz lays each entry out as a fixed 289x52 row: the image floats left and
+   the two text lines are pulled alongside it with margin-left:52px and negative
+   top margins. Turning that into a column card means undoing the geometry as
+   well as setting the new one, or the text is positioned outside the tile. */
 .iconlist .iconlistitem {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 6px;
+    width: auto;
+    height: auto;
+    margin: 0;
     padding: 12px 8px 10px;
+    overflow: hidden;
     background: var(--dz-surface-2);
     border: 1px solid transparent;
     border-radius: 10px;
@@ -2377,31 +2385,36 @@ body.dz-light #dz-cmd-box {
         transform: translateY(-2px);
     }
 
-    /* The uploaded PNGs vary in size; a fixed box keeps the grid even. */
+    /* float:none is the important one — the image is floated left by default. */
     .iconlist .iconlistitem img {
+        float: none;
         width: 40px;
         height: 40px;
+        margin: 0;
         object-fit: contain;
     }
 
+    /* Both text lines carry margin-left:52px and a negative top margin to sit
+       beside the floated image; in a column they have to be reset outright. */
     .iconlist .iconlistitem h3 {
-        margin: 0;
+        height: auto;
         max-width: 100%;
+        margin: 0;
         overflow: hidden;
         white-space: nowrap;
         text-overflow: ellipsis;
-        font-size: 0.82rem;
-        font-weight: 600;
+        font: 600 0.82rem/1.3 inherit;
         color: var(--dz-text);
     }
 
     .iconlist .iconlistitem p {
-        margin: 0;
         max-width: 100%;
+        margin: 0;
         overflow: hidden;
         white-space: nowrap;
         text-overflow: ellipsis;
-        font-size: 0.72rem;
+        font: 400 0.72rem/1.3 inherit;
+        font-style: normal;
         color: var(--dz-text-muted);
     }
 
