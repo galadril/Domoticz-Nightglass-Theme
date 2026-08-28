@@ -2334,3 +2334,180 @@ body.dz-light #dz-cmd-box {
         margin: 2px 0 !important;
     }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   Custom Icons page (#iconsmain / #iconlibrariesmain)
+   ──────────────────────────────────────────────────────────────────
+   Domoticz lays this page out with tables and a plain list. The markup
+   is left alone; only its presentation is brought in line with the rest
+   of the theme — the uploaded sets become a tile grid, the libraries a
+   real table, and the two forms pick up the theme's field styling.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Uploaded icon sets: a tile grid rather than a stacked list ──── */
+.iconcell.iconlist {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+    gap: 10px;
+    padding: 12px;
+    overflow-y: auto;
+    background: var(--dz-surface);
+    border: 1px solid var(--dz-surface-3);
+    border-radius: 10px;
+    /* The page sets min/max-height inline; only the scrollbar is themed. */
+    scrollbar-width: thin;
+    scrollbar-color: var(--dz-surface-3) transparent;
+}
+
+.iconlist .iconlistitem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 8px 10px;
+    background: var(--dz-surface-2);
+    border: 1px solid transparent;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+    .iconlist .iconlistitem:hover {
+        background: var(--dz-surface-3);
+        transform: translateY(-2px);
+    }
+
+    /* The uploaded PNGs vary in size; a fixed box keeps the grid even. */
+    .iconlist .iconlistitem img {
+        width: 40px;
+        height: 40px;
+        object-fit: contain;
+    }
+
+    .iconlist .iconlistitem h3 {
+        margin: 0;
+        max-width: 100%;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--dz-text);
+    }
+
+    .iconlist .iconlistitem p {
+        margin: 0;
+        max-width: 100%;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        font-size: 0.72rem;
+        color: var(--dz-text-muted);
+    }
+
+.iconlist .iconlistitemselected,
+.iconlist .iconlistitemselected:hover {
+    background: rgba(var(--dz-accent-rgb), 0.14);
+    border-color: var(--dz-accent);
+}
+
+    .iconlist .iconlistitemselected h3 {
+        color: var(--dz-accent);
+    }
+
+/* ── Upload row and the edit form ───────────────────────────────── */
+#iconsmain input[type="file"] {
+    max-width: 320px;
+    padding: 6px 8px;
+    background: var(--dz-input-bg);
+    color: var(--dz-text);
+    border: 1px solid var(--dz-input-border);
+    border-radius: 6px;
+    font-size: 0.82rem;
+}
+
+#customiconedittable label {
+    color: var(--dz-text-muted);
+    font-weight: 500;
+}
+
+/* The three state previews (on / off / small) sit in one cell. */
+#customiconedittable img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    margin-right: 8px;
+    padding: 4px;
+    background: var(--dz-surface-2);
+    border-radius: 8px;
+    vertical-align: middle;
+}
+
+/* ── Icon libraries table ───────────────────────────────────────── */
+#iconlibrarytable {
+    border-collapse: collapse;
+}
+
+    #iconlibrarytable th {
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--dz-surface-3);
+        color: var(--dz-text-muted);
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    #iconlibrarytable td {
+        padding: 9px 10px;
+        border-bottom: 1px solid var(--dz-surface-2);
+        color: var(--dz-text);
+        font-size: 0.82rem;
+        vertical-align: middle;
+    }
+
+    #iconlibrarytable tr:hover td {
+        background: var(--dz-surface-2);
+    }
+
+    /* The source URL is long by nature; keep it quiet and let it wrap. */
+    #iconlibrarytable td:nth-child(4) {
+        max-width: 320px;
+        color: var(--dz-text-soft);
+        font-size: 0.76rem;
+    }
+
+    #iconlibrarytable td:nth-child(5) {
+        color: var(--dz-text-muted);
+        font-size: 0.76rem;
+        white-space: nowrap;
+    }
+
+/* ── Add-library form and its suggestions ───────────────────────── */
+#iconlibraryaddtable label {
+    color: var(--dz-text-muted);
+    font-weight: 500;
+}
+
+/* Suggestions only prefill the fields, so they read as chips, not actions. */
+#iconlibraryaddtable .btn-xs.btn-default {
+    padding: 3px 10px;
+    background: var(--dz-surface-2);
+    color: var(--dz-text-soft);
+    border: 1px solid var(--dz-surface-3);
+    border-radius: 12px;
+    font-size: 0.75rem;
+}
+
+    #iconlibraryaddtable .btn-xs.btn-default:hover {
+        background: var(--dz-surface-3);
+        color: var(--dz-text);
+        border-color: var(--dz-accent);
+    }
+
+/* The explanatory lines on this page are hints, not body copy. */
+#iconlibrariesmain > .page-content-container > p,
+#iconlibraryaddtable p {
+    color: var(--dz-text-muted);
+    font-size: 0.78rem;
+}

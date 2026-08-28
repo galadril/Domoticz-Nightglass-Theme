@@ -814,27 +814,8 @@
         color: var(--dz-accent) !important;
     }
 
-/* Icon lists (custom icons page) */
-.iconlist .iconlistitem {
-    background: var(--dz-surface-2);
-    border-radius: 8px;
-}
-
-    .iconlist .iconlistitem:hover {
-        background: var(--dz-border);
-    }
-
-.iconlist .iconlistitemselected {
-    background: rgba(var(--dz-accent-rgb), 0.15);
-}
-
-.iconlist .iconlistitem h3 {
-    color: var(--dz-text);
-}
-
-.iconlist .iconlistitem p {
-    color: var(--dz-text-muted);
-}
+/* The custom-icons page used to be styled from here; it now has its own
+   section in pages.css, next to the other Setup pages. */
 
 /* jQuery UI popup / listview */
 .ui-body-b {
