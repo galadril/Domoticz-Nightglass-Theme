@@ -397,6 +397,21 @@
             };
         }
 
+        /* Nothing is set, so the preview has to show the default the device is
+           actually drawn with. Where Domoticz renders the icons that default is
+           dzIconService's, and the theme's own map disagrees with it for some
+           types — a CPU sensor is a gauge there and a computer here — which read
+           as the edit dialog contradicting the overview. Ask the same resolver
+           the overview used, and keep the theme's map for builds without it. */
+        var nativeDefault = native ? nativeTypeIcon(device) : null;
+        if (nativeDefault) {
+            return {
+                kind: 'theme', name: 'Default', origin: 'chosen from the device type',
+                iconCls: nativeDefault.iconCls, pngSrc: nativeDefault.pngSrc,
+                color: nativeDefault.color || null, isDefault: true
+            };
+        }
+
         var themeSpec = device && typeof window._dzIconForDevice === 'function'
             ? window._dzIconForDevice(device) : null;
         return {
@@ -405,6 +420,50 @@
             color:   (themeSpec && themeSpec.color) || '#4e9af1',
             isDefault: true
         };
+    }
+
+    /* The default Domoticz itself would draw for this device: a glyph in the
+       glyph style, its image in the classic one. Returns null when the service
+       is unreachable so the caller can fall back to the theme's own map. */
+    function nativeTypeIcon(device) {
+        if (!device) return null;
+        try {
+            var inj = injector();
+            if (!inj || !inj.has('dzIconService')) return null;
+            var resolved = inj.get('dzIconService').resolve(device, true);
+            if (!resolved) return null;
+            /* Domoticz draws this glyph itself and the theme only colours it, so it
+               is exactly what the list shows. */
+            if (resolved.kind === 'font' && resolved.cls) return { iconCls: resolved.cls, pngSrc: null };
+
+            /* An image is what Domoticz would draw, but the theme replaces device
+               PNGs with a glyph of its own, and that replacement is what the list
+               shows. Ask the very function that performs the replacement, so the
+               preview cannot drift from it — _dzIconForDevice is a second, thinner
+               reimplementation and it disagrees for whole families of devices. */
+            if (resolved.kind === 'img' && resolved.src) {
+                if (!themeReplacesIcons()) return { iconCls: null, pngSrc: resolved.src };
+                var swap = typeof window._dzIconForSrc === 'function'
+                    ? window._dzIconForSrc(resolved.src) : null;
+                if (swap && swap.cls) return { iconCls: swap.cls, pngSrc: null, color: swap.color };
+                /* Nothing replaces it — a skipped image stays an image. */
+                return { iconCls: null, pngSrc: resolved.src };
+            }
+        } catch (e) {}
+        return null;
+    }
+
+    /* Mirrors icons.js: the deviceIcons setting decides whether the theme swaps
+       device PNGs for glyphs at all, and it ships on. */
+    function themeReplacesIcons() {
+        try {
+            var s = settings();
+            if (s && typeof s.get === 'function') {
+                var v = s.get('deviceIcons');
+                if (v !== undefined && v !== null) return !!v;
+            }
+        } catch (e) {}
+        return true;
     }
 
     function selectedImg(surface) {

@@ -934,8 +934,13 @@
         if (img.classList.contains('dz-icon-replaced') ||
             img.classList.contains('dz-icon-skipped'))  return false;
 
-        /* Skip images inside icon-picker dropdowns (Edit Device dialog) */
-        if (img.classList.contains('dd-option-image') || img.closest('.dd-options, .dd-select, .iconlist')) {
+        /* Skip images inside icon-picker dropdowns (Edit Device dialog) and the
+           theme's own Icon Studio. These are pictures of icons being chosen from,
+           not device icons: replacing one would swap the very thing the user is
+           trying to look at, and leaving it queued for a later burst keeps it at
+           the pre-hide opacity, which reads as an icon that never loads. */
+        if (img.classList.contains('dd-option-image') ||
+                img.closest('.dd-options, .dd-select, .iconlist, .ng-is-overlay')) {
             img.classList.add('dz-icon-skipped');
             return false;
         }
@@ -1602,6 +1607,14 @@
     /* Expose scheduleBurst so code outside this IIFE (e.g. tab-switch
        observers in the processCards block) can trigger a replacement pass. */
     window._dzScheduleBurst = scheduleBurst;
+
+    /* The icon this module would put in place of a given image. An icon preview
+       elsewhere in the theme has to agree with what the lists actually show, and
+       the only way to guarantee that is to ask the same function replaceImage()
+       asks rather than reimplementing the mapping beside it. */
+    window._dzIconForSrc = function (src) {
+        return src ? resolveIcon(String(src)) : null;
+    };
 
     /* Re-run a replacement pass when the tab regains visibility / focus, or is
        restored from the back-forward cache.  Browsers throttle timers and the
