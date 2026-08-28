@@ -1608,6 +1608,14 @@
        observers in the processCards block) can trigger a replacement pass. */
     window._dzScheduleBurst = scheduleBurst;
 
+    /* The icon this module would put in place of a given image. An icon preview
+       elsewhere in the theme has to agree with what the lists actually show, and
+       the only way to guarantee that is to ask the same function replaceImage()
+       asks rather than reimplementing the mapping beside it. */
+    window._dzIconForSrc = function (src) {
+        return src ? resolveIcon(String(src)) : null;
+    };
+
     /* Re-run a replacement pass when the tab regains visibility / focus, or is
        restored from the back-forward cache.  Browsers throttle timers and the
        MutationObserver in background tabs, and the Dynamic Dashboard rebuilds

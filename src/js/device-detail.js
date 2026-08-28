@@ -408,7 +408,7 @@
             return {
                 kind: 'theme', name: 'Default', origin: 'chosen from the device type',
                 iconCls: nativeDefault.iconCls, pngSrc: nativeDefault.pngSrc,
-                color: null, isDefault: true
+                color: nativeDefault.color || null, isDefault: true
             };
         }
 
@@ -432,10 +432,38 @@
             if (!inj || !inj.has('dzIconService')) return null;
             var resolved = inj.get('dzIconService').resolve(device, true);
             if (!resolved) return null;
+            /* Domoticz draws this glyph itself and the theme only colours it, so it
+               is exactly what the list shows. */
             if (resolved.kind === 'font' && resolved.cls) return { iconCls: resolved.cls, pngSrc: null };
-            if (resolved.kind === 'img' && resolved.src)  return { iconCls: null, pngSrc: resolved.src };
+
+            /* An image is what Domoticz would draw, but the theme replaces device
+               PNGs with a glyph of its own, and that replacement is what the list
+               shows. Ask the very function that performs the replacement, so the
+               preview cannot drift from it — _dzIconForDevice is a second, thinner
+               reimplementation and it disagrees for whole families of devices. */
+            if (resolved.kind === 'img' && resolved.src) {
+                if (!themeReplacesIcons()) return { iconCls: null, pngSrc: resolved.src };
+                var swap = typeof window._dzIconForSrc === 'function'
+                    ? window._dzIconForSrc(resolved.src) : null;
+                if (swap && swap.cls) return { iconCls: swap.cls, pngSrc: null, color: swap.color };
+                /* Nothing replaces it — a skipped image stays an image. */
+                return { iconCls: null, pngSrc: resolved.src };
+            }
         } catch (e) {}
         return null;
+    }
+
+    /* Mirrors icons.js: the deviceIcons setting decides whether the theme swaps
+       device PNGs for glyphs at all, and it ships on. */
+    function themeReplacesIcons() {
+        try {
+            var s = settings();
+            if (s && typeof s.get === 'function') {
+                var v = s.get('deviceIcons');
+                if (v !== undefined && v !== null) return !!v;
+            }
+        } catch (e) {}
+        return true;
     }
 
     function selectedImg(surface) {
