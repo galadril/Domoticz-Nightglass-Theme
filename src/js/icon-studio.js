@@ -681,6 +681,12 @@
             : null;
         var activeSlot = 0;
         if (slots && slots.length) chosen = slots[0].cls || chosen;
+        /* Icon and CustomImage are alternatives in the store, and Domoticz
+           resolves the glyph first, so a slotted caller handing over both is
+           really saying "glyph". Only that caller can be read this way: the
+           slot-less picker passes the device type's own fallback glyph
+           alongside a real image pick on purpose. */
+        if (slots && slots.length && slots[0].cls) chosenImg = 0;
 
         /* With a second axis to set — an off icon, an animation, or both — an
            icon click refines the choice rather than finishing it, so the dialog
@@ -751,10 +757,25 @@
         var mMsg     = overlay.querySelector('.ng-is-manual-msg');
         var slotbarEl = overlay.querySelector('.ng-is-slotbar');
 
+        /* The record behind the current image pick, or null when the selection
+           is a glyph. Held as a number rather than as the record so it survives
+           the uploaded set being re-read, and resolved here on every render:
+           on open the set is usually still in flight, and a caller can hand us
+           a CustomImage before there is anything to look it up in. */
+        function chosenImage() {
+            if (!chosenImg) return null;
+            return findCustomImage(chosenImg) ||
+                   { kind: 'img', value: chosenImg, src: '', name: '#' + chosenImg, desc: '' };
+        }
+
         function apply(cls) {
             cls = cleanClass(cls);
             if (!cls) return false;
             pushRecent(cls);
+            /* A glyph and an uploaded image are one choice, not two layers —
+               both stores drop the image when a glyph is written — so picking
+               one has to unset the other here as well. */
+            chosenImg = 0;
             if (slots) {
                 /* Assign to the active slot and stay put: the user is likely to
                    set the other slot next. */
@@ -788,13 +809,62 @@
         function applyImage(item) {
             if (!allowImg || !item || !(item.value > 0)) return false;
             pushRecent(item);
+            /* The image becomes THE selection and the glyph one steps aside —
+               same exclusivity apply() enforces the other way round. The slots
+               keep their classes rather than being cleared: they mirror the
+               caller's own copy of the on/off pair, which is what a later glyph
+               pick writes back, so emptying them here would only put the two
+               out of step. chosenImg is what every render reads to decide which
+               kind is set. */
+            chosenImg = item.value;
+            /* Whichever slot was being edited, the next glyph pick is the
+               on-icon: that is the only slot the bar offers while an image is
+               set, and it is where the pair starts again. */
+            activeSlot = 0;
             opts.onPickImage(item.value, item);
             /* An uploaded image is a whole-icon choice — there is no separate
                off PNG — so it finishes the icon axis.  Keep the dialog open
                only if there is still an animation to set. */
-            if (keepOpen) return true;
+            if (keepOpen) {
+                if (slots) renderSlots();
+                renderMain();          // move the grid's "current" marker
+                if (allowAnim) renderAnimRow();
+                /* The footer swatch previews an icon class, which an image has
+                   none of; back to the placeholder rather than leaving the
+                   previous glyph standing as if it were still the pick. */
+                if (mPrev) mPrev.className = 'fa-solid fa-question';
+                return true;
+            }
             close();
             return true;
+        }
+
+        /* What a slot holds, drawn: an uploaded PNG is an <img>, a glyph an
+           <i>, and a slot with neither gets the empty-square placeholder —
+           which is also what an image whose record has not arrived yet shows,
+           rather than a broken <img>. */
+        function slotIcon(cls, img) {
+            if (img && img.src) {
+                var im = document.createElement('img');
+                im.src = img.src;
+                im.alt = '';
+                return im;
+            }
+            var ic = document.createElement('i');
+            ic.className = cls || 'fa-regular fa-square';
+            return ic;
+        }
+
+        function slotText(el, label, sub) {
+            var lab = document.createElement('span');
+            lab.className = 'ng-is-slot-label';
+            lab.textContent = label;
+            var s = document.createElement('em');
+            s.className = 'ng-is-slot-cls';
+            /* Server-supplied for an image (its Title), so text, not markup. */
+            s.textContent = sub;
+            el.appendChild(lab);
+            el.appendChild(s);
         }
 
         /* On/off target bar (only when the caller passes slots). */
@@ -805,21 +875,29 @@
             lead.className = 'ng-is-slotbar-lead';
             lead.textContent = 'Editing';
             slotbarEl.appendChild(lead);
+
+            /* An uploaded image is the whole icon: it ships one PNG, so there
+               is no off state to express and nowhere to store one if there
+               were. While one is picked the bar therefore states the single
+               icon that is set instead of offering an off slot that could not
+               be saved — picking any glyph hands the on/off pair straight
+               back. */
+            var img = chosenImage();
+            if (img) {
+                var one = document.createElement('span');
+                one.className = 'ng-is-slot ng-is-slot--active ng-is-slot--img';
+                one.appendChild(slotIcon('', img));
+                slotText(one, 'Icon', img.name);
+                slotbarEl.appendChild(one);
+                return;
+            }
+
             slots.forEach(function (s, i) {
                 var b = document.createElement('button');
                 b.type = 'button';
                 b.className = 'ng-is-slot' + (i === activeSlot ? ' ng-is-slot--active' : '');
-                var ic = document.createElement('i');
-                ic.className = s.cls || 'fa-regular fa-square';
-                var lab = document.createElement('span');
-                lab.className = 'ng-is-slot-label';
-                lab.textContent = s.label;
-                var sub = document.createElement('em');
-                sub.className = 'ng-is-slot-cls';
-                sub.textContent = s.cls ? labelOf(s.cls) : 'not set';
-                b.appendChild(ic);
-                b.appendChild(lab);
-                b.appendChild(sub);
+                b.appendChild(slotIcon(s.cls, null));
+                slotText(b, s.label, s.cls ? labelOf(s.cls) : 'not set');
                 b.addEventListener('click', function () {
                     activeSlot = i;
                     chosen = s.cls;
@@ -839,7 +917,11 @@
             var b = document.createElement('button');
             b.type = 'button';
             var isImg = isImgEntry(entry);
-            var active = isImg ? (entry.value === chosenImg) : sameIcon(entry, chosen);
+            /* One selection, so at most one marker: a glyph tile only counts as
+               current while no image is picked, or the fallback glyph a caller
+               opens on would sit lit up next to the image actually in use. */
+            var active = isImg ? (entry.value === chosenImg)
+                               : (!chosenImg && sameIcon(entry, chosen));
             b.className = 'ng-is-tile' + (active ? ' ng-is-tile--active' : '');
 
             if (isImg) {
@@ -1135,6 +1217,11 @@
                0 IS the on-icon and outranks both. */
             var glyph = (slots && slots[0].cls) || chosen ||
                         cleanClass(opts.animationGlyph) || 'fa-solid fa-lightbulb';
+            /* …unless the selection is an uploaded PNG, which outranks every
+               glyph above: those are only ever the fallback the caller opened
+               on, and the tiles have to show what the device will actually
+               animate. */
+            var img = chosenImage();
 
             wrap.innerHTML =
                 '<div class="ng-is-anim-head">Animation ' +
@@ -1154,8 +1241,20 @@
                     (a.id === animPick ? ' ng-is-anim-tile--active' : '');
                 b.title = a.hint ? a.label + ' — ' + a.hint : a.label;
 
-                var ic = document.createElement('i');
-                ic.className = glyph + (a.id ? ' ' + animClassOf(a.id) : '');
+                /* Every animation in the catalogue drives transform and opacity
+                   only (section 25 of animations.css), and the classes carry no
+                   element requirement, so an <img> moves under them exactly as
+                   a glyph does. */
+                var ic;
+                if (img && img.src) {
+                    ic = document.createElement('img');
+                    ic.src = img.src;
+                    ic.alt = '';
+                    if (a.id) ic.className = animClassOf(a.id);
+                } else {
+                    ic = document.createElement('i');
+                    ic.className = glyph + (a.id ? ' ' + animClassOf(a.id) : '');
+                }
                 var lbl = document.createElement('span');
                 lbl.textContent = a.label;
                 b.appendChild(ic);
@@ -1254,6 +1353,15 @@
             pruneRecent(libs);    // self-heal: drop recents from removed libraries
             renderRail();
             renderMain();
+            /* The image pick is held as a number, so its name and PNG only
+               exist once the uploaded set has been read — repaint the previews
+               that draw it when that lands. Only then: rebuilding the animation
+               tiles restarts every keyframe list from frame zero, which is a
+               visible stutter to spend on nothing when a glyph is selected. */
+            if (chosenImg) {
+                if (slots) renderSlots();
+                if (allowAnim) renderAnimRow();
+            }
         };
         fetchNativeLibraries(true).then(_onNativeChange);
 

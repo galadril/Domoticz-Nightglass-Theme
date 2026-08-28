@@ -2429,6 +2429,15 @@ body.dz-light .ng-toast {
         flex-shrink: 0;
     }
 
+    /* The uploaded-PNG twin of the glyph above: same 24px box, so the bar
+       keeps one height whichever kind the slot holds. */
+    .ng-is-slot > img {
+        width: 24px;
+        height: 24px;
+        object-fit: contain;
+        flex-shrink: 0;
+    }
+
     .ng-is-slot-label {
         font-size: 0.8rem;
         font-weight: 600;
@@ -2451,6 +2460,18 @@ body.dz-light .ng-toast {
     background: rgba(var(--dz-accent-rgb), 0.14);
     box-shadow: inset 0 0 0 1px var(--dz-accent);
 }
+
+/* An uploaded image is the whole icon, so the bar shows one entry and there
+   is nothing to switch to: it states what is set rather than behaving like
+   a target button, hover included. */
+.ng-is-slot--img {
+    cursor: default;
+}
+
+    .ng-is-slot--img:hover {
+        border-color: var(--dz-accent);
+        background: rgba(var(--dz-accent-rgb), 0.14);
+    }
 
 /* Done button — the explicit finish now that an icon pick keeps the
    dialog open (there is an off icon and/or an animation still to set). */
@@ -2590,6 +2611,16 @@ body.dz-light .ng-toast {
         height: 26px;
         font-size: 20px;
         color: var(--dz-accent);
+    }
+
+    /* An uploaded PNG previews the animations exactly as a glyph does — the
+       .dz-anim-* classes only move transform and opacity — so it gets the same
+       fixed box to move inside. */
+    .ng-is-anim-tile img {
+        display: block;
+        width: 26px;
+        height: 26px;
+        object-fit: contain;
     }
 
     .ng-is-anim-tile span {
