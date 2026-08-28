@@ -801,7 +801,15 @@
     function applyDeviceOverride(devIdx, src, fallbackResolved) {
         if (!devIdx || !DEVICE_ICON_OVERRIDES[devIdx]) return null;
         var ov = DEVICE_ICON_OVERRIDES[devIdx];
-        if (!ov.iconOn && !ov.iconOpen && !ov.icon) return null;
+        /* An entry with colours but no shape is the normal case on a Domoticz
+           that owns the icon itself: the theme stores only colour and motion
+           there. It still has to tint the icon the resolver picked, so it can
+           no longer be dismissed as an empty entry. keepColor means "keep the
+           resolver's dynamic colour", which with no shape to change is
+           genuinely nothing to do. */
+        var hasShape = !!(ov.iconOn || ov.iconOpen || ov.icon || ov.iconStop);
+        var hasColor = !!(ov.on || ov.off) && !ov.keepColor;
+        if (!hasShape && !hasColor) return null;
 
         var parsedSrc = parseDeviceSrc(src);
         var base      = parsedSrc ? parsedSrc.base : null;
@@ -838,7 +846,19 @@
                 ? (ov.iconOn  || ov.icon)
                 : (ov.iconOff || ov.iconOn || ov.icon);
         }
-        if (!iconCls) return null;
+        if (!iconCls) {
+            /* Colour only: keep the shape the resolver picked (and its type —
+               blindsstop is an 'icon', not a device state) and just re-tint. */
+            if (!hasColor || !fallbackResolved) return null;
+            return {
+                type:     fallbackResolved.type || 'device',
+                cls:      fallbackResolved.cls,
+                color:    isOn ? (ov.on || fallbackResolved.colorOn)
+                               : (ov.off || fallbackResolved.colorOff),
+                colorOn:  ov.on  || fallbackResolved.colorOn,
+                colorOff: ov.off || fallbackResolved.colorOff
+            };
+        }
 
         var fbOn  = (fallbackResolved && fallbackResolved.colorOn)  || '#4e9af1';
         var fbOff = (fallbackResolved && fallbackResolved.colorOff) || '#555770';
