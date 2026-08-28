@@ -423,6 +423,16 @@
         return null;
     }
 
+    /* The uploaded-icon list with the +100 already applied, i.e. keyed by the
+       value DeviceStatus.CustomImage stores. Published because a caller that
+       renders a CustomImage it did not just pick (the settings editor's device
+       rows) needs the same resolution the picker uses — re-deriving the offset
+       at a second site is exactly how a pick lands on the wrong icon. */
+    window.dzCustomIcons = function (cb) {
+        fetchCustomImages().then(function (list) { cb(list || []); },
+                                 function ()     { cb([]); });
+    };
+
     /* Which library a class belongs to (by prefix). */
     function libIdOf(cls, libs) {
         var token = cls.split(/\s+/)[0];              // e.g. "fa-solid" | "mdi" | "bi"

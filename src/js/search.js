@@ -880,7 +880,7 @@
             if (err === 'too_large') {
                 errorToast('var(--dz-danger, #e05555)', 'Settings too large',
                     'The settings blob exceeds the 16 KB server limit. ' +
-                    'Try removing device icon overrides or user presets.');
+                    'Try removing device icon styling or user presets.');
                 return;
             }
 
@@ -1011,10 +1011,11 @@
        set ones cuts a typical entry from ~230 to ~90 chars, the single
        biggest contributor to ThemeSettings bloat (issue #203). */
     /* Domoticz's own per-device Icon column, as dzIconPicker serialises it:
-       { "t":<prefix>, "on":<class>[, "off":<class>] }. Read-only here — the
-       override editor shows it as the effective default so a device the user
-       set natively (e.g. a ventilator given mdi-fan-remove on the device page)
-       reads as that icon rather than the theme's type default. */
+       { "t":<prefix>, "on":<class>[, "off":<class>] }. Read here so the icon
+       editor opens on the shape actually in effect — a device the user gave an
+       icon (a ventilator set to mdi-fan-remove on its device page) reads as
+       that icon rather than as the theme's type default. Writing it goes
+       through dzDeviceIconStore, which owns the serialisation. */
     function parseNativeDeviceIcon(v) {
         if (!v) return null;
         var p = v;
@@ -1922,25 +1923,22 @@
             '</div>' +
             '</div>' +
 
-            (function () {
-                var ovRaw = (s.deviceIconOverrides || '{}');
-                var ovCount = 0;
-                try { ovCount = Object.keys(typeof ovRaw === 'string' ? JSON.parse(ovRaw) : ovRaw).length; } catch (e) {}
-                var badge = ovCount > 0
-                    ? ' <span class="ng-override-badge">' + ovCount + '</span>'
-                    : '';
-                return '<div class="ng-settings-section">' +
-                    '<div class="ng-section-header"><i class="fa-solid fa-icons"></i> Device Icon Overrides</div>' +
-                    '<div class="ng-setting-row ng-setting-row--action">' +
-                    '  <div class="ng-setting-info">' +
-                    '    <span class="ng-setting-label">Per-Device Icons' + badge + '</span>' +
-                    '    <span class="ng-setting-desc">Assign any Font Awesome icon &amp; custom on/off colors to individual devices</span>' +
-                    '  </div>' +
-                    '  <button type="button" class="ng-action-chip" id="ng-override-manage-btn">' +
-                    '    <i class="fa-solid fa-wand-magic-sparkles"></i> Manage</button>' +
-                    '</div>' +
-                    '</div>';
-            })() +
+            /* No count here. The number of entries in the theme's blob is not
+               the number of devices with a custom icon — on a Domoticz that
+               owns the icon, the blob holds only colour and animation — so a
+               badge would invite exactly the wrong reading. The dialog's own
+               footer counts what is actually customised. */
+            '<div class="ng-settings-section">' +
+            '<div class="ng-section-header"><i class="fa-solid fa-icons"></i> Device Icons</div>' +
+            '<div class="ng-setting-row ng-setting-row--action">' +
+            '  <div class="ng-setting-info">' +
+            '    <span class="ng-setting-label">Per-Device Icons</span>' +
+            '    <span class="ng-setting-desc">Pick an icon for a device, then give it on/off colors and an animation</span>' +
+            '  </div>' +
+            '  <button type="button" class="ng-action-chip" id="ng-override-manage-btn">' +
+            '    <i class="fa-solid fa-wand-magic-sparkles"></i> Manage</button>' +
+            '</div>' +
+            '</div>' +
 
             /* Right column: Color panels (together) */
             '<div class="ng-settings-section ng-settings-section--colors">' +
@@ -2491,9 +2489,23 @@
             });
     }
 
-    /* ── Device Icon Override Dialog ──────────────────────────────── */
+    /* ── Device Icons Dialog ──────────────────────────────────────────
+       One row per device, and per device two stores behind it:
 
-    /* Classify a device into an icon/color model for the override editor.
+         • the SHAPE is Domoticz's, in the DeviceStatus.Icon column, on a
+           build that has one — the server renders it, so the choice outlives
+           the theme. Written here through dzDeviceIconStore (device-detail.js),
+           the same contract the device page's icon field uses. On a build
+           without the column the shape falls back to the theme blob, which is
+           where it has always lived.
+         • COLOUR and ANIMATION are the theme's, in deviceIconOverrides.
+           Domoticz validates the Icon column to {"t","on","off"} and has no
+           field for either, so they cannot go on the device.
+
+       The storage key is still called deviceIconOverrides: renaming it would
+       orphan every existing user's settings. Only the wording moved on. */
+
+    /* Classify a device into an icon/color model for the editor.
        Returns one of:
          'binary'    standard switch — 1 icon, on/off colors
          'selector'  selector switch — 1 icon, active/inactive colors
@@ -2578,14 +2590,41 @@
         var existing = document.getElementById('ng-ov-overlay');
         if (existing) existing.remove();
 
-        // Parse current overrides
+        // Parse the theme's stored colour / animation entries
         var currentOv = {};
         try {
             var raw = (window.dzNightglassSettings && window.dzNightglassSettings.get('deviceIconOverrides')) || '{}';
             currentOv = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
         } catch (e) {}
 
-        // Popular quick-override suggestions
+        /* Where a shape gets stored. Resolved before the rows render, because
+           it decides both what a row's icon control writes and what the row's
+           starting icon is. */
+        var iconStore    = window.dzDeviceIconStore || null;
+        var nativeShapes = false;
+
+        /* Icon edits staged for Domoticz's own storage, keyed by idx:
+           { on, off } for a glyph pair, { image: n } for an uploaded PNG, or
+           null to clear. Staged rather than written on the spot so the dialog
+           stays one transaction — Save flushes these with the theme blob,
+           Cancel drops both. The shape of an entry is dzDeviceIconStore.write's
+           `spec`, so Save hands them over untranslated. */
+        var pendingNative = {};
+
+        /* Uploaded icons, resolved to the value CustomImage stores. Only needed
+           where Domoticz can hold one; null until fetched, [] if unavailable. */
+        var customIcons = null;
+
+        function imageInfo(ci) {
+            ci = parseInt(ci, 10) || 0;
+            if (!ci || !customIcons) return null;
+            for (var i = 0; i < customIcons.length; i++) {
+                if (customIcons[i].value === ci) return customIcons[i];
+            }
+            return null;
+        }
+
+        // Popular quick-icon suggestions
         var POPULAR_OVERRIDES = [
             { label: 'WiFi Router',     icon: 'fa-solid fa-wifi',              on: '#4caf7d', off: '#555770' },
             { label: 'Network Switch',  icon: 'fa-solid fa-network-wired',     on: '#4e9af1', off: '#555770' },
@@ -2610,8 +2649,8 @@
         ];
 
 
-        // Mutable copy of current overrides — copy every stored field so the
-        // sidebar and row editors reflect the saved state when the dialog reopens.
+        // Mutable copy of the theme entries — copy every stored field so the
+        // row editors reflect the saved state when the dialog reopens.
         var pending = {};
         Object.keys(currentOv).forEach(function (k) {
             var s = currentOv[k];
@@ -2634,18 +2673,19 @@
         overlay.id = 'ng-ov-overlay';
         overlay.className = 'ng-bl-overlay';
         overlay.innerHTML =
-            '<div class="ng-bl-dialog ng-ov-dialog" role="dialog" aria-label="Device Icon Overrides">' +
+            '<div class="ng-bl-dialog ng-ov-dialog" role="dialog" aria-label="Device Icons">' +
             '  <div class="ng-bl-header">' +
             '    <div class="ng-bl-title">' +
             '      <i class="fa-solid fa-icons"></i>' +
-            '      <span>Device Icon Overrides</span>' +
+            '      <span>Device Icons</span>' +
             '    </div>' +
             '    <button class="ng-bl-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>' +
             '  </div>' +
             '  <div class="ng-ov-body">' +
             '    <div class="ng-ov-main">' +
+            '      <div class="ng-ov-store-note" id="ng-ov-store-note"></div>' +
             '      <div class="ng-ov-popular">' +
-            '        <div class="ng-ov-popular-label"><i class="fa-solid fa-wand-magic-sparkles"></i> Quick Presets — click to assign to a device</div>' +
+            '        <div class="ng-ov-popular-label"><i class="fa-solid fa-wand-magic-sparkles"></i> Quick Presets — click one, then click a device</div>' +
             '        <div class="ng-ov-chips" id="ng-ov-chips"></div>' +
             '      </div>' +
             '      <div class="ng-bl-search-wrap">' +
@@ -2656,21 +2696,12 @@
             '        <div class="ng-bl-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading devices…</div>' +
             '      </div>' +
             '    </div>' +
-            '    <div class="ng-ov-sidebar" id="ng-ov-sidebar">' +
-            '      <div class="ng-ov-sidebar-header">' +
-            '        <i class="fa-solid fa-list-check"></i> Active' +
-            '        <span class="ng-ov-sidebar-count" id="ng-ov-sidebar-count">0</span>' +
-            '      </div>' +
-            '      <div class="ng-ov-sidebar-list" id="ng-ov-sidebar-list">' +
-            '        <div class="ng-ov-sidebar-empty">No overrides yet</div>' +
-            '      </div>' +
-            '    </div>' +
             '  </div>' +
             '  <div class="ng-bl-footer">' +
             '    <span class="ng-bl-count" id="ng-ov-count"></span>' +
             '    <div class="ng-bl-footer-btns">' +
             '      <button class="ng-bl-btn ng-bl-btn--cancel">Cancel</button>' +
-            '      <button class="ng-bl-btn ng-bl-btn--save">Save Overrides</button>' +
+            '      <button class="ng-bl-btn ng-bl-btn--save">Save</button>' +
             '    </div>' +
             '  </div>' +
             '</div>';
@@ -2678,110 +2709,127 @@
         document.body.appendChild(overlay);
         requestAnimationFrame(function () { overlay.classList.add('ng-bl-overlay--open'); });
 
-        var listEl         = overlay.querySelector('#ng-ov-list');
-        var searchEl       = overlay.querySelector('#ng-ov-search');
-        var countEl        = overlay.querySelector('#ng-ov-count');
-        var chipsEl        = overlay.querySelector('#ng-ov-chips');
-        var sidebarListEl  = overlay.querySelector('#ng-ov-sidebar-list');
-        var sidebarCountEl = overlay.querySelector('#ng-ov-sidebar-count');
+        var listEl   = overlay.querySelector('#ng-ov-list');
+        var searchEl = overlay.querySelector('#ng-ov-search');
+        var countEl  = overlay.querySelector('#ng-ov-count');
+        var chipsEl  = overlay.querySelector('#ng-ov-chips');
+        var noteEl   = overlay.querySelector('#ng-ov-store-note');
 
         function close() {
             overlay.classList.remove('ng-bl-overlay--open');
             setTimeout(function () { overlay.remove(); }, 260);
         }
 
-        function renderSidebar() {
-            var keys = Object.keys(pending);
-            if (sidebarCountEl) sidebarCountEl.textContent = keys.length;
-            if (!sidebarListEl) return;
-            if (!keys.length) {
-                sidebarListEl.innerHTML = '<div class="ng-ov-sidebar-empty">No overrides yet</div>';
-                return;
+        /* getdevices records by idx. Both the marker painter (which needs the
+           Icon column) and the shape writer (which needs Protected) read it,
+           and it is the same record the rows were built from. */
+        var devByIdx = {};
+
+        /* The shape in effect for a device — null when it is still on the icon
+           its type gives it. Native first: where Domoticz has the Icon column
+           it renders that shape itself, so it is what is actually on screen. A
+           shape in the theme blob is the fallback — the only store on a build
+           without the column, and still what the theme's PNG replacement draws
+           for a device Domoticz has no icon for. Same precedence as the device
+           page's icon field. Which of the two it came from is deliberately not
+           reported: nothing on the row distinguishes them. */
+        function shapeOf(idxStr) {
+            if (nativeShapes) {
+                var staged = pendingNative.hasOwnProperty(idxStr);
+                var s = staged ? pendingNative[idxStr]
+                               : parseNativeDeviceIcon((devByIdx[idxStr] || {}).Icon);
+                if (s && s.on) return { on: s.on, off: s.off || '' };
+                /* An uploaded PNG is the other half of the same native storage,
+                   so it counts as a shape here even though it has no class. */
+                var ci = staged ? (s && s.image)
+                                : (devByIdx[idxStr] || {}).CustomImage;
+                ci = parseInt(ci, 10) || 0;
+                if (ci >= 100) return { image: ci };
+                /* A staged entry is the whole truth for this device: an explicit
+                   clear must not fall through to the blob's legacy shape. */
+                if (staged) return null;
             }
-            sidebarListEl.innerHTML = '';
-            keys.forEach(function (idxStr) {
-                var ov   = pending[idxStr];
-                var name = ov.name || ('IDX ' + idxStr);
-                var on   = ov.on  || '#4e9af1';
-                var off  = ov.off || '#555770';
-
-                var item = document.createElement('div');
-                item.className = 'ng-ov-si';
-                item.dataset.idx = idxStr;
-                item.title = 'Jump to ' + name +
-                             (ov.anim ? ' — animation: ' + ov.anim : '');
-
-                var icon = document.createElement('i');
-                icon.className = (ov.iconOn || ov.iconOpen || ov.icon || 'fa-solid fa-circle-question') + ' ng-ov-si-icon';
-                icon.style.color = on;
-
-                var info = document.createElement('div');
-                info.className = 'ng-ov-si-info';
-
-                var nameEl = document.createElement('span');
-                nameEl.className = 'ng-ov-si-name';
-                nameEl.textContent = name;
-
-                var dots = document.createElement('span');
-                dots.className = 'ng-ov-si-dots';
-                dots.innerHTML =
-                    '<span class="ng-ov-si-dot" style="background:' + on  + '" title="On: ' + on + '"></span>' +
-                    '<span class="ng-ov-si-dot" style="background:' + off + '" title="Off: ' + off + '"></span>';
-
-                info.appendChild(nameEl);
-                info.appendChild(dots);
-
-                var removeBtn = document.createElement('button');
-                removeBtn.type = 'button';
-                removeBtn.className = 'ng-ov-si-remove';
-                removeBtn.title = 'Remove override';
-                removeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
-                removeBtn.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    delete pending[idxStr];
-                    /* Reset the corresponding device row if visible */
-                    var row = listEl.querySelector('[data-idx="' + idxStr + '"]');
-                    if (row) {
-                        row.classList.remove('ng-ov-row--active');
-                        var rowFa   = row.querySelector('.ng-ov-row-fa');
-                        var editBtn = row.querySelector('.ng-ov-edit-btn');
-                        var editor  = row.querySelector('.ng-ov-editor');
-                        if (rowFa)   { rowFa.className = (row.dataset.defIcon || 'fa-solid fa-circle-question') + ' ng-ov-row-fa'; rowFa.style.color = row.dataset.defColor || '#555770'; rowFa.style.opacity = '.55'; }
-                        if (editBtn) { editBtn.innerHTML = '<i class="fa-solid fa-plus"></i>'; }
-                        if (editor)  { editor.style.display = 'none'; }
-                    }
-                    updateCount();
-                });
-
-                item.appendChild(icon);
-                item.appendChild(info);
-                item.appendChild(removeBtn);
-
-                /* Click to jump to + briefly highlight the device row */
-                item.addEventListener('click', function () {
-                    var target = listEl.querySelector('[data-idx="' + idxStr + '"]');
-                    if (!target) return;
-                    /* Clear search so the row is visible */
-                    if (searchEl && searchEl.value) { searchEl.value = ''; filterList(''); }
-                    target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-                    target.classList.add('ng-ov-row--flash');
-                    setTimeout(function () { target.classList.remove('ng-ov-row--flash'); }, 900);
-                });
-
-                sidebarListEl.appendChild(item);
-            });
+            var ov  = pending[idxStr];
+            var cls = ov && (ov.iconOn || ov.iconOpen || ov.icon);
+            if (cls) return { on: cls, off: (ov.iconOff || '') };
+            return null;
         }
 
+        /* Whether clearing a device would have anything to erase on the device
+           itself — an icon, or an uploaded image the icon would have replaced. */
+        function deviceCarriesIcon(idxStr) {
+            var rec = devByIdx[idxStr] || {};
+            return !!parseNativeDeviceIcon(rec.Icon) ||
+                   (parseInt(rec.CustomImage, 10) || 0) > 0;
+        }
+
+        /* One list, no shadow list: a device carrying customisation is marked on
+           its own row instead of being duplicated into a sidebar, so there is
+           one place to look and one place to edit.
+
+           The marks show the theme styling — the two colours and the animation.
+           Deliberately nothing about WHICH store holds the icon: on the builds
+           this targets the icon is always the device's, so a chip saying so
+           would read identically on every row and earn none of its width. The
+           line above the list says it once instead. */
+        function paintRowMarks(row) {
+            var idxStr = String(row.dataset.idx || '');
+            var marks  = row.querySelector('.ng-ov-row-marks');
+            if (!marks) return;
+            var ov    = pending[idxStr] || null;
+            var shape = shapeOf(idxStr);
+            var html  = '';
+
+            if (ov && (ov.on || ov.off)) {
+                var on  = ov.on  || '#4e9af1';
+                var off = ov.off || '#555770';
+                html += '<span class="ng-ov-mark-dots" title="Nightglass colours — on ' +
+                        on + ', off ' + off + '">' +
+                        '<span class="ng-ov-mark-dot" style="background:' + on  + '"></span>' +
+                        '<span class="ng-ov-mark-dot" style="background:' + off + '"></span>' +
+                        '</span>';
+            }
+            var animName = ov ? animLabel(ov.anim) : '';
+            if (animName) {
+                html += '<span class="ng-ov-mark ng-ov-mark--anim" title="' + animName +
+                        ' animation — Nightglass styling">' +
+                        '<i class="fa-solid fa-wand-magic-sparkles"></i>' + animName + '</span>';
+            }
+
+            marks.innerHTML = html;
+            /* Highlight on anything customised, including an icon with no theme
+               styling beside it — the marks can be empty while the row is still
+               not on its defaults. */
+            row.classList.toggle('ng-ov-row--active', !!(shape || ov));
+        }
+
+        /* Counts marked rows, i.e. both stores — the footer is about what the
+           user will see on their cards, not about one blob's size. */
         function updateCount() {
-            if (countEl) {
-                var n = Object.keys(pending).length;
-                countEl.textContent = n === 0 ? 'No overrides set' : n + ' override' + (n === 1 ? '' : 's');
+            if (!countEl) return;
+            var keys = Object.keys(devByIdx);
+            var n = 0;
+            for (var i = 0; i < keys.length; i++) {
+                if (pending[keys[i]] || shapeOf(keys[i])) n++;
             }
-            renderSidebar();
+            countEl.textContent = n === 0
+                ? 'No devices customised'
+                : n + ' of ' + keys.length + ' devices customised';
         }
 
-        /* Populate sidebar immediately for any pre-existing overrides */
-        renderSidebar();
+        /* One short line about the split, and only where it is true: on a build
+           whose devices hold their own icon, the shape the user picks here is
+           not the theme's and will not leave with it. */
+        function paintStoreNote() {
+            if (!noteEl) return;
+            noteEl.innerHTML = nativeShapes
+                ? '<i class="fa-solid fa-circle-info"></i> The icon is saved on the ' +
+                  'device and stays if you switch themes. Colour and animation are ' +
+                  'Nightglass styling and only apply here.'
+                : '<i class="fa-solid fa-circle-info"></i> This Domoticz cannot store ' +
+                  'an icon per device, so the icon, colour and animation are all ' +
+                  'Nightglass styling and only apply here.';
+        }
 
         function filterList(q) {
             q = (q || '').toLowerCase();
@@ -2814,8 +2862,14 @@
         /* `anim` is optional: { get, set }. Passing it hands the Studio the
            animation row as well, so it is given to the picker that edits the
            device's primary (on / open) icon and to no other — an animation
-           belongs to the device, not to one of its icon slots. */
-        function buildIconPicker(initialCls, onSelect, anim) {
+           belongs to the device, not to one of its icon slots.
+
+           `img` is optional too: { get, set }, the device's CustomImage. Passing
+           it opens the Studio's Custom source, which is only worth offering
+           where an uploaded PNG has somewhere to go — Domoticz's CustomImage
+           column. It rides on the same picker as the glyph because to the user
+           they are one choice: what this device looks like. */
+        function buildIconPicker(initialCls, onSelect, anim, img) {
             var wrap = document.createElement('div');
             wrap.className = 'ng-ov-picker';
 
@@ -2824,14 +2878,35 @@
             var row = document.createElement('div');
             row.className = 'ng-ov-picker-current';
 
+            /* Two previews, one shown at a time: a class cannot render a PNG
+               and an <img> cannot carry an icon font. */
             var prev = document.createElement('i');
-            prev.className = current || 'fa-solid fa-question';
+            var prevImg = document.createElement('img');
+            prevImg.className = 'ng-ov-picker-img';
+            prevImg.alt = '';
             row.appendChild(prev);
+            row.appendChild(prevImg);
 
             var lbl = document.createElement('span');
             lbl.className = 'ng-ov-picker-label';
-            lbl.textContent = pickerLabel(current);
             row.appendChild(lbl);
+
+            /* Draws whichever of the two the device is actually carrying. */
+            function paintCurrent() {
+                var info = img ? imageInfo(img.get()) : null;
+                if (info) {
+                    prev.style.display = 'none';
+                    prevImg.style.display = '';
+                    prevImg.src = info.src;
+                    lbl.textContent = info.name;
+                    return;
+                }
+                prevImg.style.display = 'none';
+                prev.style.display = '';
+                prev.className = current || 'fa-solid fa-question';
+                lbl.textContent = pickerLabel(current);
+            }
+            paintCurrent();
 
             /* Says what is set without having to open the Studio; empty
                collapses out of the layout (CSS :empty). */
@@ -2865,12 +2940,22 @@
                     /* Preview the animations on the icon this row is editing,
                        not on the Studio's own placeholder. */
                     animationGlyph: current,
+                    allowImages: !!img,
+                    currentImage: img ? img.get() : 0,
                     onPick: function (cls) {
                         current = cls;
-                        prev.className = cls;
-                        lbl.textContent = pickerLabel(cls);
+                        /* A glyph replaces an image, so drop the image first or
+                           paintCurrent would keep drawing the old PNG. */
+                        if (img) img.set(0);
+                        paintCurrent();
                         onSelect(cls);
                     },
+                    onPickImage: img ? function (customImage) {
+                        /* Already the value CustomImage stores — the Studio put
+                           back the 100 that getcustomiconset takes off. */
+                        img.set(customImage);
+                        paintCurrent();
+                    } : undefined,
                     onPickAnimation: anim ? function (id) {
                         anim.set(id);
                         paintAnim();
@@ -2888,64 +2973,84 @@
             var idxStr = String(d.idx);
             var ov     = pending[idxStr];
             var model  = getDeviceColorModel(d);
-            var hasOv  = !!(ov && (ov.iconOn || ov.iconOpen || ov.icon));
 
-            /* ── Resolve defaults via the icon replacement module ─────────── */
+            /* ── The device type's own icon, from the replacement module ─────
+               Kept intact as `theme*`: it is what "Use default" returns to,
+               and folding a chosen shape over it would leave nothing to reset
+               back down to. */
             var dzIcon     = typeof window._dzIconForDevice === 'function' ? window._dzIconForDevice : null;
-            var defSpecOn  = dzIcon ? dzIcon(d) : null;
-            var defIconOn  = (defSpecOn && defSpecOn.icon)  || 'fa-solid fa-circle-question';
-            var defColorOn = (defSpecOn && defSpecOn.color) || '#4e9af1';
-            var defColorOff = '#555770';
-            var defIconOpen  = defIconOn;
-            var defIconClose = defIconOn;
-
-            /* Prefer Domoticz's own per-device icon where the device carries
-               one: on a build with the Icon column, that shape is what is
-               actually rendered, so the row's default has to be it rather than
-               the theme's type guess. Colour is unaffected — the Icon column
-               carries none, so the theme still supplies it. */
-            var nativeIcon = parseNativeDeviceIcon(d.Icon);
-            if (nativeIcon) {
-                defIconOn    = nativeIcon.on;
-                defIconOpen  = nativeIcon.on;
-                defIconClose = nativeIcon.off || nativeIcon.on;
-            }
+            /* An uploaded image (>= 100) is not a device type — it is artwork —
+               so it must not decide what "the type's own icon" resolves to, or
+               a device carrying one reports a question mark as its default and
+               shows that the moment it is cleared. Image goes with CustomImage:
+               the server derives one from the other, so for an upload it holds
+               the artwork's name, which is not a DEVICE_MAP key either.
+               Built-in images (1..99) do carry type meaning and stay. */
+            var defSrc     = ((parseInt(d.CustomImage, 10) || 0) >= 100)
+                ? Object.assign({}, d, { CustomImage: 0, Image: '' }) : d;
+            var defSpecOn  = dzIcon ? dzIcon(defSrc) : null;
+            var themeIconOn  = (defSpecOn && defSpecOn.icon)  || 'fa-solid fa-circle-question';
+            var defColorOn   = (defSpecOn && defSpecOn.color) || '#4e9af1';
+            var defColorOff  = '#555770';
+            var themeIconOpen  = themeIconOn;
+            var themeIconClose = themeIconOn;
 
             if (model === 'blinds-2' || model === 'blinds-3') {
                 var sOp = dzIcon ? dzIcon({ TypeImg: (d.TypeImg || '') + 'open', Status: 'On'  }) : null;
                 var sCl = dzIcon ? dzIcon({ TypeImg:  d.TypeImg  || 'blinds',   Status: 'Off' }) : null;
-                defIconOpen  = (sOp && sOp.icon)  || 'fa-solid fa-chevron-up';
-                defIconClose = (sCl && sCl.icon)  || 'fa-solid fa-chevron-down';
-                defColorOn   = (sOp && sOp.color) || defColorOn;
+                themeIconOpen  = (sOp && sOp.icon)  || 'fa-solid fa-chevron-up';
+                themeIconClose = (sCl && sCl.icon)  || 'fa-solid fa-chevron-down';
+                defColorOn     = (sOp && sOp.color) || defColorOn;
             }
 
-            /* ── Current values: override or defaults ─────────────────────── */
-            var curIconOn    = hasOv ? (ov.iconOn    || ov.icon || defIconOn)                 : defIconOn;
-            var curIconOff   = hasOv ? (ov.iconOff   || ov.iconOn || ov.icon || defIconOn)    : defIconOn;
-            var curIconOpen  = hasOv ? (ov.iconOpen  || ov.iconOn || ov.icon || defIconOpen)  : defIconOpen;
-            var curIconClose = hasOv ? (ov.iconClose || ov.iconOn || ov.icon || defIconClose) : defIconClose;
-            var curIconStop  = hasOv ? (ov.iconStop  || 'fa-solid fa-stop')                   : 'fa-solid fa-stop';
-            var curOn        = hasOv ? (ov.on  || defColorOn)  : defColorOn;
-            var curOff       = hasOv ? (ov.off || defColorOff) : defColorOff;
+            /* ── Starting values ────────────────────────────────────────────
+               Shape from whichever store owns it (shapeOf), colour, animation
+               and the Stop icon always from the theme entry. */
+            var shape = shapeOf(idxStr);
+            var curIconOn    = shape ? shape.on                : themeIconOn;
+            var curIconOff   = shape ? (shape.off || shape.on) : themeIconOn;
+            var curIconOpen  = shape ? shape.on                : themeIconOpen;
+            var curIconClose = shape ? (shape.off || shape.on) : themeIconClose;
+            /* An uploaded PNG carries no class, so the glyph slots stay on the
+               type default: open the glyph picker on a device showing an image
+               and it starts where the device would fall back to. */
+            if (shape && shape.image) {
+                curIconOn = themeIconOn;         curIconOff   = themeIconOn;
+                curIconOpen = themeIconOpen;     curIconClose = themeIconClose;
+            }
+            var curIconStop  = (ov && ov.iconStop) || 'fa-solid fa-stop';
+            var curOn        = (ov && ov.on)  || defColorOn;
+            var curOff       = (ov && ov.off) || defColorOff;
             var keepColor    = ov ? !!(ov.keepColor) : (model === 'sensor');
-            /* Read off the entry rather than off hasOv: an animation is
-               stored on its own and does not need an icon override to exist. */
+            /* Read off the entry rather than off a shape: colour and animation
+               are stored on their own and need no icon to exist. */
             var curAnim      = (ov && ov.anim) || '';
+
+            /* Marked = the device carries something, from either store. Drives
+               the row's highlight, the edit button and the dimmed preview. */
+            var hasOv = !!(shape || ov);
 
             /* ── Row element ──────────────────────────────────────────────── */
             var row = document.createElement('div');
             row.className        = 'ng-ov-row' + (hasOv ? ' ng-ov-row--active' : '');
             row.dataset.idx      = idxStr;
             row.dataset.name     = d.Name || '';
-            row.dataset.defIcon  = defIconOn;
-            row.dataset.defColor = defColorOn;
 
             /* ── Summary line ─────────────────────────────────────────────── */
             var summary = document.createElement('div');
             summary.className = 'ng-ov-row-summary';
             var isBlinds = (model === 'blinds-2' || model === 'blinds-3');
 
-            var iconHtml = isBlinds
+            /* An uploaded PNG replaces the whole icon — there is no per-state
+               half of it — so it shows as one image even on a multi-icon row. */
+            var imgShape = shape && shape.image ? imageInfo(shape.image) : null;
+            var iconHtml =
+                (shape && shape.image)
+                ? '<span class="ng-ov-row-icon">' +
+                  '<img class="ng-ov-row-img" alt="" src="' +
+                  ((imgShape && imgShape.src) || '') + '">' +
+                  '</span>'
+                : isBlinds
                 ? '<span class="ng-ov-row-icon ng-ov-row-icon--multi">' +
                   '<i class="' + curIconOpen  + ' ng-ov-row-fa ng-ov-row-fa--open"  style="color:' + curOn  + ';' + (hasOv ? '' : 'opacity:.55') + '"></i>' +
                   '<i class="' + curIconClose + ' ng-ov-row-fa ng-ov-row-fa--close" style="color:' + curOff + ';' + (hasOv ? '' : 'opacity:.55') + '"></i>' +
@@ -2975,10 +3080,16 @@
                     (d.Type ? ' &middot; ' + d.Type : '') + swLabel + modelBadge + groupTag +
                 '  </span>' +
                 '</span>' +
-                '<button class="ng-ov-edit-btn" type="button" title="' + (hasOv ? 'Edit override' : 'Add override') + '">' +
-                '  <i class="fa-solid ' + (hasOv ? 'fa-pen-to-square' : 'fa-plus') + '"></i>' +
+                /* Filled by paintRowMarks — the theme styling this device carries. */
+                '<span class="ng-ov-row-marks"></span>' +
+                /* Always "edit", never "add": every device already shows an
+                   icon, its type default if nothing else, so there is no state
+                   in which the user is creating one rather than changing it. */
+                '<button class="ng-ov-edit-btn" type="button" title="Edit this device’s icon">' +
+                '  <i class="fa-solid fa-pen-to-square"></i>' +
                 '</button>';
             row.appendChild(summary);
+            paintRowMarks(row);
 
             /* ── Inline editor ────────────────────────────────────────────── */
             var editor = document.createElement('div');
@@ -3186,7 +3297,11 @@
                     note.textContent = noteText;
                     wrap.appendChild(note);
                 }
-                wrap.appendChild(buildIconPicker(initialCls, onSelectFn, anim));
+                /* `img` rides along with `anim`: both belong to the device as a
+                   whole rather than to one slot, so they go to the same single
+                   picker section — the one editing the primary icon. */
+                wrap.appendChild(buildIconPicker(initialCls, onSelectFn, anim,
+                                                 anim ? imgAccess : null));
                 return wrap;
             }
 
@@ -3199,60 +3314,157 @@
                 repaint: function () {}      // replaced by buildIconPicker
             };
 
+            /* The device's uploaded PNG, or 0. Only offered where Domoticz can
+               store one; the theme blob holds classes, so on a build without
+               the CustomImage destination there is nowhere to put an image and
+               the Studio's Custom source stays hidden rather than dead. */
+            var imgAccess = !nativeShapes ? null : {
+                get: function () {
+                    var s = shapeOf(idxStr);
+                    return (s && s.image) || 0;
+                },
+                set: function (ci) {
+                    ci = parseInt(ci, 10) || 0;
+                    if (ci >= 100) pendingNative[idxStr] = { image: ci };
+                    else if (pendingNative[idxStr] && pendingNative[idxStr].image) {
+                        /* Cleared by a glyph pick, which stages itself next. */
+                        delete pendingNative[idxStr];
+                    }
+                    repaintRowIcon();
+                    paintRowMarks(row);
+                    updateCount();
+                }
+            };
+
+            /* Redraw the row's leading icon from whatever the device now carries.
+               A glyph and a PNG are different elements, and an image is
+               whole-icon even on a two-icon row, so this rebuilds the slot
+               rather than patching whatever happens to be in it. Only when the
+               kind changed — repainting an unchanged glyph would restart any
+               CSS animation on it. */
+            function repaintRowIcon() {
+                var slot = summary.querySelector('.ng-ov-row-icon');
+                if (!slot) return;
+                var s     = shapeOf(idxStr);
+                var info  = s && s.image ? imageInfo(s.image) : null;
+                var hadImg = !!slot.querySelector('img');
+                if (info) {
+                    if (hadImg && slot.querySelector('img').src.indexOf(info.src) !== -1) return;
+                    slot.classList.remove('ng-ov-row-icon--multi');
+                    slot.innerHTML = '<img class="ng-ov-row-img" alt="" src="' + info.src + '">';
+                    return;
+                }
+                if (!hadImg) return;
+                if (isBlinds) {
+                    slot.classList.add('ng-ov-row-icon--multi');
+                    slot.innerHTML =
+                        '<i class="' + curIconOpen  + ' ng-ov-row-fa ng-ov-row-fa--open"  style="color:' + curOn  + '"></i>' +
+                        '<i class="' + curIconClose + ' ng-ov-row-fa ng-ov-row-fa--close" style="color:' + curOff + '"></i>';
+                } else {
+                    slot.innerHTML = '<i class="' + curIconOn + ' ng-ov-row-fa" style="color:' + curOn + '"></i>';
+                }
+            }
+
             /* Sync the summary's single primary icon */
             function updateSummaryPrimary() {
+                repaintRowIcon();
                 var fa = summary.querySelector('.ng-ov-row-fa');
                 if (fa) { fa.className = curIconOn + ' ng-ov-row-fa'; fa.style.color = curOn; fa.style.opacity = ''; }
             }
 
             /* Sync the summary's blinds open + close icons */
             function updateSummaryBlinds() {
+                repaintRowIcon();
                 var fo = summary.querySelector('.ng-ov-row-fa--open');
                 var fc = summary.querySelector('.ng-ov-row-fa--close');
                 if (fo) { fo.className = curIconOpen  + ' ng-ov-row-fa ng-ov-row-fa--open';  fo.style.color = curOn;  fo.style.opacity = ''; }
                 if (fc) { fc.className = curIconClose + ' ng-ov-row-fa ng-ov-row-fa--close'; fc.style.color = curOff; fc.style.opacity = ''; }
             }
 
-            /* Remove button with model-aware reset callback */
-            function buildRemoveBtn(onRemove) {
+            /* "Use default" clears BOTH layers, the way the device page's icon
+               field does: the shape on the device (staged as an explicit clear
+               so Save erases the Icon column and any uploaded image with it)
+               and the theme's colour / animation entry. Peeling off one and
+               leaving the other is what made the old two-store split confusing.
+               `onReset` restores this model's own preview. */
+            function buildResetBtn(onReset) {
                 var btn = document.createElement('button');
                 btn.type      = 'button';
                 btn.className = 'ng-ov-remove-btn';
-                btn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Remove';
+                btn.innerHTML = '<i class="fa-solid fa-rotate-left"></i> Use default';
+                btn.title     = 'Back to the icon Domoticz picks for this device type';
                 btn.addEventListener('click', function () {
                     delete pending[idxStr];
-                    row.classList.remove('ng-ov-row--active');
-                    var eb = summary.querySelector('.ng-ov-edit-btn');
-                    if (eb) eb.innerHTML = '<i class="fa-solid fa-plus"></i>';
+                    if (nativeShapes && deviceCarriesIcon(idxStr)) {
+                        pendingNative[idxStr] = null;
+                    } else {
+                        /* Nothing on the device to erase — drop any staged pick
+                           rather than queue a write that changes nothing. */
+                        delete pendingNative[idxStr];
+                    }
                     editor.style.display = 'none';
-                    onRemove();
+                    onReset();
+                    repaintRowIcon();
+                    paintRowMarks(row);
                     updateCount();
                 });
                 return btn;
             }
 
-            /* Persist pending entry + mark row active */
+            /* A shape edit goes to whichever store owns shapes on this build.
+               On native that is Domoticz's Icon column — staged for Save, and
+               the theme entry is left untouched, so a device that only got a
+               new icon does not gain a theme entry it has no use for. */
+            function stageShape() {
+                if (!nativeShapes) { commitOverride(); return; }
+                /* The Icon column is a single on/off pair, so the models with
+                   more slots fold onto it: lock/contact map straight over,
+                   blinds' Open/Close become on/off. Everything else has one
+                   shape and leaves off unset — native reads `off || on`. */
+                var on, off;
+                if (model === 'blinds-2' || model === 'blinds-3') {
+                    on = curIconOpen; off = curIconClose;
+                } else if (model === 'lock' || model === 'contact') {
+                    on = curIconOn;   off = curIconOff;
+                } else {
+                    on = curIconOn;   off = '';
+                }
+                pendingNative[idxStr] = { on: on, off: (off && off !== on) ? off : '' };
+                /* After staging, never before: the row's icon is drawn from
+                   shapeOf(), so repainting first would still see the icon this
+                   pick replaces — an uploaded PNG most visibly. */
+                repaintRowIcon();
+                paintRowMarks(row);
+                updateCount();
+            }
+
+            /* Persist the theme entry: colour, animation, keepColor — and the
+               shape only where the theme is still its store. Writing a shape
+               into the blob on a native build would record it twice, and the
+               blob's copy is the one that never renders. */
             function commitOverride() {
                 var obj = { name: d.Name || '', on: curOn, off: curOff };
-                if (model === 'blinds-2' || model === 'blinds-3') {
-                    obj.iconOpen  = curIconOpen;
-                    obj.iconClose = curIconClose;
-                    obj.iconOn    = curIconOpen;   /* sidebar display fallback */
-                    if (model === 'blinds-3') obj.iconStop = curIconStop;
-                } else if (model === 'lock' || model === 'contact') {
-                    obj.iconOn  = curIconOn;
-                    obj.iconOff = curIconOff;
-                } else if (model === 'sensor') {
-                    obj.iconOn    = curIconOn;
-                    obj.keepColor = keepColor;
-                } else {
-                    obj.iconOn = curIconOn;
+                if (!nativeShapes) {
+                    if (model === 'blinds-2' || model === 'blinds-3') {
+                        obj.iconOpen  = curIconOpen;
+                        obj.iconClose = curIconClose;
+                        obj.iconOn    = curIconOpen;   /* single-icon fallback */
+                        if (model === 'blinds-3') obj.iconStop = curIconStop;
+                    } else if (model === 'lock' || model === 'contact') {
+                        obj.iconOn  = curIconOn;
+                        obj.iconOff = curIconOff;
+                    } else {
+                        obj.iconOn = curIconOn;
+                    }
+                } else if (model === 'blinds-3' && curIconStop !== 'fa-solid fa-stop') {
+                    /* The one shape with nowhere native to go: an on/off pair
+                       has no third state, so the Stop icon stays the theme's. */
+                    obj.iconStop = curIconStop;
                 }
+                if (model === 'sensor') obj.keepColor = keepColor;
                 if (curAnim) obj.anim = curAnim;
                 pending[idxStr] = obj;
-                row.classList.add('ng-ov-row--active');
-                var eb = summary.querySelector('.ng-ov-edit-btn');
-                if (eb) eb.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
+                paintRowMarks(row);
                 updateCount();
             }
 
@@ -3274,11 +3486,16 @@
                         curIconOpen = cls;
                         updateSlotIcon(slotOpen, curIconOpen, curOn);
                         updateSummaryBlinds();
-                        commitOverride();
+                        stageShape();
                     }, animAccess));
                 if (model === 'blinds-3') {
                     editor.appendChild(makePickerSection('Stop button icon',
-                        'Middle icon — click to stop movement', curIconStop, function (cls) {
+                        nativeShapes
+                            /* Domoticz's icon is an on/off pair with no third
+                               state, so this one cannot go on the device. */
+                            ? 'Middle icon — Nightglass only, Domoticz has no third icon'
+                            : 'Middle icon — click to stop movement',
+                        curIconStop, function (cls) {
                             curIconStop = cls;
                             updateSlotIcon(slotStop, curIconStop, '#b0b3c6');
                             commitOverride();
@@ -3289,7 +3506,7 @@
                         curIconClose = cls;
                         updateSlotIcon(slotClose, curIconClose, curOff);
                         updateSummaryBlinds();
-                        commitOverride();
+                        stageShape();
                     }));
 
                 colorRow.appendChild(makeOvColorPicker('Open color', curOn, function (v) {
@@ -3298,8 +3515,9 @@
                 colorRow.appendChild(makeOvColorPicker('Close color', curOff, function (v) {
                     curOff = v; updateSlotIcon(slotClose, curIconClose, curOff); updateSummaryBlinds(); commitOverride();
                 }));
-                colorRow.appendChild(buildRemoveBtn(function () {
-                    curIconOpen = defIconOpen; curIconClose = defIconClose; curIconStop = 'fa-solid fa-stop';
+                colorRow.appendChild(buildResetBtn(function () {
+                    curIconOpen = themeIconOpen; curIconClose = themeIconClose;
+                    curIconStop = 'fa-solid fa-stop';
                     curOn = defColorOn; curOff = defColorOff;
                     curAnim = ''; animAccess.repaint();
                     updateSummaryBlinds();
@@ -3326,7 +3544,7 @@
                         curIconOn = cls;
                         updateSlotIcon(slotSensor, curIconOn, keepColor ? defColorOn : curOn);
                         updateSummaryPrimary();
-                        commitOverride();
+                        stageShape();
                     }, animAccess));
 
                 var keepWrap = document.createElement('div');
@@ -3352,11 +3570,11 @@
                     if (!keepColor) updateSlotIcon(slotSensor, curIconOn, v);
                     commitOverride();
                 }));
-                colorRow.appendChild(buildRemoveBtn(function () {
-                    curIconOn = defIconOn; curOn = defColorOn; keepColor = true;
+                colorRow.appendChild(buildResetBtn(function () {
+                    curIconOn = themeIconOn; curOn = defColorOn; keepColor = true;
                     curAnim = ''; animAccess.repaint();
                     var fa = summary.querySelector('.ng-ov-row-fa');
-                    if (fa) { fa.className = defIconOn + ' ng-ov-row-fa'; fa.style.color = defColorOn; fa.style.opacity = '.55'; }
+                    if (fa) { fa.className = themeIconOn + ' ng-ov-row-fa'; fa.style.color = defColorOn; fa.style.opacity = '.55'; }
                 }));
                 editor.appendChild(colorRow);
 
@@ -3375,12 +3593,12 @@
                     curIconOn = cls;
                     updateSlotIcon(slotActive, curIconOn, curOn);
                     updateSummaryPrimary();
-                    commitOverride();
+                    stageShape();
                 }, animAccess));
                 editor.appendChild(makePickerSection(inactiveLabel + ' icon', null, curIconOff, function (cls) {
                     curIconOff = cls;
                     updateSlotIcon(slotInactive, curIconOff, curOff);
-                    commitOverride();
+                    stageShape();
                 }));
 
                 colorRow.appendChild(makeOvColorPicker(activeLabel + ' color', curOn, function (v) {
@@ -3389,11 +3607,11 @@
                 colorRow.appendChild(makeOvColorPicker(inactiveLabel + ' color', curOff, function (v) {
                     curOff = v; updateSlotIcon(slotInactive, curIconOff, curOff); commitOverride();
                 }));
-                colorRow.appendChild(buildRemoveBtn(function () {
-                    curIconOn = defIconOn; curIconOff = defIconOn; curOn = defColorOn; curOff = defColorOff;
+                colorRow.appendChild(buildResetBtn(function () {
+                    curIconOn = themeIconOn; curIconOff = themeIconOn; curOn = defColorOn; curOff = defColorOff;
                     curAnim = ''; animAccess.repaint();
                     var fa = summary.querySelector('.ng-ov-row-fa');
-                    if (fa) { fa.className = defIconOn + ' ng-ov-row-fa'; fa.style.color = defColorOn; fa.style.opacity = '.55'; }
+                    if (fa) { fa.className = themeIconOn + ' ng-ov-row-fa'; fa.style.color = defColorOn; fa.style.opacity = '.55'; }
                 }));
                 editor.appendChild(colorRow);
 
@@ -3415,7 +3633,7 @@
                     curIconOn = cls;
                     updateSlotIcon(slotMain, curIconOn, curOn);
                     updateSummaryPrimary();
-                    commitOverride();
+                    stageShape();
                 }, animAccess));
 
                 colorRow.appendChild(makeOvColorPicker(labelOn, curOn, function (v) {
@@ -3424,11 +3642,11 @@
                 colorRow.appendChild(makeOvColorPicker(labelOff, curOff, function (v) {
                     curOff = v; commitOverride();
                 }));
-                colorRow.appendChild(buildRemoveBtn(function () {
-                    curIconOn = defIconOn; curOn = defColorOn; curOff = defColorOff;
+                colorRow.appendChild(buildResetBtn(function () {
+                    curIconOn = themeIconOn; curOn = defColorOn; curOff = defColorOff;
                     curAnim = ''; animAccess.repaint();
                     var fa = summary.querySelector('.ng-ov-row-fa');
-                    if (fa) { fa.className = defIconOn + ' ng-ov-row-fa'; fa.style.color = defColorOn; fa.style.opacity = '.55'; }
+                    if (fa) { fa.className = themeIconOn + ' ng-ov-row-fa'; fa.style.color = defColorOn; fa.style.opacity = '.55'; }
                 }));
                 editor.appendChild(colorRow);
             }
@@ -3472,11 +3690,12 @@
                 return;
             }
             listEl.innerHTML = '';
+            devices.forEach(function (d) { devByIdx[String(d.idx)] = d; });
 
-            // Sort: devices with existing overrides first
+            // Sort: already-customised devices first, from either store
             var sorted = devices.slice().sort(function (a, b) {
-                var aHas = !!(pending[String(a.idx)]);
-                var bHas = !!(pending[String(b.idx)]);
+                var aHas = !!(pending[String(a.idx)] || shapeOf(String(a.idx)));
+                var bHas = !!(pending[String(b.idx)] || shapeOf(String(b.idx)));
                 if (aHas && !bHas) return -1;
                 if (!aHas && bHas) return 1;
                 return (a.Name || '').localeCompare(b.Name || '');
@@ -3539,13 +3758,28 @@
             listEl.querySelectorAll('.ng-ov-confirm-bar').forEach(function (b) { b.remove(); });
         }
 
-        /* Apply the pending preset to a device row */
+        /* Apply the pending preset to a device row.
+
+           A preset is a shape plus a colour pair, so it splits cleanly down the
+           same seam as everything else: the icon to whichever store owns shapes
+           here, the two colours always to the theme. Nothing about a preset is
+           lost in the split — there is no preset field without a home. */
         function applyPresetToRow(idxStr) {
             var pp = _pendingPreset;
-            pending[idxStr] = { iconOn: pp.icon, on: pp.on, off: pp.off, name: pending[idxStr] && pending[idxStr].name || pp.label };
+            var was = pending[idxStr];
+            var ent = { on: pp.on, off: pp.off, name: (was && was.name) || pp.label };
+            /* Keep an animation the device already had: a preset says nothing
+               about motion, so it has no business clearing one. */
+            if (was && was.anim) ent.anim = was.anim;
+            if (nativeShapes) {
+                pendingNative[idxStr] = { on: pp.icon, off: '' };
+            } else {
+                ent.iconOn = pp.icon;
+            }
+            pending[idxStr] = ent;
+
             var row = listEl.querySelector('[data-idx="' + idxStr + '"]');
             if (row) {
-                row.classList.add('ng-ov-row--active');
                 /* Update all FA icons in the summary — blinds rows have open + close icons,
                    so querySelectorAll is needed instead of just querySelector for the first. */
                 row.querySelectorAll('.ng-ov-row-fa').forEach(function (fa) {
@@ -3555,8 +3789,7 @@
                     fa.style.color   = fa.classList.contains('ng-ov-row-fa--close') ? pp.off : pp.on;
                     fa.style.opacity = '';
                 });
-                var editBtn = row.querySelector('.ng-ov-edit-btn');
-                if (editBtn) editBtn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
+                paintRowMarks(row);
             }
             updateCount();
             exitSelectMode();
@@ -3594,24 +3827,55 @@
         });
         if (searchEl) searchEl.addEventListener('input', function () { filterList(this.value); });
 
+        /* Save writes both stores. The staged shapes go to Domoticz first: they
+           are the half that can fail (a rejected class, a permission), and a
+           failure there must not be hidden behind an already-saved theme blob.
+           The blob is written either way — colour and animation are ours and
+           have nothing to do with whether setused went through. */
         overlay.querySelector('.ng-bl-btn--save').addEventListener('click', function () {
-            if (window.dzNightglassSettings) {
-                window.dzNightglassSettings.set('deviceIconOverrides', JSON.stringify(pending));
+            var staged = Object.keys(pendingNative);
+            var failed = 0;
+            var left   = staged.length;
+
+            function finish() {
+                if (window.dzNightglassSettings) {
+                    window.dzNightglassSettings.set('deviceIconOverrides', JSON.stringify(pending));
+                }
+                if (failed && typeof window.ngShowToast === 'function') {
+                    window.ngShowToast({
+                        type: 'error', icon: 'fa-triangle-exclamation', color: 'var(--dz-danger)',
+                        title: 'Icon not saved',
+                        body: 'Domoticz refused the icon for ' + failed + ' device' +
+                              (failed === 1 ? '' : 's') + '. Colour and animation were saved.'
+                    });
+                }
+                close();
+                // Refresh settings panel badge
+                var wrap = document.getElementById('ng-theme-settings-wrap');
+                if (wrap) {
+                    var presetsBody = wrap.querySelector('#ngPresetsBody');
+                    var presetsOpen = presetsBody && presetsBody.style.display !== 'none';
+                    wrap.innerHTML = buildPanel({ presetsOpen: presetsOpen });
+                    bindEvents(wrap);
+                    loadPresets(wrap);
+                }
             }
-            close();
-            // Refresh settings panel badge
-            var wrap = document.getElementById('ng-theme-settings-wrap');
-            if (wrap) {
-                var presetsBody = wrap.querySelector('#ngPresetsBody');
-                var presetsOpen = presetsBody && presetsBody.style.display !== 'none';
-                wrap.innerHTML = buildPanel({ presetsOpen: presetsOpen });
-                bindEvents(wrap);
-                loadPresets(wrap);
-            }
+
+            if (!left || !iconStore || typeof iconStore.write !== 'function') { finish(); return; }
+            staged.forEach(function (idxStr) {
+                /* A staged entry already IS the store's spec — { on, off } for a
+                   glyph, { image } for an upload, null to clear. */
+                iconStore.write(devByIdx[idxStr] || { idx: idxStr },
+                                pendingNative[idxStr], function (ok) {
+                    if (!ok) failed++;
+                    if (--left === 0) finish();
+                });
+            });
         });
 
         /* Fetch devices — window.__ngDemoDevices can be set by demo pages as a fallback */
-        fetch('/json.htm?type=command&param=getdevices&filter=all&used=true&order=Name', { credentials: 'same-origin' })
+        function loadDevices() {
+          fetch('/json.htm?type=command&param=getdevices&filter=all&used=true&order=Name', { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (data) { renderDevices(data.result || []); })
             .catch(function () {
@@ -3631,6 +3895,33 @@
                     '</div>';
                 updateCount();
             });
+        }
+
+        /* Settle the store question before anything renders — it decides what
+           each row's icon control writes and what its starting icon is. */
+        if (iconStore && typeof iconStore.probeNative === 'function') {
+            iconStore.probeNative(function (ok) {
+                nativeShapes = ok;
+                paintStoreNote();
+                /* Uploaded icons only matter where Domoticz can store one, and
+                   the rows need them to draw a device that already has one — so
+                   this waits for the list rather than rendering "#101" first.
+                   dzCustomIcons owns the +100, so no offset arrives here. */
+                if (ok && typeof window.dzCustomIcons === 'function') {
+                    window.dzCustomIcons(function (list) {
+                        customIcons = list;
+                        loadDevices();
+                    });
+                    return;
+                }
+                loadDevices();
+            });
+        } else {
+            /* The device-icon module is a separate file: without it there is no
+               way to reach the Icon column from here, so the blob is the store. */
+            paintStoreNote();
+            loadDevices();
+        }
     }
 
     function bindEvents(container) {
@@ -3722,7 +4013,7 @@
             blBtn.addEventListener('click', openBlacklistDialog);
         }
 
-        // Device icon override manage button
+        // Device Icons dialog button
         var ovBtn = container.querySelector('#ng-override-manage-btn');
         if (ovBtn) {
             /* Wrap so the click Event isn't passed as presetIdx (issue #225). */
@@ -4197,7 +4488,8 @@
     }
 
     // Expose for external use
-    /* Parse the stored override map (best-effort). */
+    /* Parse the stored per-device styling map (best-effort). Still keyed
+       'deviceIconOverrides' in storage — see the Device Icons dialog. */
     function readOverrideMap() {
         try {
             var raw = (window.dzNightglassSettings && window.dzNightglassSettings.get('deviceIconOverrides')) || '{}';
@@ -4214,15 +4506,15 @@
                 saveSetting(key, DEFAULTS[key]);
             });
         },
-        /* Open the Device Icon Overrides dialog, optionally focused on one
-           device (used by the device-detail page). */
+        /* Open the Device Icons dialog, optionally focused on one device
+           (used by the device-detail page). */
         openIconOverride: function (idx) { openDeviceIconOverrideDialog(idx); },
-        /* Return the override entry for a device IDX, or null. */
+        /* Return the stored styling entry for a device IDX, or null. */
         getDeviceOverride: function (idx) {
             var m = readOverrideMap();
             return m[String(idx)] || null;
         },
-        /* Remove a device's override and re-apply icons immediately. */
+        /* Drop a device's styling entry and re-apply icons immediately. */
         removeDeviceOverride: function (idx) {
             var m = readOverrideMap();
             if (!m[String(idx)]) return false;
@@ -4233,11 +4525,11 @@
             }
             return true;
         },
-        /* Set the on (and optionally off) icon of a device's override,
-           preserving any existing colours and animation. Used by the
-           device-detail / utility box so an Icon Studio pick applies directly
-           without the full override dialog. An empty off clears the stored
-           off, falling back to the on shape — the single-icon default. */
+        /* Set the on (and optionally off) icon in the theme's own entry,
+           preserving any existing colours and animation. The fallback store
+           for a shape: used by the device-detail / utility box on a Domoticz
+           without the Icon column. An empty off clears the stored off,
+           falling back to the on shape — the single-icon default. */
         setDeviceOverrideIcons: function (idx, onCls, offCls, deviceName) {
             if (!idx || !onCls) return false;
             var m  = readOverrideMap();
