@@ -19,7 +19,7 @@
    CSS supplies the same appearance from scratch.
 
    "Use default" sits in the field rather than inside the Studio: the
-   Studio is shared with the settings panel's override editor, where
+   Studio is shared with the settings panel's device-icon editor, where
    "default" means nothing, and keeping the reset next to the preview
    puts the state and the action that clears it in one place.
 
@@ -85,6 +85,28 @@
             return true;
         }
         return false;
+    }
+
+    /* The latch above can only say "yes" from a route that already loaded
+       dzIconService, which is precisely the two surfaces this module drives.
+       The settings panel's icon editor is a third caller, on a route that
+       never loads it, so a synchronous "no" there would be a false negative.
+       Asking the server for the file settles it independently of routing:
+       dzIconService.js ships in www alongside the binary that has the Icon
+       column, so a 200 IS the column. One request, shared by every caller. */
+    var _probe = null;
+    function probeNativeStorage(cb) {
+        if (_nativeStore) { cb(true); return; }
+        if (!_probe) {
+            _probe = fetch('app/icons/dzIconService.js',
+                           { method: 'HEAD', credentials: 'same-origin' })
+                .then(function (r) { return !!(r && r.ok); })
+                .catch(function () { return false; });
+        }
+        _probe.then(function (ok) {
+            if (ok) _nativeStore = true;
+            cb(ok);
+        });
     }
 
     /* The Icon JSON, exactly as dzIconPicker.serializeIcon() writes it and
@@ -338,7 +360,7 @@
             }
         } else if (ovCls) {
             return {
-                kind: 'override', name: ovCls, origin: 'Nightglass override',
+                kind: 'override', name: ovCls, origin: 'set in Nightglass',
                 iconCls: ovCls, color: (ov && ov.on) || '#4e9af1', isDefault: false
             };
         }
@@ -370,7 +392,7 @@
            theme replaces PNGs, and reads as the current pick here too. */
         if (native && ovCls) {
             return {
-                kind: 'override', name: ovCls, origin: 'Nightglass override (theme-only)',
+                kind: 'override', name: ovCls, origin: 'set in Nightglass (this theme only)',
                 iconCls: ovCls, color: (ov && ov.on) || '#4e9af1', isDefault: false
             };
         }
@@ -536,8 +558,8 @@
 
     function openStudio(surface, device, src) {
         var s = settings();
-        /* Open the Icon Studio for this device. Falls back to the full override
-           dialog if the Studio module isn't available. */
+        /* Open the Icon Studio for this device. Falls back to the settings
+           panel's Device Icons dialog if the Studio module isn't available. */
         if (typeof window.dzOpenIconStudio === 'function') {
             var ci   = surface.getCustomImage();
             var pair = currentIconPair(surface, src);
@@ -586,7 +608,7 @@
        device the user never gave a distinct off icon behaves exactly as before.
 
        Nothing here writes colour. DEVICE_MAP still tints the glyph by device
-       type, and a per-device colour remains the settings panel's override
+       type, and a per-device colour remains the settings panel's device-icon
        editor to set; the shape is not recorded in two places at once. */
     function applyGlyph(surface, device, onCls, offCls) {
         onCls  = String(onCls || '').trim();
@@ -651,7 +673,90 @@
         if (box) box.setAttribute('data-dirty', '1');
     }
 
-    /* The override dialog saves asynchronously; poll briefly so provenance
+    /* ── Writing the Icon column without a surface ─────────────────────
+       Both surfaces above only stage a pick: the page's Save / the dialog's
+       Update issues the setused that stores it. The settings panel's icon
+       editor is not on a device page, so it has no Save to ride on and needs
+       the write itself.
+
+       Domoticz has no icon-only endpoint — the Icon column is written by
+       setused, which leaves most parameters it is not given alone (description,
+       switchtype, options, strparams and the rest all survive being omitted)
+       but has two traps for a partial write, both found by trying it against a
+       real server rather than by reading the handler:
+
+         • `protected` is read with a default of false, so omitting it silently
+           unprotects the device. Send it back unchanged.
+         • `customimage` is only acted on when `name` is sent alongside it.
+           Without a name, customimage=0 is quietly dropped and a stale
+           uploaded image stays behind the new glyph — and then survives a
+           "use default", which is the one thing it must not do. Send the
+           device's own name, which leaves the name itself untouched.
+
+       Published rather than reimplemented next to the caller so the
+       {"t","on","off"} contract and the Icon-vs-CustomImage exclusivity have
+       exactly one home. `device` is a getdevices record — the caller already
+       has one, and reusing it keeps Protected honest without a second read.
+
+       `spec` says what the device should end up carrying:
+         { on, off }        a glyph pair (off optional)
+         { image: <n> }     an uploaded PNG, as DeviceStatus.CustomImage stores it
+         null / {}          neither — back to the device type's own icon
+       The two are alternatives, not layers: dzIconService.resolve() prefers
+       Icon, so setting either clears the other and a clear clears both. That
+       rule lives here so no caller has to remember it. */
+    function writeIcon(device, spec, done) {
+        done = done || function () {};
+        var idx = device && (device.idx !== undefined ? device.idx : device.IDX);
+        if (!/^\d+$/.test(String(idx)) || !nativeIconStorage()) { done(false); return; }
+        /* A record without these is a stub, not a device we know: guessing
+           Protected would unprotect a protected device, and a missing name
+           would silently cost us the CustomImage clear. Read the real one. */
+        if (device.Protected === undefined || !device.Name) {
+            fetchDevice(idx, function (full) {
+                if (!full) { done(false); return; }
+                writeIcon(full, spec, done);
+            });
+            return;
+        }
+        spec = spec || {};
+        var icon  = serializeIcon(spec.on, spec.off);
+        /* A glyph wins if both were somehow given, matching the precedence the
+           server renders with, so what is stored is what will be drawn. */
+        var image = icon ? 0 : (parseInt(spec.image, 10) || 0);
+        var url = 'json.htm?type=command&param=setused&used=true' +
+                  '&idx=' + encodeURIComponent(idx) +
+                  '&icon=' + encodeURIComponent(icon) +
+                  '&customimage=' + image +
+                  /* Unchanged, and only here because customimage needs it. */
+                  '&name=' + encodeURIComponent(device.Name) +
+                  '&protected=' + (device.Protected ? 'true' : 'false');
+        fetch(url, { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                var ok = !!(d && d.status === 'OK');
+                if (ok) {
+                    /* Keep the caller's record (and our own cache, which may be
+                       the same object) agreeing with the server. */
+                    device.Icon = icon;
+                    device.CustomImage = image;
+                }
+                done(ok);
+            })
+            .catch(function () { done(false); });
+    }
+
+    /* The settings panel's device-icon editor edits the same two stores as
+       this module: Domoticz's Icon column for the shape, the theme blob for
+       colour and motion. It gets the store, not a copy of it. */
+    window.dzDeviceIconStore = {
+        isNative:     nativeIconStorage,
+        probeNative:  probeNativeStorage,
+        parse:        parseIcon,
+        write:        writeIcon
+    };
+
+    /* The settings dialog saves asynchronously; poll briefly so provenance
        refreshes without leaving the page. */
     function scheduleRefresh(surface) {
         var n = 0;
