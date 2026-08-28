@@ -397,6 +397,21 @@
             };
         }
 
+        /* Nothing is set, so the preview has to show the default the device is
+           actually drawn with. Where Domoticz renders the icons that default is
+           dzIconService's, and the theme's own map disagrees with it for some
+           types — a CPU sensor is a gauge there and a computer here — which read
+           as the edit dialog contradicting the overview. Ask the same resolver
+           the overview used, and keep the theme's map for builds without it. */
+        var nativeDefault = native ? nativeTypeIcon(device) : null;
+        if (nativeDefault) {
+            return {
+                kind: 'theme', name: 'Default', origin: 'chosen from the device type',
+                iconCls: nativeDefault.iconCls, pngSrc: nativeDefault.pngSrc,
+                color: null, isDefault: true
+            };
+        }
+
         var themeSpec = device && typeof window._dzIconForDevice === 'function'
             ? window._dzIconForDevice(device) : null;
         return {
@@ -405,6 +420,22 @@
             color:   (themeSpec && themeSpec.color) || '#4e9af1',
             isDefault: true
         };
+    }
+
+    /* The default Domoticz itself would draw for this device: a glyph in the
+       glyph style, its image in the classic one. Returns null when the service
+       is unreachable so the caller can fall back to the theme's own map. */
+    function nativeTypeIcon(device) {
+        if (!device) return null;
+        try {
+            var inj = injector();
+            if (!inj || !inj.has('dzIconService')) return null;
+            var resolved = inj.get('dzIconService').resolve(device, true);
+            if (!resolved) return null;
+            if (resolved.kind === 'font' && resolved.cls) return { iconCls: resolved.cls, pngSrc: null };
+            if (resolved.kind === 'img' && resolved.src)  return { iconCls: null, pngSrc: resolved.src };
+        } catch (e) {}
+        return null;
     }
 
     function selectedImg(surface) {
