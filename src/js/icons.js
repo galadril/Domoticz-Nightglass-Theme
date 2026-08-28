@@ -934,8 +934,13 @@
         if (img.classList.contains('dz-icon-replaced') ||
             img.classList.contains('dz-icon-skipped'))  return false;
 
-        /* Skip images inside icon-picker dropdowns (Edit Device dialog) */
-        if (img.classList.contains('dd-option-image') || img.closest('.dd-options, .dd-select, .iconlist')) {
+        /* Skip images inside icon-picker dropdowns (Edit Device dialog) and the
+           theme's own Icon Studio. These are pictures of icons being chosen from,
+           not device icons: replacing one would swap the very thing the user is
+           trying to look at, and leaving it queued for a later burst keeps it at
+           the pre-hide opacity, which reads as an icon that never loads. */
+        if (img.classList.contains('dd-option-image') ||
+                img.closest('.dd-options, .dd-select, .iconlist, .ng-is-overlay')) {
             img.classList.add('dz-icon-skipped');
             return false;
         }

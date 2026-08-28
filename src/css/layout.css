@@ -267,9 +267,13 @@ img[src^="images/"]:not(.dd-option-image) {
     pointer-events: none !important;
 }
 
-    /* Restore visibility for icon selector/picker images */
+    /* Restore visibility for icon selector/picker images. The Icon Studio is
+       included so its tiles paint on the first frame: waiting for the JS pass to
+       mark them skipped left a grid of uploaded icons blank for as long as the
+       burst took, which reads as icons that load very slowly. */
     .iconlist img[src^="images/"],
-    .iconlistitem img[src^="images/"] {
+    .iconlistitem img[src^="images/"],
+    .ng-is-overlay img[src^="images/"] {
         opacity: 1 !important;
         pointer-events: auto !important;
     }
