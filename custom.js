@@ -37,6 +37,7 @@
         'src/js/device-detail.js',  /* Device detail page: Nightglass icon source + override entry point */
         'src/js/popups.js',         /* Feature 9: popup/modal redesigns */
         'src/js/toasts.js',         /* Feature 10: live toasts */
+        'src/js/icon-migrate.js',   /* One-shot: per-device icon shapes → Domoticz's Icon column */
         'src/js/realtime.js',       /* Feature 11: WebSocket live card updates */
         'src/js/command-palette.js',/* Feature 12: Ctrl+K command palette */
         'src/js/notifications.js',  /* Feature 13: notification history panel (N key) */

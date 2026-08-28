@@ -812,6 +812,11 @@
         isNative:     nativeIconStorage,
         probeNative:  probeNativeStorage,
         parse:        parseIcon,
+        /* Published alongside write() because it feeds it: the record read
+           here is the one writeIcon() wants (Name and Protected present, so no
+           second read) and it is cached, so a caller that walks several devices
+           and the device page itself share one fetch each. */
+        read:         fetchDevice,
         write:        writeIcon
     };
 
