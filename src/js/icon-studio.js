@@ -224,6 +224,11 @@
             injector.get('$rootScope').$on('dz-webassets-changed', function () {
                 _nativeFetch = null;
                 _cache = null;
+                /* An upload or a delete changes the uploaded set, so the inlined
+                   copies and the list itself both have to be read again. */
+                _imgData = {};
+                _imgSet = null;
+                _imgFetch = null;
                 fetchNativeLibraries(true).then(function () {
                     if (typeof _onNativeChange === 'function') _onNativeChange();
                 });
@@ -369,7 +374,40 @@
     var _imgSet = null;      // null = never read; [] = read, none uploaded
     var _imgFetch = null;
 
+    /* Uploaded icons are served with `Cache-Control: no-cache, must-revalidate`
+       and no ETag or Last-Modified, so the browser cannot even revalidate them —
+       it refetches every PNG in full each time the grid is built, and each
+       request costs a round trip. They are small and few, so each one is read
+       once into a data URL and reused for the rest of the session. Cleared when
+       Domoticz reports that the icons changed, so an upload or delete still
+       shows up. */
+    var _imgData = {};
+
     function customImages() { return _imgSet || []; }
+
+    /* The cached copy when there is one, otherwise the server path — a tile is
+       never held back waiting for the inline version. */
+    function imgSrcFor(entry) {
+        return (entry && _imgData[entry.src]) || (entry && entry.src) || '';
+    }
+
+    function cacheCustomImages(list) {
+        (list || []).forEach(function (entry) {
+            var src = entry && entry.src;
+            if (!src || _imgData[src]) return;
+            fetch(src, { credentials: 'same-origin' })
+                .then(function (r) { return r.ok ? r.blob() : null; })
+                .then(function (blob) {
+                    if (!blob) return;
+                    var reader = new FileReader();
+                    reader.onload = function () {
+                        if (typeof reader.result === 'string') _imgData[src] = reader.result;
+                    };
+                    reader.readAsDataURL(blob);
+                })
+                .catch(function () { /* the server path still works */ });
+        });
+    }
 
     function fetchCustomImages(force) {
         if (_imgFetch && !force) return _imgFetch;
@@ -402,6 +440,7 @@
                     });
                 });
                 _imgSet = list;
+                cacheCustomImages(list);
                 return list;
             })
             .catch(function () {
@@ -846,7 +885,7 @@
         function slotIcon(cls, img) {
             if (img && img.src) {
                 var im = document.createElement('img');
-                im.src = img.src;
+                im.src = imgSrcFor(img);
                 im.alt = '';
                 return im;
             }
@@ -928,7 +967,7 @@
                 b.classList.add('ng-is-tile--img');
                 b.title = entry.desc ? entry.name + ' — ' + entry.desc : entry.name;
                 var im = document.createElement('img');
-                im.src = entry.src;
+                im.src = imgSrcFor(entry);
                 im.alt = '';
                 var label = document.createElement('span');
                 /* Title and Description come from the server; set as text so a
