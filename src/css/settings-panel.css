@@ -2287,7 +2287,7 @@ body.dz-light .ng-toast {
     scrollbar-width: thin;
     scrollbar-color: var(--dz-border) transparent;
 }
-.ng-is-rail-item, .ng-is-rail-manage {
+.ng-is-rail-item {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -2302,9 +2302,9 @@ body.dz-light .ng-toast {
     cursor: pointer;
     transition: background 0.12s, color 0.12s;
 }
-    .ng-is-rail-item i, .ng-is-rail-manage i { width: 16px; text-align: center; color: var(--dz-text-muted); }
-    .ng-is-rail-item span, .ng-is-rail-manage span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .ng-is-rail-item:hover, .ng-is-rail-manage:hover { background: rgba(var(--dz-accent-rgb), 0.08); color: var(--dz-text); }
+    .ng-is-rail-item i { width: 16px; text-align: center; color: var(--dz-text-muted); }
+    .ng-is-rail-item span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ng-is-rail-item:hover { background: rgba(var(--dz-accent-rgb), 0.08); color: var(--dz-text); }
 .ng-is-rail-count {
     font-style: normal;
     font-size: 0.7rem;
@@ -2318,12 +2318,6 @@ body.dz-light .ng-toast {
     color: var(--dz-accent) !important;
 }
     .ng-is-rail-item--active i { color: var(--dz-accent); }
-.ng-is-rail-manage {
-    margin-top: auto;
-    border: 1px dashed var(--dz-border-b);
-    color: var(--dz-text-muted);
-}
-    .ng-is-rail-manage:hover { border-color: var(--dz-accent); color: var(--dz-accent); }
 
 .ng-is-main {
     flex: 1;
@@ -2367,6 +2361,15 @@ body.dz-light .ng-toast {
         transform: translateY(-1px);
     }
         .ng-is-tile:hover i { color: var(--dz-accent); }
+
+/* Uploaded custom icons are PNGs, so they get no colour treatment — only a
+   box the same height as a glyph tile's 22px line, so a mixed grid keeps one
+   baseline instead of images making their rows taller. */
+    .ng-is-tile--img img {
+        width: 26px;
+        height: 26px;
+        object-fit: contain;
+    }
 .ng-is-tile--active {
     border-color: var(--dz-accent);
     background: rgba(var(--dz-accent-rgb), 0.14);
@@ -2456,6 +2459,90 @@ body.dz-light .ng-toast {
     }
 .ng-is-section--collapsed .ng-is-section-body { display: none; }
 
+/* ── On/off target bar ────────────────────────────────────────────
+   Shown only when the caller opens the Studio with slots (the device
+   icon field, so it can offer a distinct off-state icon like Domoticz's
+   own native picker now does). Grid clicks land on whichever slot is
+   active. */
+.ng-is-slotbar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--dz-border);
+    background: var(--dz-surface);
+}
+
+.ng-is-slotbar-lead {
+    align-self: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--dz-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.ng-is-slot {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 6px 14px 6px 10px;
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-radius: 10px;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.1s, background 0.1s;
+}
+
+    .ng-is-slot > i {
+        width: 24px;
+        text-align: center;
+        font-size: 18px;
+        color: var(--dz-accent);
+        flex-shrink: 0;
+    }
+
+    .ng-is-slot-label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--dz-text);
+    }
+
+    .ng-is-slot-cls {
+        font-style: normal;
+        font-size: 0.72rem;
+        color: var(--dz-text-muted);
+    }
+
+    .ng-is-slot:hover {
+        border-color: var(--dz-accent);
+        background: var(--dz-surface-3);
+    }
+
+.ng-is-slot--active {
+    border-color: var(--dz-accent);
+    background: rgba(var(--dz-accent-rgb), 0.14);
+    box-shadow: inset 0 0 0 1px var(--dz-accent);
+}
+
+/* Done button — the explicit finish now that an icon pick keeps the
+   dialog open (there is an off icon and/or an animation still to set). */
+.ng-is-done {
+    flex-shrink: 0;
+    padding: 9px 18px;
+    border: none;
+    border-radius: 9px;
+    background: var(--dz-accent);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+    .ng-is-done:hover { background: var(--dz-accent-light, var(--dz-accent)); }
+
 /* Footer manual-class field */
 .ng-is-foot {
     flex-shrink: 0;
@@ -2513,92 +2600,102 @@ body.dz-light .ng-toast {
 }
     .ng-is-manual-msg:empty { display: none; }
 
-/* Library manager */
-.ng-is-lib-list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 14px; }
-.ng-is-lib-row {
+/* ── Animation row (footer, per-device callers only) ──────────────
+   Every tile renders the icon that is actually selected, with one
+   catalogue animation applied, so the choice is made by watching rather
+   than by reading a label.  The tiles use the same .dz-anim-* classes as
+   the real card icons — see section 25 of animations.css. */
+.ng-is-anim {
+    border-bottom: 1px solid var(--dz-border);
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+}
+
+.ng-is-anim-head {
     display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: var(--dz-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+}
+
+    .ng-is-anim-head em {
+        font-size: 0.72rem;
+        font-weight: 400;
+        text-transform: none;
+        letter-spacing: 0;
+        font-style: normal;
+        opacity: 0.8;
+    }
+
+/* Scrolls rather than wraps: the catalogue is one glanceable row of
+   moving icons, and a second line of them would fight for attention. */
+.ng-is-anim-strip {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.ng-is-anim-tile {
+    flex: 0 0 auto;
+    width: 68px;
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
+    gap: 5px;
+    padding: 8px 4px 6px;
     background: var(--dz-surface-2);
     border: 1px solid var(--dz-border);
-    border-radius: 9px;
-}
-.ng-is-lib-row--busy { opacity: 0.85; }
-.ng-is-lib-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-    .ng-is-lib-meta strong { font-size: 0.85rem; color: var(--dz-text); }
-    .ng-is-lib-meta span {
-        font-size: 0.72rem; color: var(--dz-text-muted);
-        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-.ng-is-lib-status {
-    margin-top: 3px;
-    font-style: normal;
-    font-size: 0.7rem;
-    color: var(--dz-text-dim);
-}
-.ng-is-lib-actions { display: flex; align-items: center; gap: 6px; }
-.ng-is-lib-refresh, .ng-is-lib-remove {
-    flex-shrink: 0;
-    width: 30px; height: 30px;
-    border: 1px solid var(--dz-border-b);
-    border-radius: 8px;
-    background: var(--dz-surface);
-    color: var(--dz-text-muted);
+    border-radius: 10px;
     cursor: pointer;
+    transition: border-color 0.1s, background 0.1s;
 }
-.ng-is-lib-refresh:disabled, .ng-is-lib-remove:disabled {
-    opacity: 0.6;
-    cursor: default;
-}
-.ng-is-lib-refresh:hover { border-color: var(--dz-accent); color: var(--dz-accent); }
-    .ng-is-lib-remove:hover { border-color: var(--dz-danger); color: var(--dz-danger); }
-.ng-is-lib-suggest { margin: 4px 0 14px; }
-.ng-is-lib-suggest-label {
-    font-size: 0.76rem;
-    color: var(--dz-text-muted);
-    margin-bottom: 6px;
-}
-.ng-is-lib-suggest-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.ng-is-lib-suggest-chip {
-    padding: 5px 12px;
-    font-size: 0.76rem;
-    border: 1px dashed var(--dz-border-b);
-    border-radius: 20px;
-    background: var(--dz-surface-2);
-    color: var(--dz-text-soft);
-    cursor: pointer;
-    transition: background 0.12s, color 0.12s, border-color 0.12s;
-}
-    .ng-is-lib-suggest-chip:hover {
-        border-style: solid;
-        border-color: var(--dz-accent);
+
+    /* Fixed box so a tile cannot resize while its icon moves inside it. */
+    .ng-is-anim-tile i {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        font-size: 20px;
         color: var(--dz-accent);
     }
 
-.ng-is-lib-form { display: flex; flex-wrap: wrap; gap: 8px; }
-    .ng-is-lib-form input {
-        flex: 1 1 180px;
-        background: var(--dz-input-bg) !important;
-        color: var(--dz-input-text) !important;
-        border: 1px solid var(--dz-border) !important;
-        border-radius: 8px !important;
-        padding: 8px 11px !important;
-        font-size: 0.82rem;
-        outline: none;
+    .ng-is-anim-tile span {
+        font-size: 0.66rem;
+        color: var(--dz-text-muted);
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
-    .ng-is-lib-form input.ng-is-invalid { border-color: var(--dz-danger) !important; }
-.ng-is-lib-add {
-    flex: 0 0 auto;
-    padding: 8px 16px;
-    border: none;
-    border-radius: 8px;
-    background: var(--dz-accent);
-    color: #fff;
-    font-weight: 600;
-    font-size: 0.82rem;
-    cursor: pointer;
+
+    .ng-is-anim-tile:hover {
+        border-color: var(--dz-accent);
+        background: var(--dz-surface-3);
+    }
+
+.ng-is-anim-tile--active {
+    border-color: var(--dz-accent);
+    background: rgba(var(--dz-accent-rgb), 0.14);
+    box-shadow: inset 0 0 0 1px var(--dz-accent);
 }
+
+    .ng-is-anim-tile--active span { color: var(--dz-text); }
+
+/* "No animation" — the default, so it is set apart from the catalogue
+   by a dashed edge rather than by being the odd tile out in a row. */
+.ng-is-anim-tile--off {
+    border-style: dashed;
+}
+
+    .ng-is-anim-tile--off i { color: var(--dz-text-muted); }
 
 /* Picker launcher (inside the override row editor) */
 .ng-ov-picker-current {
@@ -2640,6 +2737,23 @@ body.dz-light .ng-toast {
         color: var(--dz-accent);
     }
 
+/* Animation state, shown next to the launcher so the editor says what is
+   set without having to open the Studio.  Absent when nothing is set. */
+.ng-ov-picker-anim {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    background: rgba(var(--dz-accent-rgb), 0.12);
+    color: var(--dz-accent);
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+    .ng-ov-picker-anim:empty { display: none; }
+
 /* Responsive: stack rail on top for narrow screens */
 @media (max-width: 640px) {
     .ng-is-dialog { width: 96vw; height: 90vh; }
@@ -2652,7 +2766,6 @@ body.dz-light .ng-toast {
         border-right: none;
         border-bottom: 1px solid var(--dz-border);
     }
-    .ng-is-rail-manage { margin-top: 0; margin-left: auto; }
     .ng-is-head { flex-wrap: wrap; }
     .ng-is-search-wrap { order: 3; flex-basis: 100%; }
 }
