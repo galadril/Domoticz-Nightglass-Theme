@@ -626,6 +626,20 @@
     var _presetsSaveTimer = null; // debounce handle for legacy preset writes
     var LS_KEY         = 'ngThemeSettings';
 
+    /* get() answers from DEFAULTS while _settings is still null, so a caller
+       cannot tell "nothing stored" from "not read yet" — and one that acts on
+       an empty collection would draw the wrong conclusion. whenReady() below
+       hands out this latch instead. */
+    var _readyDone = false;
+    var _readyCbs  = [];
+    function _signalReady() {
+        if (_readyDone) return;
+        _readyDone = true;
+        var cbs = _readyCbs;
+        _readyCbs = [];
+        cbs.forEach(function (fn) { try { fn(); } catch (e) {} });
+    }
+
     /* Collection fields are held in _settings as JSON *strings* (the shape the
        get/set API and every caller expects), but persisted as native
        objects/arrays so their quotes are NOT double-escaped inside the
@@ -774,7 +788,13 @@
     // automatic retry with the freshly-read token handles the normal case
     // (another session wrote between our read and our write); a second conflict
     // stops prompting and reports, rather than looping forever.
-    function _postThemeSettings(btn, retryCount) {
+    //
+    // Resolves true only when the blob reached the server, so a caller that has
+    // already changed something outside the blob can tell whether the two are
+    // still in step.  quiet suppresses the conflict confirm(): a save the user
+    // did not ask for (the icon-shape migration) must never stop a page load on
+    // a modal question — it reports false and leaves the stored copy alone.
+    function _postThemeSettings(btn, retryCount, quiet) {
         retryCount = retryCount || 0;
         var json = JSON.stringify(serializeSettings());
         var params = {
@@ -818,7 +838,7 @@
                     btn.innerHTML = '<i class="fa-solid fa-check"></i> Saved!';
                     setTimeout(function () { btn.innerHTML = SAVE_BTN_HTML; btn.disabled = false; }, 2000);
                 }
-                return;
+                return true;
             }
 
             // Every non-OK reply carries the reason in data.error (status is only
@@ -832,7 +852,13 @@
                     errorToast('var(--dz-danger, #e05555)', 'Save conflict',
                         'Another session keeps changing these settings. Reload the ' +
                         'page and try again.');
-                    return;
+                    return false;
+                }
+                if (quiet) {
+                    // Nobody asked for this save, so nobody can be asked which
+                    // copy wins: the server's stands and the caller is told.
+                    restoreBtn();
+                    return false;
                 }
                 // Another session saved after we last read — re-fetch the current
                 // server value AND token (loadFromThemeApi updates _lastupdate),
@@ -852,16 +878,17 @@
                         }
                         _dirty = false;
                         _showUnsavedToast(false);
-                        return;
+                        return false;
                     }
                     // User chose to overwrite — retry WITH the fresh token so the
                     // server's compare-and-swap matches and the write lands.
-                    return _postThemeSettings(btn, retryCount + 1);
+                    return _postThemeSettings(btn, retryCount + 1, quiet);
                 }, function () {
                     // Re-read failed — surface the conflict rather than silently drop.
                     errorToast('var(--dz-danger, #e05555)', 'Save conflict',
                         'Settings were changed elsewhere and the current server copy ' +
                         'could not be read. Reload the page and try again.');
+                    return false;
                 });
             }
 
@@ -874,29 +901,31 @@
                 errorToast('var(--dz-warning, #f0a832)', 'Settings not synced',
                     'Your session type does not support per-user settings. ' +
                     'Settings are stored in this browser only.');
-                return;
+                return false;
             }
 
             if (err === 'too_large') {
                 errorToast('var(--dz-danger, #e05555)', 'Settings too large',
                     'The settings blob exceeds the 16 KB server limit. ' +
                     'Try removing device icon styling or user presets.');
-                return;
+                return false;
             }
 
             if (err === 'too_many_themes') {
                 errorToast('var(--dz-danger, #e05555)', 'Too many theme configs',
                     'The server has reached its per-user theme-config limit. ' +
                     'Use the Reset All button to clear stale entries.');
-                return;
+                return false;
             }
 
             // invalid_theme / invalid_json / missing_value / post_required / db_error
             errorToast('var(--dz-danger, #e05555)', 'Save failed',
                 (data.message || 'The server rejected the settings.') + ' (' + err + ')');
+            return false;
         }).catch(function (e) {
             console.warn('Nightglass: _postThemeSettings failed', e);
             restoreBtn();
+            return false;
         });
     }
 
@@ -935,6 +964,36 @@
         });
     }
 
+    // Legacy path: store the blob as a JSON user variable (compact form too, so
+    // the user-variable value stays small and round-trips identically).
+    // Resolves true when the variable was written, for callers that need to know.
+    function writeJsonUvar() {
+        var json = JSON.stringify(serializeSettings());
+        if (_uvarIdx) {
+            return apiCall({
+                type: 'command', param: 'updateuservariable',
+                idx: _uvarIdx, vname: UVAR_NAME, vtype: UVAR_TYPE, vvalue: json
+            }).then(function (d) {
+                return !!(d && d.status === 'OK');
+            }, function () { return false; });
+        }
+        return apiCall({
+            type: 'command', param: 'adduservariable',
+            vname: UVAR_NAME, vtype: UVAR_TYPE, vvalue: json
+        }).then(function (d) {
+            var ok = !!(d && d.status === 'OK');
+            // Re-fetch so we have the idx for future update calls
+            return apiCall({ type: 'command', param: 'getuservariables' }).then(function (data) {
+                if (data && data.result) {
+                    data.result.forEach(function (uv) {
+                        if (uv.Name === UVAR_NAME) _uvarIdx = uv.idx;
+                    });
+                }
+                return ok;
+            }, function () { return ok; });
+        }, function () { return false; });
+    }
+
     // Debounced persistence helper called from saveSetting().
     // On the new API, just marks the in-memory state dirty so the user knows
     // to click "Save to Domoticz" — the actual POST happens then.
@@ -946,28 +1005,7 @@
                 _markDirty();
                 return;
             }
-            // Legacy path: store as a JSON user variable (compact form too, so
-            // the user-variable value stays small and round-trips identically).
-            var json = JSON.stringify(serializeSettings());
-            if (_uvarIdx) {
-                apiCall({
-                    type: 'command', param: 'updateuservariable',
-                    idx: _uvarIdx, vname: UVAR_NAME, vtype: UVAR_TYPE, vvalue: json
-                });
-            } else {
-                apiCall({
-                    type: 'command', param: 'adduservariable',
-                    vname: UVAR_NAME, vtype: UVAR_TYPE, vvalue: json
-                }).then(function () {
-                    // Re-fetch so we have the idx for future update calls
-                    return apiCall({ type: 'command', param: 'getuservariables' });
-                }).then(function (data) {
-                    if (!data || !data.result) return;
-                    data.result.forEach(function (uv) {
-                        if (uv.Name === UVAR_NAME) _uvarIdx = uv.idx;
-                    });
-                });
-            }
+            writeJsonUvar();
         }, 400);
     }
 
@@ -1252,6 +1290,34 @@
             saveToLocalStorage();
         }
         applySettings();
+    }
+
+    /* Set a value and push the blob to the server right away, instead of the
+       usual "mark dirty, wait for Save to Domoticz".  For changes the user did
+       not make by hand and so cannot be asked to confirm: the icon-shape
+       migration has already written DeviceStatus by the time it trims the blob,
+       so leaving that trim to a click that may never come would keep the two
+       stores disagreeing.  It writes the whole blob, as every save does — safe
+       here only because the migration runs before the settings panel exists and
+       therefore before there can be pending hand edits to sweep up with it.
+       Resolves true when the value reached durable storage. */
+    function persistNow(key, value) {
+        if (!_settings) return Promise.resolve(false);
+        _settings[key] = value;
+        window.ngLog('[Settings]', 'set+persist', key);
+        saveToLocalStorage();
+        applySettings();
+        if (!_apiAvailable) return Promise.resolve(true); // this browser only, but stored
+        if (_useNewApi) {
+            /* Any debounced save still pending would fire after ours and do
+               nothing but raise the unsaved-changes toast for a blob already on
+               the server. */
+            clearTimeout(_saveTimer);
+            return Promise.resolve(_postThemeSettings(null, 0, true)).then(function (ok) {
+                return !!ok;
+            });
+        }
+        return writeJsonUvar();
     }
 
     /* ── Apply settings to the page ────────────────────────────── */
@@ -4406,6 +4472,9 @@
         loadSettings().then(reconcilePresets).then(function () {
             window.ngLog('[Settings]', 'loaded:', JSON.stringify(_settings));
             applySettings();
+            /* Before the panel work below, which is retried on a timer and can
+               take seconds: a whenReady() caller only needs the values. */
+            _signalReady();
             injectPanel();
             hookOtherTabs();
             hookNativeSaveButton();
@@ -4501,6 +4570,18 @@
     window.dzNightglassSettings = {
         get: function (key) { return _settings ? _settings[key] : DEFAULTS[key]; },
         set: saveSetting,
+        /* Run cb once the stored values are in — immediately if they already
+           are.  Anything that reasons about an *absence* (an empty collection,
+           a missing entry) has to wait for this; get() alone would hand it
+           DEFAULTS and it would act on the wrong picture. */
+        whenReady: function (cb) {
+            if (typeof cb !== 'function') return;
+            if (_readyDone) cb();
+            else _readyCbs.push(cb);
+        },
+        /* set(), but written through to the server now rather than left for the
+           user to save. Returns a promise resolving true on success. */
+        setAndPersist: persistNow,
         reset: function () {
             Object.keys(DEFAULTS).forEach(function (key) {
                 saveSetting(key, DEFAULTS[key]);
