@@ -2152,3 +2152,42 @@
         setTimeout(patchFloorplanPopup, 300);
     }
 })();
+
+/* ── Domoticz "Icon style" setting ────────────────────────────────
+   Domoticz can render its own interface with classic images or with Font
+   Awesome glyphs (Settings > Icon style, classic by default). Nightglass is
+   built on the glyphs throughout — per-device colours, the animation
+   catalogue and the navbar replacement all key off them — so the theme pins
+   the running config to glyphs and hides the control rather than offering a
+   choice half of the theme cannot render.
+
+   Only the in-memory config is forced; the stored preference is left alone,
+   so uninstalling the theme gives the user back whatever they had. */
+(function () {
+    'use strict';
+
+    function forceGlyphStyle() {
+        try {
+            var body = window.angular && angular.element(document.body);
+            var injector = body && body.injector && body.injector();
+            if (injector) {
+                var cfg = injector.get('$rootScope').config;
+                if (cfg && cfg.IconStyle != 1) cfg.IconStyle = 1;
+            }
+        } catch (e) { /* Angular not up yet; the next burst retries */ }
+
+        if (window.$ && $.myglobals) $.myglobals.iconGlyphs = true;
+        document.documentElement.classList.add('dz-icons-glyph');
+
+        var sel = document.getElementById('comboiconstyle');
+        if (sel) {
+            /* Hide the whole row, not just the select, so its label goes too. */
+            var row = sel.closest && sel.closest('tr');
+            if (row) row.style.display = 'none';
+        }
+    }
+
+    forceGlyphStyle();
+    window._dzExtraProcessors = window._dzExtraProcessors || [];
+    window._dzExtraProcessors.push(forceGlyphStyle);
+})();
