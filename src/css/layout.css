@@ -384,6 +384,21 @@ i.dz-fa-device.dz-icon-glyph {
     height: 100%;
 }
 
+/* Domoticz sizes the icon host (.dz-icon-40 / .dz-icon-48) and every child it
+   renders itself fills that host (width/height: 100%), so it never has to say how
+   a smaller child should sit. The theme does produce smaller children: an uploaded
+   custom image is shrunk to 30px so it carries the same visual weight as the
+   glyphs beside it. In a block host that child sits in the top-left corner rather
+   than the middle, which is the icon-off-centre report in issue #241.
+
+   Centring the host fixes those without touching anything else: a child that still
+   fills 100% cannot move. */
+dz-device-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 /* Scene and group buttons carry the size and glyph classes on one element, so
    the adapter's child selector never reaches them and they keep Domoticz's
    28.8px in a 48px frame — noticeably tighter than the 24px the decorated
