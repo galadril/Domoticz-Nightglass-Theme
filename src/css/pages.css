@@ -2524,3 +2524,34 @@ body.dz-light #dz-cmd-box {
     color: var(--dz-text-muted);
     font-size: 0.78rem;
 }
+
+/* ── Section headers on this page ────────────────────────────────
+   Two sections are stacked in one view, and neither header gets the
+   spacing #settingscontent's do, so "Icon Libraries" ends up pressed
+   against the panel above it. */
+#iconsmain > .page-header-small,
+#iconlibrariesmain > .page-header-small {
+    margin: 0 0 14px;
+    padding: 0 10px 10px;
+}
+
+    #iconsmain > .page-header-small h1,
+    #iconlibrariesmain > .page-header-small h1 {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        color: var(--dz-text);
+    }
+
+/* The libraries block is a section in its own right, not a continuation of the
+   uploaded sets above it. */
+#iconlibrariesmain {
+    margin-top: 30px;
+}
+
+/* Panels within a section stay grouped, just not touching. */
+#iconsmain .page-content-container + .page-content-container,
+#iconlibrariesmain .page-content-container + .page-content-container {
+    margin-top: 14px;
+}
