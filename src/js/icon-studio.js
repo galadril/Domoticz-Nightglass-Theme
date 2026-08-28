@@ -1,8 +1,8 @@
 /* ══════════════════════════════════════════════════════════════════
    ICON STUDIO — Nightglass icon picker overlay
    ──────────────────────────────────────────────────────────────────
-   A large, reusable icon chooser used by the Device Icon Overrides
-   editor (and anywhere that needs an icon class). It:
+   A large, reusable icon chooser used by the Device Icons editor (and
+   anywhere that needs an icon class). It:
      • enumerates EVERY icon-font glyph the browser has loaded (all of
        Font Awesome 7 + every icon library installed on this Domoticz),
        grouped by library with counts;
@@ -759,10 +759,15 @@
             }
             if (typeof opts.onPick === 'function') opts.onPick(cls);
             if (keepOpen) {
-                /* Animation-only caller (the override editor): report the icon
-                   but leave the dialog up so the animation row is still there. */
+                /* Caller that stays open (the Device Icons editor): report the
+                   icon but leave the dialog up so the animation row is still
+                   there. Re-render that row too — the tiles animate the
+                   selected glyph, so leaving them on the previous one made a
+                   pick look like it had not registered. `chosen` is assigned
+                   first because renderAnimRow() reads it. */
                 chosen = cls;
                 renderMain();
+                if (allowAnim) renderAnimRow();
                 if (mPrev) mPrev.className = cls;
                 return true;
             }
@@ -1112,11 +1117,14 @@
             var wrap = overlay.querySelector('.ng-is-anim');
             if (!wrap) return;
             /* Preview on the icon under discussion — the on/active icon, which
-               is what animates on the card.  `chosen` follows the active slot,
-               and apply() re-renders this row when the icon changes, so the
-               previews always animate the glyph the user just picked. */
-            var glyph = (slots && slots[0].cls) || cleanClass(opts.animationGlyph) ||
-                        chosen || 'fa-solid fa-lightbulb';
+               is what animates on the card.  apply() re-renders this row on
+               every pick, so the order here decides which icon the tiles show:
+               `chosen` is the live selection and has to win, because
+               opts.animationGlyph is only the caller's opening hint and goes
+               stale the moment the user picks something else. With slots, slot
+               0 IS the on-icon and outranks both. */
+            var glyph = (slots && slots[0].cls) || chosen ||
+                        cleanClass(opts.animationGlyph) || 'fa-solid fa-lightbulb';
 
             wrap.innerHTML =
                 '<div class="ng-is-anim-head">Animation ' +
