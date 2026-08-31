@@ -422,33 +422,40 @@
         border-radius: 6px !important;
     }
 
-    /* ── jQWCP — jQuery Wheel Color Picker widget ──────────────── */
+    /* ── jQWCP — jQuery Wheel Color Picker widget ──────────────────
+       Deliberately unscoped. Domoticz mounts this widget in three
+       different hosts — #rgbw_popup, #rgbw-picker (device edit, timers)
+       and the scenes page's own table.colorpicker — and the old
+       host-prefixed selectors missed the third one entirely, which is
+       why the scenes picker showed up unthemed. The jQWCP- prefix is
+       unique to the widget, so there is nothing else to collide with.
+
+       inline-picker.js normally replaces all of this with the Nightglass
+       control; these rules are what the widget falls back to if that
+       script cannot mount (no jQuery UI, an unexpected host).
+       ──────────────────────────────────────────────────────────── */
 
     /* Main container */
-    #rgbw_popup .jQWCP-wWidget,
-    #rgbw-picker .jQWCP-wWidget {
+    .jQWCP-wWidget {
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
     }
 
     /* Color wheel (hue + temperature wheel) */
-    #rgbw_popup .jQWCP-wWheel,
-    #rgbw-picker .jQWCP-wWheel {
+    .jQWCP-wWheel {
         border-radius: 50%;
         box-shadow: 0 0 16px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(var(--dz-overlay-rgb), 0.06);
         background-color: transparent;
     }
 
     /* Wheel overlay (saturation dim layer) */
-    #rgbw_popup .jQWCP-wWheelOverlay,
-    #rgbw-picker .jQWCP-wWheelOverlay {
+    .jQWCP-wWheelOverlay {
         border-radius: 50%;
     }
 
     /* Wheel cursor (the draggable dot on the wheel) */
-    #rgbw_popup .jQWCP-wWheelCursor,
-    #rgbw-picker .jQWCP-wWheelCursor {
+    .jQWCP-wWheelCursor {
         border: 2px solid #fff !important;
         border-radius: 50% !important;
         box-shadow: 0 0 6px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.2) !important;
@@ -459,8 +466,7 @@
     }
 
     /* Slider wrappers (Value, Kelvin/Temperature, Master, RGB channels, etc.) */
-    #rgbw_popup .jQWCP-slider-wrapper,
-    #rgbw-picker .jQWCP-slider-wrapper {
+    .jQWCP-slider-wrapper {
         background: var(--dz-surface-2) !important;
         border: 1px solid var(--dz-border) !important;
         border-radius: 8px !important;
@@ -469,31 +475,58 @@
         overflow: hidden;
     }
 
+    /* Domoticz widens the columns to 30px to fit the value box it added
+       under each slider. Our padding and border eat into that, which is
+       what clipped the brightness percentage on the scenes page (#236) —
+       give the column back the room it needs. */
+    .jQWCP-wWidget.jQWCP-hasvalues .jQWCP-slider-wrapper {
+        width: 38px !important;
+        padding: 4px 2px !important;
+        overflow: visible;
+    }
+
+    /* The typed percentage under a slider. Left to the theme's generic
+       input padding it renders "100%" as "10…". */
+    .jQWCP-svalue {
+        box-sizing: border-box !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        padding: 0 1px !important;
+        text-align: center !important;
+        font-size: 10px !important;
+        line-height: 22px !important;
+        background: var(--dz-surface-3) !important;
+        color: var(--dz-text) !important;
+        border: 1px solid var(--dz-border) !important;
+        border-radius: 5px !important;
+    }
+
+    .jQWCP-svalue:focus {
+        border-color: var(--dz-accent) !important;
+        outline: none !important;
+    }
+
     /* Canvas slider bars (the gradient strips) */
-    #rgbw_popup .jQWCP-slider,
-    #rgbw-picker .jQWCP-slider {
+    .jQWCP-slider {
         border-radius: 6px !important;
         cursor: pointer;
     }
 
     /* Slider cursors (small triangular / bar indicator) */
-    #rgbw_popup .jQWCP-scursor,
-    #rgbw-picker .jQWCP-scursor {
+    .jQWCP-scursor {
         border-color: #fff transparent transparent transparent !important;
         filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
     }
 
     /* Preview swatch box */
-    #rgbw_popup .jQWCP-wPreview,
-    #rgbw-picker .jQWCP-wPreview {
+    .jQWCP-wPreview {
         border: 1px solid var(--dz-border) !important;
         border-radius: 8px !important;
         overflow: hidden;
         margin-top: 8px;
     }
 
-    #rgbw_popup .jQWCP-wPreviewBox,
-    #rgbw-picker .jQWCP-wPreviewBox {
+    .jQWCP-wPreviewBox {
         border-radius: 6px !important;
     }
 
@@ -1260,6 +1293,106 @@ body.dz-light .ng-sp-track {
 
 .ng-rgbw-preset--off:hover {
     background: rgba(220, 53, 69, 0.1) !important;
+}
+
+/* ── 9h-6. In-page colour picker ──────────────────────────────────
+   The Nightglass control that src/js/inline-picker.js mounts into
+   Domoticz's #rgbw-picker host — the Light/Switch edit page, the scene
+   and group level editors, and the timer editor. Domoticz's own jQWCP
+   widget stays underneath as the engine, parked off-screen.
+   ──────────────────────────────────────────────────────────────── */
+
+.ng-ip-panel {
+    width: 264px;
+    max-width: 100%;
+    padding: 14px;
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-radius: 16px;
+    color: var(--dz-text);
+}
+
+/* Domoticz's mode icon strip and hex row are replaced by our tabs and
+   hex field; the widget itself has to stay alive, so it is moved out of
+   sight rather than switched off. */
+.ng-ip-host #ColorMode,
+.ng-ip-host .pickerrgbcolorrow {
+    display: none !important;
+}
+
+.ng-ip-host .ng-ip-engine-cell {
+    position: relative;
+    height: 0;
+    padding: 0 !important;
+    overflow: hidden;
+}
+
+.ng-ip-host .ng-ip-engine {
+    position: absolute;
+    left: -99999px;
+    top: 0;
+    width: 240px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.ng-ip-panel .ng-rgbw-pane {
+    margin-bottom: 4px;
+}
+
+.ng-ip-panel .ng-rgbw-slider-row:last-child {
+    margin-bottom: 0;
+}
+
+.ng-ip-wheel {
+    display: block;
+    border-radius: 50%;
+    touch-action: none;
+    cursor: crosshair;
+}
+
+.ng-ip-warmth {
+    display: block;
+    border-radius: 18px;
+    touch-action: none;
+    cursor: crosshair;
+    max-width: 100%;
+}
+
+.ng-ip-panel .ng-recent {
+    margin-top: 0;
+    margin-bottom: 12px;
+}
+
+/* Nothing picked yet — don't leave a labelled empty band in a control
+   that is already competing for room on a crowded settings page. */
+.ng-ip-panel .ng-recent--empty {
+    display: none;
+}
+
+.ng-ip-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    margin-bottom: 12px;
+    padding: 9px 11px;
+    border-radius: 10px;
+    background: var(--dz-surface-3);
+    border: 1px solid var(--dz-border);
+    color: var(--dz-text-muted);
+    font-size: 0.74rem;
+    line-height: 1.45;
+}
+
+.ng-ip-note i {
+    margin-top: 2px;
+    color: var(--dz-accent);
+}
+
+@media (max-width: 520px) {
+    .ng-ip-panel {
+        width: 100%;
+    }
 }
 
 /* ── 9i. Tips of the Day modal ────────────────────────────────── */

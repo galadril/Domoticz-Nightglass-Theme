@@ -37,6 +37,7 @@
         'src/js/icon-studio.js',    /* Icon Studio: full icon picker overlay + custom icon libraries */
         'src/js/device-detail.js',  /* Device detail page: Nightglass icon source + override entry point */
         'src/js/popups.js',         /* Feature 9: popup/modal redesigns */
+        'src/js/inline-picker.js',  /* Nightglass colour control for device/scene/group/timer pages */
         'src/js/toasts.js',         /* Feature 10: live toasts */
         'src/js/icon-migrate.js',   /* One-shot: per-device icon shapes → Domoticz's Icon column */
         'src/js/realtime.js',       /* Feature 11: WebSocket live card updates */
