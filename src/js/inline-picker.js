@@ -120,7 +120,12 @@
     /* Push our state into jQWCP and fire the events Domoticz bound to it.
        Everything downstream — the colour JSON, the 400ms debounce, the
        per-host callback — stays Domoticz's own code. */
-    function commitNow() {
+    /* settled: the user has finished choosing — a released drag, a typed hex,
+       a swatch click. Only those are worth recording as a recent colour; the
+       throttled commits during a drag would otherwise fill the strip with one
+       gradient. The popup version of this rule keys off the dialog closing,
+       which this picker never does — it lives on the page. */
+    function commitNow(settled) {
         _commitPending = false;
         try {
             var $inp = $$()(_engine);
@@ -137,7 +142,7 @@
             if (window.ngLog) window.ngLog('[ng-picker]', 'commit failed', e);
             return;
         }
-        if (window.ngColors && (_mode === 'color' || _mode === 'custom')) {
+        if (settled && window.ngColors && (_mode === 'color' || _mode === 'custom')) {
             window.ngColors.remember(currentHex());
         }
     }
@@ -265,11 +270,13 @@
     /* Load a concrete RGB colour (typed hex, recent swatch) into our state.
        In Mix the value axis is a real control, so honour it; elsewhere the
        wheel only carries hue and saturation. */
-    function applyRgb(rgb) {
+    function applyRgb(rgb, settled) {
         var hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
         _h = hsv.h; _s = hsv.s;
         if (_mode === 'custom') _v = hsv.v;
-        render(); commit();
+        render();
+        /* Typing streams a character at a time; a swatch click is one decision. */
+        if (settled) commitNow(true); else commit();
     }
 
     /* ── Mode switching ───────────────────────────────────────────── */
@@ -366,7 +373,7 @@
             _els.recentSlot.appendChild(window.ngColors.buildRow({
                 onPick: function (hex) {
                     var rgb = parseHex(hex);
-                    if (rgb) applyRgb(rgb);
+                    if (rgb) applyRgb(rgb, true);
                 }
             }));
         }
@@ -397,10 +404,13 @@
         _els.valueRange.className = 'ng-rgbw-slider';
         _els.valueRange.min = '0'; _els.valueRange.max = '100';
         _els.valueRange.title = 'How strong the colour is against the white';
+        /* input streams while dragging, change fires on release: the throttle
+           rides the first, the settled value rides the second. */
         _els.valueRange.addEventListener('input', function () {
             _v = parseInt(this.value, 10) / 100;
             render(); commit();
         });
+        _els.valueRange.addEventListener('change', function () { commitNow(true); });
         _els.valueBlock.appendChild(_els.valueRange);
         _els.valueBlock.appendChild(el('i', 'fa-solid fa-palette ng-rgbw-icon-bright'));
         panel.appendChild(_els.valueBlock);
@@ -417,6 +427,7 @@
             _white = parseInt(this.value, 10) / 100;
             render(); commit();
         });
+        _els.whiteRange.addEventListener('change', function () { commitNow(true); });
         _els.whiteBlock.appendChild(_els.whiteRange);
         _els.whiteBlock.appendChild(el('i', 'fa-solid fa-lightbulb ng-rgbw-icon-bright'));
         panel.appendChild(_els.whiteBlock);
@@ -442,7 +453,9 @@
             if (rgb) applyRgb(rgb);
         });
         _els.hex.addEventListener('blur', function () {
-            if (!this.readOnly) this.value = currentHex();
+            if (this.readOnly) return;
+            this.value = currentHex();
+            commitNow(true);      /* leaving the field settles what was typed */
         });
         _els.hex.addEventListener('keydown', function (e) {
             if (e.key === 'Enter') { e.preventDefault(); this.blur(); }
@@ -465,6 +478,7 @@
                 if (_els.brightNum) _els.brightNum.value = _bright;
                 commit();
             });
+            _els.brightRange.addEventListener('change', function () { commitNow(); });
             row.appendChild(_els.brightRange);
             row.appendChild(el('i', 'fa-solid fa-sun ng-rgbw-icon-bright'));
 
@@ -488,7 +502,7 @@
                 if (_els.brightRange) _els.brightRange.value = _bright;
                 commit();
             });
-            _els.brightNum.addEventListener('blur', function () { render(); });
+            _els.brightNum.addEventListener('blur', function () { render(); commitNow(); });
             _els.brightNum.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter') { e.preventDefault(); this.blur(); }
             });
@@ -539,7 +553,9 @@
     function endDrag() {
         if (!_drag) return;
         _drag = null;
-        commitNow();          /* the released value must land, throttle or not */
+        /* The released value must land whatever the throttle was doing, and it
+           is the one the user settled on. */
+        commitNow(true);
     }
 
     document.addEventListener('mousemove', function (e) {

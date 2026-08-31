@@ -414,6 +414,44 @@ window.ngLog = function (prefix) {
    script ran are covered too.  The wrapper reads a live selector list,
    so overlapping overlays may register and unregister in any order.
 ─────────────────────────────────────────────────────────────────── */
+/* ── Is a dialog covering the page? ──────────────────────────────
+   Device updates keep arriving while a dialog is open, and the cards
+   behind it keep animating — a state-change flash, an Icon Studio spin.
+   Under a blurred backdrop that is not merely invisible: backdrop-filter
+   re-samples what it covers every frame, so animation behind the blur
+   makes the blur itself shimmer.
+
+   Our own dialogs report in through ngSetDialogOpen so this stays a
+   lookup rather than a DOM scan on a hot path. Domoticz's own modals do
+   not know about us, so those are sniffed directly: Bootstrap puts
+   modal-open on <body>, jQuery UI lays down a .ui-widget-overlay.
+─────────────────────────────────────────────────────────────────── */
+(function () {
+    'use strict';
+
+    var _open = {};
+
+    function anyOwn() {
+        for (var k in _open) { if (_open[k]) return true; }
+        return false;
+    }
+
+    window.ngSetDialogOpen = function (id, isOpen) {
+        if (isOpen) _open[id] = true; else delete _open[id];
+        if (document.body) {
+            document.body.classList.toggle('ng-dialog-open', anyOwn());
+        }
+    };
+
+    window.ngDialogOpen = function () {
+        if (anyOwn()) return true;
+        var body = document.body;
+        if (body && body.classList.contains('modal-open')) return true;
+        return !!(document.querySelector('.ui-widget-overlay'));
+    };
+}());
+
+
 window.ngRelaxDialogFocus = function (selector) {
     var noop = function () {};
     var $ = window.jQuery;
