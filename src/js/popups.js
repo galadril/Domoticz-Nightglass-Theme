@@ -753,9 +753,9 @@
                     // Mode tabs — only shown for devices that have white channels too
                     (hasWhite ?
                     '<div class="ng-rgbw-tabs">' +
-                    '  <button class="ng-rgbw-tab' + (colorModeActive ? ' ng-rgbw-tab--active' : '') + '" data-mode="color" onclick="ngRgbwPickMode(\'color\')">' +
+                    '  <button class="ng-rgbw-tab' + (colorModeActive ? ' ng-rgbw-tab--active' : '') + '" data-mode="color" onclick="ngRgbwSetMode(\'color\')">' +
                     '    <i class="fa-solid fa-circle-half-stroke"></i> Colour</button>' +
-                    '  <button class="ng-rgbw-tab' + (!colorModeActive ? ' ng-rgbw-tab--active' : '') + '" data-mode="white" onclick="ngRgbwPickMode(\'white\')">' +
+                    '  <button class="ng-rgbw-tab' + (!colorModeActive ? ' ng-rgbw-tab--active' : '') + '" data-mode="white" onclick="ngRgbwSetMode(\'white\')">' +
                     '    <i class="fa-solid fa-sun"></i> White</button>' +
                     '</div>' : '') +
 
@@ -935,16 +935,13 @@
             if (cp) cp.style.display = mode === 'color' ? '' : 'none';
             if (wp) wp.style.display = mode === 'white' ? '' : 'none';
             updatePreview();
-        };
-
-        /* The tabs' entry point. Kept separate from ngRgbwSetMode because the
-           presets drive the mode internally and then send once themselves —
-           routing them through here would fire the command twice. Clicking a
-           tab is a decision about the light, so it applies immediately: the
-           tab and the bulb should never disagree. */
-        window.ngRgbwPickMode = function (mode) {
-            window.ngRgbwSetMode(mode);
-            commitNow();
+            /* Deliberately does not send. A tab is navigation — "show me the
+               white controls" — not an instruction to make the light white.
+               Sending here would also switch an off light on, since
+               setcolbrightnessvalue turns one on, so merely looking at the
+               other tab would change the light. The mode becomes real the
+               moment an actual control is touched, which is how Domoticz's
+               own mode icons behave too. */
         };
 
         function flashBtn(btn, label) {

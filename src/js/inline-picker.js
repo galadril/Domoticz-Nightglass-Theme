@@ -305,10 +305,12 @@
         _mode = id;
         $$()(trigger).trigger('click');
         render();
-        /* The tab is the user's decision, so make it real — in the timer and
-           scene editors this stages the value, on the device page it commands
-           the light, which is what clicking "White" is asking for. */
-        commit();
+        /* Deliberately does not send. Clicking a tab means "show me these
+           controls", not "apply this mode" — and since the send would turn an
+           off light on, browsing to another tab would change the light. The
+           click above still runs Domoticz's own UpdateColorPicker, which
+           reconfigures the picker without sending either; the mode goes to the
+           device as soon as a real control is moved. */
     }
 
     /* ── Build ────────────────────────────────────────────────────── */
