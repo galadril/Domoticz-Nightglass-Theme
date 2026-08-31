@@ -275,6 +275,70 @@
         return d.toLocaleDateString(locale, { month: 'short', day: 'numeric' }) + ', ' + time;
     }
 
+    /* ── Power toggle for colour lights (#237) ────────────────────────
+       A plain switch toggles when you click its card icon. A colour light
+       does not: dzLightWidget sends isDimmer() && isRGB() straight to
+       ShowRGBWPopup, so the only way to switch one off is to open the
+       picker and press a preset. Since most people set a colour once and
+       then just switch the light, that is a lot of clicks for the common
+       case — Hue puts the toggle on the card and keeps the picker for
+       detail. This does the same.
+
+       Domoticz marks these cards for us: the dim slider carries
+       data-isled, plus the idx and protected flag we need.
+       ─────────────────────────────────────────────────────────────── */
+
+    /* Read the state the icon layer already publishes rather than parsing
+       status text, which is localised and varies by switch type. Returns
+       null when the card reports nothing, so the button can stay neutral
+       instead of guessing. */
+    function cardIsOn(card) {
+        var tagged = card.querySelector('[data-dz-state]');
+        if (tagged) return tagged.getAttribute('data-dz-state') === 'on';
+        var native = card.querySelector('.dz-icon--on, .dz-icon--off');
+        if (native) return native.classList.contains('dz-icon--on');
+        return null;
+    }
+
+    function syncPower(card, btn) {
+        var on = cardIsOn(card);
+        btn.classList.toggle('dz-power--on', on === true);
+        btn.title = (on === false) ? 'Switch on' : 'Switch off';
+    }
+
+    function addPowerToggle(card, footer) {
+        var slider = card.querySelector('.dimslider[data-isled="true"]');
+        if (!slider) return;
+        var idx = slider.getAttribute('data-idx');
+        if (!idx) return;
+
+        var btn = footer.querySelector('.dz-power');
+        if (!btn) {
+            btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'dz-power';
+            btn.innerHTML = '<i class="fa-solid fa-power-off"></i>';
+            btn.addEventListener('click', function (e) {
+                /* The card and its icon both carry click handlers of their
+                   own; a press here must not open the colour picker. */
+                e.preventDefault();
+                e.stopPropagation();
+                var host = btn.closest('.item');
+                if (!host || typeof window.SwitchLight !== 'function') return;
+                var on = cardIsOn(host);
+                /* Unknown state falls back to On: a light you cannot read is
+                   more likely off, and On is the recoverable guess. */
+                window.SwitchLight(btn.dataset.idx, on === true ? 'Off' : 'On',
+                                   btn.dataset.protectedFlag === 'true');
+            });
+            footer.insertBefore(btn, footer.firstChild);
+        }
+
+        btn.dataset.idx = idx;
+        btn.dataset.protectedFlag = slider.getAttribute('data-isprotected') || '';
+        syncPower(card, btn);
+    }
+
     /* Register with the icon-replacement burst so footer injection lands
        in the same batch as icon replacement, reducing layout reflows.  */
     window._dzExtraProcessors = window._dzExtraProcessors || [];
@@ -306,6 +370,8 @@
             }
 
             var luSpan = footer.querySelector('.dz-time');
+
+            addPowerToggle(card, footer);
 
             /* Update timestamp */
             if (lu) {
@@ -1030,13 +1096,6 @@ document.addEventListener('DOMContentLoaded', function () {
                    when the adapter tags them, so without this guard every card
                    would flash once on load and on every SPA navigation. */
                 if (m.oldValue === null) return;
-                /* A dialog is covering the cards. Flashing one behind a blurred
-                   backdrop is not just invisible — backdrop-filter re-samples
-                   what it covers every frame, so the blur itself shimmers. The
-                   flash is dropped rather than deferred: it announces a change
-                   as it happens, and replaying it on close would announce one
-                   that already went by. */
-                if (window.ngDialogOpen && window.ngDialogOpen()) return;
                 var icon = m.target;
                 var newState = icon.getAttribute('data-dz-state');
                 // Walk up to card (desktop: .item.itemBlock; mobile: <tr id="...">)
@@ -1052,6 +1111,25 @@ document.addEventListener('DOMContentLoaded', function () {
                     el = el.parentElement;
                 }
                 if (!card) return;
+
+                /* This attribute is exactly what the power button reads, so
+                   keep it in step here rather than waiting for the next burst.
+                   Done whether or not a dialog is up: it is a colour change,
+                   not an animation. Inlined because the button's own helper
+                   lives in the footer IIFE, out of scope here. */
+                var powerBtn = card.querySelector('.dz-power');
+                if (powerBtn) {
+                    powerBtn.classList.toggle('dz-power--on', newState === 'on');
+                    powerBtn.title = (newState === 'on') ? 'Switch off' : 'Switch on';
+                }
+
+                /* A dialog is covering the cards. Flashing one behind a blurred
+                   backdrop is not just invisible — backdrop-filter re-samples
+                   what it covers every frame, so the blur itself shimmers. The
+                   flash is dropped rather than deferred: it announces a change
+                   as it happens, and replaying it on close would announce one
+                   that already went by. */
+                if (window.ngDialogOpen && window.ngDialogOpen()) return;
 
                 var nameEl = card.querySelector('td#name');
                 window.ngLog('[Cards]', 'state flash:', nameEl ? nameEl.textContent.trim() : card.id,
