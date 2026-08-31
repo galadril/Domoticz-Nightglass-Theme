@@ -128,6 +128,11 @@ Fine-tune every color with live preview:
 - **Background & Surfaces** - Page background, navbar, cards, surfaces
 - **Borders & Text** - Border colors and text hierarchy
 - **Dual Mode Support** - Separate colors for dark and light modes
+- **Recently Used Colors** - The last 5 colors you picked follow you into every
+  picker in the theme - the settings panel, per-device icon overrides, the RGB /
+  RGBWW light popup and Domoticz's own color fields (bar and gauge ranges,
+  Dashboard 2.0 widget settings) - so matching two devices no longer means
+  copying a hex code around
 
 ### ✨ Per-Device Icon Overrides
 - Assign any Font Awesome 7 icon to individual devices

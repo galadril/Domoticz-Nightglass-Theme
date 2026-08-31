@@ -394,3 +394,57 @@ window.ngLog = function (prefix) {
     args.unshift(prefix);
     console.log.apply(console, args);
 };
+
+
+/* ── Shared jQuery UI dialog focus relaxation ────────────────────
+   Domoticz opens its device dialogs (Utility "edit device", timers,
+   the bar-range editor's host form, …) as jQuery UI dialogs with
+   modal: true, which install a document-wide focusin trap.  jQuery UI
+   1.12's _allowInteraction() only accepts focus inside .ui-dialog /
+   .ui-datepicker and drags it back out otherwise, so a Nightglass
+   overlay parked on <body> — the Icon Studio (#230), the range colour
+   picker (#253) — cannot focus its own text fields.  Pressing Escape
+   appeared to "unlock" them only because it closed the dialog and took
+   the trap with it.
+
+   ngRelaxDialogFocus(selector) teaches every currently open dialog to
+   treat matching elements as legitimate and returns an undo function.
+   Live instances are patched rather than the widget prototype, so
+   nothing global is monkey-patched and dialogs created before this
+   script ran are covered too.  The wrapper reads a live selector list,
+   so overlapping overlays may register and unregister in any order.
+─────────────────────────────────────────────────────────────────── */
+window.ngRelaxDialogFocus = function (selector) {
+    var noop = function () {};
+    var $ = window.jQuery;
+    if (!$ || !$.fn || !$.fn.jquery || !selector) return noop;
+
+    var patched = [];
+    try {
+        $('.ui-dialog-content').each(function () {
+            var inst = $(this).data('uiDialog') || $(this).data('dialog');
+            if (!inst || typeof inst._allowInteraction !== 'function') return;
+            if (!inst._ngRelaxSelectors) {
+                inst._ngRelaxSelectors = [];
+                var orig = inst._allowInteraction;
+                inst._allowInteraction = function (event) {
+                    var sels = inst._ngRelaxSelectors;
+                    for (var i = 0; i < sels.length; i++) {
+                        if ($(event.target).closest(sels[i]).length) return true;
+                    }
+                    return orig.call(this, event);
+                };
+            }
+            inst._ngRelaxSelectors.push(selector);
+            patched.push(inst);
+        });
+    } catch (e) { /* no jQuery UI, or a dialog mid-teardown */ }
+
+    return function restore() {
+        patched.forEach(function (inst) {
+            var i = inst._ngRelaxSelectors ? inst._ngRelaxSelectors.indexOf(selector) : -1;
+            if (i !== -1) inst._ngRelaxSelectors.splice(i, 1);
+        });
+        patched = [];
+    };
+};
