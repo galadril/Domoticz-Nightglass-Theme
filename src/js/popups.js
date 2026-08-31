@@ -669,8 +669,11 @@
                    '  <input type="range" class="ng-rgbw-slider" id="ng-rgbw-bright" min="1" max="100" value="100">' +
                    '  <i class="fa-solid fa-sun ng-rgbw-icon-bright"></i>' +
                    '  <span class="ng-rgbw-bright-field">' +
+                   /* size="3": an input with no size defaults to 20 characters,
+                      which is enough to eat the row if this rule set is ever
+                      outbid by the theme's generic input styling. */
                    '    <input type="text" inputmode="numeric" id="ng-rgbw-bright-num"' +
-                   '           class="ng-rgbw-bright-input" maxlength="3" title="Brightness %">' +
+                   '           class="ng-rgbw-bright-input" size="3" maxlength="3" title="Brightness %">' +
                    '    <span class="ng-rgbw-bright-unit">%</span>' +
                    '  </span>' +
                    '</div>';

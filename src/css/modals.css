@@ -1171,9 +1171,12 @@ body.dz-light .ng-sp-track {
 }
 
 /* Brightness slider row. Tighter gaps than the other rows: it carries two
-   icons, a slider and the percentage field, and the popup is only 260px. */
+   icons, a slider and the percentage field, and the popup is only 260px.
+   Wraps rather than squashing — on a phone the slider keeps a usable length
+   and the percentage field drops onto its own line. */
 .ng-rgbw-slider-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 8px;
     margin-bottom: 14px;
@@ -1200,20 +1203,24 @@ body.dz-light .ng-sp-track {
     box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.18);
 }
 
+/* Every declaration here has to outrank the theme's own generic
+   input[type="text"] rule in controls.css, which is entirely !important —
+   without that this field inherits a 0.88rem inherited-family font and
+   6px/12px padding, and stops fitting the row it lives in. */
 .ng-rgbw-bright-input {
     /* Wide enough for "100" in the monospace face, and no wider — the row
        has an icon, a slider and another icon to fit alongside it. */
-    width: 2.2em;
-    min-width: 0;
+    width: 3ch !important;
+    min-width: 0 !important;
     flex: 0 0 auto;
     padding: 0 !important;
     margin: 0 !important;
     border: none !important;
     background: none !important;
     color: var(--dz-text) !important;
-    font-size: 0.78rem;
-    font-family: monospace;
-    text-align: right;
+    font-size: 0.78rem !important;
+    font-family: 'SF Mono', 'Cascadia Code', 'Courier New', monospace !important;
+    text-align: right !important;
     outline: none !important;
     box-shadow: none !important;
 }
@@ -1236,11 +1243,13 @@ body.dz-light .ng-sp-track {
 }
 
 .ng-rgbw-slider {
-    flex: 1 1 0;
     /* A flex item's min-width defaults to its intrinsic size, and a range
        input's is wide enough (~170px) to push the percentage field out past
-       the picker's edge. Let it actually shrink. */
-    min-width: 0;
+       the picker's edge — hence a floor rather than the default. The floor
+       is what stops it collapsing to a stub instead: once the row cannot fit
+       everything at 90px, it wraps the percentage field to the next line. */
+    flex: 1 1 90px;
+    min-width: 90px;
     -webkit-appearance: none;
     appearance: none;
     height: 5px;
