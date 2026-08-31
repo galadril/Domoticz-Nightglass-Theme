@@ -579,6 +579,38 @@
             }
         }
 
+        function currentHex() {
+            var rgb = hsvToRgb(_h, _s, 1);
+            return '#' + toHex(rgb.r) + toHex(rgb.g) + toHex(rgb.b);
+        }
+
+        /* ── Recently used colours ───────────────────────────────────── */
+        /* Shared with the settings panel, the icon-override editor and the
+           bar-range dialog, so a colour dialled in on one light is one click
+           away on the next. Hues only — the strip means nothing on the
+           white-temperature side, which is why WW/CW devices don't get it.
+           Picking loads the colour into the wheel; "Set Colour" still sends
+           it, exactly like dragging the wheel does. */
+        function mountRecentRow() {
+            if (!window.ngColors) return;
+            var slot = p.querySelector('.ng-rgbw-recent-slot');
+            if (!slot) return;
+            slot.appendChild(window.ngColors.buildRow({
+                onPick: function (hex) {
+                    var n = window.ngColors.normalize(hex);
+                    if (!n) return;
+                    var hsv = rgbToHsv(parseInt(n.slice(1, 3), 16),
+                                       parseInt(n.slice(3, 5), 16),
+                                       parseInt(n.slice(5, 7), 16));
+                    _h = hsv.h; _s = hsv.s;
+                    if (_mode !== 'color') window.ngRgbwSetMode('color');
+                    var wc = document.getElementById('ng-rgbw-canvas');
+                    if (wc) renderWheel(wc);
+                    updatePreview();
+                }
+            }));
+        }
+
         /* ── Warmth bar snippet (reused in both WW-only and RGBW white tab) ── */
         function warmthPaneHTML(canvasId) {
             return '<div class="ng-rgbw-warmth-wrap">' +
@@ -678,10 +710,13 @@
                     '  <div class="ng-rgbw-swatch"></div>' +
                     '  <span class="ng-rgbw-hex">#ffffff</span>' +
                     '</div>' +
+                    '<div class="ng-rgbw-recent-slot"></div>' +
                     brightnessRowHTML() +
                     presetsHTML(true) +
                     '<button class="ng-sp-set-btn" onclick="ngRgbwApply()">' +
                     '  <i class="fa-solid fa-check"></i> Set Colour</button>';
+
+                mountRecentRow();
 
                 // Draw colour wheel
                 var wc = document.getElementById('ng-rgbw-canvas');
@@ -807,6 +842,9 @@
                 // m=3: ColorModeRGB — valid fields: r, g, b
                 var rgb = hsvToRgb(_h, _s, 1);
                 colorObj = { m:3, t:0, r:rgb.r, g:rgb.g, b:rgb.b, cw:0, ww:0 };
+                /* A colour the user actually sent to a light is worth offering
+                   again — a colour merely hovered over on the wheel is not. */
+                if (window.ngColors) window.ngColors.remember(currentHex());
             } else {
                 // m=2: ColorModeTemp — valid field: t (0=cool 6500K, 255=warm 2700K)
                 var t = Math.round(_warmth * 255);

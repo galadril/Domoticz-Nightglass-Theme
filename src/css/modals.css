@@ -1492,8 +1492,10 @@ body.dz-light .ng-sp-track {
     box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.18) !important;
 }
 
-/* Hide native color input — JS swaps it for a themed swatch trigger */
-.dd-range-color-picker {
+/* Hide native colour inputs the JS has actually swapped for a themed swatch
+   trigger. Keyed off the marker attribute rather than the class so a field
+   the script never reached keeps its working native picker. */
+input[type="color"][data-ng-rcp] {
     display: none !important;
 }
 

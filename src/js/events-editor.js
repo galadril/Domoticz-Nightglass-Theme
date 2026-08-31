@@ -642,6 +642,7 @@
     var _h = 210, _s = 0.6, _v = 1.0, _curX = 0, _curY = 0;
     var _target = null, _dragging = false;
     var _wheelCache = null, _wheelCacheV = -1;
+    var _restoreDialogFocus = null, _keyHandler = null;
 
     // ── overlay DOM (built once) ──────────────────────────────────────────
 
@@ -699,6 +700,13 @@
         preview.appendChild(_swatch); preview.appendChild(_hexInput);
         popup.appendChild(preview);
 
+        // recently used colours — shared with every other picker in the theme
+        if (window.ngColors) {
+            popup.appendChild(window.ngColors.buildRow({
+                onPick: function (hex) { applyHex(hex, true); }
+            }));
+        }
+
         // action buttons
         var actions = document.createElement('div');
         actions.className = 'ng-rcp-actions';
@@ -746,20 +754,27 @@
             });
         });
 
-        // hex input
-        _hexInput.addEventListener('input', function () {
-            var rgb = hexToRgb(this.value);
-            if (!rgb) return;
-            var hsv = rgbToHsv(rgb[0], rgb[1], rgb[2]);
-            _h = hsv[0]; _s = hsv[1]; _v = hsv[2];
-            _slider.value = Math.round(_v * 100);
-            updateCursorFromHsv();
-            redraw(); updateSwatch();
-        });
+        // hex input — don't rewrite the field while it is being typed into,
+        // that would move the caret out from under the user
+        _hexInput.addEventListener('input', function () { applyHex(this.value, false); });
         _hexInput.addEventListener('blur', function () {
             var rgb = hexToRgb(this.value);
             if (rgb) this.value = rgbToHex(rgb[0], rgb[1], rgb[2]);
         });
+    }
+
+    /* Drive the whole dialog from a hex string. syncInput controls whether the
+       hex field itself is rewritten (wanted for a recent-swatch click, not
+       while typing). */
+    function applyHex(hex, syncInput) {
+        var rgb = hexToRgb(hex);
+        if (!rgb) return;
+        var hsv = rgbToHsv(rgb[0], rgb[1], rgb[2]);
+        _h = hsv[0]; _s = hsv[1]; _v = hsv[2];
+        _slider.value = Math.round(_v * 100);
+        if (syncInput) _hexInput.value = rgbToHex(rgb[0], rgb[1], rgb[2]);
+        updateCursorFromHsv();
+        redraw(); updateSwatch();
     }
 
     function pick(e) {
@@ -805,10 +820,43 @@
         updateCursorFromHsv();
         redraw(); syncFromHsv();
         _overlay.classList.add('ng-rcp-overlay--open');
+
+        /* #253: the bar-range editor is a Bootstrap modal opened from inside
+           one of Domoticz's jQuery UI modal dialogs, whose focusin trap would
+           otherwise pull focus straight back out of our hex field — leaving it
+           editable only after Escape had closed the dialog (and the edit). */
+        if (!_restoreDialogFocus && window.ngRelaxDialogFocus) {
+            _restoreDialogFocus = window.ngRelaxDialogFocus('#ng-rcp-overlay');
+        }
+
+        /* Escape must dismiss the picker only. Both the Bootstrap modal and the
+           jQuery UI dialog underneath close on Escape as well, so swallow it
+           here rather than let it reach either of them. */
+        if (!_keyHandler) {
+            _keyHandler = function (e) {
+                var key = e.key || e.keyCode;
+                if (key === 'Escape' || key === 'Esc' || key === 27) {
+                    e.preventDefault(); e.stopPropagation();
+                    closeOverlay();
+                } else if ((key === 'Enter' || key === 13) && document.activeElement === _hexInput) {
+                    e.preventDefault(); e.stopPropagation();
+                    commitAndClose();
+                }
+            };
+            document.addEventListener('keydown', _keyHandler, true);
+        }
     }
 
     function closeOverlay() {
         if (_overlay) _overlay.classList.remove('ng-rcp-overlay--open');
+        if (_keyHandler) {
+            document.removeEventListener('keydown', _keyHandler, true);
+            _keyHandler = null;
+        }
+        if (_restoreDialogFocus) {
+            _restoreDialogFocus();
+            _restoreDialogFocus = null;
+        }
         _target = null;
     }
 
@@ -820,16 +868,26 @@
             _target.dispatchEvent(new Event('input',  { bubbles: true }));
             _target.dispatchEvent(new Event('change', { bubbles: true }));
             if (_target._ngRcpTrigger) _target._ngRcpTrigger.style.background = hex;
+            if (window.ngColors) window.ngColors.remember(hex);
         }
         closeOverlay();
     }
 
     // ── inject swatch triggers ────────────────────────────────────────────
 
+    /* Every native colour input Domoticz renders — bar/gauge ranges, the
+       Dashboard 2.0 widget settings colour fields — gets the themed dialog
+       instead of the OS picker, so they all share one look and one recent
+       list. Only inputs we successfully replaced are hidden (the CSS keys off
+       data-ng-rcp), so a failure here leaves the native control usable. */
+    var _hasTriggers = false;
+
     function injectTriggers() {
-        var inputs = document.querySelectorAll('.dd-range-color-picker:not([data-ng-rcp])');
+        var inputs = document.querySelectorAll('input[type="color"]:not([data-ng-rcp])');
         inputs.forEach(function (input) {
+            if (!input.parentNode) return;
             input.setAttribute('data-ng-rcp', '1');
+            _hasTriggers = true;
             var btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'ng-rcp-trigger';
@@ -837,15 +895,37 @@
             btn.style.background = input.value || '#4e9af1';
             btn.addEventListener('click', function (e) {
                 e.stopPropagation();
+                e.preventDefault();
                 openOverlay(input);
             });
             input._ngRcpTrigger = btn;
             input.parentNode.insertBefore(btn, input);
         });
+        syncTriggers();
+    }
+
+    /* ng-model writes the model value into the input after the element is in
+       the DOM, and does it silently — no change event to listen for. Re-read
+       the inputs on every pass instead so each swatch converges on the colour
+       its field actually holds. */
+    function syncTriggers() {
+        /* The observer fires on every DOM change Domoticz makes; skip the
+           query outright on the pages that have no colour fields at all. */
+        if (!_hasTriggers) return;
+        document.querySelectorAll('input[type="color"][data-ng-rcp]').forEach(function (input) {
+            if (input._ngRcpTrigger) {
+                input._ngRcpTrigger.style.background = input.value || '#4e9af1';
+            }
+        });
     }
 
     new MutationObserver(function (muts) {
-        if (muts.some(function (m) { return m.addedNodes.length > 0; })) injectTriggers();
+        if (muts.some(function (m) { return m.addedNodes.length > 0; })) {
+            injectTriggers();
+            /* One more pass once the digest that inserted the field has
+               finished writing values into it. */
+            setTimeout(syncTriggers, 0);
+        }
     }).observe(document.body, { childList: true, subtree: true });
 
     if (document.readyState !== 'loading') {

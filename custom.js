@@ -29,6 +29,7 @@
 
     var modules = [
         'src/js/core.js',           /* Ace editor, Highcharts theme, logo, dark/light toggle */
+        'src/js/colors.js',         /* Shared colour kit: recently-used colour list */
         'src/js/icons.js',          /* Font Awesome PNG → icon replacement system */
         'src/js/card-features.js',  /* bigtext, timestamps, moon phase, tilt/temp/glow/flash */
         'src/js/sparklines.js',     /* Feature 7: sparkline micro-charts */

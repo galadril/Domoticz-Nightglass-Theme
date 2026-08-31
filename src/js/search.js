@@ -3225,6 +3225,19 @@
                 popover.appendChild(svCanvas);
                 popover.appendChild(hueCanvas);
                 popover.appendChild(presetsEl);
+
+                /* Recently used colours — the same strip the settings panel,
+                   the device colour popup and the bar-range dialog feed. */
+                if (window.ngColors) {
+                    popover.appendChild(window.ngColors.buildRow({
+                        onPick: function (hex) {
+                            hsv = hexToHsv(hex);
+                            updateFromHsv();
+                            window.ngColors.remember(hex);
+                        }
+                    }));
+                }
+
                 pickerWrap.appendChild(swatch);
                 pickerWrap.appendChild(hexInput);
                 pickerWrap.appendChild(popover);
@@ -3233,6 +3246,10 @@
                 var hsv = hexToHsv(initialColor);
                 drawSV(svCanvas, hsv.h);
                 drawHueBar(hueCanvas);
+
+                function rememberCurrent() {
+                    if (window.ngColors) window.ngColors.remember(hexInput.value);
+                }
 
                 function updateFromHsv() {
                     var hex = hsvToHex(hsv.h, hsv.s, hsv.v);
@@ -3249,7 +3266,7 @@
                 function closeOtherPopovers() {
                     var dialog = wrap.closest('.ng-ov-dialog') || document.body;
                     dialog.querySelectorAll('.ng-color-wrap .ng-cp-popover').forEach(function (p) {
-                        if (p !== popover) p.style.display = 'none';
+                        if (p !== popover) closeAllPopovers(p.parentNode);
                     });
                 }
 
@@ -3257,14 +3274,19 @@
                     e.stopPropagation();
                     var open = popover.style.display === 'block';
                     closeOtherPopovers();
-                    if (!open) {
+                    if (open) {
+                        closeAllPopovers(pickerWrap);
+                    } else {
                         popover.style.display = 'block';
                         var rect = swatch.getBoundingClientRect();
                         var popW = 260;
                         var left = rect.right - popW;
                         var top  = rect.bottom + 8;
+                        /* Measured, not assumed: the recent-colour strip only
+                           appears once something has been picked. */
+                        var popH = popover.offsetHeight || 300;
                         if (left < 8) left = 8;
-                        if (top + 300 > window.innerHeight) top = rect.top - 308;
+                        if (top + popH + 8 > window.innerHeight) top = Math.max(8, rect.top - popH - 8);
                         popover.style.left = left + 'px';
                         popover.style.top  = top  + 'px';
                         drawSV(svCanvas, hsv.h);
@@ -3283,7 +3305,9 @@
                     svDragging = true; svCanvas.setPointerCapture(e.pointerId); handleSV(e);
                 });
                 svCanvas.addEventListener('pointermove', function (e) { if (svDragging) handleSV(e); });
-                svCanvas.addEventListener('pointerup',   function ()  { svDragging = false; });
+                svCanvas.addEventListener('pointerup',   function ()  {
+                    if (svDragging) { svDragging = false; rememberCurrent(); }
+                });
 
                 function handleHue(e) {
                     var rect = hueCanvas.getBoundingClientRect();
@@ -3295,7 +3319,9 @@
                     hueDragging = true; hueCanvas.setPointerCapture(e.pointerId); handleHue(e);
                 });
                 hueCanvas.addEventListener('pointermove', function (e) { if (hueDragging) handleHue(e); });
-                hueCanvas.addEventListener('pointerup',   function ()  { hueDragging = false; });
+                hueCanvas.addEventListener('pointerup',   function ()  {
+                    if (hueDragging) { hueDragging = false; rememberCurrent(); }
+                });
 
                 hexInput.addEventListener('input', function () {
                     var v = this.value.trim();
@@ -3304,6 +3330,8 @@
                 hexInput.addEventListener('blur', function () {
                     if (!/^#[0-9a-fA-F]{6}$/.test(this.value)) {
                         this.value = hsvToHex(hsv.h, hsv.s, hsv.v);
+                    } else {
+                        rememberCurrent();
                     }
                 });
                 hexInput.addEventListener('keydown', function (e) {
@@ -3315,6 +3343,7 @@
                         e.stopPropagation();
                         hsv = hexToHsv(this.getAttribute('data-color'));
                         updateFromHsv();
+                        rememberCurrent();
                     });
                 });
 
@@ -3885,7 +3914,7 @@
             if (e.target === overlay) { close(); return; }
             /* Close any open HSV color-picker popovers when clicking outside them */
             if (!e.target.closest('.ng-color-wrap')) {
-                overlay.querySelectorAll('.ng-cp-popover').forEach(function (p) { p.style.display = 'none'; });
+                closeAllPopovers(overlay);
             }
         });
         overlay.addEventListener('keydown', function (e) {
@@ -4328,6 +4357,23 @@
 
             var hsv = hexToHsv(hexInput.value || '#4e9af1');
 
+            /* Recently used colours, shared with every other picker in the
+               theme. Recorded on commit points only — a drag would otherwise
+               fill the whole strip with one gradient. */
+            if (window.ngColors) {
+                popover.appendChild(window.ngColors.buildRow({
+                    onPick: function (hex) {
+                        hsv = hexToHsv(hex);
+                        updateFromHsv(true);
+                        window.ngColors.remember(hex);
+                    }
+                }));
+            }
+
+            function rememberCurrent() {
+                if (window.ngColors) window.ngColors.remember(hexInput.value);
+            }
+
             function updateFromHsv(commit) {
                 var hex = hsvToHex(hsv.h, hsv.s, hsv.v);
                 swatch.style.background = hex;
@@ -4357,9 +4403,11 @@
                     var popW = 260; // matches CSS width
                     var left = rect.right - popW;
                     var top = rect.bottom + 8;
-                    // Keep within viewport
+                    // Keep within viewport — measure rather than assume a
+                    // height, the recent-colour strip makes it vary
+                    var popH = popover.offsetHeight || 300;
                     if (left < 8) left = 8;
-                    if (top + 300 > window.innerHeight) top = rect.top - 308;
+                    if (top + popH + 8 > window.innerHeight) top = Math.max(8, rect.top - popH - 8);
                     popover.style.left = left + 'px';
                     popover.style.top = top + 'px';
                     drawSV(svCanvas, hsv.h);
@@ -4385,7 +4433,9 @@
             svCanvas.addEventListener('pointermove', function (e) {
                 if (svDragging) handleSV(e);
             });
-            svCanvas.addEventListener('pointerup', function () { svDragging = false; });
+            svCanvas.addEventListener('pointerup', function () {
+                if (svDragging) { svDragging = false; rememberCurrent(); }
+            });
 
             // Hue bar interaction
             function handleHue(e) {
@@ -4402,7 +4452,9 @@
             hueCanvas.addEventListener('pointermove', function (e) {
                 if (hueDragging) handleHue(e);
             });
-            hueCanvas.addEventListener('pointerup', function () { hueDragging = false; });
+            hueCanvas.addEventListener('pointerup', function () {
+                if (hueDragging) { hueDragging = false; rememberCurrent(); }
+            });
 
             // Hex input
             hexInput.addEventListener('input', function () {
@@ -4416,6 +4468,8 @@
                 var v = this.value.trim();
                 if (!/^#[0-9a-fA-F]{6}$/.test(v)) {
                     this.value = hsvToHex(hsv.h, hsv.s, hsv.v);
+                } else {
+                    rememberCurrent();
                 }
             });
             hexInput.addEventListener('keydown', function (e) {
@@ -4429,6 +4483,7 @@
                     var c = this.getAttribute('data-color');
                     hsv = hexToHsv(c);
                     updateFromHsv(true);
+                    rememberCurrent();
                 });
             });
         });
@@ -4443,6 +4498,12 @@
 
     function closeAllPopovers(container) {
         container.querySelectorAll('.ng-cp-popover').forEach(function (p) {
+            /* Whatever a picker was left showing is what the user settled on,
+               so that is the colour worth remembering. */
+            if (p.style.display === 'block' && window.ngColors) {
+                var hexEl = p.parentNode && p.parentNode.querySelector('.ng-cp-hex');
+                if (hexEl) window.ngColors.remember(hexEl.value);
+            }
             p.style.display = 'none';
         });
     }
