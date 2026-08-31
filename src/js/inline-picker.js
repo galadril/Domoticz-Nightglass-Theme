@@ -565,15 +565,19 @@
         _modes = modes;
         _sig = sig;
 
-        /* Park Domoticz's widget off-screen rather than display:none — it
-           stays the engine, and its canvases keep real dimensions. */
-        var cell = engine.parentNode;
-        if (cell && !cell.classList.contains('ng-ip-engine-cell')) {
-            cell.classList.add('ng-ip-engine-cell');
-            var sink = el('div', 'ng-ip-engine');
-            while (cell.firstChild) sink.appendChild(cell.firstChild);
-            cell.appendChild(sink);
-        }
+        /* Park Domoticz's widget off-screen rather than display:none — it stays
+           the engine, and its canvases keep real dimensions.
+
+           The parking itself is done in CSS, keyed on .ng-ip-host, because
+           jQWCP fights both alternatives: refreshWidget() re-appends every
+           active wheel and slider straight onto .jQWCP-wWidget (so anything
+           we move into a wrapper comes straight back out, redrawn below our
+           panel), and it opens by resetting the widget's class attribute
+           outright (so a marker class we add does not survive a mode change).
+           A rule aimed at the widget element outlives both. */
+        var widget = engine.closest ? engine.closest('.jQWCP-wWidget') : null;
+        var cell = (widget && widget.parentNode) || engine.parentNode;
+        if (cell && cell.classList) cell.classList.add('ng-ip-engine-cell');
 
         (table || host).classList.add('ng-ip-host');
 

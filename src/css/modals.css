@@ -1170,24 +1170,28 @@ body.dz-light .ng-sp-track {
     padding-left: 0 !important;
 }
 
-/* Brightness slider row */
+/* Brightness slider row. Tighter gaps than the other rows: it carries two
+   icons, a slider and the percentage field, and the popup is only 260px. */
 .ng-rgbw-slider-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     margin-bottom: 14px;
+    max-width: 100%;
 }
 
 /* Type the percentage instead of chasing it with the slider */
 .ng-rgbw-bright-field {
     display: inline-flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 1px;
-    flex-shrink: 0;
+    flex: 0 0 auto;
+    box-sizing: border-box;
     background: var(--dz-surface-2);
     border: 1px solid var(--dz-border);
     border-radius: 7px;
-    padding: 3px 7px;
+    padding: 3px 5px;
     transition: border-color 0.15s, box-shadow 0.15s;
 }
 
@@ -1197,8 +1201,13 @@ body.dz-light .ng-sp-track {
 }
 
 .ng-rgbw-bright-input {
-    width: 2.4em;
+    /* Wide enough for "100" in the monospace face, and no wider — the row
+       has an icon, a slider and another icon to fit alongside it. */
+    width: 2.2em;
+    min-width: 0;
+    flex: 0 0 auto;
     padding: 0 !important;
+    margin: 0 !important;
     border: none !important;
     background: none !important;
     color: var(--dz-text) !important;
@@ -1227,7 +1236,11 @@ body.dz-light .ng-sp-track {
 }
 
 .ng-rgbw-slider {
-    flex: 1;
+    flex: 1 1 0;
+    /* A flex item's min-width defaults to its intrinsic size, and a range
+       input's is wide enough (~170px) to push the percentage field out past
+       the picker's edge. Let it actually shrink. */
+    min-width: 0;
     -webkit-appearance: none;
     appearance: none;
     height: 5px;
@@ -1320,20 +1333,22 @@ body.dz-light .ng-sp-track {
     display: none !important;
 }
 
+/* The widget stays alive as the engine, just out of sight. Parked by rule
+   rather than by moving nodes or tagging the element: refreshWidget()
+   re-appends its wheels and sliders onto .jQWCP-wWidget on every mode
+   change, and resets that element's class attribute while it is at it. */
+.ng-ip-host .jQWCP-wWidget {
+    position: absolute !important;
+    left: -99999px !important;
+    top: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
 .ng-ip-host .ng-ip-engine-cell {
     position: relative;
     height: 0;
     padding: 0 !important;
-    overflow: hidden;
-}
-
-.ng-ip-host .ng-ip-engine {
-    position: absolute;
-    left: -99999px;
-    top: 0;
-    width: 240px;
-    opacity: 0;
-    pointer-events: none;
 }
 
 .ng-ip-panel .ng-rgbw-pane {
