@@ -685,6 +685,7 @@
         _slider = document.createElement('input');
         _slider.type = 'range'; _slider.className = 'ng-rgbw-slider';
         _slider.min = '5'; _slider.max = '100'; _slider.value = '100';
+        if (window.ngFillRange) window.ngFillRange(_slider);
         var brightIco = document.createElement('i');
         brightIco.className = 'fa-solid fa-circle ng-rcp-icon-bright';
         bRow.appendChild(dimIco); bRow.appendChild(_slider); bRow.appendChild(brightIco);
@@ -772,6 +773,8 @@
         var hsv = rgbToHsv(rgb[0], rgb[1], rgb[2]);
         _h = hsv[0]; _s = hsv[1]; _v = hsv[2];
         _slider.value = Math.round(_v * 100);
+        /* Assigning .value raises no input event; prime the track fill. */
+        if (window.ngFillRange) window.ngFillRange(_slider);
         if (syncInput) _hexInput.value = rgbToHex(rgb[0], rgb[1], rgb[2]);
         updateCursorFromHsv();
         redraw(); updateSwatch();
@@ -817,9 +820,12 @@
         var hsv = rgbToHsv(rgb[0], rgb[1], rgb[2]);
         _h = hsv[0]; _s = hsv[1]; _v = hsv[2];
         _slider.value = Math.round(_v * 100);
+        /* Assigning .value raises no input event; prime the track fill. */
+        if (window.ngFillRange) window.ngFillRange(_slider);
         updateCursorFromHsv();
         redraw(); syncFromHsv();
         _overlay.classList.add('ng-rcp-overlay--open');
+        if (window.ngSetDialogOpen) window.ngSetDialogOpen('rcp', true);
 
         /* #253: the bar-range editor is a Bootstrap modal opened from inside
            one of Domoticz's jQuery UI modal dialogs, whose focusin trap would
@@ -849,6 +855,7 @@
 
     function closeOverlay() {
         if (_overlay) _overlay.classList.remove('ng-rcp-overlay--open');
+        if (window.ngSetDialogOpen) window.ngSetDialogOpen('rcp', false);
         if (_keyHandler) {
             document.removeEventListener('keydown', _keyHandler, true);
             _keyHandler = null;

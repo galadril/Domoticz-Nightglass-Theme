@@ -74,7 +74,11 @@
     var _host = null, _engine = null, _panel = null, _sig = '';
     var _modes = [], _mode = 'color';
     var _hasTemp = false, _isRel = false;
-    var _h = 0, _s = 1, _warmth = 0.5, _white = 1, _bright = 100;
+    /* _v is the colour's own brightness, separate from _bright (the master
+       level). Only Mix uses it: Domoticz forces value to 1 in plain colour
+       mode, but in custom mode the RGB it sends carries v, which is how the
+       colour is balanced against the white channel. */
+    var _h = 0, _s = 1, _v = 1, _warmth = 0.5, _white = 1, _bright = 100;
     var _els = {};
     var _commitTimer = 0, _commitPending = false;
 
@@ -106,6 +110,7 @@
         if (!c) return;
         _h = c.h || 0;
         _s = (c.s == null) ? 1 : c.s;
+        _v = (c.v == null) ? 1 : c.v;
         _warmth = (c.t == null) ? 0.5 : c.t;
         _white = (c.w == null) ? 1 : c.w;
         _bright = Math.max(1, Math.min(100, Math.round((c.m == null ? 1 : c.m) * 100)));
@@ -115,11 +120,19 @@
     /* Push our state into jQWCP and fire the events Domoticz bound to it.
        Everything downstream — the colour JSON, the 400ms debounce, the
        per-host callback — stays Domoticz's own code. */
-    function commitNow() {
+    /* settled: the user has finished choosing — a released drag, a typed hex,
+       a swatch click. Only those are worth recording as a recent colour; the
+       throttled commits during a drag would otherwise fill the strip with one
+       gradient. The popup version of this rule keys off the dialog closing,
+       which this picker never does — it lives on the page. */
+    function commitNow(settled) {
         _commitPending = false;
         try {
             var $inp = $$()(_engine);
-            $inp.wheelColorPicker('setHsv', _h, _s, 1);
+            /* Domoticz clamps value to 1 itself before building the colour
+               JSON in plain colour mode; in Mix it uses whatever is set, so
+               that is the one mode where our own _v has to go across. */
+            $inp.wheelColorPicker('setHsv', _h, _s, _mode === 'custom' ? _v : 1);
             if (_hasTemp) $inp.wheelColorPicker('setTemperature', _warmth);
             $inp.wheelColorPicker('setWhite', _white);
             if (!_isRel) $inp.wheelColorPicker('setMaster', _bright / 100);
@@ -129,7 +142,7 @@
             if (window.ngLog) window.ngLog('[ng-picker]', 'commit failed', e);
             return;
         }
-        if (window.ngColors && (_mode === 'color' || _mode === 'custom')) {
+        if (settled && window.ngColors && (_mode === 'color' || _mode === 'custom')) {
             window.ngColors.remember(currentHex());
         }
     }
@@ -191,8 +204,10 @@
         ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.5; ctx.stroke();
     }
 
+    /* The colour actually sent. In Mix that includes _v, so the hex field
+       tells the truth about a colour dimmed against the white channel. */
     function currentHex() {
-        var rgb = hsvToRgb(_h, _s, 1);
+        var rgb = hsvToRgb(_h, _s, _mode === 'custom' ? _v : 1);
         return '#' + toHex(rgb.r) + toHex(rgb.g) + toHex(rgb.b);
     }
 
@@ -213,12 +228,14 @@
 
         toggle(_els.wheelBlock,  showsWheel());
         toggle(_els.warmthBlock, showsWarmth());
+        toggle(_els.valueBlock,  _mode === 'custom');
         toggle(_els.whiteBlock,  _mode === 'custom');
         toggle(_els.whiteNote,   _mode === 'white');
         toggle(_els.recentSlot,  showsWheel());
 
         if (showsWheel() && _els.wheel)   drawWheel(_els.wheel);
         if (showsWarmth() && _els.warmth) drawWarmth(_els.warmth);
+        if (_els.valueRange) _els.valueRange.value = Math.round(_v * 100);
         if (_els.whiteRange) _els.whiteRange.value = Math.round(_white * 100);
 
         if (_els.brightRange) _els.brightRange.value = _bright;
@@ -226,7 +243,16 @@
             _els.brightNum.value = _bright;
         }
 
-        var rgb = showsWheel() ? hsvToRgb(_h, _s, 1) : warmthToRgb(_warmth);
+        /* Assigning .value raises no input event, so the track fill of each
+           slider has to be primed by hand. */
+        if (window.ngFillRange) {
+            [_els.valueRange, _els.whiteRange, _els.brightRange]
+                .forEach(function (r) { if (r) window.ngFillRange(r); });
+        }
+
+        var rgb = showsWheel()
+            ? hsvToRgb(_h, _s, _mode === 'custom' ? _v : 1)
+            : warmthToRgb(_warmth);
         if (_els.swatch) _els.swatch.style.background = 'rgb('+rgb.r+','+rgb.g+','+rgb.b+')';
 
         if (_els.hex) {
@@ -248,6 +274,18 @@
 
     function toggle(el, on) { if (el) el.style.display = on ? '' : 'none'; }
 
+    /* Load a concrete RGB colour (typed hex, recent swatch) into our state.
+       In Mix the value axis is a real control, so honour it; elsewhere the
+       wheel only carries hue and saturation. */
+    function applyRgb(rgb, settled) {
+        var hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+        _h = hsv.h; _s = hsv.s;
+        if (_mode === 'custom') _v = hsv.v;
+        render();
+        /* Typing streams a character at a time; a swatch click is one decision. */
+        if (settled) commitNow(true); else commit();
+    }
+
     /* ── Mode switching ───────────────────────────────────────────── */
 
     /* Domoticz binds the real mode change to its own (now hidden) icon
@@ -267,10 +305,12 @@
         _mode = id;
         $$()(trigger).trigger('click');
         render();
-        /* The tab is the user's decision, so make it real — in the timer and
-           scene editors this stages the value, on the device page it commands
-           the light, which is what clicking "White" is asking for. */
-        commit();
+        /* Deliberately does not send. Clicking a tab means "show me these
+           controls", not "apply this mode" — and since the send would turn an
+           off light on, browsing to another tab would change the light. The
+           click above still runs Domoticz's own UpdateColorPicker, which
+           reconfigures the picker without sending either; the mode goes to the
+           device as soon as a real control is moved. */
     }
 
     /* ── Build ────────────────────────────────────────────────────── */
@@ -342,11 +382,7 @@
             _els.recentSlot.appendChild(window.ngColors.buildRow({
                 onPick: function (hex) {
                     var rgb = parseHex(hex);
-                    if (!rgb) return;
-                    var hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
-                    _h = hsv.h; _s = hsv.s;
-                    render();
-                    commit();
+                    if (rgb) applyRgb(rgb, true);
                 }
             }));
         }
@@ -366,6 +402,28 @@
         panel.appendChild(_els.warmthBlock);
         attachDrag(_els.warmth, pickWarmth);
 
+        /* Colour intensity — Mix balances the RGB channels against the white
+           ones, so it needs the value axis the wheel cannot express (the
+           wheel gives hue and saturation only). Domoticz spells this the
+           same way: its customw/customww slider sets are 'wvlm' and 'wvklm'. */
+        _els.valueBlock = el('div', 'ng-rgbw-slider-row ng-ip-block');
+        _els.valueBlock.appendChild(el('i', 'fa-solid fa-circle-half-stroke ng-rgbw-icon-dim'));
+        _els.valueRange = document.createElement('input');
+        _els.valueRange.type = 'range';
+        _els.valueRange.className = 'ng-rgbw-slider';
+        _els.valueRange.min = '0'; _els.valueRange.max = '100';
+        _els.valueRange.title = 'How strong the colour is against the white';
+        /* input streams while dragging, change fires on release: the throttle
+           rides the first, the settled value rides the second. */
+        _els.valueRange.addEventListener('input', function () {
+            _v = parseInt(this.value, 10) / 100;
+            render(); commit();
+        });
+        _els.valueRange.addEventListener('change', function () { commitNow(true); });
+        _els.valueBlock.appendChild(_els.valueRange);
+        _els.valueBlock.appendChild(el('i', 'fa-solid fa-palette ng-rgbw-icon-bright'));
+        panel.appendChild(_els.valueBlock);
+
         /* White amount — only the custom (colour + white mix) mode uses it */
         _els.whiteBlock = el('div', 'ng-rgbw-slider-row ng-ip-block');
         _els.whiteBlock.appendChild(el('i', 'fa-regular fa-lightbulb ng-rgbw-icon-dim'));
@@ -378,6 +436,7 @@
             _white = parseInt(this.value, 10) / 100;
             render(); commit();
         });
+        _els.whiteRange.addEventListener('change', function () { commitNow(true); });
         _els.whiteBlock.appendChild(_els.whiteRange);
         _els.whiteBlock.appendChild(el('i', 'fa-solid fa-lightbulb ng-rgbw-icon-bright'));
         panel.appendChild(_els.whiteBlock);
@@ -400,13 +459,12 @@
         _els.hex.addEventListener('input', function () {
             if (this.readOnly) return;
             var rgb = parseHex(this.value);
-            if (!rgb) return;
-            var hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
-            _h = hsv.h; _s = hsv.s;
-            render(); commit();
+            if (rgb) applyRgb(rgb);
         });
         _els.hex.addEventListener('blur', function () {
-            if (!this.readOnly) this.value = currentHex();
+            if (this.readOnly) return;
+            this.value = currentHex();
+            commitNow(true);      /* leaving the field settles what was typed */
         });
         _els.hex.addEventListener('keydown', function (e) {
             if (e.key === 'Enter') { e.preventDefault(); this.blur(); }
@@ -429,6 +487,7 @@
                 if (_els.brightNum) _els.brightNum.value = _bright;
                 commit();
             });
+            _els.brightRange.addEventListener('change', function () { commitNow(); });
             row.appendChild(_els.brightRange);
             row.appendChild(el('i', 'fa-solid fa-sun ng-rgbw-icon-bright'));
 
@@ -437,6 +496,10 @@
             _els.brightNum.type = 'text';
             _els.brightNum.className = 'ng-rgbw-bright-input';
             _els.brightNum.setAttribute('inputmode', 'numeric');
+            /* An input with no size attribute defaults to 20 characters wide.
+               If the stylesheet is stale or outbid, that lone default is
+               enough to eat the whole row and squash the slider to nothing. */
+            _els.brightNum.setAttribute('size', '3');
             _els.brightNum.maxLength = 3;
             _els.brightNum.title = 'Brightness %';
             _els.brightNum.addEventListener('input', function () {
@@ -448,7 +511,7 @@
                 if (_els.brightRange) _els.brightRange.value = _bright;
                 commit();
             });
-            _els.brightNum.addEventListener('blur', function () { render(); });
+            _els.brightNum.addEventListener('blur', function () { render(); commitNow(); });
             _els.brightNum.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter') { e.preventDefault(); this.blur(); }
             });
@@ -499,7 +562,9 @@
     function endDrag() {
         if (!_drag) return;
         _drag = null;
-        commitNow();          /* the released value must land, throttle or not */
+        /* The released value must land whatever the throttle was doing, and it
+           is the one the user settled on. */
+        commitNow(true);
     }
 
     document.addEventListener('mousemove', function (e) {

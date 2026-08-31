@@ -348,6 +348,45 @@ i.dz-fa-trend {
         color: var(--dz-text-muted);
     }
 
+/* ── Trend arrows, native rendering ──────────────────────────────
+   Domoticz stopped shipping images/arrow_*.png and now renders trends as
+   Font Awesome itself, in two shapes: .dz-chrome-icon (temperature cards,
+   report tables) and .dz-icon-glyph (utility cards). Nothing above matched
+   either, because i.dz-fa-trend is a class the theme only adds when it
+   replaces a PNG — so the green/red reading silently went grey.
+
+   fa-arrow-trend-up / -down are safe to match unscoped: every CHROME_ICONS
+   entry using them is a trend (arrow_up, arrow_down, gup, gdown). The
+   stable and unknown glyphs are commoner shapes, so those stay scoped to
+   the value cell they appear in.
+   ──────────────────────────────────────────────────────────────── */
+
+.dz-chrome-icon.fa-arrow-trend-up,
+.dz-icon-glyph.fa-arrow-trend-up {
+    color: var(--dz-success);
+}
+
+.dz-chrome-icon.fa-arrow-trend-down,
+.dz-icon-glyph.fa-arrow-trend-down {
+    color: var(--dz-danger);
+}
+
+#bigtext .dz-chrome-icon.fa-right-long,
+#bigtext .dz-icon-glyph.fa-right-long,
+.bigtext .dz-chrome-icon.fa-right-long,
+.bigtext .dz-icon-glyph.fa-right-long {
+    color: var(--dz-text-muted);
+    opacity: 0.5;
+}
+
+/* An unknown trend is not information — same call as the PNG era. */
+#bigtext .dz-chrome-icon.fa-question,
+#bigtext .dz-icon-glyph.fa-question,
+.bigtext .dz-chrome-icon.fa-question,
+.bigtext .dz-icon-glyph.fa-question {
+    display: none;
+}
+
 /* Sensor / weather / device (replaces 48px PNGs) */
 i.dz-fa-device {
     font-size: calc(1.5rem * var(--ng-icon-scale, 1));

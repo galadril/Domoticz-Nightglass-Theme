@@ -471,6 +471,57 @@ dzweatherwidget .dz-card-footer {
     margin-top: -5px !important;
 }
 
+/* ── Power toggle on colour-light cards (#237) ────────────────────
+   Sits at the left of the footer; .dz-time is absolutely positioned at
+   the right, so the two never meet. Off is the resting look — muted and
+   quiet — and on lights up in the accent, so a glance across the
+   dashboard reads which colour lights are running.
+   ──────────────────────────────────────────────────────────────── */
+
+.dz-power {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0 !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 50% !important;
+    background: var(--dz-surface-3) !important;
+    color: var(--dz-text-faint) !important;
+    font-size: 0.66rem;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: color 0.15s, border-color 0.15s, background 0.15s, transform 0.12s;
+}
+
+.dz-power:hover {
+    color: var(--dz-text) !important;
+    border-color: var(--dz-accent) !important;
+    transform: scale(1.12);
+}
+
+.dz-power--on {
+    color: var(--dz-accent) !important;
+    border-color: rgba(var(--dz-accent-rgb), 0.55) !important;
+    background: rgba(var(--dz-accent-rgb), 0.14) !important;
+}
+
+.dz-power--on:hover {
+    color: var(--dz-accent-light) !important;
+}
+
+/* The card's own hover lift already moves this; don't double it. */
+@media (prefers-reduced-motion: reduce) {
+    .dz-power {
+        transition: none;
+    }
+    .dz-power:hover {
+        transform: none;
+    }
+}
+
 .dz-card-footer .dz-time {
     white-space: nowrap;
     flex-shrink: 0;

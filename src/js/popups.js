@@ -5,6 +5,15 @@
 
     var _activePopupId = null;
 
+    /* Closing is the moment a popup's state has settled, which is when a
+       colour is worth recording as "recent" — mid-drag it is just a smear of
+       near-identical hues. Popups register here rather than each one hooking
+       every route out (X button, backdrop click, Escape, another popup
+       opening, Domoticz hiding it directly). */
+    var _closeHooks = {};
+
+    function onPopupClose(id, fn) { _closeHooks[id] = fn; }
+
     function getOrCreateOverlay() {
         var ov = document.getElementById('ng-popup-overlay');
         if (!ov) {
@@ -26,9 +35,13 @@
         popup.style.display = 'block';
         getOrCreateOverlay().classList.add('ng-popup-overlay--open');
         popup.classList.add('ng-popup--modal');
+        if (window.ngSetDialogOpen) window.ngSetDialogOpen('popup', true);
     }
 
     function ngClosePopup(id) {
+        if (id && _closeHooks[id]) {
+            try { _closeHooks[id](); } catch (e) { /* never block the close */ }
+        }
         var ov = document.getElementById('ng-popup-overlay');
         if (ov) ov.classList.remove('ng-popup-overlay--open');
         var popup = id ? document.getElementById(id) : null;
@@ -37,6 +50,7 @@
             popup.style.display = 'none';
         }
         _activePopupId = null;
+        if (window.ngSetDialogOpen) window.ngSetDialogOpen('popup', false);
     }
 
     function ngCloseActivePopup() {
@@ -478,6 +492,8 @@
         var _isRGBW  = false;
         var _h = 0, _s = 1, _v = 1;
         var _bright  = 100;
+        var _passcode = '';       // verified once per open, for protected lights
+        var SEND_THROTTLE = 120;  // ms; every control applies as you move it
         var _warmth  = 0.5;       // 0 = cool white, 1 = warm white
         var WSIZE    = 200;       // canvas pixel size
         var WR       = WSIZE / 2; // wheel radius
@@ -620,6 +636,10 @@
             var field  = document.getElementById('ng-rgbw-bright-num');
             if (slider && !skipSlider) slider.value = _bright;
             if (field && !skipField)   field.value  = _bright;
+            /* Assigning .value raises no input event, so the track fill has
+               to be told. Runs even when the slider was skipped: the value
+               still moved, via the percentage field. */
+            if (slider && window.ngFillRange) window.ngFillRange(slider);
         }
 
         /* ── Recently used colours ───────────────────────────────────── */
@@ -645,6 +665,7 @@
                     var wc = document.getElementById('ng-rgbw-canvas');
                     if (wc) renderWheel(wc);
                     updatePreview();
+                    commitNow();      /* a swatch click is already a decision */
                 }
             }));
         }
@@ -669,8 +690,11 @@
                    '  <input type="range" class="ng-rgbw-slider" id="ng-rgbw-bright" min="1" max="100" value="100">' +
                    '  <i class="fa-solid fa-sun ng-rgbw-icon-bright"></i>' +
                    '  <span class="ng-rgbw-bright-field">' +
+                   /* size="3": an input with no size defaults to 20 characters,
+                      which is enough to eat the row if this rule set is ever
+                      outbid by the theme's generic input styling. */
                    '    <input type="text" inputmode="numeric" id="ng-rgbw-bright-num"' +
-                   '           class="ng-rgbw-bright-input" maxlength="3" title="Brightness %">' +
+                   '           class="ng-rgbw-bright-input" size="3" maxlength="3" title="Brightness %">' +
                    '    <span class="ng-rgbw-bright-unit">%</span>' +
                    '  </span>' +
                    '</div>';
@@ -713,9 +737,7 @@
                     '  <input type="text" class="ng-rgbw-hex" maxlength="7" spellcheck="false" readonly>' +
                     '</div>' +
                     brightnessRowHTML() +
-                    presetsHTML(false) +
-                    '<button class="ng-sp-set-btn" onclick="ngRgbwApply()">' +
-                    '  <i class="fa-solid fa-check"></i> Set Light</button>';
+                    presetsHTML(false);
 
                 var wt = document.getElementById('ng-rgbw-warmth-canvas');
                 if (wt) { drawWarmthBar(wt); attachWarmthInteraction(wt); }
@@ -758,10 +780,11 @@
                     '  <div class="ng-rgbw-swatch"></div>' +
                     '  <input type="text" class="ng-rgbw-hex" placeholder="#rrggbb" maxlength="7" spellcheck="false">' +
                     '</div>' +
+                    /* No "Set Colour" button: every control applies as you use
+                       it, the way Domoticz's own picker and the Switches-tab
+                       device already behave (#237). */
                     brightnessRowHTML() +
-                    presetsHTML(true) +
-                    '<button class="ng-sp-set-btn" onclick="ngRgbwApply()">' +
-                    '  <i class="fa-solid fa-check"></i> Set Colour</button>';
+                    presetsHTML(true);
 
                 mountRecentRow();
 
@@ -779,9 +802,14 @@
             // Bind brightness slider + the percentage field beside it
             var bright = document.getElementById('ng-rgbw-bright');
             if (bright) {
+                /* input streams while dragging, change fires on release —
+                   the throttle rides the first, the final value rides the
+                   second so it always lands. */
                 bright.addEventListener('input', function () {
                     setBrightness(parseInt(this.value, 10), true, false);
+                    commit();
                 });
+                bright.addEventListener('change', function () { commitNow(); });
             }
             var brightNum = document.getElementById('ng-rgbw-bright-num');
             if (brightNum) {
@@ -790,12 +818,16 @@
                        away, so an empty or half-typed field is left alone. */
                     if (this.value === '') return;
                     setBrightness(parseInt(this.value.replace(/\D/g, ''), 10), false, true);
+                    commit();
                 });
                 /* Settle the field on the way out: clamp, strip junk, restore
                    a value if it was emptied. */
-                brightNum.addEventListener('blur', function () { setBrightness(_bright); });
+                brightNum.addEventListener('blur', function () {
+                    setBrightness(_bright);
+                    commitNow();
+                });
                 brightNum.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter') { this.blur(); ngRgbwApply(); }
+                    if (e.key === 'Enter') this.blur();
                 });
             }
             setBrightness(_bright);
@@ -806,13 +838,13 @@
                 hexEl.addEventListener('input', function () {
                     if (this.readOnly) return;
                     var rgb = parseHex(this.value);
-                    if (rgb) applyRgb(rgb);
+                    if (rgb) { applyRgb(rgb); commit(); }
                 });
                 hexEl.addEventListener('blur', function () {
                     if (!this.readOnly) this.value = currentHex();
                 });
                 hexEl.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter') { this.blur(); ngRgbwApply(); }
+                    if (e.key === 'Enter') this.blur();
                 });
             }
 
@@ -853,13 +885,15 @@
                 _warmth = Math.max(0, Math.min(1, (cx - rect.left) / rect.width));
                 drawWarmthBar(canvas);
                 updatePreview();
+                commit();
             }
+            function release() { if (dragging) { dragging = false; commitNow(); } }
             canvas.addEventListener('mousedown', function(e) { dragging=true; pick(e); });
             document.addEventListener('mousemove', function(e) { if (dragging) pick(e); });
-            document.addEventListener('mouseup', function() { dragging=false; });
+            document.addEventListener('mouseup', release);
             canvas.addEventListener('touchstart', function(e) { dragging=true; pick(e); e.preventDefault(); }, { passive:false });
             document.addEventListener('touchmove', function(e) { if (dragging) { pick(e); e.preventDefault(); } }, { passive:false });
-            document.addEventListener('touchend', function() { dragging=false; });
+            document.addEventListener('touchend', release);
         }
 
         /* ── Wheel interaction ───────────────────────────────────────── */
@@ -878,13 +912,15 @@
                 drawWheel(canvas);
                 drawWheelCursor(canvas);
                 updatePreview();
+                commit();
             }
+            function release() { if (dragging) { dragging = false; commitNow(); } }
             canvas.addEventListener('mousedown', function(e) { dragging=true; pick(e); });
             document.addEventListener('mousemove', function(e) { if (dragging) pick(e); });
-            document.addEventListener('mouseup', function() { dragging=false; });
+            document.addEventListener('mouseup', release);
             canvas.addEventListener('touchstart', function(e) { dragging=true; pick(e); e.preventDefault(); }, { passive:false });
             document.addEventListener('touchmove', function(e) { if (dragging) { pick(e); e.preventDefault(); } }, { passive:false });
-            document.addEventListener('touchend', function() { dragging=false; });
+            document.addEventListener('touchend', release);
         }
 
         /* ── Global functions (bound via onclick) ────────────────────── */
@@ -899,6 +935,13 @@
             if (cp) cp.style.display = mode === 'color' ? '' : 'none';
             if (wp) wp.style.display = mode === 'white' ? '' : 'none';
             updatePreview();
+            /* Deliberately does not send. A tab is navigation — "show me the
+               white controls" — not an instruction to make the light white.
+               Sending here would also switch an off light on, since
+               setcolbrightnessvalue turns one on, so merely looking at the
+               other tab would change the light. The mode becomes real the
+               moment an actual control is touched, which is how Domoticz's
+               own mode icons behave too. */
         };
 
         function flashBtn(btn, label) {
@@ -912,6 +955,19 @@
             }, 1200);
         }
 
+        /* Protected devices demand a verified passcode; Domoticz's own popup
+           collects it through HandleProtection before opening. This popup
+           replaced that function wholesale and used to skip the prompt, so a
+           protected light opened without asking and then silently refused
+           every command. Captured on open, appended to every call. */
+        function auth() {
+            return _passcode ? '&passcode=' + encodeURIComponent(_passcode) : '';
+        }
+
+        function send(url) {
+            fetch(url + auth()).catch(function () {});
+        }
+
         function sendRGBW() {
             if (!_idx) return;
             var colorObj;
@@ -920,9 +976,6 @@
                 // m=3: ColorModeRGB — valid fields: r, g, b
                 var rgb = hsvToRgb(_h, _s, 1);
                 colorObj = { m:3, t:0, r:rgb.r, g:rgb.g, b:rgb.b, cw:0, ww:0 };
-                /* A colour the user actually sent to a light is worth offering
-                   again — a colour merely hovered over on the wheel is not. */
-                if (window.ngColors) window.ngColors.remember(currentHex());
             } else {
                 // m=2: ColorModeTemp — valid field: t (0=cool 6500K, 255=warm 2700K)
                 var t = Math.round(_warmth * 255);
@@ -930,19 +983,52 @@
                              cw: Math.round((1 - _warmth) * 255),
                              ww: Math.round(_warmth * 255) };
             }
-            var url = '/json.htm?type=command&param=setcolbrightnessvalue' +
-                      '&idx=' + _idx +
-                      '&color=' + encodeURIComponent(JSON.stringify(colorObj)) +
-                      '&brightness=' + _bright;
-            fetch(url).catch(function() {});
+            /* Same call the Switches-tab device makes, so an off light comes on
+               by itself rather than needing a separate switchlight. */
+            send('/json.htm?type=command&param=setcolbrightnessvalue' +
+                 '&idx=' + _idx +
+                 '&color=' + encodeURIComponent(JSON.stringify(colorObj)) +
+                 '&brightness=' + _bright);
+        }
+
+        /* Dragging the wheel or the brightness slider fires continuously, so
+           the light follows the finger without a round trip per frame. */
+        var _sendTimer = 0, _sendPending = false;
+
+        function commit() {
+            if (_sendTimer) { _sendPending = true; return; }
+            sendRGBW();
+            _sendTimer = setTimeout(function () {
+                _sendTimer = 0;
+                if (_sendPending) { _sendPending = false; commit(); }
+            }, SEND_THROTTLE);
+        }
+
+        /* The released value must land whatever the throttle was doing. */
+        function commitNow() {
+            _sendPending = false;
+            sendRGBW();
+        }
+
+        /* Recording happens here, not in sendRGBW: under instant apply a single
+           drag sends dozens of times and would fill the recent strip with one
+           gradient. The popup closing is the point the user has settled. */
+        function rememberCurrent() {
+            if (!window.ngColors) return;
+            var isWWOnly = (_subType === 'WW' || _subType === 'CW');
+            if (isWWOnly || _mode !== 'color') return;   /* white is not a hue */
+            window.ngColors.remember(currentHex());
         }
 
         window.ngRgbwPreset = function (preset, btn) {
             if (preset === 'on') {
-                if (_idx) fetch('/json.htm?type=command&param=switchlight&idx=' + _idx + '&switchcmd=On').catch(function(){});
+                /* Deliberately does not close. Off has nothing left to adjust,
+                   but someone who opened the picker and pressed On is usually
+                   about to pick a colour — closing would cost them a reopen. */
+                if (_idx) send('/json.htm?type=command&param=switchlight&idx=' + _idx + '&switchcmd=On');
                 flashBtn(btn, 'On');
             } else if (preset === 'off') {
-                if (_idx) fetch('/json.htm?type=command&param=switchlight&idx=' + _idx + '&switchcmd=Off').catch(function(){});
+                if (_idx) send('/json.htm?type=command&param=switchlight&idx=' + _idx + '&switchcmd=Off');
                 ngCloseActivePopup();
             } else if (preset === 'full') {
                 // Full brightness — white/neutral for WW, near-white for RGB
@@ -959,7 +1045,7 @@
                 }
                 setBrightness(100);
                 updatePreview();
-                sendRGBW();
+                commitNow();
                 flashBtn(btn, 'Applied');
             } else if (preset === 'night') {
                 // Warm amber dim
@@ -969,16 +1055,9 @@
                 setBrightness(15);
                 if (_isRGBW) window.ngRgbwSetMode('color');
                 updatePreview();
-                sendRGBW();
+                commitNow();
                 flashBtn(btn, 'Applied');
             }
-        };
-
-        window.ngRgbwApply = function () {
-            sendRGBW();
-            // Flash the Set button — keep modal open so user can tweak
-            var btn = p.querySelector('.ng-sp-set-btn');
-            flashBtn(btn, 'Applied!');
         };
 
         /* ── Hook ShowRGBWPopup ──────────────────────────────────────── */
@@ -989,6 +1068,23 @@
             if (!window.ShowRGBWPopup) { setTimeout(hookShowRGBWPopup, 300); return; }
             if (window.ShowRGBWPopup._ngHooked) return;
             window.ShowRGBWPopup = function (event, idx, Protected, MaxDimLevel, LevelInt, color, SubType, DimmerType) {
+                /* This replaces Domoticz's ShowRGBWPopup rather than wrapping
+                   it, which meant its HandleProtection prompt never ran: a
+                   protected light opened without asking and then silently
+                   refused every command server-side. Ask first, and keep the
+                   verified passcode for the commands this popup sends. */
+                if (typeof window.HandleProtection === 'function') {
+                    window.HandleProtection(Protected, function (passcode) {
+                        _passcode = passcode || '';
+                        openWith(idx, LevelInt, color, SubType);
+                    });
+                    return;
+                }
+                _passcode = '';
+                openWith(idx, LevelInt, color, SubType);
+            };
+
+            function openWith(idx, LevelInt, color, SubType) {
                 _idx = String(idx || '');
 
                 // color is a JSON string from device.Color
@@ -1020,9 +1116,14 @@
 
                 // Pass SubType directly so buildUI can choose the right layout
                 buildUI(SubType || 'RGB');
-            };
+            }
+
             window.ShowRGBWPopup._ngHooked = true;
         }
+
+        /* One place to settle: whatever the popup was showing when it closed is
+           the colour the user chose, however they got there. */
+        onPopupClose('rgbw_popup', rememberCurrent);
 
         hookShowRGBWPopup();
     }

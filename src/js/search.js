@@ -553,9 +553,9 @@
         navbarIcons:        true,
         deviceIcons:        true,
         animateDeviceIcons: true,
-        favStarIcons:       true,
-        trendArrowIcons:    true,
-        actionIcons:        true,
+        /* favStarIcons / trendArrowIcons / actionIcons were dropped once
+           Domoticz started rendering those three as Font Awesome itself.
+           Stored values from older installs are read and ignored. */
         showThemeToggle:    true,
         defaultMode:        'dark',
         themeMode:          'toggle',
@@ -1378,56 +1378,24 @@
             animStyle.remove();
         }
 
-        // Favorite star icons
-        var favIconStyle = document.getElementById('dz-ng-favicon-style');
-        if (!_settings.favStarIcons) {
-            if (!favIconStyle) {
-                favIconStyle = document.createElement('style');
-                favIconStyle.id = 'dz-ng-favicon-style';
-                favIconStyle.textContent =
-                    'i.dz-fa-fav { display: none !important; }' +
-                    'img[src*="favorite"].dz-icon-replaced { display: inline !important; opacity: 1 !important; pointer-events: auto !important; }' +
-                    'img[src*="favorite"] { opacity: 1 !important; pointer-events: auto !important; }';
-                document.head.appendChild(favIconStyle);
-            }
-        } else if (favIconStyle) {
-            favIconStyle.remove();
-        }
+        /* Favourite stars, trend arrows and table action icons had their own
+           switches here. Each one un-hid a PNG that Domoticz no longer renders:
+           stars are <i class="fa-* fa-star"> in the widget templates, trends go
+           through dzIconService.chromeIconFor(), and table actions ship as
+           <i class="fa-solid fa-trash-can dz-chrome-icon">. With no <img> left
+           to restore, the switches only ever hid our own markup, so they are
+           gone. Any ngTheme_favStarIcons / ngTheme_trendArrowIcons /
+           ngTheme_actionIcons user variable left over from an older install is
+           simply ignored. */
 
-        // Trend arrow icons
-        var trendIconStyle = document.getElementById('dz-ng-trendicon-style');
-        if (!_settings.trendArrowIcons) {
-            if (!trendIconStyle) {
-                trendIconStyle = document.createElement('style');
-                trendIconStyle.id = 'dz-ng-trendicon-style';
-                trendIconStyle.textContent =
-                    'i.dz-fa-trend { display: none !important; }' +
-                    'img[src*="arrow_"].dz-icon-replaced { display: inline !important; opacity: 1 !important; pointer-events: auto !important; }' +
-                    'img[src*="arrow_"] { opacity: 1 !important; pointer-events: auto !important; }';
-                document.head.appendChild(trendIconStyle);
-            }
-        } else if (trendIconStyle) {
-            trendIconStyle.remove();
-        }
-
-        // Action icons (delete, rename, add, etc. in tables)
-        var actionIconStyle = document.getElementById('dz-ng-actionicon-style');
-        if (!_settings.actionIcons) {
-            if (!actionIconStyle) {
-                actionIconStyle = document.createElement('style');
-                actionIconStyle.id = 'dz-ng-actionicon-style';
-                actionIconStyle.textContent =
-                    'i.dz-fa-action, i.dz-fa-nav { display: none !important; }' +
-                    'img.dz-icon-replaced[data-dz-src*="delete"], img.dz-icon-replaced[data-dz-src*="rename"],' +
-                    'img.dz-icon-replaced[data-dz-src*="add."], img.dz-icon-replaced[data-dz-src*="remove."],' +
-                    'img.dz-icon-replaced[data-dz-src*="up."], img.dz-icon-replaced[data-dz-src*="down."],' +
-                    'img.dz-icon-replaced[data-dz-src*="next."]' +
-                    '{ display: inline !important; opacity: 1 !important; pointer-events: auto !important; }';
-                document.head.appendChild(actionIconStyle);
-            }
-        } else if (actionIconStyle) {
-            actionIconStyle.remove();
-        }
+        /* Clear the stylesheets an older version of the theme may have left
+           behind, so a user who last saved with one of those switches off is
+           not stuck with icons hidden by a setting that no longer exists. */
+        ['dz-ng-favicon-style', 'dz-ng-trendicon-style', 'dz-ng-actionicon-style']
+            .forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) el.remove();
+            });
 
         // Theme mode: toggle (manual navbar button), auto, dark, light
         var themeMode = _settings.themeMode || 'toggle';
@@ -1920,18 +1888,20 @@
             '<div class="ng-settings-grid">' +
 
             /* Left column: Icons, Appearance, Effects */
-            '<div class="ng-settings-section">' +
-            '<div class="ng-section-header"><i class="fa-solid fa-bars"></i> Navbar Icons</div>' +
-            toggle('navbarIcons', 'Navbar Menu Icons', 'Replace PNG menu icons with Font Awesome in the navigation bar') +
-            '</div>' +
 
+            /* Favourite stars, trend arrows and table action icons used to have
+               toggles here. Domoticz now renders all three as Font Awesome
+               itself (dzIconService's CHROME_ICONS, and <i class="fa-* fa-star">
+               in the widget templates), so there is no PNG left for the theme to
+               replace and nothing for a switch to switch. The two that remain
+               still decide real behaviour: the navbar is still PNG in
+               index.html, and Device Icons governs whether Nightglass decorates
+               Domoticz's native glyphs at all. */
             '<div class="ng-settings-section">' +
-            '<div class="ng-section-header"><i class="fa-solid fa-cube"></i> Device &amp; Card Icons</div>' +
-            toggle('deviceIcons', 'Device Icons', 'Replace 48px PNG device icons with Font Awesome on cards') +
+            '<div class="ng-section-header"><i class="fa-solid fa-icons"></i> Icons</div>' +
+            toggle('navbarIcons', 'Navbar Menu Icons', 'Replace PNG menu icons with Font Awesome in the navigation bar') +
+            toggle('deviceIcons', 'Device Icons', 'Let Nightglass colour and size device icons; off leaves Domoticz\'s own') +
             toggle('animateDeviceIcons', 'Animate Device Icons', 'Play the animation each device was given in the Icon Studio — spin, glow, flicker and six more') +
-            toggle('favStarIcons', 'Favorite Star Icons', 'Replace PNG stars with Font Awesome star icons') +
-            toggle('trendArrowIcons', 'Trend Arrow Icons', 'Replace PNG trend arrows with Font Awesome arrows') +
-            toggle('actionIcons', 'Action Icons', 'Replace PNG action icons (delete, rename, add) in data tables') +
             '</div>' +
 
             '<div class="ng-settings-section">' +
@@ -4062,6 +4032,9 @@
 
         // Sliders
         container.querySelectorAll('input[type="range"][data-ng-key]').forEach(function (sl) {
+            /* Rendered from an HTML string with value= already set, which
+               raises no input event — prime the track fill once here. */
+            if (window.ngFillRange) window.ngFillRange(sl);
             sl.addEventListener('input', function () {
                 var val = this.value;
                 this.closest('.ng-slider-wrap').querySelector('.ng-slider-value').textContent = val + '%';

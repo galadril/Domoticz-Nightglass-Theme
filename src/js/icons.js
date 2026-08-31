@@ -2102,7 +2102,30 @@
         }
     }
 
+    /* Trend arrows carried a "Rising" / "Falling" tooltip while the theme was
+       the thing building them from images/arrow_*.png. Domoticz renders them
+       natively now and labels neither, so re-apply it to its own markup —
+       the colour half of the same feature lives in layout.css. */
+    var NATIVE_TREND_SEL =
+        '.dz-chrome-icon.fa-arrow-trend-up, .dz-icon-glyph.fa-arrow-trend-up,' +
+        '.dz-chrome-icon.fa-arrow-trend-down, .dz-icon-glyph.fa-arrow-trend-down';
+
+    function labelNativeTrends() {
+        var arrows = document.querySelectorAll(NATIVE_TREND_SEL);
+        for (var i = 0; i < arrows.length; i++) {
+            var a = arrows[i];
+            if (a.getAttribute('title')) continue;
+            a.setAttribute('title',
+                a.classList.contains('fa-arrow-trend-up') ? 'Rising' : 'Falling');
+        }
+    }
+
     function processNativeGlyphs() {
+        /* Runs before the early exit below: trend arrows live in the value
+           cell, not in a dz-icon-48/40 box, so a page can show them without
+           mounting a single native device glyph. */
+        labelNativeTrends();
+
         var glyphs = document.querySelectorAll(NATIVE_GLYPH_SEL);
         if (!glyphs.length) {
             /* Cheapest possible exit on a Domoticz without native glyph
