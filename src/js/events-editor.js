@@ -820,6 +820,7 @@
         updateCursorFromHsv();
         redraw(); syncFromHsv();
         _overlay.classList.add('ng-rcp-overlay--open');
+        if (window.ngSetDialogOpen) window.ngSetDialogOpen('rcp', true);
 
         /* #253: the bar-range editor is a Bootstrap modal opened from inside
            one of Domoticz's jQuery UI modal dialogs, whose focusin trap would
@@ -849,6 +850,7 @@
 
     function closeOverlay() {
         if (_overlay) _overlay.classList.remove('ng-rcp-overlay--open');
+        if (window.ngSetDialogOpen) window.ngSetDialogOpen('rcp', false);
         if (_keyHandler) {
             document.removeEventListener('keydown', _keyHandler, true);
             _keyHandler = null;

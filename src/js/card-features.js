@@ -1030,6 +1030,13 @@ document.addEventListener('DOMContentLoaded', function () {
                    when the adapter tags them, so without this guard every card
                    would flash once on load and on every SPA navigation. */
                 if (m.oldValue === null) return;
+                /* A dialog is covering the cards. Flashing one behind a blurred
+                   backdrop is not just invisible — backdrop-filter re-samples
+                   what it covers every frame, so the blur itself shimmers. The
+                   flash is dropped rather than deferred: it announces a change
+                   as it happens, and replaying it on close would announce one
+                   that already went by. */
+                if (window.ngDialogOpen && window.ngDialogOpen()) return;
                 var icon = m.target;
                 var newState = icon.getAttribute('data-dz-state');
                 // Walk up to card (desktop: .item.itemBlock; mobile: <tr id="...">)

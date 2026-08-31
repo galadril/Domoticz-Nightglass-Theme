@@ -35,6 +35,7 @@
         popup.style.display = 'block';
         getOrCreateOverlay().classList.add('ng-popup-overlay--open');
         popup.classList.add('ng-popup--modal');
+        if (window.ngSetDialogOpen) window.ngSetDialogOpen('popup', true);
     }
 
     function ngClosePopup(id) {
@@ -49,6 +50,7 @@
             popup.style.display = 'none';
         }
         _activePopupId = null;
+        if (window.ngSetDialogOpen) window.ngSetDialogOpen('popup', false);
     }
 
     function ngCloseActivePopup() {

@@ -1927,6 +1927,31 @@ body.dz-light .ng-recent-swatch:focus-visible {
 }
 
 
+/* ── Quiet the page behind an open dialog ────────────────────────
+   backdrop-filter re-samples whatever it covers on every frame, so a
+   card animating behind a blurred overlay makes the blur shimmer even
+   though the card itself cannot be seen. The state-change flash is
+   suppressed in card-features.js at the point it would be applied;
+   these are the looping animations that are already running — paused
+   rather than cleared, so they pick up where they left off.
+   ──────────────────────────────────────────────────────────────── */
+
+body.ng-dialog-open i.dz-fa-device,
+body.ng-dialog-open i.dz-fa-icon,
+body.ng-dialog-open .dz-icon-glyph,
+body.ng-dialog-open .dz-sparkline-wrap,
+body.ng-dialog-open .item.itemBlock {
+    animation-play-state: paused !important;
+}
+
+/* Belt and braces: a flash that was mid-animation when the dialog opened
+   should not keep pulsing under it. */
+body.ng-dialog-open .dz-flash-on,
+body.ng-dialog-open .dz-flash-off {
+    animation: none !important;
+}
+
+
 /* ── Reduced motion ──────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {

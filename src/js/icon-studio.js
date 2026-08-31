@@ -653,6 +653,7 @@
             _escHandler = null;
         }
         restoreRelaxedDialogs();
+        if (window.ngSetDialogOpen) window.ngSetDialogOpen('iconStudio', false);
         _onNativeChange = null;
         _overlay.classList.remove('ng-is--open');
         var el = _overlay;
@@ -761,6 +762,7 @@
 
         document.body.appendChild(overlay);
         _overlay = overlay;
+        if (window.ngSetDialogOpen) window.ngSetDialogOpen('iconStudio', true);
         requestAnimationFrame(function () { overlay.classList.add('ng-is--open'); });
 
         /* Class, not id: these lived under ids nothing else referenced, and a
