@@ -1254,7 +1254,15 @@ body.dz-light .ng-sp-track {
     appearance: none;
     height: 5px;
     border-radius: 3px;
-    background: var(--dz-border);
+    /* The travelled part of the track, painted the way the jQuery UI
+       device sliders paint .ui-slider-range. --ng-range-fill is kept in
+       step by ngFillRange in core.js; the 0% fallback just means an
+       untouched track looks exactly as it did before. */
+    background: linear-gradient(to right,
+        var(--dz-accent) 0%,
+        var(--dz-accent) var(--ng-range-fill, 0%),
+        var(--dz-border) var(--ng-range-fill, 0%),
+        var(--dz-border) 100%) !important;
     outline: none;
     cursor: pointer;
 }

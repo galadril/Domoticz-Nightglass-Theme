@@ -496,7 +496,13 @@
         appearance: none;
         width: 120px;
         height: 6px;
-        background: var(--dz-border) !important;
+        /* Travelled part of the track, same trick as the colour dialogs:
+           --ng-range-fill is maintained by ngFillRange in core.js. */
+        background: linear-gradient(to right,
+            var(--dz-accent) 0%,
+            var(--dz-accent) var(--ng-range-fill, 0%),
+            var(--dz-border) var(--ng-range-fill, 0%),
+            var(--dz-border) 100%) !important;
         border-radius: 6px !important;
         border: none !important;
         outline: none !important;

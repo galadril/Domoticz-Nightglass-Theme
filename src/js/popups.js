@@ -636,6 +636,10 @@
             var field  = document.getElementById('ng-rgbw-bright-num');
             if (slider && !skipSlider) slider.value = _bright;
             if (field && !skipField)   field.value  = _bright;
+            /* Assigning .value raises no input event, so the track fill has
+               to be told. Runs even when the slider was skipped: the value
+               still moved, via the percentage field. */
+            if (slider && window.ngFillRange) window.ngFillRange(slider);
         }
 
         /* ── Recently used colours ───────────────────────────────────── */

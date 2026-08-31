@@ -4032,6 +4032,9 @@
 
         // Sliders
         container.querySelectorAll('input[type="range"][data-ng-key]').forEach(function (sl) {
+            /* Rendered from an HTML string with value= already set, which
+               raises no input event — prime the track fill once here. */
+            if (window.ngFillRange) window.ngFillRange(sl);
             sl.addEventListener('input', function () {
                 var val = this.value;
                 this.closest('.ng-slider-wrap').querySelector('.ng-slider-value').textContent = val + '%';

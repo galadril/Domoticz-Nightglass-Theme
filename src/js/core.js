@@ -414,6 +414,43 @@ window.ngLog = function (prefix) {
    script ran are covered too.  The wrapper reads a live selector list,
    so overlapping overlays may register and unregister in any order.
 ─────────────────────────────────────────────────────────────────── */
+/* ── Range slider fill ───────────────────────────────────────────
+   The device dim sliders are jQuery UI widgets, so the filled part of
+   the track is a real element (.ui-slider-range) and styling it is
+   free. A native <input type="range"> has no such thing and no
+   cross-browser pseudo-element either — Firefox has
+   ::-moz-range-progress, WebKit has nothing. The portable way is a
+   gradient on the track with its colour stop parked at the current
+   value, which is what this keeps up to date.
+
+   The listener is delegated and in the capture phase, so every themed
+   slider gets it without each one wiring itself up. Values set from
+   code do not raise an input event, so those callers prime it by
+   calling ngFillRange directly.
+─────────────────────────────────────────────────────────────────── */
+window.ngFillRange = function (el) {
+    if (!el || el.type !== 'range') return;
+    var min = parseFloat(el.min); if (isNaN(min)) min = 0;
+    var max = parseFloat(el.max); if (isNaN(max)) max = 100;
+    var val = parseFloat(el.value); if (isNaN(val)) val = min;
+    var pct = (max > min) ? ((val - min) / (max - min)) * 100 : 0;
+    el.style.setProperty('--ng-range-fill',
+        Math.max(0, Math.min(100, pct)).toFixed(2) + '%');
+};
+
+document.addEventListener('input', function (e) {
+    var t = e.target;
+    if (!t || t.type !== 'range') return;
+    /* The colour dialogs' sliders, and the settings panel's — the two
+       families of themed range input. Domoticz's own sliders are jQuery UI
+       and paint themselves. */
+    if ((t.classList && t.classList.contains('ng-rgbw-slider')) ||
+        (t.closest && t.closest('.ng-slider-wrap'))) {
+        window.ngFillRange(t);
+    }
+}, true);
+
+
 /* ── Is a dialog covering the page? ──────────────────────────────
    Device updates keep arriving while a dialog is open, and the cards
    behind it keep animating — a state-change flash, an Icon Studio spin.

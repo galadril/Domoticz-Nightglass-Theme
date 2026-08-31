@@ -243,6 +243,13 @@
             _els.brightNum.value = _bright;
         }
 
+        /* Assigning .value raises no input event, so the track fill of each
+           slider has to be primed by hand. */
+        if (window.ngFillRange) {
+            [_els.valueRange, _els.whiteRange, _els.brightRange]
+                .forEach(function (r) { if (r) window.ngFillRange(r); });
+        }
+
         var rgb = showsWheel()
             ? hsvToRgb(_h, _s, _mode === 'custom' ? _v : 1)
             : warmthToRgb(_warmth);
