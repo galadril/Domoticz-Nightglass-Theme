@@ -568,14 +568,25 @@
                 rgb = hsvToRgb(_h, _s, 1);
                 if (swatch) swatch.style.background =
                     'rgb('+rgb.r+','+rgb.g+','+rgb.b+')';
-                if (hexEl) hexEl.textContent =
-                    '#'+toHex(rgb.r)+toHex(rgb.g)+toHex(rgb.b);
+                if (hexEl) {
+                    hexEl.readOnly = false;
+                    hexEl.title = 'Type or paste a hex colour';
+                    /* Leave the field alone while it is being typed into —
+                       rewriting it would jump the caret mid-edit. */
+                    if (document.activeElement !== hexEl) hexEl.value = currentHex();
+                }
             } else {
                 rgb = warmthToRgb(_warmth);
                 if (swatch) swatch.style.background =
                     'rgb('+rgb.r+','+rgb.g+','+rgb.b+')';
-                if (hexEl) hexEl.textContent =
-                    _warmth < 0.3 ? 'Cool white' : _warmth > 0.7 ? 'Warm white' : 'Natural';
+                /* White mode has no hex to type: the warmth bar is a colour
+                   temperature, not an RGB value. Show what it is instead. */
+                if (hexEl) {
+                    hexEl.readOnly = true;
+                    hexEl.title = 'Colour temperature — use the warmth bar';
+                    hexEl.value =
+                        _warmth < 0.3 ? 'Cool white' : _warmth > 0.7 ? 'Warm white' : 'Natural';
+                }
             }
         }
 
@@ -584,13 +595,41 @@
             return '#' + toHex(rgb.r) + toHex(rgb.g) + toHex(rgb.b);
         }
 
+        /* Local rather than borrowed from ngColors so the popup keeps working
+           if that module ever fails to load. */
+        function parseHex(v) {
+            var hex = String(v == null ? '' : v).trim().replace(/^#/, '');
+            if (hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+            if (!/^[0-9a-f]{6}$/i.test(hex)) return null;
+            var n = parseInt(hex, 16);
+            return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+        }
+
+        /* Load an RGB colour into the wheel without touching the hex field. */
+        function applyRgb(rgb) {
+            var hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+            _h = hsv.h; _s = hsv.s;
+            var wc = document.getElementById('ng-rgbw-canvas');
+            if (wc) renderWheel(wc);
+            updatePreview();
+        }
+
+        function setBrightness(pct, skipSlider, skipField) {
+            _bright = Math.max(1, Math.min(100, Math.round(pct) || 1));
+            var slider = document.getElementById('ng-rgbw-bright');
+            var field  = document.getElementById('ng-rgbw-bright-num');
+            if (slider && !skipSlider) slider.value = _bright;
+            if (field && !skipField)   field.value  = _bright;
+        }
+
         /* ── Recently used colours ───────────────────────────────────── */
         /* Shared with the settings panel, the icon-override editor and the
            bar-range dialog, so a colour dialled in on one light is one click
-           away on the next. Hues only — the strip means nothing on the
-           white-temperature side, which is why WW/CW devices don't get it.
-           Picking loads the colour into the wheel; "Set Colour" still sends
-           it, exactly like dragging the wheel does. */
+           away on the next. The strip lives inside the colour pane: these are
+           hues, and they mean nothing on the white-temperature side (which is
+           also why WW/CW-only devices never get one). Picking loads the colour
+           into the wheel; "Set Colour" still sends it, exactly as dragging the
+           wheel does. */
         function mountRecentRow() {
             if (!window.ngColors) return;
             var slot = p.querySelector('.ng-rgbw-recent-slot');
@@ -603,7 +642,6 @@
                                        parseInt(n.slice(3, 5), 16),
                                        parseInt(n.slice(5, 7), 16));
                     _h = hsv.h; _s = hsv.s;
-                    if (_mode !== 'color') window.ngRgbwSetMode('color');
                     var wc = document.getElementById('ng-rgbw-canvas');
                     if (wc) renderWheel(wc);
                     updatePreview();
@@ -623,11 +661,18 @@
                    '</div>';
         }
 
+        /* Brightness reads and writes two ways, matching what Domoticz's own
+           picker gained: drag the slider, or type the percentage. */
         function brightnessRowHTML() {
             return '<div class="ng-rgbw-slider-row">' +
                    '  <i class="fa-solid fa-moon ng-rgbw-icon-dim"></i>' +
                    '  <input type="range" class="ng-rgbw-slider" id="ng-rgbw-bright" min="1" max="100" value="100">' +
                    '  <i class="fa-solid fa-sun ng-rgbw-icon-bright"></i>' +
+                   '  <span class="ng-rgbw-bright-field">' +
+                   '    <input type="text" inputmode="numeric" id="ng-rgbw-bright-num"' +
+                   '           class="ng-rgbw-bright-input" maxlength="3" title="Brightness %">' +
+                   '    <span class="ng-rgbw-bright-unit">%</span>' +
+                   '  </span>' +
                    '</div>';
         }
 
@@ -665,7 +710,7 @@
                     '<div class="ng-rgbw-pane">' + warmthPaneHTML('ng-rgbw-warmth-canvas') + '</div>' +
                     '<div class="ng-rgbw-preview">' +
                     '  <div class="ng-rgbw-swatch"></div>' +
-                    '  <span class="ng-rgbw-hex">Natural</span>' +
+                    '  <input type="text" class="ng-rgbw-hex" maxlength="7" spellcheck="false" readonly>' +
                     '</div>' +
                     brightnessRowHTML() +
                     presetsHTML(false) +
@@ -692,12 +737,15 @@
                     '    <i class="fa-solid fa-sun"></i> White</button>' +
                     '</div>' : '') +
 
-                    // Colour wheel pane
+                    // Colour wheel pane — the recent strip belongs in here, not
+                    // above both panes: offering a green swatch while the White
+                    // tab is showing is a question with no sensible answer.
                     '<div class="ng-rgbw-pane" id="ng-rgbw-pane-color"' + (!colorModeActive ? ' style="display:none"' : '') + '>' +
                     '  <div class="ng-rgbw-wheel-wrap">' +
                     '    <canvas id="ng-rgbw-canvas" width="' + WSIZE + '" height="' + WSIZE + '"' +
                     '      style="border-radius:50%;touch-action:none;cursor:crosshair;display:block"></canvas>' +
                     '  </div>' +
+                    '  <div class="ng-rgbw-recent-slot"></div>' +
                     '</div>' +
 
                     // White temperature pane (only for RGBW/RGBWW)
@@ -708,9 +756,8 @@
 
                     '<div class="ng-rgbw-preview">' +
                     '  <div class="ng-rgbw-swatch"></div>' +
-                    '  <span class="ng-rgbw-hex">#ffffff</span>' +
+                    '  <input type="text" class="ng-rgbw-hex" placeholder="#rrggbb" maxlength="7" spellcheck="false">' +
                     '</div>' +
-                    '<div class="ng-rgbw-recent-slot"></div>' +
                     brightnessRowHTML() +
                     presetsHTML(true) +
                     '<button class="ng-sp-set-btn" onclick="ngRgbwApply()">' +
@@ -729,12 +776,43 @@
                 }
             }
 
-            // Bind brightness slider
+            // Bind brightness slider + the percentage field beside it
             var bright = document.getElementById('ng-rgbw-bright');
             if (bright) {
-                bright.value = _bright;
                 bright.addEventListener('input', function () {
-                    _bright = parseInt(this.value, 10);
+                    setBrightness(parseInt(this.value, 10), true, false);
+                });
+            }
+            var brightNum = document.getElementById('ng-rgbw-bright-num');
+            if (brightNum) {
+                brightNum.addEventListener('input', function () {
+                    /* Typing "10" on the way to "100" must not snap the slider
+                       away, so an empty or half-typed field is left alone. */
+                    if (this.value === '') return;
+                    setBrightness(parseInt(this.value.replace(/\D/g, ''), 10), false, true);
+                });
+                /* Settle the field on the way out: clamp, strip junk, restore
+                   a value if it was emptied. */
+                brightNum.addEventListener('blur', function () { setBrightness(_bright); });
+                brightNum.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') { this.blur(); ngRgbwApply(); }
+                });
+            }
+            setBrightness(_bright);
+
+            // Hex field — type or paste a colour instead of hunting the wheel
+            var hexEl = p.querySelector('.ng-rgbw-hex');
+            if (hexEl) {
+                hexEl.addEventListener('input', function () {
+                    if (this.readOnly) return;
+                    var rgb = parseHex(this.value);
+                    if (rgb) applyRgb(rgb);
+                });
+                hexEl.addEventListener('blur', function () {
+                    if (!this.readOnly) this.value = currentHex();
+                });
+                hexEl.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') { this.blur(); ngRgbwApply(); }
                 });
             }
 
@@ -870,27 +948,25 @@
                 // Full brightness — white/neutral for WW, near-white for RGB
                 var isWW = (_subType === 'WW' || _subType === 'CW');
                 if (isWW || _isRGBW) {
-                    _mode = 'white'; _warmth = 0.5; _bright = 100;
+                    _mode = 'white'; _warmth = 0.5;
                     if (_isRGBW) window.ngRgbwSetMode('white');
                     var wtc = document.getElementById('ng-rgbw-warmth-canvas');
                     if (wtc) { drawWarmthBar(wtc); }
                 } else {
-                    _h = 0.15; _s = 0.05; _bright = 100;
+                    _h = 0.15; _s = 0.05;
                     var wc2 = document.getElementById('ng-rgbw-canvas');
                     if (wc2) renderWheel(wc2);
                 }
-                var bs = document.getElementById('ng-rgbw-bright');
-                if (bs) bs.value = 100;
+                setBrightness(100);
                 updatePreview();
                 sendRGBW();
                 flashBtn(btn, 'Applied');
             } else if (preset === 'night') {
                 // Warm amber dim
-                _mode = 'color'; _h = 0.08; _s = 0.85; _bright = 15;
+                _mode = 'color'; _h = 0.08; _s = 0.85;
                 var wc3 = document.getElementById('ng-rgbw-canvas');
                 if (wc3) renderWheel(wc3);
-                var bs2 = document.getElementById('ng-rgbw-bright');
-                if (bs2) bs2.value = 15;
+                setBrightness(15);
                 if (_isRGBW) window.ngRgbwSetMode('color');
                 updatePreview();
                 sendRGBW();

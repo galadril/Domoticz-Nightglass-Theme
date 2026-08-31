@@ -1104,11 +1104,37 @@ body.dz-light .ng-sp-track {
     transition: background 0.1s;
 }
 
+/* Editable hex field. Goes read-only in white mode, where the value on show
+   is a colour-temperature name rather than something you can type. */
 .ng-rgbw-hex {
+    flex: 1;
+    min-width: 0;
     font-size: 0.78rem;
     font-family: monospace;
-    color: var(--dz-text-muted);
+    color: var(--dz-text) !important;
     letter-spacing: 0.03em;
+    background: var(--dz-surface-2) !important;
+    border: 1px solid var(--dz-border) !important;
+    border-radius: 7px !important;
+    padding: 5px 9px !important;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.ng-rgbw-hex:focus {
+    border-color: var(--dz-accent) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.18) !important;
+}
+
+.ng-rgbw-hex[readonly] {
+    color: var(--dz-text-muted) !important;
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    cursor: default;
+    font-family: inherit;
+    letter-spacing: normal;
+    padding-left: 0 !important;
 }
 
 /* Brightness slider row */
@@ -1117,6 +1143,42 @@ body.dz-light .ng-sp-track {
     align-items: center;
     gap: 10px;
     margin-bottom: 14px;
+}
+
+/* Type the percentage instead of chasing it with the slider */
+.ng-rgbw-bright-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+    flex-shrink: 0;
+    background: var(--dz-surface-2);
+    border: 1px solid var(--dz-border);
+    border-radius: 7px;
+    padding: 3px 7px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.ng-rgbw-bright-field:focus-within {
+    border-color: var(--dz-accent);
+    box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.18);
+}
+
+.ng-rgbw-bright-input {
+    width: 2.4em;
+    padding: 0 !important;
+    border: none !important;
+    background: none !important;
+    color: var(--dz-text) !important;
+    font-size: 0.78rem;
+    font-family: monospace;
+    text-align: right;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.ng-rgbw-bright-unit {
+    font-size: 0.72rem;
+    color: var(--dz-text-muted);
 }
 
 .ng-rgbw-icon-dim {
