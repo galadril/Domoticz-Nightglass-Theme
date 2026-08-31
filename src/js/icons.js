@@ -1130,12 +1130,39 @@
        removed one would just come back.
 
        Keyed off the sibling the image actually has, so an image the theme skipped
-       keeps Domoticz's glyph and never ends up with no icon at all. */
+       keeps Domoticz's glyph and never ends up with no icon at all.
+
+       The glyph can land on either side of the <img> — navbar/blinds markup
+       puts it after, but scene/group action buttons (dz-scene-on/off) put it
+       BEFORE, as the first child of the <td>, ahead of even our own inserted
+       <i>. Checking only nextElementSibling missed that case and left the
+       native glyph showing alongside the FA icon (double icon on Scenes/
+       Groups). Scan both neighbours instead of just the next one. */
     function hideNativeGlyph(img) {
         var next = img.nextElementSibling;
+        var prev = img.previousElementSibling;
         if (next && next.tagName === 'I' &&
             (next.classList.contains('dz-nav-glyph') || next.classList.contains('dz-glyph-only'))) {
             next.classList.add('dz-native-glyph-hidden');
+        }
+        while (prev) {
+            if (prev.tagName === 'I' &&
+                (prev.classList.contains('dz-nav-glyph') || prev.classList.contains('dz-glyph-only'))) {
+                prev.classList.add('dz-native-glyph-hidden');
+                break;
+            }
+            /* Stop once we pass our own inserted icon — anything further back
+               belongs to a different button (e.g. the sibling img1/img2 cell's
+               own glyph, which must stay untouched). */
+            if (prev.tagName === 'I' &&
+                (prev.classList.contains('dz-fa-device') || prev.classList.contains('dz-fa-icon') ||
+                 prev.classList.contains('dz-fa-fav') || prev.classList.contains('dz-fa-trend') ||
+                 prev.classList.contains('dz-fa-action') || prev.classList.contains('dz-fa-nav') ||
+                 prev.classList.contains('dz-wind'))) {
+                prev = prev.previousElementSibling;
+                continue;
+            }
+            break;
         }
     }
 
