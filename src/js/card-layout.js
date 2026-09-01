@@ -38,12 +38,6 @@
 
     var BODY_CLASS = 'ng-cards-ng';
 
-    /* Readings longer than this, or carrying a separator, get their own
-       row.  A character count rather than a measurement: geometry that
-       depends on the class it sets oscillates, and at a fixed card
-       width the two agree closely enough. */
-    var VALUE_INLINE_MAX = 14;
-
     function active() {
         return document.body &&
                document.body.classList.contains(BODY_CLASS);
@@ -135,37 +129,80 @@
 
 
     /* ── Long readings get their own row ──────────────────────────────
-       The content rule decides both directions.  Geometry may promote a
-       pair that does not fit on one line — either the reading is clipped
-       or, just as often, a short reading beside a long name clips the
-       NAME ("Hallway Motion Sensor" next to "No Motion").
+       Decided by measurement, but a measurement that does not depend on
+       the class it sets. The first version promoted one-way and cached
+       the verdict, because once stacked nothing is clipped any more and
+       re-measuring flipped it straight back — but a stale cache meant a
+       card measured mid-layout stayed stacked forever, and far too many
+       of them did.
 
-       That promotion is remembered on the cell, because once stacked
-       neither is clipped any more: measuring the layout we just caused
-       would flip it straight back.  The memory is cleared when the
-       reading changes, so the pair is re-judged on real content.
+       Instead: both cells are nowrap in both states, so scrollWidth is
+       always the INTRINSIC text width. Compare the pair against the room
+       on row 1 and the answer is the same whichever state we are in, so
+       it can be recomputed every pass with no memory at all.
        ─────────────────────────────────────────────────────────────── */
 
-    function applyStacked(card) {
+    /* Actions sit in the corner over row 1 (see NG-j) and the row has to
+       clear them; keep in step with the padding-right in the stylesheet. */
+    var ACTIONS_W = 48;
+    var PAIR_GAP = 10;
+    /* Only unstack once there is real room again, so a card sitting on
+       the threshold cannot oscillate between passes. */
+    var HYSTERESIS = 8;
+
+    /* Truncating a device name is worse than spending a row, so stack a
+       little before the pair actually collides. */
+    var STACK_BIAS = 6;
+
+    /* scrollWidth is NOT the text's own width: on a nowrap element it is
+       max(clientWidth, intrinsic), so as soon as the container is wider
+       than the text it reports the container. Reading it to decide a
+       layout that changes the container is therefore self-reinforcing —
+       it latched every card into the stacked state.
+
+       A Range over the contents measures the text and nothing else, in
+       either state, which is what the comparison needs. */
+    var _range = document.createRange();
+
+    function textWidth(el) {
+        try {
+            _range.selectNodeContents(el);
+            return _range.getBoundingClientRect().width;
+        } catch (e) {
+            return el.scrollWidth;
+        }
+    }
+
+    function applyStacked(card, padRight) {
         var bt = card.querySelector('td#bigtext');
-        if (!bt) return;
+        var nm = card.querySelector('td#name');
+        if (!bt || !nm) return;
 
         var t = text(bt);
-        if (bt.getAttribute('data-ng-val') !== t) {
-            bt.setAttribute('data-ng-val', t);
-            bt.removeAttribute('data-ng-stack-geo');
-        }
 
-        var want = t.length > VALUE_INLINE_MAX || t.indexOf('/') >= 0;
+        /* A compound reading ("21.4 C / 63% / 1013 hPa") always takes its
+           own row — that is the shape it wants, not a fallback. */
+        var want = t.indexOf('/') >= 0;
 
-        if (!want && !card.classList.contains('ng-card--stacked')) {
-            var name = card.querySelector('td#name');
-            if (bt.scrollWidth > bt.clientWidth + 1 ||
-                (name && name.scrollWidth > name.clientWidth + 1)) {
-                bt.setAttribute('data-ng-stack-geo', '1');
-            }
+        if (!want) {
+            var stacked = card.classList.contains('ng-card--stacked');
+            /* offsetLeft is measured from the card, which is the offset
+               parent, so this is the room row 1 has after the icons. */
+            /* clientWidth spans the padding box, so the right padding is
+               still inside it and has to come off. */
+            var avail = card.clientWidth - nm.offsetLeft - padRight -
+                        (card.classList.contains('ng-has-opts') ? ACTIONS_W : 0);
+            /* td#bigtext and .dz-card-footer sit in the SAME grid column,
+               so that column is as wide as the wider of them — often the
+               footer, once a colour light adds its power button next to
+               the timestamp. Measuring only the reading under-counted it
+               and left long names clipped. */
+            var foot = card.querySelector('.dz-card-footer');
+            var rightCol = Math.max(textWidth(bt),
+                                    foot ? foot.offsetWidth : 0);
+            var need = textWidth(nm) + rightCol + PAIR_GAP + STACK_BIAS;
+            want = stacked ? (need > avail - HYSTERESIS) : (need > avail);
         }
-        if (bt.getAttribute('data-ng-stack-geo') === '1') want = true;
 
         card.classList.toggle('ng-card--stacked', want);
     }
@@ -234,7 +271,7 @@
             card.style.setProperty('--ngc-state-rgb', triple);
         } else {
             card.style.removeProperty('--ngc-state-rgb');
-            var btn = card.querySelector(':scope > .ng-opts-toggle');
+            var btn = card.querySelector('.ng-opts-toggle');
             if (btn) btn.remove();
         }
     }
@@ -251,12 +288,6 @@
        trigger, so Angular's ng-if anchors inside it stay where they are.
        ─────────────────────────────────────────────────────────────── */
 
-    function isFavourite(opts) {
-        /* Domoticz draws the star as fa-solid when set and fa-regular
-           when not, in both the light and temperature templates. */
-        return !!opts.querySelector('i.fa-solid.fa-star, i.fa-star.fa-solid');
-    }
-
     function applyOptions(card) {
         var opts = card.querySelector('td.options');
         if (!opts || !opts.children.length) {
@@ -265,7 +296,7 @@
         }
         card.classList.add('ng-has-opts');
 
-        var btn = card.querySelector(':scope > .ng-opts-toggle');
+        var btn = opts.querySelector(':scope > .ng-opts-toggle');
         if (!btn) {
             btn = document.createElement('button');
             btn.type = 'button';
@@ -284,12 +315,12 @@
                 btn.setAttribute('aria-expanded', open ? 'true' : 'false');
 
             });
-            card.appendChild(btn);
-        }
-
-        var fav = isFavourite(opts) ? '1' : '0';
-        if (btn.getAttribute('data-ng-fav') !== fav) {
-            btn.setAttribute('data-ng-fav', fav);
+            /* Into the cell, not the card: the star and the trigger then
+               form one grid item pinned to the corner together, and
+               neither can drift over the other. Appending at the end is
+               safe — Angular's ng-if children insert before their own
+               comment anchors, which are all above this. */
+            opts.appendChild(btn);
         }
     }
 
@@ -324,6 +355,12 @@
         if (!active()) return;
 
         var cards = document.querySelectorAll(CARD_SEL);
+        if (!cards.length) return;
+
+        /* Padding comes from the density tokens, so it is the same on
+           every card — read it once rather than per card per burst. */
+        var padRight = parseFloat(getComputedStyle(cards[0]).paddingRight) || 0;
+
         for (var i = 0; i < cards.length; i++) {
             var card = cards[i];
 
@@ -331,10 +368,12 @@
             if (!card.querySelector('table[id^="itemtable"]')) continue;
 
             applyRail(card);
-            applyStacked(card);
+            /* Before applyStacked: it adds .ng-has-opts, which reserves
+               the corner and so changes the room row 1 has. */
+            applyOptions(card);
+            applyStacked(card, padRight);
             applyState(card);
             applyStatusDupe(card, applyCtrlStatus(card));
-            applyOptions(card);
         }
     }
 
@@ -362,11 +401,7 @@
         }
         document.querySelectorAll('td#status.ng-status-dupe')
             .forEach(function (td) { td.classList.remove('ng-status-dupe'); });
-        document.querySelectorAll('td#bigtext[data-ng-val]')
-            .forEach(function (td) {
-                td.removeAttribute('data-ng-val');
-                td.removeAttribute('data-ng-stack-geo');
-            });
+
     }
 
 
@@ -385,23 +420,13 @@
         _timer = setTimeout(processCards, 200);
     });
 
-    /* A card that had to stack because its name and reading would not fit
-       side by side may well fit once the window is wider — and one that
-       fits now may not later. The geometry verdict is cached per cell, so
-       a resize has to drop the cache before re-judging. */
+    /* Row 1 gets wider or narrower with the window, so the stacking
+       decision has to be retaken; it is stateless, so a plain re-run
+       is enough. */
     var _resize = null;
     window.addEventListener('resize', function () {
         clearTimeout(_resize);
-        _resize = setTimeout(function () {
-            if (!active()) return;
-            var cells = document.querySelectorAll('td#bigtext[data-ng-stack-geo]');
-            for (var i = 0; i < cells.length; i++) {
-                cells[i].removeAttribute('data-ng-stack-geo');
-                var card = cells[i].closest(CARD_SEL);
-                if (card) card.classList.remove('ng-card--stacked');
-            }
-            processCards();
-        }, 250);
+        _resize = setTimeout(processCards, 250);
     });
 
     /* The setting writes body.ng-cards-ng; react to it turning on so the
