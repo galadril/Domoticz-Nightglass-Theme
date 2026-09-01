@@ -1301,3 +1301,156 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(enhanceUpdatePage, 300);
     });
 })();
+
+
+/* -- Icon cell tint ----------------------------------------------- */
+/*    The icon cell is a flat accent wash for every device. icons.js    */
+/*    has already resolved a colour per device and written it inline    */
+/*    on the glyph, so publish that on the cell and let cards.css       */
+/*    section 6d-i paint the frame with it.                            */
+/*                                                                     */
+/*    Domoticz marks state four different ways across its templates,    */
+/*    and a first pass that only understood one of them left most of    */
+/*    the dashboard untinted:                                          */
+/*                                                                     */
+/*      dz-device-icon with is-active  ->  dz-icon--on / dz-icon--off   */
+/*          switches, dimmers, locks, contacts, media players           */
+/*      dz-device-icon without it      ->  no class at all              */
+/*          every sensor: utility, temperature, weather. A temperature  */
+/*          has no "on", so these are stateless by design.              */
+/*      blinds                         ->  dz-icon--off on the INACTIVE */
+/*          direction only; the active one carries nothing, so testing  */
+/*          for dz-icon--on never matched a blind                       */
+/*      groups                         ->  transimg on whichever of the */
+/*          on/off pair matches the current state                       */
+/*                                                                     */
+/*    So: a stateful icon lights when it is on and stays neutral when   */
+/*    off, which keeps "off" readable at a glance. A stateless icon     */
+/*    gets a softer wash of its own colour, so the frame is coloured    */
+/*    everywhere without pretending to report a state it does not have. */
+
+(function () {
+    'use strict';
+
+    /* Read the inline colour, never getComputedStyle: this runs for
+       every icon on every burst, and fifty of those per pass is the
+       kind of cost that shows up on a Pi.                            */
+    function rgbTriple(colour) {
+        if (!colour) return null;
+
+        var hex = colour.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+        if (hex) {
+            var h = hex[1];
+            if (h.length === 3) {
+                h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+            }
+            return parseInt(h.slice(0, 2), 16) + ', ' +
+                   parseInt(h.slice(2, 4), 16) + ', ' +
+                   parseInt(h.slice(4, 6), 16);
+        }
+
+        var rgb = colour.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+        if (rgb) return rgb[1] + ', ' + rgb[2] + ', ' + rgb[3];
+
+        return null;
+    }
+
+    /* 'on' | 'off' | null, where null means the icon reports no state. */
+    function iconState(icon) {
+        var attr = icon.getAttribute('data-dz-state');
+        if (attr === 'on' || attr === 'off') return attr;
+
+        if (icon.classList.contains('dz-icon--on'))  return 'on';
+
+        /* A blind's active direction is the one NOT marked off, so the
+           off class has to be read before it is used as a plain 'off'.
+           Stop is a third button rather than a direction, and Domoticz
+           never marks it, so it must not fall into the same branch. */
+        if (icon.classList.contains('dz-blind-glyph')) {
+            if (icon.classList.contains('dz-blind-glyph-stop')) return null;
+            return icon.classList.contains('dz-icon--off') ? 'off' : 'on';
+        }
+
+        if (icon.classList.contains('dz-icon--off')) return 'off';
+
+        /* Group on/off buttons: transimg is on whichever button matches
+           the state the group is already in. */
+        if (icon.classList.contains('dz-scene-on') ||
+            icon.classList.contains('dz-scene-off')) {
+            return icon.classList.contains('transimg') ? 'on' : 'off';
+        }
+
+        return null;
+    }
+
+    function tintIconCells() {
+        var cells = document.querySelectorAll(
+            'table[id^="itemtable"] td#img, table[id^="itemtable"] td#img1, ' +
+            'table[id^="itemtable"] td#img2, table[id^="itemtable"] td#img3'
+        );
+
+        for (var i = 0; i < cells.length; i++) {
+            var td = cells[i];
+            var icon = td.querySelector('i, img');
+            var state = icon ? iconState(icon) : 'off';
+            var triple = (icon && icon.style && rgbTriple(icon.style.color)) || '';
+
+            /* Off is deliberately neutral: with everything else carrying
+               a colour, the plain frame is what makes "switched off"
+               readable across a grid. A stateless icon with no colour to
+               show (the media remote is a bare PNG) stays neutral too. */
+            var lit  = state === 'on';
+            var hue  = state === null && !!triple;
+
+            /* Write only on a genuine change: every style or class touch
+               dirties the style tree, and this runs on every burst. */
+            var want = (lit ? 'lit' : hue ? 'hue' : 'off') + '|' + triple;
+            if (td.getAttribute('data-dz-tint') === want) continue;
+            td.setAttribute('data-dz-tint', want);
+
+            if (triple && (lit || hue)) {
+                td.style.setProperty('--dz-icon-tint', triple);
+            } else {
+                td.style.removeProperty('--dz-icon-tint');
+            }
+            td.classList.toggle('dz-icon-lit', lit);
+            td.classList.toggle('dz-icon-hue', hue);
+        }
+    }
+
+    /* Join the icon-replacement burst so the tint lands in the same
+       batch as the colour it reads. */
+    window._dzExtraProcessors = window._dzExtraProcessors || [];
+    window._dzExtraProcessors.push(tintIconCells);
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', tintIconCells);
+    } else {
+        tintIconCells();
+    }
+
+    var _timer = null;
+    var observer = new MutationObserver(function () {
+        clearTimeout(_timer);
+        _timer = setTimeout(tintIconCells, 200);
+    });
+
+    function startObserver() {
+        var target = document.getElementById('dashcontent') ||
+                     document.getElementById('main-content') ||
+                     document.body;
+        if (target) {
+            observer.observe(target, {
+                childList: true, subtree: true,
+                attributes: true,
+                attributeFilter: ['data-dz-state', 'class', 'style']
+            });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startObserver);
+    } else {
+        startObserver();
+    }
+})();
