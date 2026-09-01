@@ -301,13 +301,16 @@ body table[id^="itemtable"] tr:hover td#img3.dz-icon-lit {
     background: rgba(var(--dz-icon-tint, var(--dz-accent-rgb)), 0.24);
 }
 
-/* Stateless icons: coloured, but quieter, so a lit switch still stands
-   out from a sensor that is merely showing its identity colour. */
+/* Stateless icons: same frame, quieter. They keep the ring so every
+   coloured cell is the same component — a sensor that had a fill but no
+   outline read as a different control next to a switch — and carry it
+   at a lower alpha so a lit switch still wins the glance. */
 body table[id^="itemtable"] tr td#img.dz-icon-hue,
 body table[id^="itemtable"] tr td#img1.dz-icon-hue,
 body table[id^="itemtable"] tr td#img2.dz-icon-hue,
 body table[id^="itemtable"] tr td#img3.dz-icon-hue {
     background: rgba(var(--dz-icon-tint, var(--dz-accent-rgb)), 0.10);
+    box-shadow: inset 0 0 0 1px rgba(var(--dz-icon-tint, var(--dz-accent-rgb)), 0.20);
 }
 
 body table[id^="itemtable"] tr:hover td#img.dz-icon-hue,
