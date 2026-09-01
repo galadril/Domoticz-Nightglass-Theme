@@ -27,7 +27,7 @@
 /* container. All visual card appearance lives here so that hover,   */
 /* border and background fill the full equal-height card box.        */
 
-body:not(.ng-cards-ng) div.item.itemBlock{
+div.item.itemBlock {
     background: var(--dz-surface-2);
     border: 1px solid var(--dz-border);
     border-radius: var(--dz-widget-border-radius);
@@ -42,7 +42,7 @@ body:not(.ng-cards-ng) div.item.itemBlock{
     font-family: inherit;
 }
 
-    body:not(.ng-cards-ng) div.item.itemBlock:hover{
+    div.item.itemBlock:hover {
         background: var(--dz-surface-3);
         border-color: rgba(var(--dz-accent-rgb), 0.4);
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
@@ -52,7 +52,7 @@ body:not(.ng-cards-ng) div.item.itemBlock{
 /* Temperature / weather widgets carry .itemBlock on the custom     */
 /* element tag, while the inner div only gets .item — restore card  */
 /* visuals and the positioning context for absolute icons.          */
-body:not(.ng-cards-ng) .itemBlock > div.item{
+.itemBlock > div.item {
     background: var(--dz-surface-2);
     border: 1px solid var(--dz-border);
     border-radius: var(--dz-widget-border-radius);
@@ -68,39 +68,39 @@ body:not(.ng-cards-ng) .itemBlock > div.item{
     font-family: inherit;
 }
 
-body:not(.ng-cards-ng) .itemBlock:hover > div.item{
+.itemBlock:hover > div.item {
     background: var(--dz-surface-3);
     border-color: rgba(var(--dz-accent-rgb), 0.4);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
     transform: translateY(-1px);
 }
 
-body:not(.ng-cards-ng) div.item.itemBlock > section{
+div.item.itemBlock > section {
     height: 100%;
 }
 
-body:not(.ng-cards-ng) table[id^="itemtable"],
-body:not(.ng-cards-ng) table[id^="itemtable"] tbody,
-body:not(.ng-cards-ng) table[id^="itemtable"] tbody tr{
+body table[id^="itemtable"],
+body table[id^="itemtable"] tbody,
+body table[id^="itemtable"] tbody tr {
     width: 100%;
     height: 100%;
 }
 
-    body:not(.ng-cards-ng) table[id^="itemtable"] tbody tr{
+    body table[id^="itemtable"] tbody tr {
         display: flex;
         flex-direction: column;
     }
 
 /* Reset the inner <tr> — it is now a plain layout container.        */
 /* Padding and background have moved to .item.itemBlock above.       */
-body:not(.ng-cards-ng) table#itemtable tbody tr,
-body:not(.ng-cards-ng) table#itemtablenotype tbody tr,
-body:not(.ng-cards-ng) table#itemtablenostatus tbody tr,
-body:not(.ng-cards-ng) table#itemtablesmall tbody tr,
-body:not(.ng-cards-ng) table#itemtabledoubleicon tbody tr,
-body:not(.ng-cards-ng) table#itemtabletrippleicon tbody tr,
-body:not(.ng-cards-ng) table#itemtablesmalldoubleicon tbody tr,
-body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tbody tr{
+body table#itemtable tbody tr,
+body table#itemtablenotype tbody tr,
+body table#itemtablenostatus tbody tr,
+body table#itemtablesmall tbody tr,
+body table#itemtabledoubleicon tbody tr,
+body table#itemtabletrippleicon tbody tr,
+body table#itemtablesmalldoubleicon tbody tr,
+body table#itemtablesmalltrippleicon tbody tr {
     background: transparent !important;
     border: none !important;
     border-radius: 0 !important;
@@ -117,14 +117,14 @@ body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tbody tr{
 
 /* ── 6b. Name chip (td:first-child / td#name) ────────────────── */
 
-body:not(.ng-cards-ng) table#itemtable tr td:first-child,
-body:not(.ng-cards-ng) table#itemtablenotype tr td:first-child,
-body:not(.ng-cards-ng) table#itemtablenostatus tr td:first-child,
-body:not(.ng-cards-ng) table#itemtablesmall tr td:first-child,
-body:not(.ng-cards-ng) table#itemtabledoubleicon tr td:first-child,
-body:not(.ng-cards-ng) table#itemtabletrippleicon tr td:first-child,
-body:not(.ng-cards-ng) table#itemtablesmalldoubleicon tr td:first-child,
-body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tr td:first-child{
+body table#itemtable tr td:first-child,
+body table#itemtablenotype tr td:first-child,
+body table#itemtablenostatus tr td:first-child,
+body table#itemtablesmall tr td:first-child,
+body table#itemtabledoubleicon tr td:first-child,
+body table#itemtabletrippleicon tr td:first-child,
+body table#itemtablesmalldoubleicon tr td:first-child,
+body table#itemtablesmalltrippleicon tr td:first-child {
     display: inline-block !important;
     float: none !important;
     width: auto !important;
@@ -148,46 +148,46 @@ body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tr td:first-child{
     transition: background 0.2s, color 0.2s;
 }
 
-    body:not(.ng-cards-ng) table#itemtabletrippleicon tr td:first-child + td + td + td + td + td + td + td{
+    body table#itemtabletrippleicon tr td:first-child + td + td + td + td + td + td + td {
         color: var(--dz-text-faint) !important;
         font-size: 0.68rem !important;
         padding-left: 0 !important;
         padding-top: 10px !important;
     }
 
-body:not(.ng-cards-ng) table#itemtable tr:hover td:first-child,
-body:not(.ng-cards-ng) table#itemtablenotype tr:hover td:first-child,
-body:not(.ng-cards-ng) table#itemtablenostatus tr:hover td:first-child,
-body:not(.ng-cards-ng) table#itemtablesmall tr:hover td:first-child,
-body:not(.ng-cards-ng) table#itemtabledoubleicon tr:hover td:first-child,
-body:not(.ng-cards-ng) table#itemtabletrippleicon tr:hover td:first-child,
-body:not(.ng-cards-ng) table#itemtablesmalldoubleicon tr:hover td:first-child,
-body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tr:hover td:first-child{
+body table#itemtable tr:hover td:first-child,
+body table#itemtablenotype tr:hover td:first-child,
+body table#itemtablenostatus tr:hover td:first-child,
+body table#itemtablesmall tr:hover td:first-child,
+body table#itemtabledoubleicon tr:hover td:first-child,
+body table#itemtabletrippleicon tr:hover td:first-child,
+body table#itemtablesmalldoubleicon tr:hover td:first-child,
+body table#itemtablesmalltrippleicon tr:hover td:first-child {
     background: rgba(var(--dz-accent-rgb), 0.18) !important;
     color: var(--dz-text) !important;
 }
 
 /* Status-class colour overrides on the name chip */
-body:not(.ng-cards-ng) div.item.statusNormal td#name {
+div.item.statusNormal td#name {
     background-color: rgba(var(--dz-accent-rgb), 0.10) !important;
 }
 
-body:not(.ng-cards-ng) div.item.statusProtected td#name {
+div.item.statusProtected td#name {
     background-color: rgba(78, 100, 241, 0.15) !important;
     color: #8da0f0 !important;
 }
 
-body:not(.ng-cards-ng) div.item.statusTimeout td#name {
+div.item.statusTimeout td#name {
     background-color: rgba(var(--dz-danger-rgb), 0.15) !important;
     color: var(--dz-danger-light) !important;
 }
 
-body:not(.ng-cards-ng) div.item.statusLowBattery td#name {
+div.item.statusLowBattery td#name {
     background-color: rgba(var(--dz-warning-rgb), 0.15) !important;
     color: var(--dz-warning-light) !important;
 }
 
-body:not(.ng-cards-ng) div.item.statusDisabled td#name {
+div.item.statusDisabled td#name {
     background-color: rgba(100, 100, 110, 0.12) !important;
     color: var(--dz-text-muted) !important;
 }
@@ -199,14 +199,14 @@ div.item.statusDisabled {
 
 /* ── 6c. Hero value (td#bigtext — 2nd td) ────────────────────── */
 
-body:not(.ng-cards-ng) table#itemtable tr td:first-child + td,
-body:not(.ng-cards-ng) table#itemtablenotype tr td:first-child + td,
-body:not(.ng-cards-ng) table#itemtablenostatus tr td:first-child + td,
-body:not(.ng-cards-ng) table#itemtablesmall tr td:first-child + td,
-body:not(.ng-cards-ng) table#itemtabledoubleicon tr td:first-child + td,
-body:not(.ng-cards-ng) table#itemtabletrippleicon tr td:first-child + td,
-body:not(.ng-cards-ng) table#itemtablesmalldoubleicon tr td:first-child + td,
-body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tr td:first-child + td{
+body table#itemtable tr td:first-child + td,
+body table#itemtablenotype tr td:first-child + td,
+body table#itemtablenostatus tr td:first-child + td,
+body table#itemtablesmall tr td:first-child + td,
+body table#itemtabledoubleicon tr td:first-child + td,
+body table#itemtabletrippleicon tr td:first-child + td,
+body table#itemtablesmalldoubleicon tr td:first-child + td,
+body table#itemtablesmalltrippleicon tr td:first-child + td {
     float: none !important;
     display: block !important;
     margin: 0 0 2px 0 !important;
@@ -222,27 +222,27 @@ body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tr td:first-child + td{
 }
 
 /* Double/triple icon cards need extra left-padding for multiple icons */
-body:not(.ng-cards-ng) table#itemtabledoubleicon tr td:first-child + td,
-body:not(.ng-cards-ng) table#itemtablesmalldoubleicon tr td:first-child + td{
+body table#itemtabledoubleicon tr td:first-child + td,
+body table#itemtablesmalldoubleicon tr td:first-child + td {
     padding-left: calc(90px * var(--ng-icon-scale, 1)) !important;
 }
 
-body:not(.ng-cards-ng) table#itemtabletrippleicon tr td:first-child + td,
-body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tr td:first-child + td{
+body table#itemtabletrippleicon tr td:first-child + td,
+body table#itemtablesmalltrippleicon tr td:first-child + td {
     padding-left: calc(132px * var(--ng-icon-scale, 1)) !important;
 }
 
 
     /* ── 6d. Primary icon (td#img — 3rd td) ──────────────────────── */
 
-    body:not(.ng-cards-ng) table#itemtable tr td:first-child + td + td,
-    body:not(.ng-cards-ng) table#itemtablenotype tr td:first-child + td + td,
-    body:not(.ng-cards-ng) table#itemtablenostatus tr td:first-child + td + td,
-    body:not(.ng-cards-ng) table#itemtablesmall tr td:first-child + td + td,
-    body:not(.ng-cards-ng) table#itemtabledoubleicon tr td:first-child + td + td,
-    body:not(.ng-cards-ng) table#itemtabletrippleicon tr td:first-child + td + td,
-    body:not(.ng-cards-ng) table#itemtablesmalldoubleicon tr td:first-child + td + td,
-    body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tr td:first-child + td + td{
+    body table#itemtable tr td:first-child + td + td,
+    body table#itemtablenotype tr td:first-child + td + td,
+    body table#itemtablenostatus tr td:first-child + td + td,
+    body table#itemtablesmall tr td:first-child + td + td,
+    body table#itemtabledoubleicon tr td:first-child + td + td,
+    body table#itemtabletrippleicon tr td:first-child + td + td,
+    body table#itemtablesmalldoubleicon tr td:first-child + td + td,
+    body table#itemtablesmalltrippleicon tr td:first-child + td + td {
         position: absolute !important;
         top: 27px !important;
         left: 0px !important;
@@ -261,18 +261,18 @@ body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tr td:first-child + td{
         transition: background 0.2s;
     }
 
-body:not(.ng-cards-ng) table[id^="itemtable"] tr:hover td:first-child + td + td{
+body table[id^="itemtable"] tr:hover td:first-child + td + td {
     background: rgba(var(--dz-accent-rgb), 0.14);
 }
 
-body:not(.ng-cards-ng) table#itemtable tr td:first-child + td + td img,
-body:not(.ng-cards-ng) table#itemtablenotype tr td:first-child + td + td img,
-body:not(.ng-cards-ng) table#itemtablenostatus tr td:first-child + td + td img,
-body:not(.ng-cards-ng) table#itemtablesmall tr td:first-child + td + td img,
-body:not(.ng-cards-ng) table#itemtabledoubleicon tr td:first-child + td + td img,
-body:not(.ng-cards-ng) table#itemtabletrippleicon tr td:first-child + td + td img,
-body:not(.ng-cards-ng) table#itemtablesmalldoubleicon tr td:first-child + td + td img,
-body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tr td:first-child + td + td img{
+body table#itemtable tr td:first-child + td + td img,
+body table#itemtablenotype tr td:first-child + td + td img,
+body table#itemtablenostatus tr td:first-child + td + td img,
+body table#itemtablesmall tr td:first-child + td + td img,
+body table#itemtabledoubleicon tr td:first-child + td + td img,
+body table#itemtabletrippleicon tr td:first-child + td + td img,
+body table#itemtablesmalldoubleicon tr td:first-child + td + td img,
+body table#itemtablesmalltrippleicon tr td:first-child + td + td img {
     width: calc(30px * var(--ng-icon-scale, 1)) !important;
     height: calc(30px * var(--ng-icon-scale, 1)) !important;
     display: block;
@@ -282,10 +282,10 @@ body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tr td:first-child + td + 
 
 /* ── 6e. Second icon (td#img2 — 4th td) ──────────────────────── */
 
-body:not(.ng-cards-ng) table#itemtabledoubleicon tr td:first-child + td + td + td,
-body:not(.ng-cards-ng) table#itemtabletrippleicon tr td:first-child + td + td + td,
-body:not(.ng-cards-ng) table#itemtablesmalldoubleicon tr td:first-child + td + td + td,
-body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tr td:first-child + td + td + td{
+body table#itemtabledoubleicon tr td:first-child + td + td + td,
+body table#itemtabletrippleicon tr td:first-child + td + td + td,
+body table#itemtablesmalldoubleicon tr td:first-child + td + td + td,
+body table#itemtablesmalltrippleicon tr td:first-child + td + td + td {
     position: absolute !important;
     top: 27px !important;
     left: calc(38px * var(--ng-icon-scale, 1)) !important;
@@ -304,15 +304,15 @@ body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tr td:first-child + td + 
     transition: background 0.2s;
 }
 
-body:not(.ng-cards-ng) table#itemtabledoubleicon tr:hover td:first-child + td + td + td,
-body:not(.ng-cards-ng) table#itemtablesmalldoubleicon tr:hover td:first-child + td + td + td{
+body table#itemtabledoubleicon tr:hover td:first-child + td + td + td,
+body table#itemtablesmalldoubleicon tr:hover td:first-child + td + td + td {
     background: rgba(var(--dz-accent-rgb), 0.14);
 }
 
-body:not(.ng-cards-ng) table#itemtabledoubleicon tr td:first-child + td + td + td img,
-body:not(.ng-cards-ng) table#itemtabletrippleicon tr td:first-child + td + td + td img,
-body:not(.ng-cards-ng) table#itemtablesmalldoubleicon tr td:first-child + td + td + td img,
-body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tr td:first-child + td + td + td img{
+body table#itemtabledoubleicon tr td:first-child + td + td + td img,
+body table#itemtabletrippleicon tr td:first-child + td + td + td img,
+body table#itemtablesmalldoubleicon tr td:first-child + td + td + td img,
+body table#itemtablesmalltrippleicon tr td:first-child + td + td + td img {
     width: calc(30px * var(--ng-icon-scale, 1)) !important;
     height: calc(30px * var(--ng-icon-scale, 1)) !important;
     display: block;
@@ -320,8 +320,8 @@ body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tr td:first-child + td + 
 }
 
 /* Triple icon third button (td#img3 — 5th td) */
-body:not(.ng-cards-ng) table#itemtabletrippleicon tr td:first-child + td + td + td + td,
-body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tr td:first-child + td + td + td + td{
+body table#itemtabletrippleicon tr td:first-child + td + td + td + td,
+body table#itemtablesmalltrippleicon tr td:first-child + td + td + td + td {
     position: absolute !important;
     top: 27px !important;
     left: calc(76px * var(--ng-icon-scale, 1)) !important;
@@ -340,13 +340,13 @@ body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tr td:first-child + td + 
     transition: background 0.2s;
 }
 
-body:not(.ng-cards-ng) table#itemtabletrippleicon tr:hover td:first-child + td + td + td + td,
-body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tr:hover td:first-child + td + td + td + td{
+body table#itemtabletrippleicon tr:hover td:first-child + td + td + td + td,
+body table#itemtablesmalltrippleicon tr:hover td:first-child + td + td + td + td {
     background: rgba(var(--dz-accent-rgb), 0.14);
 }
 
-body:not(.ng-cards-ng) table#itemtabletrippleicon tr td:first-child + td + td + td + td img,
-body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tr td:first-child + td + td + td + td img{
+body table#itemtabletrippleicon tr td:first-child + td + td + td + td img,
+body table#itemtablesmalltrippleicon tr td:first-child + td + td + td + td img {
     width: calc(30px * var(--ng-icon-scale, 1)) !important;
     height: calc(30px * var(--ng-icon-scale, 1)) !important;
     display: block;
@@ -357,7 +357,7 @@ body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tr td:first-child + td + 
 /* ── 6f. Status line (td#status) ──────────────────────────────── */
 /*    Must clear the absolute icons and sit below the value line.   */
 
-body:not(.ng-cards-ng) table[id^="itemtable"] tr td#status{
+body table[id^="itemtable"] tr td#status {
     display: block !important;
     float: none !important;
     clear: both;
@@ -374,13 +374,13 @@ body:not(.ng-cards-ng) table[id^="itemtable"] tr td#status{
 }
 
 /* Double/triple icon cards: match the bigtext padding */
-body:not(.ng-cards-ng) table#itemtabledoubleicon tr td#status,
-body:not(.ng-cards-ng) table#itemtablesmalldoubleicon tr td#status{
+body table#itemtabledoubleicon tr td#status,
+body table#itemtablesmalldoubleicon tr td#status {
     padding-left: calc(90px * var(--ng-icon-scale, 1)) !important;
 }
 
-body:not(.ng-cards-ng) table#itemtabletrippleicon tr td#status,
-body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tr td#status{
+body table#itemtabletrippleicon tr td#status,
+body table#itemtablesmalltrippleicon tr td#status {
     padding-left: calc(132px * var(--ng-icon-scale, 1)) !important;
 }
 
@@ -436,7 +436,7 @@ body:not(.ng-cards-ng) table#itemtablesmalltrippleicon tr td#status{
 
 /* ── 6g. Last update line (td#lastupdate) ─────────────────────── */
 
-body:not(.ng-cards-ng) table[id^="itemtable"] tr td#lastupdate{
+body table[id^="itemtable"] tr td#lastupdate {
     display: none !important;
     float: none !important;
     clear: both;
@@ -453,21 +453,21 @@ body:not(.ng-cards-ng) table[id^="itemtable"] tr td#lastupdate{
     right: -7px;
 }
 
-body:not(.ng-cards-ng) .itemBlock .ui-selectmenu-button{
+.itemBlock .ui-selectmenu-button {
     width: 93%;
 }
 
 
-body:not(.ng-cards-ng) table[id^="itemtable"] tr td#lastupdate span[style]{
+body table[id^="itemtable"] tr td#lastupdate span[style] {
     font-style: normal !important;
     color: var(--dz-text-faint) !important;
 }
 
-body:not(.ng-cards-ng) dztemperaturewidget .dz-card-footer{
+dztemperaturewidget .dz-card-footer {
     margin-top: -5px !important;
 }
 
-body:not(.ng-cards-ng) dzweatherwidget .dz-card-footer{
+dzweatherwidget .dz-card-footer {
     margin-top: -5px !important;
 }
 
@@ -522,7 +522,7 @@ body:not(.ng-cards-ng) dzweatherwidget .dz-card-footer{
     }
 }
 
-body:not(.ng-cards-ng) .dz-card-footer .dz-time{
+.dz-card-footer .dz-time {
     white-space: nowrap;
     flex-shrink: 0;
     position: absolute;
@@ -533,7 +533,7 @@ body:not(.ng-cards-ng) .dz-card-footer .dz-time{
     line-height: 1.5;
 }
 
-body:not(.ng-cards-ng) table[id^="itemtable"] tr td#type{
+body table[id^="itemtable"] tr td#type {
     display: block !important;
     float: none !important;
     clear: both;
@@ -552,7 +552,7 @@ body:not(.ng-cards-ng) table[id^="itemtable"] tr td#type{
 /*    Both must be overridden to fit the new card layout.            */
 
 /* Dashboard slider container (td.input) */
-body:not(.ng-cards-ng) table[id^="itemtable"] tr td.input{
+body table[id^="itemtable"] tr td.input {
     display: block !important;
     clear: both;
     float: none !important;
@@ -566,10 +566,10 @@ body:not(.ng-cards-ng) table[id^="itemtable"] tr td.input{
 
 /* ALL .dimslider divs inside any card — override inline styles.
    Covers dashboard (td.input .dimslider) and tab-view (td#type .dimslider). */
-body:not(.ng-cards-ng) table[id^="itemtable"] tr .dimslider,
-body:not(.ng-cards-ng) table[id^="itemtable"] tr div[class*="dimslider"],
-body:not(.ng-cards-ng) table[id^="itemtable"] tr .dimsmall,
-body:not(.ng-cards-ng) table[id^="itemtable"] tr .dimsmall3{
+body table[id^="itemtable"] tr .dimslider,
+body table[id^="itemtable"] tr div[class*="dimslider"],
+body table[id^="itemtable"] tr .dimsmall,
+body table[id^="itemtable"] tr .dimsmall3 {
     margin-left: 0 !important;
     margin-right: 0 !important;
     margin-top: 4px !important;
@@ -582,12 +582,11 @@ body:not(.ng-cards-ng) table[id^="itemtable"] tr .dimsmall3{
     overflow: visible !important;
 }
 
-body:not(.ng-cards-ng) #itemtabletrippleicon .dimslider{
+#itemtabletrippleicon .dimslider {
     margin-top: 10px !important;
 }
 
-/* jQuery UI slider track — clean slim track.
-   Shared with the Nightglass card style: only the chrome lives here.  */
+/* jQuery UI slider track — clean slim track */
 body table[id^="itemtable"] tr .dimslider.ui-slider,
 body table[id^="itemtable"] tr .ui-slider {
     background: var(--dz-border) !important;
@@ -595,19 +594,10 @@ body table[id^="itemtable"] tr .ui-slider {
     border: none !important;
     border-radius: 6px !important;
     height: 6px !important;
-    position: relative;
-    overflow: visible !important;
-}
-
-/* The track's margins are layout, so they belong to the Classic style
-   alone — and they have to be stated at this specificity rather than left
-   in the .dimslider block above, which the body:not() gate made MORE
-   specific than the ungated track rule and so silently shrank Classic's
-   dimmer cards by 12px. */
-body:not(.ng-cards-ng) table[id^="itemtable"] tr .dimslider.ui-slider,
-body:not(.ng-cards-ng) table[id^="itemtable"] tr .ui-slider {
     margin-top: 10px !important;
     margin-bottom: 10px !important;
+    position: relative;
+    overflow: visible !important;
 }
 
     /* Slider fill / range — jQuery UI creates this element for the dimmer
@@ -656,21 +646,21 @@ body:not(.ng-cards-ng) table[id^="itemtable"] tr .ui-slider {
 /* ── 6i. Selector buttons → chip / pill style ─────────────────── */
 /*    (Like idea/index.html .filter-btn)                            */
 
-body:not(.ng-cards-ng) dztemperaturewidget table[id^="itemtablenotype"] tr td#status,
-body:not(.ng-cards-ng) dzweatherwidget table[id^="itemtablenotype"] tr td#status{
+dztemperaturewidget table[id^="itemtablenotype"] tr td#status,
+dzweatherwidget table[id^="itemtablenotype"] tr td#status {
     /* Use em so the clearance scales with user font-size (#140) */
     margin-bottom: 3.5em !important;
 }
 
-body:not(.ng-cards-ng) dztemperaturewidget table[id^="itemtablenotype"] tr td.options,
-body:not(.ng-cards-ng) dzweatherwidget table[id^="itemtablenotype"] tr td.options{
+dztemperaturewidget table[id^="itemtablenotype"] tr td.options,
+dzweatherwidget table[id^="itemtablenotype"] tr td.options {
     position: absolute !important;
     bottom: -10px !important;
     margin-top: 0 !important;
 }
 
 
-body:not(.ng-cards-ng) table[id^="itemtable"] tr td#status .btn-group{
+body table[id^="itemtable"] tr td#status .btn-group {
     display: flex !important;
     flex-wrap: wrap !important;
     gap: 5px !important;
@@ -755,7 +745,7 @@ body table[id^="itemtable"] tr td#status select {
 }
 
 /* jQuery UI selectmenu inside cards */
-body:not(.ng-cards-ng) table[id^="itemtable"] .ui-selectmenu-button{
+body table[id^="itemtable"] .ui-selectmenu-button {
     background: var(--dz-surface) !important;
     border: 1px solid var(--dz-border-b) !important;
     border-radius: 8px !important;
@@ -765,7 +755,7 @@ body:not(.ng-cards-ng) table[id^="itemtable"] .ui-selectmenu-button{
 
 /* ── 6j. Card entrance animation ──────────────────────────────── */
 
-body:not(.ng-cards-ng) table[id^="itemtable"] tbody tr{
+body table[id^="itemtable"] tbody tr {
     animation: cardSlideIn 0.35s ease both;
 }
 
@@ -784,15 +774,15 @@ body:not(.ng-cards-ng) table[id^="itemtable"] tbody tr{
 
 /* ── 6k. Type label for full-size cards ───────────────────────── */
 
-body:not(.ng-cards-ng) table#itemtable tr td:first-child + td + td + td + td + td:before,
-body:not(.ng-cards-ng) table#itemtablenotype tr td:first-child + td + td + td + td:before,
-body:not(.ng-cards-ng) table#itemtablenostatus tr td:first-child + td + td + td + td + td:before{
+body table#itemtable tr td:first-child + td + td + td + td + td:before,
+body table#itemtablenotype tr td:first-child + td + td + td + td:before,
+body table#itemtablenostatus tr td:first-child + td + td + td + td + td:before {
     color: var(--dz-text-faint) !important;
     font-size: 0.68rem !important;
 }
 
-body:not(.ng-cards-ng) table#itemtable tr td:first-child + td + td + td + td + td,
-body:not(.ng-cards-ng) table#itemtablenostatus tr td:first-child + td + td + td + td + td{
+body table#itemtable tr td:first-child + td + td + td + td + td,
+body table#itemtablenostatus tr td:first-child + td + td + td + td + td {
     color: var(--dz-text-faint) !important;
     font-size: 0.68rem !important;
     padding-left: 0 !important;
@@ -800,9 +790,9 @@ body:not(.ng-cards-ng) table#itemtablenostatus tr td:first-child + td + td + td 
 }
 
     /* Description / detail row in full-size cards */
-    body:not(.ng-cards-ng) table#itemtable tr td:first-child + td + td + td + td + td + td,
-    body:not(.ng-cards-ng) table#itemtablenotype tr td:first-child + td + td + td + td + td,
-    body:not(.ng-cards-ng) table#itemtablenostatus tr td:first-child + td + td + td + td + td + td{
+    body table#itemtable tr td:first-child + td + td + td + td + td + td,
+    body table#itemtablenotype tr td:first-child + td + td + td + td + td,
+    body table#itemtablenostatus tr td:first-child + td + td + td + td + td + td {
         color: var(--dz-text-muted) !important;
         font-size: 0.78rem !important;
         padding-top: 4px !important;
@@ -815,7 +805,7 @@ body:not(.ng-cards-ng) table#itemtablenostatus tr td:first-child + td + td + td 
 /* ── 6l. Tab-view options row (favorite star + Log/Edit/etc.) ── */
 /*    Style the .btnsmall chips and favorite star                   */
 
-body:not(.ng-cards-ng) table[id^="itemtable"] tr td.options{
+body table[id^="itemtable"] tr td.options {
     display: flex !important;
     flex-wrap: wrap;
     align-items: center;
@@ -903,7 +893,7 @@ body:not(.ng-cards-ng) table[id^="itemtable"] tr td.options{
    td.options in itemtablenostatus is the 7th td, which accidentally
    matches the "description row" nth-child rule (specificity 0,2,8).
    Reset the cosmetic bleed-through here with equal or higher specificity. */
-body:not(.ng-cards-ng) table#itemtablenostatus tr td.options{
+body table#itemtablenostatus tr td.options {
     color: var(--dz-text-soft) !important;
     font-size: inherit !important;
     padding-top: 8px !important;
@@ -915,7 +905,7 @@ body:not(.ng-cards-ng) table#itemtablenostatus tr td.options{
 /*    the hero-value style. The JS moves the full text into #status  */
 /*    as a .dz-text-msg div. The bigtext shows a short preview.     */
 
-body:not(.ng-cards-ng) .dz-text-device table[id^="itemtable"] tr td#bigtext{
+.dz-text-device table[id^="itemtable"] tr td#bigtext {
     font-size: 0.85rem !important;
     font-weight: 600 !important;
     color: var(--dz-text-soft) !important;
@@ -927,7 +917,7 @@ body:not(.ng-cards-ng) .dz-text-device table[id^="itemtable"] tr td#bigtext{
     display: none !important;
 }
 
-body:not(.ng-cards-ng) .dz-text-device table[id^="itemtable"] tr td#status{
+.dz-text-device table[id^="itemtable"] tr td#status {
     margin-top: 4px !important;
 }
 
@@ -981,7 +971,7 @@ body:not(.ng-cards-ng) .dz-text-device table[id^="itemtable"] tr td#status{
 /*    which inherits the hero-value style (1.15rem bold, no-wrap).    */
 /*    Override to a normal-sized, wrapping, readable style.           */
 
-body:not(.ng-cards-ng) .dz-alert-device table[id^="itemtable"] tr td#bigtext{
+.dz-alert-device table[id^="itemtable"] tr td#bigtext {
     font-size: 0.9rem !important;
     font-weight: 300 !important;
     color: var(--dz-text-soft) !important;

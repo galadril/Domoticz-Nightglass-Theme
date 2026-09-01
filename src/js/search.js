@@ -587,8 +587,6 @@
         smoothScrolling:    true,
         showLastUpdate:     false,
         uppercaseNames:     true,
-        cardStyle:          'classic',
-        cardDensity:        'compact',
         iconSize:           '100',
         enableIcons:        true,
         enableAppearance:   true,
@@ -1717,46 +1715,6 @@
         }
 
 
-        // Card style + density
-        // The stylesheet ships the "compact" step as its own defaults, so
-        // only a non-default density needs writing; clearing the properties
-        // hands the choice back to the CSS instead of freezing it here.
-        var NGC_DENSITY = {
-            comfortable: {
-                '--ngc-rail': '30px', '--ngc-rail-btn': '30px',
-                '--ngc-pad': '12px',  '--ngc-gap': '11px',
-                '--ngc-row-gap': '2px',
-                '--ngc-name-size': '0.82rem',
-                '--ngc-value-size': '1.05rem',
-                '--ngc-meta-size': '0.68rem',
-                '--ngc-icon-size': '1.15rem'
-            },
-            compact: null,   /* the stylesheet's own :root values */
-            ultra: {
-                '--ngc-rail': '23px', '--ngc-rail-btn': '23px',
-                '--ngc-pad': '7px',   '--ngc-gap': '7px',
-                '--ngc-row-gap': '0px',
-                '--ngc-name-size': '0.74rem',
-                '--ngc-value-size': '0.92rem',
-                '--ngc-meta-size': '0.64rem',
-                '--ngc-icon-size': '0.95rem'
-            }
-        };
-
-        document.body.classList.toggle('ng-cards-ng',
-                                       _settings.cardStyle === 'nightglass');
-
-        var density = NGC_DENSITY[_settings.cardDensity] !== undefined
-            ? NGC_DENSITY[_settings.cardDensity]
-            : NGC_DENSITY.compact;
-        Object.keys(NGC_DENSITY.comfortable).forEach(function (prop) {
-            if (density && density[prop]) {
-                root.style.setProperty(prop, density[prop]);
-            } else {
-                root.style.removeProperty(prop);
-            }
-        });
-
         // Font size
         var pct = parseInt(_settings.fontSize, 10) || 100;
         root.style.fontSize = pct === 100 ? '' : (pct + '%');
@@ -1958,15 +1916,6 @@
             slider('iconSize', 'Device Icon Size', 60, 150, 5, '%', 'Scale device icons on cards') +
             toggle('showLastUpdate', 'Show Last Update', 'Show the formatted timestamp footer on device cards') +
             toggle('uppercaseNames', 'Uppercase Device Names', 'Force device names to UPPERCASE on cards') +
-            select('cardStyle', 'Card Style', [
-                { value: 'classic',    label: '▤ Classic' },
-                { value: 'nightglass', label: '▨ Nightglass' }
-            ], 'Nightglass is the compact icon-rail card; Classic keeps the original layout') +
-            select('cardDensity', 'Card Density', [
-                { value: 'comfortable', label: 'Comfortable' },
-                { value: 'compact',     label: 'Compact' },
-                { value: 'ultra',       label: 'Ultra' }
-            ], 'How tall Nightglass cards are — no effect on the Classic style') +
 
             '</div>' +
 

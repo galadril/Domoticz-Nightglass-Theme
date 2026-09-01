@@ -32,7 +32,6 @@
         'src/js/colors.js',         /* Shared colour kit: recently-used colour list */
         'src/js/icons.js',          /* Font Awesome PNG → icon replacement system */
         'src/js/card-features.js',  /* bigtext, timestamps, moon phase, tilt/temp/glow/flash */
-        'src/js/card-layout.js',    /* Nightglass card style: grid layout classification */
         'src/js/sparklines.js',     /* Feature 7: sparkline micro-charts */
         'src/js/search.js',         /* Feature 8: slash-to-search + keyboard shortcuts + icon override dialog */
         'src/js/icon-studio.js',    /* Icon Studio: full icon picker overlay + custom icon libraries */

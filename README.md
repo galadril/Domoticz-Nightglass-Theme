@@ -9,7 +9,6 @@ A clean, modern dark theme for Domoticz dashboards with powerful keyboard shortc
 ## ✨ Highlight Features
 
 ### 🎨 Visual Design & Customization
-- **Two Card Styles** - *Classic* keeps the original card layout; *Nightglass* is a new compact icon-rail card that is around 40% shorter, with Comfortable / Compact / Ultra density steps
 - **16 Built-in Theme Presets** - One-click themes including Nightglass (default), Emerald Forest, Solar Flare, Arctic Ice, Violet Nebula, Rose Gold, Monochrome, Crimson Ember, Matrix, Cyberpunk, Dracula, Solarized, Synthwave, Nord, Hacker, and Ocean Depth
 - **Extensive Theme Customization** - Live color picker for accent, danger, warning, success, backgrounds, surfaces, borders, and text colors
 - **Dual Mode Color Control** - Separate customization for dark and light modes
@@ -152,7 +151,6 @@ Fine-tune every color with live preview:
 - **Local Storage Fallback** - Works even if API is unavailable
 
 ### 🔧 Other Settings
-- **Card style & density** - Switch between the Classic and Nightglass card layouts, and pick how tall Nightglass cards are
 - **Sparkline toggle** - Enable/disable micro-charts on device cards
 - **Big text mode** - Larger text for better readability
 - **Show timestamps** - Display last update times on cards
