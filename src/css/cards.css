@@ -265,6 +265,41 @@ body table[id^="itemtable"] tr:hover td:first-child + td + td {
     background: rgba(var(--dz-accent-rgb), 0.14);
 }
 
+/* ── 6d-i. On-state icon tint ──────────────────────────────────────
+   The icon cell above is the same flat accent wash for every device.
+   card-features.js publishes the colour icons.js already resolved per
+   device (--dz-icon-tint) and marks the cell .dz-icon-lit while the
+   device is on, so a lit lamp reads amber, a running fan blue, playing
+   media green — the state you can see at a glance instead of hunting
+   for the glyph colour inside the frame.
+
+   Selectors name td#img / td#img1 rather than the positional chain
+   above: that chain ends in an ID, so a class-only selector would lose
+   the specificity contest and the tint would never paint.
+
+   The ring is an inset box-shadow, not a border. The cell has a fixed
+   width and height and `border: none !important`, so a real border
+   would change its box; an inset shadow costs no layout at all.
+   ──────────────────────────────────────────────────────────────── */
+
+body table[id^="itemtable"] tr td#img.dz-icon-lit,
+body table[id^="itemtable"] tr td#img1.dz-icon-lit {
+    background: rgba(var(--dz-icon-tint, var(--dz-accent-rgb)), 0.16);
+    box-shadow: inset 0 0 0 1px rgba(var(--dz-icon-tint, var(--dz-accent-rgb)), 0.34);
+}
+
+body table[id^="itemtable"] tr:hover td#img.dz-icon-lit,
+body table[id^="itemtable"] tr:hover td#img1.dz-icon-lit {
+    background: rgba(var(--dz-icon-tint, var(--dz-accent-rgb)), 0.24);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body table[id^="itemtable"] tr td#img.dz-icon-lit,
+    body table[id^="itemtable"] tr td#img1.dz-icon-lit {
+        transition: none;
+    }
+}
+
 body table#itemtable tr td:first-child + td + td img,
 body table#itemtablenotype tr td:first-child + td + td img,
 body table#itemtablenostatus tr td:first-child + td + td img,

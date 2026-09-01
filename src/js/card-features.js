@@ -1301,3 +1301,112 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(enhanceUpdatePage, 300);
     });
 })();
+
+
+/* -- On-state icon tint ------------------------------------------- */
+/*    The icon cell is a flat accent wash for every device. icons.js    */
+/*    has already resolved a colour per device and written it inline    */
+/*    on the glyph, so publish that on the cell and let cards.css       */
+/*    §6d-i paint the frame with it while the device is on.            */
+
+(function () {
+    'use strict';
+
+    /* Read the inline colour, never getComputedStyle: this runs for
+       every card on every burst, and fifty of those per pass is the
+       kind of cost that shows up on a Pi.                            */
+    function rgbTriple(colour) {
+        if (!colour) return null;
+
+        var hex = colour.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+        if (hex) {
+            var h = hex[1];
+            if (h.length === 3) {
+                h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+            }
+            return parseInt(h.slice(0, 2), 16) + ', ' +
+                   parseInt(h.slice(2, 4), 16) + ', ' +
+                   parseInt(h.slice(4, 6), 16);
+        }
+
+        var rgb = colour.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+        if (rgb) return rgb[1] + ', ' + rgb[2] + ', ' + rgb[3];
+
+        return null;
+    }
+
+    /* icons.js marks its replacements with data-dz-state; Domoticz's own
+       Font Awesome glyphs carry .dz-icon--on instead. Read whichever is
+       there rather than parsing status text, which is localised.      */
+    function isOn(icon) {
+        var attr = icon.getAttribute('data-dz-state');
+        if (attr) return attr === 'on';
+        return icon.classList.contains('dz-icon--on');
+    }
+
+    function tintIconCells() {
+        var cells = document.querySelectorAll(
+            'table[id^="itemtable"] td#img, table[id^="itemtable"] td#img1'
+        );
+
+        for (var i = 0; i < cells.length; i++) {
+            var td = cells[i];
+            var icon = td.querySelector('i, img');
+            var on = !!icon && isOn(icon);
+
+            /* No colour when Domoticz drew the glyph itself, or when the
+               Device Icons setting is off — the cell still lights, just
+               in the theme accent, so on/off stays readable.           */
+            var triple = (on && icon.style && rgbTriple(icon.style.color)) || '';
+
+            /* Write only on a genuine change: every style/class touch
+               dirties the style tree, and this runs on every burst.    */
+            var want = on ? (triple || 'on') : '';
+            if (td.getAttribute('data-dz-tint') === want) continue;
+            td.setAttribute('data-dz-tint', want);
+
+            if (triple) {
+                td.style.setProperty('--dz-icon-tint', triple);
+            } else {
+                td.style.removeProperty('--dz-icon-tint');
+            }
+            td.classList.toggle('dz-icon-lit', on);
+        }
+    }
+
+    /* Join the icon-replacement burst so the tint lands in the same
+       batch as the colour it reads. */
+    window._dzExtraProcessors = window._dzExtraProcessors || [];
+    window._dzExtraProcessors.push(tintIconCells);
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', tintIconCells);
+    } else {
+        tintIconCells();
+    }
+
+    var _timer = null;
+    var observer = new MutationObserver(function () {
+        clearTimeout(_timer);
+        _timer = setTimeout(tintIconCells, 200);
+    });
+
+    function startObserver() {
+        var target = document.getElementById('dashcontent') ||
+                     document.getElementById('main-content') ||
+                     document.body;
+        if (target) {
+            observer.observe(target, {
+                childList: true, subtree: true,
+                attributes: true,
+                attributeFilter: ['data-dz-state', 'class', 'style']
+            });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startObserver);
+    } else {
+        startObserver();
+    }
+})();
