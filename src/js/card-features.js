@@ -1303,17 +1303,37 @@ document.addEventListener('DOMContentLoaded', function () {
 })();
 
 
-/* -- On-state icon tint ------------------------------------------- */
+/* -- Icon cell tint ----------------------------------------------- */
 /*    The icon cell is a flat accent wash for every device. icons.js    */
 /*    has already resolved a colour per device and written it inline    */
 /*    on the glyph, so publish that on the cell and let cards.css       */
-/*    §6d-i paint the frame with it while the device is on.            */
+/*    section 6d-i paint the frame with it.                            */
+/*                                                                     */
+/*    Domoticz marks state four different ways across its templates,    */
+/*    and a first pass that only understood one of them left most of    */
+/*    the dashboard untinted:                                          */
+/*                                                                     */
+/*      dz-device-icon with is-active  ->  dz-icon--on / dz-icon--off   */
+/*          switches, dimmers, locks, contacts, media players           */
+/*      dz-device-icon without it      ->  no class at all              */
+/*          every sensor: utility, temperature, weather. A temperature  */
+/*          has no "on", so these are stateless by design.              */
+/*      blinds                         ->  dz-icon--off on the INACTIVE */
+/*          direction only; the active one carries nothing, so testing  */
+/*          for dz-icon--on never matched a blind                       */
+/*      groups                         ->  transimg on whichever of the */
+/*          on/off pair matches the current state                       */
+/*                                                                     */
+/*    So: a stateful icon lights when it is on and stays neutral when   */
+/*    off, which keeps "off" readable at a glance. A stateless icon     */
+/*    gets a softer wash of its own colour, so the frame is coloured    */
+/*    everywhere without pretending to report a state it does not have. */
 
 (function () {
     'use strict';
 
     /* Read the inline colour, never getComputedStyle: this runs for
-       every card on every burst, and fifty of those per pass is the
+       every icon on every burst, and fifty of those per pass is the
        kind of cost that shows up on a Pi.                            */
     function rgbTriple(colour) {
         if (!colour) return null;
@@ -1335,42 +1355,66 @@ document.addEventListener('DOMContentLoaded', function () {
         return null;
     }
 
-    /* icons.js marks its replacements with data-dz-state; Domoticz's own
-       Font Awesome glyphs carry .dz-icon--on instead. Read whichever is
-       there rather than parsing status text, which is localised.      */
-    function isOn(icon) {
+    /* 'on' | 'off' | null, where null means the icon reports no state. */
+    function iconState(icon) {
         var attr = icon.getAttribute('data-dz-state');
-        if (attr) return attr === 'on';
-        return icon.classList.contains('dz-icon--on');
+        if (attr === 'on' || attr === 'off') return attr;
+
+        if (icon.classList.contains('dz-icon--on'))  return 'on';
+
+        /* A blind's active direction is the one NOT marked off, so the
+           off class has to be read before it is used as a plain 'off'.
+           Stop is a third button rather than a direction, and Domoticz
+           never marks it, so it must not fall into the same branch. */
+        if (icon.classList.contains('dz-blind-glyph')) {
+            if (icon.classList.contains('dz-blind-glyph-stop')) return null;
+            return icon.classList.contains('dz-icon--off') ? 'off' : 'on';
+        }
+
+        if (icon.classList.contains('dz-icon--off')) return 'off';
+
+        /* Group on/off buttons: transimg is on whichever button matches
+           the state the group is already in. */
+        if (icon.classList.contains('dz-scene-on') ||
+            icon.classList.contains('dz-scene-off')) {
+            return icon.classList.contains('transimg') ? 'on' : 'off';
+        }
+
+        return null;
     }
 
     function tintIconCells() {
         var cells = document.querySelectorAll(
-            'table[id^="itemtable"] td#img, table[id^="itemtable"] td#img1'
+            'table[id^="itemtable"] td#img, table[id^="itemtable"] td#img1, ' +
+            'table[id^="itemtable"] td#img2, table[id^="itemtable"] td#img3'
         );
 
         for (var i = 0; i < cells.length; i++) {
             var td = cells[i];
             var icon = td.querySelector('i, img');
-            var on = !!icon && isOn(icon);
+            var state = icon ? iconState(icon) : 'off';
+            var triple = (icon && icon.style && rgbTriple(icon.style.color)) || '';
 
-            /* No colour when Domoticz drew the glyph itself, or when the
-               Device Icons setting is off — the cell still lights, just
-               in the theme accent, so on/off stays readable.           */
-            var triple = (on && icon.style && rgbTriple(icon.style.color)) || '';
+            /* Off is deliberately neutral: with everything else carrying
+               a colour, the plain frame is what makes "switched off"
+               readable across a grid. A stateless icon with no colour to
+               show (the media remote is a bare PNG) stays neutral too. */
+            var lit  = state === 'on';
+            var hue  = state === null && !!triple;
 
-            /* Write only on a genuine change: every style/class touch
-               dirties the style tree, and this runs on every burst.    */
-            var want = on ? (triple || 'on') : '';
+            /* Write only on a genuine change: every style or class touch
+               dirties the style tree, and this runs on every burst. */
+            var want = (lit ? 'lit' : hue ? 'hue' : 'off') + '|' + triple;
             if (td.getAttribute('data-dz-tint') === want) continue;
             td.setAttribute('data-dz-tint', want);
 
-            if (triple) {
+            if (triple && (lit || hue)) {
                 td.style.setProperty('--dz-icon-tint', triple);
             } else {
                 td.style.removeProperty('--dz-icon-tint');
             }
-            td.classList.toggle('dz-icon-lit', on);
+            td.classList.toggle('dz-icon-lit', lit);
+            td.classList.toggle('dz-icon-hue', hue);
         }
     }
 
