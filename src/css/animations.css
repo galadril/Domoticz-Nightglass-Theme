@@ -87,15 +87,15 @@ input[type="checkbox"]:not(.noscheck) + span > label {
    ══════════════════════════════════════════════════════════════════ */
 
 /* Smooth icon hover — icon cell glow */
-body table[id^="itemtable"] tr td:first-child + td + td:hover {
+body:not(.ng-cards-ng) table[id^="itemtable"] tr td:first-child + td + td:hover{
     background: rgba(var(--dz-accent-rgb), 0.20) !important;
 }
 
-body table[id^="itemtable"] tr td:first-child + td + td img {
+body:not(.ng-cards-ng) table[id^="itemtable"] tr td:first-child + td + td img{
     transition: transform 0.2s ease;
 }
 
-body table[id^="itemtable"] tr td:first-child + td + td:hover img {
+body:not(.ng-cards-ng) table[id^="itemtable"] tr td:first-child + td + td:hover img{
     transform: scale(1.12);
 }
 
@@ -419,9 +419,9 @@ body table[id^="itemtable"] tr td:first-child + td + td:hover img {
 @media (max-width: 1199px) and (min-width: 770px) {
 
     /* Options row: flow in document instead of absolute overlay */
-    body table[id^="itemtable"] tr td.options,
-    dztemperaturewidget table[id^="itemtablenotype"] tr td.options,
-    dzweatherwidget table[id^="itemtablenotype"] tr td.options {
+    body:not(.ng-cards-ng) table[id^="itemtable"] tr td.options,
+    body:not(.ng-cards-ng) dztemperaturewidget table[id^="itemtablenotype"] tr td.options,
+    body:not(.ng-cards-ng) dzweatherwidget table[id^="itemtablenotype"] tr td.options{
         position: relative !important;
         bottom: auto !important;
         right: auto !important;
@@ -429,62 +429,62 @@ body table[id^="itemtable"] tr td:first-child + td + td:hover img {
     }
 
     /* Reduce the type/status row bottom-margin (no longer reserving space for abs options) */
-    body table[id^="itemtable"] tr td#type {
+    body:not(.ng-cards-ng) table[id^="itemtable"] tr td#type{
         margin-bottom: 4px !important;
     }
 
-    dztemperaturewidget table[id^="itemtablenotype"] tr td#status,
-    dzweatherwidget table[id^="itemtablenotype"] tr td#status {
+    body:not(.ng-cards-ng) dztemperaturewidget table[id^="itemtablenotype"] tr td#status,
+    body:not(.ng-cards-ng) dzweatherwidget table[id^="itemtablenotype"] tr td#status{
         margin-bottom: 6px !important;
     }
 
     /* Card footer: flow in document */
-    .dz-card-footer .dz-time {
+    body:not(.ng-cards-ng) .dz-card-footer .dz-time{
         position: relative !important;
         right: auto !important;
     }
 
     /* Ensure card doesn't clip stacked content */
-    div.item.itemBlock {
+    body:not(.ng-cards-ng) div.item.itemBlock{
         overflow: visible !important;
     }
 
-    .itemBlock > div.item {
+    body:not(.ng-cards-ng) .itemBlock > div.item{
         overflow: visible !important;
     }
 
     /* Selector buttons: allow wrapping at narrow widths */
-    body table[id^="itemtable"] tr td#type .btn-group {
+    body:not(.ng-cards-ng) table[id^="itemtable"] tr td#type .btn-group{
         display: flex !important;
         flex-wrap: wrap !important;
         gap: 4px !important;
     }
 
     /* Selector dropdown: constrain width */
-    .itemBlock .ui-selectmenu-button {
+    body:not(.ng-cards-ng) .itemBlock .ui-selectmenu-button{
         max-width: 100% !important;
     }
 }
 
 /* ── Card layout adjustments for phone screens ────────────────── */
 @media (max-width: 767px) {
-    body table[id^="itemtable"] tbody tr {
+    body:not(.ng-cards-ng) table[id^="itemtable"] tbody tr{
         width: 100% !important;
         margin-left: 0 !important;
         margin-right: 0 !important;
         padding: 10px 12px 8px !important;
     }
 
-    body table[id^="itemtable"] tr td:first-child + td {
+    body:not(.ng-cards-ng) table[id^="itemtable"] tr td:first-child + td{
         font-size: 1.1rem !important;
         white-space: normal;
     }
 
     /* Fix #78: options row overlaps activation buttons on mobile.
        Switch from absolute (desktop) to in-flow positioning.      */
-    body table[id^="itemtable"] tr td.options,
-    dztemperaturewidget table[id^="itemtablenotype"] tr td.options,
-    dzweatherwidget table[id^="itemtablenotype"] tr td.options {
+    body:not(.ng-cards-ng) table[id^="itemtable"] tr td.options,
+    body:not(.ng-cards-ng) dztemperaturewidget table[id^="itemtablenotype"] tr td.options,
+    body:not(.ng-cards-ng) dzweatherwidget table[id^="itemtablenotype"] tr td.options{
         position: relative !important;
         bottom: auto !important;
         right: auto !important;
@@ -492,17 +492,17 @@ body table[id^="itemtable"] tr td:first-child + td + td:hover img {
     }
 
     /* Remove the bottom-margin reserved for absolute options */
-    body table[id^="itemtable"] tr td#type {
+    body:not(.ng-cards-ng) table[id^="itemtable"] tr td#type{
         margin-bottom: 4px !important;
     }
 
-    dztemperaturewidget table[id^="itemtablenotype"] tr td#status,
-    dzweatherwidget table[id^="itemtablenotype"] tr td#status {
+    body:not(.ng-cards-ng) dztemperaturewidget table[id^="itemtablenotype"] tr td#status,
+    body:not(.ng-cards-ng) dzweatherwidget table[id^="itemtablenotype"] tr td#status{
         margin-bottom: 6px !important;
     }
 
     /* Card footer timestamp: flow in document */
-    .dz-card-footer .dz-time {
+    body:not(.ng-cards-ng) .dz-card-footer .dz-time{
         position: relative !important;
         right: auto !important;
     }
@@ -925,7 +925,7 @@ i.dz-fa-device[data-dz-state="off"] {
 
 /* Range-gradient variant: render the gradient IN the border curve via background-clip */
 div.item.itemBlock.dz-temp-accent.dz-range-gradient,
-.itemBlock > div.item.dz-temp-accent.dz-range-gradient {
+.itemBlock > div.item.dz-temp-accent.dz-range-gradient{
     border-top-color: transparent !important;
     background:
         linear-gradient(var(--dz-surface-2), var(--dz-surface-2)) padding-box,
@@ -934,7 +934,7 @@ div.item.itemBlock.dz-temp-accent.dz-range-gradient,
 }
 
 div.item.itemBlock.dz-temp-accent.dz-range-gradient:hover,
-.itemBlock:hover > div.item.dz-temp-accent.dz-range-gradient {
+.itemBlock:hover > div.item.dz-temp-accent.dz-range-gradient{
     background:
         linear-gradient(var(--dz-surface-3), var(--dz-surface-3)) padding-box,
         var(--dz-range-gradient) border-box !important;
@@ -1025,7 +1025,7 @@ div.item.itemBlock.dz-temp-accent.dz-range-gradient:hover,
 }
 
 div.item.itemBlock:hover .dz-sparkline-wrap,
-.itemBlock > div.item:hover .dz-sparkline-wrap {
+.itemBlock > div.item:hover .dz-sparkline-wrap{
     opacity: 0.11;
 }
 

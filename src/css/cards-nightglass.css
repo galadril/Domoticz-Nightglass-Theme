@@ -1,0 +1,842 @@
+/* ══════════════════════════════════════════════════════════════════
+   6-NG.  NIGHTGLASS DEVICE CARDS  (opt-in card style)
+   Active only when <body> carries .ng-cards-ng — set by the
+   "Card Style" setting.  The Classic layout in cards.css is gated
+   with body:not(.ng-cards-ng) and stays byte-identical when off.
+
+   MECHANISM
+   ---------
+   Domoticz renders every widget as a <table id="itemtable*">. Classic
+   re-flows that table with sibling-position arithmetic
+   (td:first-child + td + td …) and pulls the icon out with
+   position:absolute. Here we instead flatten the table with
+   display:contents so every <td> — plus the theme's own injected
+   .dz-card-footer, .dz-sparkline-wrap and .dz-power — becomes a direct
+   grid child of the card. Placement is then plain grid-area.
+
+   NOTHING IS RE-PARENTED. Angular's bindings, ng-if anchors and every
+   existing Nightglass selector (td#name, td#bigtext, .dz-time …) are
+   untouched — only `display` and `grid-area` change.
+
+   @supports is the safety net: a browser without display:contents
+   never matches these rules and falls through to Classic.
+
+   CARD GRID
+   ---------
+      +------+---------------+---------+
+      | rail | name          |  value  |   <- td#img*  td#name  td#bigtext
+      |      +-------------------------+
+      |      | val2                    |   <- td#bigtext when .ng-card--stacked
+      |      +-------------------------+
+      |      | type                    |   <- td#type  (tab views only)
+      |      +-------------------------+
+      |      | bar                     |   <- td#lastupdate > dz-bar
+      |      +---------------+---------+
+      |      | meta          |  foot   |   <- td#status  .dz-card-footer
+      |      +---------------+---------+
+      |      | ctrl                    |   <- td.input / selector / message
+      |      +-------------------------+
+      |      | opts                    |   <- td.options (tab views only)
+      +------+-------------------------+
+
+   Empty rows collapse to zero height, so a plain switch is five rows
+   shorter than a selector card without a single conditional in CSS.
+
+   Only the rail count changes the template (one, two or three icon
+   cells). Everything else — a long reading moving to its own row, a
+   selector taking the control row — is a per-cell grid-area change, so
+   the variants compose instead of multiplying.
+
+   SPECIFICITY NOTE
+   ----------------
+   The base cell rules are `body.ng-cards-ng table[id^="itemtable"] td#x`
+   = (0,2,3). Any rule that must override one carries the same
+   `table[id^="itemtable"]` step, even where it is not needed for
+   matching, so it lands at (0,3,3) and wins on merit rather than on
+   source order.
+   ══════════════════════════════════════════════════════════════════ */
+
+
+/* ── NG-a. Density tokens ─────────────────────────────────────────
+   These are the "compact" step, so the style is already correct
+   before the settings module has run. applySettings() overrides them
+   on documentElement for Comfortable and Ultra, and clears them again
+   for Compact.
+   ──────────────────────────────────────────────────────────────── */
+
+:root {
+    --ngc-rail:        38px;   /* rail column width              */
+    --ngc-rail-btn:    34px;   /* min height of one rail button   */
+    --ngc-pad:          9px;   /* card padding                    */
+    --ngc-gap:          9px;   /* rail to content gap             */
+    --ngc-row-gap:        0;   /* rows space themselves; see NG-f/NG-i */
+    --ngc-radius:      10px;   /* rail / inner radius             */
+    --ngc-name-size:  0.78rem;
+    --ngc-value-size: 0.98rem;
+    --ngc-meta-size:  0.66rem;
+    --ngc-icon-size:  1.05rem;
+}
+
+
+@supports (display: contents) {
+
+    /* ── NG-b. Shell ──────────────────────────────────────────────
+       Two card roots exist: dashboard / utility / scene widgets put
+       .item.itemBlock on one div; temperature and weather widgets put
+       .itemBlock on the custom element and .item on the inner div.
+       ─────────────────────────────────────────────────────────── */
+
+    body.ng-cards-ng div.item.itemBlock,
+    body.ng-cards-ng .itemBlock > div.item {
+        display: grid;
+        grid-template-columns: var(--ngc-rail) minmax(0, 1fr) auto;
+        grid-template-areas:
+            "rail name value"
+            "rail val2 val2"
+            "rail type type"
+            "rail bar  bar"
+            "rail meta foot"
+            "rail ctrl ctrl"
+            "rail opts opts";
+        align-content: start;
+        align-items: center;
+        column-gap: var(--ngc-gap);
+        row-gap: var(--ngc-row-gap);
+
+        padding: var(--ngc-pad);
+        min-height: calc(var(--ngc-rail-btn) + (var(--ngc-pad) * 2));
+        height: 100%;
+        box-sizing: border-box;
+        position: relative;
+        /* Visible, so the options overflow menu can escape the card.
+           The sparkline strip clips itself instead (NG-k).           */
+        overflow: visible;
+
+        background: var(--dz-surface-2);
+        border: 1px solid var(--dz-border);
+        border-radius: var(--dz-widget-border-radius);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+        color: var(--dz-text);
+        font-family: inherit;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease,
+                    background 0.2s ease, transform 0.15s ease;
+    }
+
+    body.ng-cards-ng div.item.itemBlock:hover,
+    body.ng-cards-ng .itemBlock:hover > div.item {
+        background: var(--dz-surface-3);
+        border-color: rgba(var(--dz-accent-rgb), 0.4);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+        transform: translateY(-1px);
+    }
+
+    /* Flatten the table so its cells join the card's own grid. */
+    body.ng-cards-ng div.item.itemBlock > section,
+    body.ng-cards-ng .itemBlock > div.item > section,
+    body.ng-cards-ng table[id^="itemtable"],
+    body.ng-cards-ng table[id^="itemtable"] > tbody,
+    body.ng-cards-ng table[id^="itemtable"] > tbody > tr {
+        display: contents;
+    }
+
+    /* Reset every cell to a plain block; areas are assigned below. */
+    body.ng-cards-ng table[id^="itemtable"] td {
+        display: block;
+        float: none !important;
+        width: auto !important;
+        height: auto !important;
+        min-width: 0 !important;
+        max-width: none;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        background: none;
+        text-align: left;
+        vertical-align: baseline;
+        font-family: inherit;
+    }
+
+
+    /* ── NG-c. Rail (td#img / #img1 / #img2 / #img3) ──────────────
+       The icon cell IS the rail — restyled, never moved, so the
+       ng-click already on its <i>/<img> child keeps working and the
+       hit target grows from 36px to the full card height.
+       ─────────────────────────────────────────────────────────── */
+
+    body.ng-cards-ng table[id^="itemtable"] td#img,
+    body.ng-cards-ng table[id^="itemtable"] td#img1,
+    body.ng-cards-ng table[id^="itemtable"] td#img2,
+    body.ng-cards-ng table[id^="itemtable"] td#img3 {
+        grid-area: rail;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        /* Stretch so short cards get a full-height spine, but cap it: on a
+           tall card (a message body, a tab view's options row) an
+           unbounded rail stops reading as an icon and becomes a slab. */
+        align-self: stretch;
+        /* No min-height: the rail spans all seven rows, so a floor here
+           gets distributed across the empty ones instead of collapsing
+           them. The card's own min-height already guarantees the size. */
+        min-height: 0;
+        max-height: calc(var(--ngc-rail-btn) * 2);
+        border-radius: var(--ngc-radius);
+        background: rgba(var(--dz-accent-rgb), 0.07);
+        border: 1px solid transparent !important;
+        overflow: hidden;
+        transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    /* The rail rule above uses display:flex !important, which outranks
+       Angular's own .ng-hide {display:none !important} on specificity —
+       so a hidden icon cell would draw anyway. Put it back. */
+    body.ng-cards-ng table[id^="itemtable"] td#img.ng-hide,
+    body.ng-cards-ng table[id^="itemtable"] td#img1.ng-hide,
+    body.ng-cards-ng table[id^="itemtable"] td#img2.ng-hide,
+    body.ng-cards-ng table[id^="itemtable"] td#img3.ng-hide {
+        display: none !important;
+    }
+
+    /* No icon at all: a General/Text device whose "Show icon" is off
+       leaves td#img in the DOM under Angular's .ng-hide. Without this the
+       rail column stays reserved and the card carries an empty gutter. */
+    body.ng-cards-ng div.item.itemBlock.ng-rail-0,
+    body.ng-cards-ng .ng-rail-0 > div.item {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            "name value"
+            "val2 val2"
+            "type type"
+            "bar  bar"
+            "meta foot"
+            "ctrl ctrl"
+            "opts opts";
+    }
+
+    /* Two or three icons — blinds open/(stop)/close, group on/off,
+       media player + remote. The rail becomes a horizontal cluster of
+       that many columns.
+
+       Stacking them DOWN the rail reads nicely for blinds, but it forces
+       one --ngc-rail-btn of height per extra button and measured out
+       taller than the Classic card it replaces (a blinds + stop card
+       went 131px -> 167px). Side by side costs no height at all, and
+       still lands narrower than Classic's 90px / 132px icon indents.  */
+
+    body.ng-cards-ng div.item.itemBlock.ng-rail-2,
+    body.ng-cards-ng .ng-rail-2 > div.item {
+        /* A tighter gap inside the cluster; it also pulls the text in
+           a little, which the wider rail has just cost it. */
+        column-gap: calc(var(--ngc-gap) * 0.6);
+        grid-template-columns:
+            var(--ngc-rail) var(--ngc-rail) minmax(0, 1fr) auto;
+        grid-template-areas:
+            "rail1 rail2 name value"
+            "rail1 rail2 val2 val2"
+            "rail1 rail2 type type"
+            "rail1 rail2 bar  bar"
+            "rail1 rail2 meta foot"
+            "rail1 rail2 ctrl ctrl"
+            "rail1 rail2 opts opts";
+    }
+
+    /* Three buttons at full rail width would take a third of the card,
+       so they narrow — the cluster still totals less than Classic. */
+    body.ng-cards-ng div.item.itemBlock.ng-rail-3,
+    body.ng-cards-ng .ng-rail-3 > div.item {
+        --ngc-rail: calc(var(--ngc-rail-btn) * 0.78);
+        column-gap: calc(var(--ngc-gap) * 0.6);
+        grid-template-columns:
+            var(--ngc-rail) var(--ngc-rail) var(--ngc-rail) minmax(0, 1fr) auto;
+        grid-template-areas:
+            "rail1 rail2 rail3 name value"
+            "rail1 rail2 rail3 val2 val2"
+            "rail1 rail2 rail3 type type"
+            "rail1 rail2 rail3 bar  bar"
+            "rail1 rail2 rail3 meta foot"
+            "rail1 rail2 rail3 ctrl ctrl"
+            "rail1 rail2 rail3 opts opts";
+    }
+
+    /* The cluster is one control, so its buttons must be equal — a
+       stretched cell would otherwise take its height from whatever
+       text happens to sit beside it. */
+    body.ng-cards-ng .ng-rail-2 table[id^="itemtable"] td#img,
+    body.ng-cards-ng .ng-rail-2 table[id^="itemtable"] td#img1,
+    body.ng-cards-ng .ng-rail-2 table[id^="itemtable"] td#img2,
+    body.ng-cards-ng .ng-rail-2 table[id^="itemtable"] td#img3,
+    body.ng-cards-ng .ng-rail-3 table[id^="itemtable"] td#img,
+    body.ng-cards-ng .ng-rail-3 table[id^="itemtable"] td#img1,
+    body.ng-cards-ng .ng-rail-3 table[id^="itemtable"] td#img2,
+    body.ng-cards-ng .ng-rail-3 table[id^="itemtable"] td#img3 {
+        align-self: stretch;
+        max-height: calc(var(--ngc-rail-btn) * 2);
+    }
+
+    body.ng-cards-ng .ng-rail-2 table[id^="itemtable"] td#img,
+    body.ng-cards-ng .ng-rail-2 table[id^="itemtable"] td#img1,
+    body.ng-cards-ng .ng-rail-3 table[id^="itemtable"] td#img,
+    body.ng-cards-ng .ng-rail-3 table[id^="itemtable"] td#img1 {
+        grid-area: rail1;
+    }
+
+    body.ng-cards-ng .ng-rail-2 table[id^="itemtable"] td#img2,
+    body.ng-cards-ng .ng-rail-3 table[id^="itemtable"] td#img2 {
+        grid-area: rail2;
+    }
+
+    body.ng-cards-ng .ng-rail-3 table[id^="itemtable"] td#img3 {
+        grid-area: rail3;
+    }
+
+    /* Icon inside the rail — respects the icon-size setting. */
+    body.ng-cards-ng table[id^="itemtable"] td[id^="img"] > * {
+        max-width: 100%;
+    }
+
+    body.ng-cards-ng table[id^="itemtable"] td[id^="img"] img {
+        width: calc(24px * var(--ng-icon-scale, 1)) !important;
+        height: calc(24px * var(--ng-icon-scale, 1)) !important;
+        display: block;
+        object-fit: contain;
+    }
+
+    body.ng-cards-ng table[id^="itemtable"] td[id^="img"] i {
+        font-size: calc(var(--ngc-icon-size) * var(--ng-icon-scale, 1));
+        line-height: 1;
+    }
+
+    /* On-state: the rail carries the device's own colour, published
+       per card as --ngc-state-rgb by card-layout.js. An rgb triple
+       rather than color-mix() so no browser is left behind.        */
+    body.ng-cards-ng [data-ng-state="on"] table[id^="itemtable"] td#img,
+    body.ng-cards-ng [data-ng-state="on"] table[id^="itemtable"] td#img1 {
+        background: rgba(var(--ngc-state-rgb, var(--dz-accent-rgb)), 0.18);
+        border-color: rgba(var(--ngc-state-rgb, var(--dz-accent-rgb)), 0.45) !important;
+    }
+
+    body.ng-cards-ng div.item.itemBlock:hover table[id^="itemtable"] td#img,
+    body.ng-cards-ng div.item.itemBlock:hover table[id^="itemtable"] td#img1,
+    body.ng-cards-ng div.item.itemBlock:hover table[id^="itemtable"] td#img2,
+    body.ng-cards-ng div.item.itemBlock:hover table[id^="itemtable"] td#img3,
+    body.ng-cards-ng .itemBlock:hover > div.item table[id^="itemtable"] td#img,
+    body.ng-cards-ng .itemBlock:hover > div.item table[id^="itemtable"] td#img1,
+    body.ng-cards-ng .itemBlock:hover > div.item table[id^="itemtable"] td#img2,
+    body.ng-cards-ng .itemBlock:hover > div.item table[id^="itemtable"] td#img3 {
+        background: rgba(var(--ngc-state-rgb, var(--dz-accent-rgb)), 0.24);
+    }
+
+    /* Status classes recolour the rail instead of Classic's name chip. */
+    body.ng-cards-ng div.item.statusProtected table[id^="itemtable"] td#img,
+    body.ng-cards-ng div.item.statusProtected table[id^="itemtable"] td#img1,
+    body.ng-cards-ng div.item.statusProtected table[id^="itemtable"] td#img2,
+    body.ng-cards-ng div.item.statusProtected table[id^="itemtable"] td#img3 {
+        background: rgba(78, 100, 241, 0.15);
+        border-color: rgba(78, 100, 241, 0.4) !important;
+    }
+
+    body.ng-cards-ng div.item.statusTimeout table[id^="itemtable"] td#img,
+    body.ng-cards-ng div.item.statusTimeout table[id^="itemtable"] td#img1,
+    body.ng-cards-ng div.item.statusTimeout table[id^="itemtable"] td#img2,
+    body.ng-cards-ng div.item.statusTimeout table[id^="itemtable"] td#img3 {
+        background: rgba(var(--dz-danger-rgb), 0.15);
+        border-color: rgba(var(--dz-danger-rgb), 0.45) !important;
+    }
+
+    body.ng-cards-ng div.item.statusLowBattery table[id^="itemtable"] td#img,
+    body.ng-cards-ng div.item.statusLowBattery table[id^="itemtable"] td#img1,
+    body.ng-cards-ng div.item.statusLowBattery table[id^="itemtable"] td#img2,
+    body.ng-cards-ng div.item.statusLowBattery table[id^="itemtable"] td#img3 {
+        background: rgba(var(--dz-warning-rgb), 0.15);
+        border-color: rgba(var(--dz-warning-rgb), 0.45) !important;
+    }
+
+    /* (statusDisabled's card opacity is not layout, so cards.css keeps
+       owning it for both styles.) */
+
+
+    /* ── NG-d. Name ───────────────────────────────────────────────
+       Promoted from Classic's chip to the card's primary line. The
+       existing "Uppercase Device Names" setting still applies — its
+       off-switch targets td:first-child with !important and wins.
+       ─────────────────────────────────────────────────────────── */
+
+    body.ng-cards-ng table[id^="itemtable"] td#name {
+        grid-area: name;
+        align-self: center;
+        font-size: var(--ngc-name-size);
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        line-height: 1.35;
+        color: var(--dz-text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    body.ng-cards-ng div.item.statusTimeout table[id^="itemtable"] td#name {
+        color: var(--dz-danger-light, #ff8a8a);
+    }
+
+    body.ng-cards-ng div.item.statusLowBattery table[id^="itemtable"] td#name {
+        color: var(--dz-warning-light, #ffc76b);
+    }
+
+
+    /* ── NG-e. Value ──────────────────────────────────────────────
+       Right-aligned and tabular so readings line up into a column
+       down the grid — which is the point of a dashboard.
+       ─────────────────────────────────────────────────────────── */
+
+    body.ng-cards-ng table[id^="itemtable"] td#bigtext {
+        grid-area: value;
+        justify-self: end;
+        align-self: center;
+        text-align: right;
+        max-width: 100%;
+        font-size: var(--ngc-value-size);
+        font-weight: 700;
+        line-height: 1.3;
+        color: var(--dz-text);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Long or multi-value readings (21.4 / 63% / 1013 hPa) drop to the
+       val2 row, which is empty otherwise, and the name takes the width
+       the value gave up. Orthogonal to the rail templates: only the
+       cell's area changes, so it composes with .ng-rail-2 / -3.     */
+    body.ng-cards-ng .ng-card--stacked table[id^="itemtable"] td#bigtext {
+        grid-area: val2;
+        justify-self: start;
+        text-align: left;
+        white-space: normal;
+        line-height: 1.25;
+    }
+
+    /* Span by area line names, not column numbers: the rail templates
+       have three, four or five columns, so 2 / 4 would land on top of a
+       rail button on the multi-icon ones. */
+    body.ng-cards-ng .ng-card--stacked table[id^="itemtable"] td#name {
+        grid-column: name-start / value-end;
+    }
+
+    /* Trend arrow / inline camera link Domoticz puts inside bigtext. */
+    body.ng-cards-ng table[id^="itemtable"] td#bigtext i {
+        font-size: 0.72em;
+        vertical-align: middle;
+        opacity: 0.75;
+    }
+
+
+    /* ── NG-f. Type line (tab views only) ─────────────────────────
+       In the tab templates td#type carries the Type/SubType label AND
+       the dim slider / selector controls, so it is a full-width row
+       rather than a caption: the label reads as micro-text and the
+       controls under it get the control treatment.
+       ─────────────────────────────────────────────────────────── */
+
+    body.ng-cards-ng table[id^="itemtable"] td#type {
+        grid-area: type;
+        margin-top: 2px !important;
+        font-size: 0.64rem;
+        line-height: 1.5;
+        color: var(--dz-text-faint);
+        letter-spacing: 0.02em;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* The template pads with <br><br> sized for the old table row. */
+    body.ng-cards-ng table[id^="itemtable"] td#type br {
+        display: none;
+    }
+
+    body.ng-cards-ng table[id^="itemtable"] td#type > span {
+        display: block;
+        margin-top: 4px;
+    }
+
+
+    /* ── NG-g. Range bar ──────────────────────────────────────────
+       dz-bar / dz-temp-bar live inside td#lastupdate, which Classic
+       hides wholesale — so the gauge Domoticz computed is thrown
+       away. Here the cell's text collapses and the bar is kept.
+       ─────────────────────────────────────────────────────────── */
+
+    body.ng-cards-ng table[id^="itemtable"] td#lastupdate {
+        grid-area: bar;
+        font-size: 0;
+        line-height: 0;
+        color: transparent;
+    }
+
+    body.ng-cards-ng table[id^="itemtable"] td#lastupdate dz-bar,
+    body.ng-cards-ng table[id^="itemtable"] td#lastupdate dz-temp-bar {
+        display: block;
+        width: 100%;
+        font-size: 0;
+        line-height: 0;
+        margin: 2px 0 1px;
+    }
+
+
+    /* ── NG-h. Meta row: status text + timestamp ──────────────────
+       td#status sits left, the theme's .dz-card-footer (relative time
+       plus the colour-light power button) sits right. Both keep the
+       selectors realtime.js and card-features.js already use.
+       ─────────────────────────────────────────────────────────── */
+
+    body.ng-cards-ng table[id^="itemtable"] td#status {
+        grid-area: meta;
+        align-self: center;
+        font-size: var(--ngc-meta-size);
+        font-weight: 500;
+        line-height: 1.45;
+        color: var(--dz-text-muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* card-layout.js sets this when the status merely restates the
+       value ("78 %" in bigtext, "Set Level: 78%" in status) — a whole
+       wasted line on most dimmers.                                  */
+    body.ng-cards-ng table[id^="itemtable"] td#status.ng-status-dupe {
+        display: none;
+    }
+
+    body.ng-cards-ng div.item.itemBlock > .dz-card-footer,
+    body.ng-cards-ng .itemBlock > div.item > .dz-card-footer {
+        grid-area: foot;
+        justify-self: end;
+        align-self: center;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        position: static;
+    }
+
+    body.ng-cards-ng .dz-card-footer .dz-time {
+        position: static;
+        right: auto;
+        font-size: var(--ngc-meta-size) !important;
+        line-height: 1.45;
+        color: var(--dz-text-faint) !important;
+        font-style: normal !important;
+        white-space: nowrap;
+    }
+
+
+    /* ── NG-i. Control row ────────────────────────────────────────
+       td.input holds the dashboard dim slider. td#status moves here
+       instead of `meta` when it holds selector controls or a
+       text-device message — card-layout.js sets the class.
+       ─────────────────────────────────────────────────────────── */
+
+    body.ng-cards-ng table[id^="itemtable"] td.input {
+        grid-area: ctrl;
+        margin-top: 3px !important;
+        width: auto !important;
+        overflow: visible !important;
+    }
+
+    body.ng-cards-ng .ng-card--ctrl-status table[id^="itemtable"] td#status,
+    body.ng-cards-ng .dz-text-device table[id^="itemtable"] td#status,
+    body.ng-cards-ng .dz-alert-device table[id^="itemtable"] td#bigtext {
+        grid-area: ctrl;
+        margin-top: 3px !important;
+        justify-self: stretch;
+        text-align: left;
+        white-space: normal;
+        overflow: visible;
+        max-width: none;
+    }
+
+    /* Sliders carry an inline margin-left and a JS-set pixel width,
+       both sized for the original full-width table row.             */
+    body.ng-cards-ng table[id^="itemtable"] .dimslider,
+    body.ng-cards-ng table[id^="itemtable"] div[class*="dimslider"],
+    body.ng-cards-ng table[id^="itemtable"] .dimsmall,
+    body.ng-cards-ng table[id^="itemtable"] .dimsmall3 {
+        margin: 3px 0 !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        visibility: visible !important;
+        overflow: visible !important;
+    }
+
+    /* Selector chips / dropdown. The chip chrome itself is shared with
+       Classic in cards.css — only the row layout is redefined here.  */
+    body.ng-cards-ng table[id^="itemtable"] td#status .btn-group,
+    body.ng-cards-ng table[id^="itemtable"] td#type .btn-group {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 4px !important;
+        margin: 2px 0 0 !important;
+    }
+
+    body.ng-cards-ng .itemBlock .ui-selectmenu-button,
+    body.ng-cards-ng table[id^="itemtable"] .ui-selectmenu-button {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    body.ng-cards-ng table[id^="itemtable"] td#status .selectorlevels,
+    body.ng-cards-ng table[id^="itemtable"] td#type .selectorlevels {
+        margin-top: 2px !important;
+    }
+
+
+    /* ── NG-j. Options overflow menu (tab views) ──────────────────
+       Favourite star + Log / Edit / Timers / Notifications. Classic
+       pins the row absolutely at bottom:-15px, and on a narrow card
+       four chips wrap to two lines — the single most expensive row on
+       a tab-view card.
+
+       Here td.options becomes a popover instead, opened from a "…"
+       button card-layout.js puts in the meta line, so the row costs
+       nothing until it is asked for. The cell is not re-parented; only
+       its position and visibility change.
+       ─────────────────────────────────────────────────────────── */
+
+    /* No grid-area: an out-of-flow grid child positions against the
+       card's padding box, which is the anchor we want. The `opts` row
+       in the template is left unused and collapses to nothing. */
+    body.ng-cards-ng table[id^="itemtable"] td.options {
+        display: none !important;
+        position: absolute;
+        right: 0;
+        bottom: calc(var(--ngc-pad) + 4px);
+        z-index: 20;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 3px;
+        min-width: 132px;
+        padding: 6px !important;
+        background: var(--dz-surface);
+        border: 1px solid var(--dz-border-b) !important;
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    body.ng-cards-ng .ng-opts-open table[id^="itemtable"] td.options {
+        display: flex !important;
+    }
+
+    /* Chips become full-width menu rows. The chip chrome itself still
+       comes from cards.css, shared with Classic. */
+    body.ng-cards-ng table[id^="itemtable"] td.options .btnsmall,
+    body.ng-cards-ng table[id^="itemtable"] td.options .btnsmall-sel,
+    body.ng-cards-ng table[id^="itemtable"] td.options .btnsmall-dis {
+        display: block;
+        text-align: left;
+        border-radius: 6px !important;
+        padding: 4px 9px !important;
+    }
+
+    body.ng-cards-ng table[id^="itemtable"] td.options > span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 9px 5px;
+    }
+
+    /* The "…" trigger, created by card-layout.js. */
+    body.ng-cards-ng .ng-opts-toggle {
+        grid-area: meta;
+        justify-self: end;
+        align-self: center;
+        z-index: 2;
+        width: 20px;
+        height: 20px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        background: none;
+        color: var(--dz-text-faint);
+        font-size: 0.72rem;
+        line-height: 1;
+        cursor: pointer;
+        transition: color 0.15s, background 0.15s, border-color 0.15s;
+    }
+
+    body.ng-cards-ng .ng-opts-toggle:hover,
+    body.ng-cards-ng .ng-opts-open .ng-opts-toggle {
+        color: var(--dz-text);
+        background: rgba(var(--dz-accent-rgb), 0.12);
+        border-color: rgba(var(--dz-accent-rgb), 0.35);
+    }
+
+    /* Folding the row away also folds away the favourite star, which is
+       the one thing in there you read rather than click. Reflect it on
+       the trigger so the card still says it at a glance. */
+    body.ng-cards-ng .ng-opts-toggle[data-ng-fav="1"]::after {
+        content: '';
+        position: absolute;
+        top: 1px;
+        right: 1px;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--dz-accent);
+    }
+
+    body.ng-cards-ng .ng-opts-toggle {
+        position: relative;
+    }
+
+    /* Keep status text clear of the trigger sharing its row. */
+    body.ng-cards-ng .ng-has-opts table[id^="itemtable"] td#status {
+        padding-right: 24px !important;
+    }
+
+
+    /* ── NG-k. Sparkline strip ────────────────────────────────────
+       Classic paints the sparkline as a full-card watermark. Anchored
+       to the bottom and masked it reads as an actual chart while
+       still costing zero vertical space.
+       ─────────────────────────────────────────────────────────── */
+
+    body.ng-cards-ng .dz-sparkline-wrap {
+        inset: auto 0 0 0;
+        height: 58%;
+        opacity: 0.10;
+        /* The card is overflow:visible so the options menu can escape,
+           so the strip has to round its own bottom corners. */
+        border-radius: 0 0 var(--dz-widget-border-radius)
+                             var(--dz-widget-border-radius);
+        -webkit-mask-image: linear-gradient(to top, #000 60%, transparent);
+        mask-image: linear-gradient(to top, #000 60%, transparent);
+    }
+
+    body.ng-cards-ng div.item.itemBlock:hover .dz-sparkline-wrap,
+    body.ng-cards-ng .itemBlock > div.item:hover .dz-sparkline-wrap {
+        opacity: 0.20;
+    }
+
+    /* Staleness dot — nudged in to suit the tighter padding. */
+    body.ng-cards-ng .dz-stale::before {
+        top: 6px;
+        right: 6px;
+        width: 7px;
+        height: 7px;
+    }
+
+
+    /* ── NG-l. Message devices (General/Text, General/Alert) ──────
+       card-features.js already tags these; reuse the classes rather
+       than re-detecting.
+       ─────────────────────────────────────────────────────────── */
+
+    body.ng-cards-ng .dz-text-device table[id^="itemtable"] td#bigtext {
+        display: none;
+    }
+
+    body.ng-cards-ng .dz-alert-device table[id^="itemtable"] td#bigtext {
+        font-size: 0.82rem;
+        font-weight: 400;
+        line-height: 1.5;
+        color: var(--dz-text-soft);
+        text-align: left;
+    }
+
+    body.ng-cards-ng .dz-text-msg {
+        max-height: 68px;
+    }
+
+
+    /* ── NG-m. Card grid rhythm ───────────────────────────────────
+       Shorter cards want a tighter row gap. Column widths are
+       Domoticz's Bootstrap spans and stay untouched, so cards-per-row
+       does not change.
+       ─────────────────────────────────────────────────────────── */
+
+    body.ng-cards-ng .devicesList .row,
+    body.ng-cards-ng SECTION.dashCategory .row,
+    body.ng-cards-ng #tempwidgets,
+    body.ng-cards-ng #weatherwidgets {
+        row-gap: 10px;
+    }
+
+
+    /* ── NG-n. Dashboard 2.0 ──────────────────────────────────────
+       dz-device / dz-scene compile a widget into .dd-dz-inner;
+       dz-favorites / dz-room repeat them in .dd-dz-fav-item. Same
+       itemtable DOM, so the design already applies — these rules only
+       stop the card drawing a second frame inside a tile that already
+       has one.
+       ─────────────────────────────────────────────────────────── */
+
+    body.ng-cards-ng .dd-dz-inner > div,
+    body.ng-cards-ng .dd-dz-fav-item > div,
+    body.ng-cards-ng .dd-dz-fav-item > dz-light-widget > div {
+        width: 100%;
+        margin: 0;
+    }
+
+    body.ng-cards-ng .dd-dz-inner div.item.itemBlock {
+        height: 100%;
+        border: none;
+        box-shadow: none;
+        background: transparent;
+    }
+
+    body.ng-cards-ng .dd-dz-inner div.item.itemBlock:hover {
+        background: rgba(var(--dz-overlay-rgb), 0.03);
+        transform: none;
+    }
+
+    body.ng-cards-ng .dd-dz-fav-item div.item.itemBlock {
+        margin-bottom: 0;
+    }
+
+    /* The favourites tile scrolls; a hover lift would jitter it. */
+    body.ng-cards-ng .dd-dz-fav-item div.item.itemBlock:hover {
+        transform: none;
+    }
+
+
+    /* ── NG-o. Responsive ─────────────────────────────────────── */
+
+    @media (max-width: 767px) {
+        body.ng-cards-ng div.item.itemBlock,
+        body.ng-cards-ng .itemBlock > div.item {
+            --ngc-pad: 8px;
+            --ngc-gap: 8px;
+        }
+
+        body.ng-cards-ng table[id^="itemtable"] td#name {
+            white-space: normal;
+        }
+    }
+
+
+    /* ── NG-p. Reduced motion ─────────────────────────────────── */
+
+    @media (prefers-reduced-motion: reduce) {
+        body.ng-cards-ng div.item.itemBlock,
+        body.ng-cards-ng .itemBlock > div.item,
+        body.ng-cards-ng table[id^="itemtable"] td#img,
+        body.ng-cards-ng table[id^="itemtable"] td#img1,
+        body.ng-cards-ng table[id^="itemtable"] td#img2,
+        body.ng-cards-ng table[id^="itemtable"] td#img3 {
+            transition: none;
+        }
+
+        body.ng-cards-ng div.item.itemBlock:hover,
+        body.ng-cards-ng .itemBlock:hover > div.item {
+            transform: none;
+        }
+    }
+
+}
