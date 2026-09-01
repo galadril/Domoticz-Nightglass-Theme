@@ -95,7 +95,7 @@
 
     body.ng-cards-ng div.item.itemBlock,
     body.ng-cards-ng .itemBlock > div.item {
-        display: grid;
+        display: grid !important;
         grid-template-columns: var(--ngc-rail) minmax(0, 1fr) auto;
         grid-template-areas:
             "rail name value"
@@ -144,13 +144,23 @@
         transform: translateY(-1px);
     }
 
-    /* Flatten the table so its cells join the card's own grid. */
+    /* Flatten the table so its cells join the card's own grid.
+
+       !important is load-bearing here, not decoration. Domoticz styles
+       these tables by ID — css/variables.css has
+           body table#itemtablesmall,
+           body table#itemtablesmall tbody,
+           body table#itemtablesmall tbody tr { display: block; }
+       at specificity (1,0,2)/(1,0,3), which a class-based selector can
+       never outrank. Without it the table stays a block, the card's only
+       grid child is the <table>, and every card collapses into a ~26px
+       column on the left inside a full-width frame. */
     body.ng-cards-ng div.item.itemBlock > section,
     body.ng-cards-ng .itemBlock > div.item > section,
     body.ng-cards-ng table[id^="itemtable"],
     body.ng-cards-ng table[id^="itemtable"] > tbody,
     body.ng-cards-ng table[id^="itemtable"] > tbody > tr {
-        display: contents;
+        display: contents !important;
     }
 
     /* Reset every cell to a plain block; areas are assigned below. */
@@ -356,6 +366,11 @@
     body.ng-cards-ng table[id^="itemtable"] td#name {
         grid-area: name;
         align-self: center;
+        /* Domoticz paints the status colour onto the name cell itself
+           (css/variables.css: div.item.statusTimeout td#name {...}).
+           Nightglass puts that on the card's left edge instead, so the
+           chip has to be cleared or the name sits on a solid slab. */
+        background: none;
         font-size: var(--ngc-name-size);
         font-weight: 600;
         letter-spacing: 0.02em;
