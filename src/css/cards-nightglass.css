@@ -23,6 +23,12 @@
 
    CARD GRID
    ---------
+   The card is ONE frame: a border, a radius, and a 3px left edge that
+   carries device state. The icon is a bare glyph in its own column, not
+   a filled panel — a tinted rounded box inset inside a bordered card
+   reads as a frame within a frame. The grid area is still called `rail`
+   for continuity with the class names.
+
       +------+---------------+---------+
       | rail | name          |  value  |   <- td#img*  td#name  td#bigtext
       |      +-------------------------+
@@ -65,8 +71,9 @@
    ──────────────────────────────────────────────────────────────── */
 
 :root {
-    --ngc-rail:        38px;   /* rail column width              */
-    --ngc-rail-btn:    34px;   /* min height of one rail button   */
+    --ngc-rail:        26px;   /* icon column width              */
+    --ngc-rail-btn:    26px;   /* icon slot: card min-height, and
+                                  the size of one clustered button */
     --ngc-pad:          9px;   /* card padding                    */
     --ngc-gap:          9px;   /* rail to content gap             */
     --ngc-row-gap:        0;   /* rows space themselves; see NG-f/NG-i */
@@ -114,6 +121,11 @@
 
         background: var(--dz-surface-2);
         border: 1px solid var(--dz-border);
+        /* The state stripe. On the card's own border, so it is full height
+           by construction and there is no second frame inside the first.
+           A pseudo-element would collide with .dz-stale::before and
+           .dz-temp-accent.dz-range-gradient::after. */
+        border-left: 3px solid var(--dz-border);
         border-radius: var(--dz-widget-border-radius);
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
         color: var(--dz-text);
@@ -125,7 +137,9 @@
     body.ng-cards-ng div.item.itemBlock:hover,
     body.ng-cards-ng .itemBlock:hover > div.item {
         background: var(--dz-surface-3);
-        border-color: rgba(var(--dz-accent-rgb), 0.4);
+        border-top-color: rgba(var(--dz-accent-rgb), 0.4);
+        border-right-color: rgba(var(--dz-accent-rgb), 0.4);
+        border-bottom-color: rgba(var(--dz-accent-rgb), 0.4);
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
         transform: translateY(-1px);
     }
@@ -157,10 +171,16 @@
     }
 
 
-    /* ── NG-c. Rail (td#img / #img1 / #img2 / #img3) ──────────────
-       The icon cell IS the rail — restyled, never moved, so the
-       ng-click already on its <i>/<img> child keeps working and the
-       hit target grows from 36px to the full card height.
+    /* ── NG-c. Icon slot (td#img / #img1 / #img2 / #img3) ─────────
+       A bare glyph on the card surface. It is deliberately NOT a filled
+       box: the card already has a border and a radius, and a tinted
+       rounded panel inset inside that reads as a frame within a frame.
+       State lives on the card's left border instead (NG-b), and the
+       glyph's own colour — which icons.js already sets per device —
+       carries it too.
+
+       The cell is restyled, never moved, so the ng-click already on its
+       <i>/<img> child keeps working.
        ─────────────────────────────────────────────────────────── */
 
     body.ng-cards-ng table[id^="itemtable"] td#img,
@@ -168,23 +188,33 @@
     body.ng-cards-ng table[id^="itemtable"] td#img2,
     body.ng-cards-ng table[id^="itemtable"] td#img3 {
         grid-area: rail;
+        /* Row 1 only. The rail area spans the whole card so the column
+           stays reserved, but an icon centred over every row drifts away
+           from the name it belongs to on any card with more than two
+           rows — and its min-height gets distributed across the empty
+           tracks, padding the card out. */
+        grid-row: 1;
         display: flex !important;
         align-items: center;
         justify-content: center;
-        /* Stretch so short cards get a full-height spine, but cap it: on a
-           tall card (a message body, a tab view's options row) an
-           unbounded rail stops reading as an icon and becomes a slab. */
-        align-self: stretch;
-        /* No min-height: the rail spans all seven rows, so a floor here
-           gets distributed across the empty ones instead of collapsing
-           them. The card's own min-height already guarantees the size. */
+        align-self: center;
         min-height: 0;
-        max-height: calc(var(--ngc-rail-btn) * 2);
+        padding: 3px 0 !important;
         border-radius: var(--ngc-radius);
-        background: rgba(var(--dz-accent-rgb), 0.07);
-        border: 1px solid transparent !important;
-        overflow: hidden;
-        transition: background 0.2s ease, border-color 0.2s ease;
+        background: none;
+        border: none !important;
+        transition: background 0.15s ease;
+    }
+
+    /* Affordance on demand: the tap target shows itself on hover rather
+       than drawing a permanent panel. */
+    body.ng-cards-ng div.item.itemBlock:hover table[id^="itemtable"] td#img,
+    body.ng-cards-ng div.item.itemBlock:hover table[id^="itemtable"] td#img1,
+    body.ng-cards-ng div.item.itemBlock:hover table[id^="itemtable"] td#img2,
+    body.ng-cards-ng div.item.itemBlock:hover table[id^="itemtable"] td#img3,
+    body.ng-cards-ng .itemBlock:hover > div.item table[id^="itemtable"] td#img,
+    body.ng-cards-ng .itemBlock:hover > div.item table[id^="itemtable"] td#img1 {
+        background: rgba(var(--dz-overlay-rgb), 0.06);
     }
 
     /* The rail rule above uses display:flex !important, which outranks
@@ -258,20 +288,6 @@
             "rail1 rail2 rail3 opts opts";
     }
 
-    /* The cluster is one control, so its buttons must be equal — a
-       stretched cell would otherwise take its height from whatever
-       text happens to sit beside it. */
-    body.ng-cards-ng .ng-rail-2 table[id^="itemtable"] td#img,
-    body.ng-cards-ng .ng-rail-2 table[id^="itemtable"] td#img1,
-    body.ng-cards-ng .ng-rail-2 table[id^="itemtable"] td#img2,
-    body.ng-cards-ng .ng-rail-2 table[id^="itemtable"] td#img3,
-    body.ng-cards-ng .ng-rail-3 table[id^="itemtable"] td#img,
-    body.ng-cards-ng .ng-rail-3 table[id^="itemtable"] td#img1,
-    body.ng-cards-ng .ng-rail-3 table[id^="itemtable"] td#img2,
-    body.ng-cards-ng .ng-rail-3 table[id^="itemtable"] td#img3 {
-        align-self: stretch;
-        max-height: calc(var(--ngc-rail-btn) * 2);
-    }
 
     body.ng-cards-ng .ng-rail-2 table[id^="itemtable"] td#img,
     body.ng-cards-ng .ng-rail-2 table[id^="itemtable"] td#img1,
@@ -306,49 +322,25 @@
         line-height: 1;
     }
 
-    /* On-state: the rail carries the device's own colour, published
-       per card as --ngc-state-rgb by card-layout.js. An rgb triple
-       rather than color-mix() so no browser is left behind.        */
-    body.ng-cards-ng [data-ng-state="on"] table[id^="itemtable"] td#img,
-    body.ng-cards-ng [data-ng-state="on"] table[id^="itemtable"] td#img1 {
-        background: rgba(var(--ngc-state-rgb, var(--dz-accent-rgb)), 0.18);
-        border-color: rgba(var(--ngc-state-rgb, var(--dz-accent-rgb)), 0.45) !important;
+    /* On-state: the stripe takes the device's own colour, published per
+       card as --ngc-state-rgb by card-layout.js. An rgb triple rather
+       than color-mix() so no browser is left behind. Off stays the plain
+       border colour, so a row of cards reads on/off at a glance. */
+    body.ng-cards-ng [data-ng-state="on"].item {
+        border-left-color: rgba(var(--ngc-state-rgb, var(--dz-accent-rgb)), 0.85);
     }
 
-    body.ng-cards-ng div.item.itemBlock:hover table[id^="itemtable"] td#img,
-    body.ng-cards-ng div.item.itemBlock:hover table[id^="itemtable"] td#img1,
-    body.ng-cards-ng div.item.itemBlock:hover table[id^="itemtable"] td#img2,
-    body.ng-cards-ng div.item.itemBlock:hover table[id^="itemtable"] td#img3,
-    body.ng-cards-ng .itemBlock:hover > div.item table[id^="itemtable"] td#img,
-    body.ng-cards-ng .itemBlock:hover > div.item table[id^="itemtable"] td#img1,
-    body.ng-cards-ng .itemBlock:hover > div.item table[id^="itemtable"] td#img2,
-    body.ng-cards-ng .itemBlock:hover > div.item table[id^="itemtable"] td#img3 {
-        background: rgba(var(--ngc-state-rgb, var(--dz-accent-rgb)), 0.24);
+    /* Status classes claim the stripe — Classic tinted the name chip. */
+    body.ng-cards-ng div.item.statusProtected {
+        border-left-color: rgba(78, 100, 241, 0.85);
     }
 
-    /* Status classes recolour the rail instead of Classic's name chip. */
-    body.ng-cards-ng div.item.statusProtected table[id^="itemtable"] td#img,
-    body.ng-cards-ng div.item.statusProtected table[id^="itemtable"] td#img1,
-    body.ng-cards-ng div.item.statusProtected table[id^="itemtable"] td#img2,
-    body.ng-cards-ng div.item.statusProtected table[id^="itemtable"] td#img3 {
-        background: rgba(78, 100, 241, 0.15);
-        border-color: rgba(78, 100, 241, 0.4) !important;
+    body.ng-cards-ng div.item.statusTimeout {
+        border-left-color: rgba(var(--dz-danger-rgb), 0.9);
     }
 
-    body.ng-cards-ng div.item.statusTimeout table[id^="itemtable"] td#img,
-    body.ng-cards-ng div.item.statusTimeout table[id^="itemtable"] td#img1,
-    body.ng-cards-ng div.item.statusTimeout table[id^="itemtable"] td#img2,
-    body.ng-cards-ng div.item.statusTimeout table[id^="itemtable"] td#img3 {
-        background: rgba(var(--dz-danger-rgb), 0.15);
-        border-color: rgba(var(--dz-danger-rgb), 0.45) !important;
-    }
-
-    body.ng-cards-ng div.item.statusLowBattery table[id^="itemtable"] td#img,
-    body.ng-cards-ng div.item.statusLowBattery table[id^="itemtable"] td#img1,
-    body.ng-cards-ng div.item.statusLowBattery table[id^="itemtable"] td#img2,
-    body.ng-cards-ng div.item.statusLowBattery table[id^="itemtable"] td#img3 {
-        background: rgba(var(--dz-warning-rgb), 0.15);
-        border-color: rgba(var(--dz-warning-rgb), 0.45) !important;
+    body.ng-cards-ng div.item.statusLowBattery {
+        border-left-color: rgba(var(--dz-warning-rgb), 0.9);
     }
 
     /* (statusDisabled's card opacity is not layout, so cards.css keeps

@@ -1723,7 +1723,7 @@
         // hands the choice back to the CSS instead of freezing it here.
         var NGC_DENSITY = {
             comfortable: {
-                '--ngc-rail': '44px', '--ngc-rail-btn': '40px',
+                '--ngc-rail': '30px', '--ngc-rail-btn': '30px',
                 '--ngc-pad': '12px',  '--ngc-gap': '11px',
                 '--ngc-row-gap': '2px',
                 '--ngc-name-size': '0.82rem',
@@ -1733,7 +1733,7 @@
             },
             compact: null,   /* the stylesheet's own :root values */
             ultra: {
-                '--ngc-rail': '32px', '--ngc-rail-btn': '28px',
+                '--ngc-rail': '23px', '--ngc-rail-btn': '23px',
                 '--ngc-pad': '7px',   '--ngc-gap': '7px',
                 '--ngc-row-gap': '0px',
                 '--ngc-name-size': '0.74rem',
