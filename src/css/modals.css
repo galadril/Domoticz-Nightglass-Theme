@@ -1137,8 +1137,9 @@ body.dz-light .ng-sp-track {
     transition: background 0.1s;
 }
 
-/* Editable hex field. Goes read-only in white mode, where the value on show
-   is a colour-temperature name rather than something you can type. */
+/* Editable value field: a hex colour on the wheel tabs, a kelvin number on
+   the warmth tab. Only plain-white mode has nothing to type and goes
+   read-only. */
 .ng-rgbw-hex {
     flex: 1;
     min-width: 0;
@@ -1168,6 +1169,17 @@ body.dz-light .ng-sp-track {
     font-family: inherit;
     letter-spacing: normal;
     padding-left: 0 !important;
+}
+
+/* Kelvin unit for the warmth tab. Kept out of the input so the field holds
+   nothing but the number the user types and reads back. */
+.ng-rgbw-hex-unit {
+    flex: 0 0 auto;
+    font-size: 0.72rem;
+    color: var(--dz-text-muted);
+    /* Pulls back most of the row's 10px gap: the unit should read as part
+       of the field, not as the next item along. */
+    margin-left: -6px;
 }
 
 /* Brightness slider row. Tighter gaps than the other rows: it carries two

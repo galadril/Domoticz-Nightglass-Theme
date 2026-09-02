@@ -566,7 +566,8 @@
             return (k < K_WARM || k > K_COOL) ? null : k;
         }
 
-        function kelvinLabel(w) { return kelvinFromWarmth(w) + ' K'; }
+        /* Bare number: the unit rides beside the field, not inside it. */
+        function kelvinValue(w) { return String(kelvinFromWarmth(w)); }
 
         /* ── Canvas wheel rendering ──────────────────────────────────── */
         function drawWheel(canvas) {
@@ -611,7 +612,11 @@
         function updatePreview() {
             var swatch = p.querySelector('.ng-rgbw-swatch');
             var hexEl  = p.querySelector('.ng-rgbw-hex');
+            var unitEl = p.querySelector('.ng-rgbw-hex-unit');
             var rgb;
+            /* The unit belongs beside the field, not inside it, so what is
+               typed and what is read back are the same bare number. */
+            if (unitEl) unitEl.style.display = _mode === 'white' ? '' : 'none';
             if (_mode === 'color') {
                 rgb = hsvToRgb(_h, _s, 1);
                 if (swatch) swatch.style.background =
@@ -637,8 +642,8 @@
                     hexEl.readOnly = false;
                     hexEl.title = 'Colour temperature in kelvin (' +
                                   K_WARM + '–' + K_COOL + ')';
-                    hexEl.placeholder = K_WARM + ' K';
-                    if (document.activeElement !== hexEl) hexEl.value = kelvinLabel(_warmth);
+                    hexEl.placeholder = String(K_WARM);
+                    if (document.activeElement !== hexEl) hexEl.value = kelvinValue(_warmth);
                 }
             }
         }
@@ -772,6 +777,7 @@
                     '<div class="ng-rgbw-preview">' +
                     '  <div class="ng-rgbw-swatch"></div>' +
                     '  <input type="text" class="ng-rgbw-hex" maxlength="7" spellcheck="false">' +
+                    '  <span class="ng-rgbw-hex-unit">K</span>' +
                     '</div>' +
                     brightnessRowHTML() +
                     presetsHTML(false);
@@ -816,6 +822,7 @@
                     '<div class="ng-rgbw-preview">' +
                     '  <div class="ng-rgbw-swatch"></div>' +
                     '  <input type="text" class="ng-rgbw-hex" placeholder="#rrggbb" maxlength="7" spellcheck="false">' +
+                    '  <span class="ng-rgbw-hex-unit" style="display:none">K</span>' +
                     '</div>' +
                     /* No "Set Colour" button: every control applies as you use
                        it, the way Domoticz's own picker and the Switches-tab
@@ -892,7 +899,7 @@
                     if (this.readOnly) return;
                     /* Re-read from state: a half-typed or out-of-range entry
                        never reached it, so this normalises and reverts. */
-                    this.value = _mode === 'white' ? kelvinLabel(_warmth) : currentHex();
+                    this.value = _mode === 'white' ? kelvinValue(_warmth) : currentHex();
                 });
                 hexEl.addEventListener('keydown', function (e) {
                     if (e.key === 'Enter') this.blur();
