@@ -58,6 +58,39 @@
         };
     }
 
+    /* ── Colour temperature ───────────────────────────────────────────
+       Domoticz carries warmth as a bare 0…255 axis with no unit attached,
+       which is impossible to reproduce by hand — the reason scenes and
+       groups could pin an exact colour but not an exact white (issue
+       #258). Kelvin is the unit lamps are sold in and scripts speak, so
+       the field takes that and maps it onto the axis. The range is the
+       usual tunable-white span; Domoticz defines no per-lamp calibration,
+       so it is nominal, and what actually reaches the device is still the
+       same 0…255 value the warmth bar produces. */
+    var K_WARM = 2700;   /* warmth = 1, the far right of the bar */
+    var K_COOL = 6500;   /* warmth = 0, the far left            */
+
+    /* Rounded to 10 K: one step of Domoticz's 256-step axis is ~15 K, so
+       finer digits would only show round-trip noise. */
+    function kelvinFromWarmth(w) {
+        return Math.round((K_COOL + (K_WARM - K_COOL) * w) / 10) * 10;
+    }
+
+    function warmthFromKelvin(k) {
+        return Math.max(0, Math.min(1, (K_COOL - k) / (K_COOL - K_WARM)));
+    }
+
+    /* Accepts "3200", "3200K", "3200 k". Out-of-range and half-typed
+       numbers return null so streaming input never snaps the lamp. */
+    function parseKelvin(v) {
+        var m = /^\s*(\d{3,5})\s*k?\s*$/i.exec(String(v == null ? '' : v));
+        if (!m) return null;
+        var k = parseInt(m[1], 10);
+        return (k < K_WARM || k > K_COOL) ? null : k;
+    }
+
+    function kelvinLabel(w) { return kelvinFromWarmth(w) + ' K'; }
+
     function toHex(n) { return ('0' + n.toString(16)).slice(-2); }
 
     function parseHex(v) {
@@ -256,18 +289,27 @@
         if (_els.swatch) _els.swatch.style.background = 'rgb('+rgb.r+','+rgb.g+','+rgb.b+')';
 
         if (_els.hex) {
+            /* Never overwrite what is being typed mid-keystroke. */
+            var typing = document.activeElement === _els.hex;
             if (showsWheel()) {
                 _els.hex.readOnly = false;
                 _els.hex.title = 'Type or paste a hex colour';
-                if (document.activeElement !== _els.hex) _els.hex.value = currentHex();
+                _els.hex.placeholder = '#rrggbb';
+                if (!typing) _els.hex.value = currentHex();
+            } else if (_mode === 'temperature') {
+                /* Warmth is one axis, not a colour, so it takes kelvin
+                   rather than a hex — same job, right unit. */
+                _els.hex.readOnly = false;
+                _els.hex.title = 'Colour temperature in kelvin (' +
+                                 K_WARM + '–' + K_COOL + ')';
+                _els.hex.placeholder = K_WARM + ' K';
+                if (!typing) _els.hex.value = kelvinLabel(_warmth);
             } else {
-                /* Colour temperature and plain white have no hex to type. */
+                /* Plain white has nothing to type. */
                 _els.hex.readOnly = true;
-                _els.hex.title = _mode === 'white'
-                    ? 'This light is in white mode'
-                    : 'Colour temperature — use the warmth bar';
-                _els.hex.value = _mode === 'white' ? 'White'
-                    : (_warmth < 0.3 ? 'Cool white' : _warmth > 0.7 ? 'Warm white' : 'Natural');
+                _els.hex.title = 'This light is in white mode';
+                _els.hex.placeholder = '';
+                _els.hex.value = 'White';
             }
         }
     }
@@ -458,12 +500,21 @@
         _els.hex.placeholder = '#rrggbb';
         _els.hex.addEventListener('input', function () {
             if (this.readOnly) return;
+            if (_mode === 'temperature') {
+                var k = parseKelvin(this.value);
+                if (k === null) return;
+                _warmth = warmthFromKelvin(k);
+                render(); commit();
+                return;
+            }
             var rgb = parseHex(this.value);
             if (rgb) applyRgb(rgb);
         });
         _els.hex.addEventListener('blur', function () {
             if (this.readOnly) return;
-            this.value = currentHex();
+            /* Re-read from state: a half-typed or out-of-range entry never
+               reached it, so this both normalises and reverts. */
+            this.value = _mode === 'temperature' ? kelvinLabel(_warmth) : currentHex();
             commitNow(true);      /* leaving the field settles what was typed */
         });
         _els.hex.addEventListener('keydown', function (e) {
