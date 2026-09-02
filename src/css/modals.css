@@ -1137,9 +1137,15 @@ body.dz-light .ng-sp-track {
     transition: background 0.1s;
 }
 
-/* Editable hex field. Goes read-only in white mode, where the value on show
-   is a colour-temperature name rather than something you can type. */
-.ng-rgbw-hex {
+/* Editable value field: a hex colour on the wheel tabs, a kelvin number on
+   the warmth tab. Only plain-white mode has nothing to type and goes
+   read-only. */
+/* Qualified for the same reason as the brightness field below: a lone
+   .ng-rgbw-hex is (0,1,0) and loses every shared property to the generic
+   input[type="text"] rule in controls.css at (0,1,1). This lands at
+   (0,3,1), which also clears .modal input[type="text"] at (0,2,1) — the
+   timer editor mounts the picker inside a modal. */
+.ng-rgbw-preview input[type="text"].ng-rgbw-hex {
     flex: 1;
     min-width: 0;
     font-size: 0.78rem;
@@ -1153,13 +1159,13 @@ body.dz-light .ng-sp-track {
     transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.ng-rgbw-hex:focus {
+.ng-rgbw-preview input[type="text"].ng-rgbw-hex:focus {
     border-color: var(--dz-accent) !important;
     outline: none !important;
     box-shadow: 0 0 0 2px rgba(var(--dz-accent-rgb), 0.18) !important;
 }
 
-.ng-rgbw-hex[readonly] {
+.ng-rgbw-preview input[type="text"].ng-rgbw-hex[readonly] {
     color: var(--dz-text-muted) !important;
     background: transparent !important;
     border-color: transparent !important;
@@ -1168,6 +1174,17 @@ body.dz-light .ng-sp-track {
     font-family: inherit;
     letter-spacing: normal;
     padding-left: 0 !important;
+}
+
+/* Kelvin unit for the warmth tab. Kept out of the input so the field holds
+   nothing but the number the user types and reads back. */
+.ng-rgbw-hex-unit {
+    flex: 0 0 auto;
+    font-size: 0.72rem;
+    color: var(--dz-text-muted);
+    /* Pulls back most of the row's 10px gap: the unit should read as part
+       of the field, not as the next item along. */
+    margin-left: -6px;
 }
 
 /* Brightness slider row. Tighter gaps than the other rows: it carries two
@@ -1206,8 +1223,19 @@ body.dz-light .ng-sp-track {
 /* Every declaration here has to outrank the theme's own generic
    input[type="text"] rule in controls.css, which is entirely !important —
    without that this field inherits a 0.88rem inherited-family font and
-   6px/12px padding, and stops fitting the row it lives in. */
-.ng-rgbw-bright-input {
+   6px/12px padding, and stops fitting the row it lives in.
+
+   !important alone does not do it: input[type="text"] is (0,1,1) and a
+   lone .ng-rgbw-bright-input is (0,1,0), so controls.css won every
+   property the two share. Its 12px padding then landed inside our 3ch
+   width — border-box, so the content box collapsed to nothing and the
+   field rendered blank and could not even be clicked into.
+
+   This lands at (0,3,1), clearing both that rule and .modal
+   input[type="text"] at (0,2,1). It cannot outrank an id, so the
+   page-level rules in pages.css that carry #paramstable exclude these
+   two classes by name instead. */
+.ng-rgbw-bright-field input[type="text"].ng-rgbw-bright-input {
     /* Wide enough for "100" in the monospace face, and no wider — the row
        has an icon, a slider and another icon to fit alongside it. */
     width: 3ch !important;

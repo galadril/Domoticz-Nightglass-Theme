@@ -58,6 +58,40 @@
         };
     }
 
+    /* ── Colour temperature ───────────────────────────────────────────
+       Domoticz carries warmth as a bare 0…255 axis with no unit attached,
+       which is impossible to reproduce by hand — the reason scenes and
+       groups could pin an exact colour but not an exact white (issue
+       #258). Kelvin is the unit lamps are sold in and scripts speak, so
+       the field takes that and maps it onto the axis. The range is the
+       usual tunable-white span; Domoticz defines no per-lamp calibration,
+       so it is nominal, and what actually reaches the device is still the
+       same 0…255 value the warmth bar produces. */
+    var K_WARM = 2700;   /* warmth = 1, the far right of the bar */
+    var K_COOL = 6500;   /* warmth = 0, the far left            */
+
+    /* Rounded to 10 K: one step of Domoticz's 256-step axis is ~15 K, so
+       finer digits would only show round-trip noise. */
+    function kelvinFromWarmth(w) {
+        return Math.round((K_COOL + (K_WARM - K_COOL) * w) / 10) * 10;
+    }
+
+    function warmthFromKelvin(k) {
+        return Math.max(0, Math.min(1, (K_COOL - k) / (K_COOL - K_WARM)));
+    }
+
+    /* Accepts "3200", "3200K", "3200 k". Out-of-range and half-typed
+       numbers return null so streaming input never snaps the lamp. */
+    function parseKelvin(v) {
+        var m = /^\s*(\d{3,5})\s*k?\s*$/i.exec(String(v == null ? '' : v));
+        if (!m) return null;
+        var k = parseInt(m[1], 10);
+        return (k < K_WARM || k > K_COOL) ? null : k;
+    }
+
+    /* Bare number: the unit rides beside the field, not inside it. */
+    function kelvinValue(w) { return String(kelvinFromWarmth(w)); }
+
     function toHex(n) { return ('0' + n.toString(16)).slice(-2); }
 
     function parseHex(v) {
@@ -238,15 +272,12 @@
         if (_els.valueRange) _els.valueRange.value = Math.round(_v * 100);
         if (_els.whiteRange) _els.whiteRange.value = Math.round(_white * 100);
 
-        if (_els.brightRange) _els.brightRange.value = _bright;
-        if (_els.brightNum && document.activeElement !== _els.brightNum) {
-            _els.brightNum.value = _bright;
-        }
+        paintBrightness();
 
         /* Assigning .value raises no input event, so the track fill of each
            slider has to be primed by hand. */
         if (window.ngFillRange) {
-            [_els.valueRange, _els.whiteRange, _els.brightRange]
+            [_els.valueRange, _els.whiteRange]
                 .forEach(function (r) { if (r) window.ngFillRange(r); });
         }
 
@@ -256,23 +287,67 @@
         if (_els.swatch) _els.swatch.style.background = 'rgb('+rgb.r+','+rgb.g+','+rgb.b+')';
 
         if (_els.hex) {
+            /* Never overwrite what is being typed mid-keystroke. */
+            var typing = document.activeElement === _els.hex;
+            var kelvinMode = (_mode === 'temperature');
             if (showsWheel()) {
                 _els.hex.readOnly = false;
                 _els.hex.title = 'Type or paste a hex colour';
-                if (document.activeElement !== _els.hex) _els.hex.value = currentHex();
+                _els.hex.placeholder = '#rrggbb';
+                if (!typing) _els.hex.value = currentHex();
+            } else if (kelvinMode) {
+                /* Warmth is one axis, not a colour, so it takes kelvin
+                   rather than a hex — same job, right unit. */
+                _els.hex.readOnly = false;
+                _els.hex.title = 'Colour temperature in kelvin (' +
+                                 K_WARM + '–' + K_COOL + ')';
+                _els.hex.placeholder = String(K_WARM);
+                if (!typing) _els.hex.value = kelvinValue(_warmth);
             } else {
-                /* Colour temperature and plain white have no hex to type. */
+                /* Plain white has nothing to type. */
                 _els.hex.readOnly = true;
-                _els.hex.title = _mode === 'white'
-                    ? 'This light is in white mode'
-                    : 'Colour temperature — use the warmth bar';
-                _els.hex.value = _mode === 'white' ? 'White'
-                    : (_warmth < 0.3 ? 'Cool white' : _warmth > 0.7 ? 'Warm white' : 'Natural');
+                _els.hex.title = 'This light is in white mode';
+                _els.hex.placeholder = '';
+                _els.hex.value = 'White';
             }
+            toggle(_els.hexUnit, kelvinMode);
         }
     }
 
     function toggle(el, on) { if (el) el.style.display = on ? '' : 'none'; }
+
+    /* Both brightness controls, looked up live rather than through _els.
+       The panel outlives neither Angular re-rendering the host nor jQWCP's
+       refreshWidget moving nodes around, and a cached input that is no
+       longer the one on screen takes the value silently — which is how the
+       slider could move while the percentage beside it sat still. The
+       popup has always resolved these by id for the same reason. */
+    function brightEls() {
+        return {
+            slider: document.getElementById('ng-ip-bright'),
+            field:  document.getElementById('ng-ip-bright-num')
+        };
+    }
+
+    /* Write _bright to the controls. skipSlider/skipField leave whichever
+       one the user is currently driving alone, so neither fights the input
+       it came from. */
+    function paintBrightness(skipSlider, skipField) {
+        var b = brightEls();
+        if (b.slider && !skipSlider) b.slider.value = _bright;
+        if (b.field && !skipField && document.activeElement !== b.field) {
+            b.field.value = _bright;
+        }
+        /* Assigning .value raises no input event, so the track fill has to
+           be told. Runs even when the slider was skipped: the value still
+           moved, via the percentage field. */
+        if (b.slider && window.ngFillRange) window.ngFillRange(b.slider);
+    }
+
+    function setBrightness(pct, skipSlider, skipField) {
+        _bright = Math.max(1, Math.min(100, Math.round(pct) || 1));
+        paintBrightness(skipSlider, skipField);
+    }
 
     /* Load a concrete RGB colour (typed hex, recent swatch) into our state.
        In Mix the value axis is a real control, so honour it; elsewhere the
@@ -458,12 +533,21 @@
         _els.hex.placeholder = '#rrggbb';
         _els.hex.addEventListener('input', function () {
             if (this.readOnly) return;
+            if (_mode === 'temperature') {
+                var k = parseKelvin(this.value);
+                if (k === null) return;
+                _warmth = warmthFromKelvin(k);
+                render(); commit();
+                return;
+            }
             var rgb = parseHex(this.value);
             if (rgb) applyRgb(rgb);
         });
         _els.hex.addEventListener('blur', function () {
             if (this.readOnly) return;
-            this.value = currentHex();
+            /* Re-read from state: a half-typed or out-of-range entry never
+               reached it, so this both normalises and reverts. */
+            this.value = _mode === 'temperature' ? kelvinValue(_warmth) : currentHex();
             commitNow(true);      /* leaving the field settles what was typed */
         });
         _els.hex.addEventListener('keydown', function (e) {
@@ -471,6 +555,10 @@
         });
         preview.appendChild(_els.swatch);
         preview.appendChild(_els.hex);
+        /* Unit sits beside the field, not in it, so what is typed and what
+           is read back are the same bare number. */
+        _els.hexUnit = el('span', 'ng-rgbw-hex-unit', 'K');
+        preview.appendChild(_els.hexUnit);
         panel.appendChild(preview);
 
         /* Brightness — slider and a typed percentage, the pair Domoticz's
@@ -481,10 +569,11 @@
             _els.brightRange = document.createElement('input');
             _els.brightRange.type = 'range';
             _els.brightRange.className = 'ng-rgbw-slider';
+            _els.brightRange.id = 'ng-ip-bright';
             _els.brightRange.min = '1'; _els.brightRange.max = '100';
             _els.brightRange.addEventListener('input', function () {
-                _bright = parseInt(this.value, 10) || 1;
-                if (_els.brightNum) _els.brightNum.value = _bright;
+                /* skipSlider: this is the control being dragged. */
+                setBrightness(parseInt(this.value, 10), true, false);
                 commit();
             });
             _els.brightRange.addEventListener('change', function () { commitNow(); });
@@ -495,6 +584,7 @@
             _els.brightNum = document.createElement('input');
             _els.brightNum.type = 'text';
             _els.brightNum.className = 'ng-rgbw-bright-input';
+            _els.brightNum.id = 'ng-ip-bright-num';
             _els.brightNum.setAttribute('inputmode', 'numeric');
             /* An input with no size attribute defaults to 20 characters wide.
                If the stylesheet is stale or outbid, that lone default is
@@ -507,11 +597,16 @@
                 if (this.value === '') return;
                 var n = parseInt(this.value.replace(/\D/g, ''), 10);
                 if (isNaN(n)) return;
-                _bright = Math.max(1, Math.min(100, n));
-                if (_els.brightRange) _els.brightRange.value = _bright;
+                /* skipField: this is the control being typed into. */
+                setBrightness(n, false, true);
                 commit();
             });
-            _els.brightNum.addEventListener('blur', function () { render(); commitNow(); });
+            /* Settle the field on the way out: clamp, strip junk, restore a
+               value if it was emptied. */
+            _els.brightNum.addEventListener('blur', function () {
+                setBrightness(_bright);
+                commitNow();
+            });
             _els.brightNum.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter') { e.preventDefault(); this.blur(); }
             });

@@ -536,6 +536,39 @@
 
         function toHex(n) { return ('0'+n.toString(16)).slice(-2); }
 
+        /* ── Colour temperature ──────────────────────────────────────────
+           The warmth axis is a bare 0…255 with no unit, so a white could
+           be dragged to but never typed — the gap issue #258 reports for
+           WW lights and the White tab. Kelvin is the unit lamps carry, so
+           the field takes that; the endpoints are the ones sendRGBW()
+           already documents for t (0 = cool 6500K, 255 = warm 2700K).
+           Nominal, not per-lamp calibrated: Domoticz defines no such
+           calibration, and what reaches the device is unchanged.       */
+        var K_WARM = 2700;   // warmth = 1
+        var K_COOL = 6500;   // warmth = 0
+
+        /* Rounded to 10 K — one step of the 256-step axis is ~15 K, so
+           finer digits would only show round-trip noise. */
+        function kelvinFromWarmth(w) {
+            return Math.round((K_COOL + (K_WARM - K_COOL) * w) / 10) * 10;
+        }
+
+        function warmthFromKelvin(k) {
+            return Math.max(0, Math.min(1, (K_COOL - k) / (K_COOL - K_WARM)));
+        }
+
+        /* Accepts "3200", "3200K", "3200 k". Out-of-range and half-typed
+           numbers return null so streaming input never snaps the lamp. */
+        function parseKelvin(v) {
+            var m = /^\s*(\d{3,5})\s*k?\s*$/i.exec(String(v == null ? '' : v));
+            if (!m) return null;
+            var k = parseInt(m[1], 10);
+            return (k < K_WARM || k > K_COOL) ? null : k;
+        }
+
+        /* Bare number: the unit rides beside the field, not inside it. */
+        function kelvinValue(w) { return String(kelvinFromWarmth(w)); }
+
         /* ── Canvas wheel rendering ──────────────────────────────────── */
         function drawWheel(canvas) {
             var ctx = canvas.getContext('2d');
@@ -579,7 +612,11 @@
         function updatePreview() {
             var swatch = p.querySelector('.ng-rgbw-swatch');
             var hexEl  = p.querySelector('.ng-rgbw-hex');
+            var unitEl = p.querySelector('.ng-rgbw-hex-unit');
             var rgb;
+            /* The unit belongs beside the field, not inside it, so what is
+               typed and what is read back are the same bare number. */
+            if (unitEl) unitEl.style.display = _mode === 'white' ? '' : 'none';
             if (_mode === 'color') {
                 rgb = hsvToRgb(_h, _s, 1);
                 if (swatch) swatch.style.background =
@@ -587,6 +624,7 @@
                 if (hexEl) {
                     hexEl.readOnly = false;
                     hexEl.title = 'Type or paste a hex colour';
+                    hexEl.placeholder = '#rrggbb';
                     /* Leave the field alone while it is being typed into —
                        rewriting it would jump the caret mid-edit. */
                     if (document.activeElement !== hexEl) hexEl.value = currentHex();
@@ -595,13 +633,17 @@
                 rgb = warmthToRgb(_warmth);
                 if (swatch) swatch.style.background =
                     'rgb('+rgb.r+','+rgb.g+','+rgb.b+')';
-                /* White mode has no hex to type: the warmth bar is a colour
-                   temperature, not an RGB value. Show what it is instead. */
+                /* White mode has no hex: the warmth bar is a colour
+                   temperature, not an RGB value. It takes kelvin instead —
+                   same job as the hex field, right unit. Every path that
+                   reaches white mode has a warmth bar (WW/CW popups, and
+                   the White tab, which only exists for hasWhite). */
                 if (hexEl) {
-                    hexEl.readOnly = true;
-                    hexEl.title = 'Colour temperature — use the warmth bar';
-                    hexEl.value =
-                        _warmth < 0.3 ? 'Cool white' : _warmth > 0.7 ? 'Warm white' : 'Natural';
+                    hexEl.readOnly = false;
+                    hexEl.title = 'Colour temperature in kelvin (' +
+                                  K_WARM + '–' + K_COOL + ')';
+                    hexEl.placeholder = String(K_WARM);
+                    if (document.activeElement !== hexEl) hexEl.value = kelvinValue(_warmth);
                 }
             }
         }
@@ -734,7 +776,8 @@
                     '<div class="ng-rgbw-pane">' + warmthPaneHTML('ng-rgbw-warmth-canvas') + '</div>' +
                     '<div class="ng-rgbw-preview">' +
                     '  <div class="ng-rgbw-swatch"></div>' +
-                    '  <input type="text" class="ng-rgbw-hex" maxlength="7" spellcheck="false" readonly>' +
+                    '  <input type="text" class="ng-rgbw-hex" maxlength="7" spellcheck="false">' +
+                    '  <span class="ng-rgbw-hex-unit">K</span>' +
                     '</div>' +
                     brightnessRowHTML() +
                     presetsHTML(false);
@@ -779,6 +822,7 @@
                     '<div class="ng-rgbw-preview">' +
                     '  <div class="ng-rgbw-swatch"></div>' +
                     '  <input type="text" class="ng-rgbw-hex" placeholder="#rrggbb" maxlength="7" spellcheck="false">' +
+                    '  <span class="ng-rgbw-hex-unit" style="display:none">K</span>' +
                     '</div>' +
                     /* No "Set Colour" button: every control applies as you use
                        it, the way Domoticz's own picker and the Switches-tab
@@ -832,16 +876,30 @@
             }
             setBrightness(_bright);
 
-            // Hex field — type or paste a colour instead of hunting the wheel
+            // Hex field — type or paste a colour instead of hunting the
+            // wheel; in white mode the same field takes a kelvin value so
+            // an exact white can be pinned too (#258).
             var hexEl = p.querySelector('.ng-rgbw-hex');
             if (hexEl) {
                 hexEl.addEventListener('input', function () {
                     if (this.readOnly) return;
+                    if (_mode === 'white') {
+                        var k = parseKelvin(this.value);
+                        if (k === null) return;
+                        _warmth = warmthFromKelvin(k);
+                        var wc = document.getElementById('ng-rgbw-warmth-canvas');
+                        if (wc) drawWarmthBar(wc);
+                        updatePreview(); commit();
+                        return;
+                    }
                     var rgb = parseHex(this.value);
                     if (rgb) { applyRgb(rgb); commit(); }
                 });
                 hexEl.addEventListener('blur', function () {
-                    if (!this.readOnly) this.value = currentHex();
+                    if (this.readOnly) return;
+                    /* Re-read from state: a half-typed or out-of-range entry
+                       never reached it, so this normalises and reverts. */
+                    this.value = _mode === 'white' ? kelvinValue(_warmth) : currentHex();
                 });
                 hexEl.addEventListener('keydown', function (e) {
                     if (e.key === 'Enter') this.blur();
