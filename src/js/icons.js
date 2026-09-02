@@ -306,6 +306,64 @@
         'SO': 'SE', 'OSO': 'ESE', 'SSO': 'SSE'
     };
 
+    /* The letter O is ambiguous across languages and the two readings are
+       exact opposites: Oost/Ost (East) in Dutch and German, Ouest/Oeste/
+       Ovest (West) in the Romance languages.  Treating every feed as
+       Dutch/German sent French easterlies pointing west (issue #257), so
+       the O-based abbreviations get a second table picked by the
+       Domoticz UI language.                                          */
+    var WIND_ALIASES_O_WEST = {
+        'O': 'W',
+        'NO': 'NW',   'SO': 'SW',
+        'NNO': 'NNW', 'ONO': 'WNW', 'OSO': 'WSW', 'SSO': 'SSW'
+    };
+
+    /* Languages where O = West.  fr Ouest, es/pt/gl Oeste, it Ovest,
+       ca Oest, ro Vest but Nord-Ovest style pairs still use O.       */
+    var O_IS_WEST_LANGS = { fr: 1, es: 1, pt: 1, it: 1, ca: 1, gl: 1, ro: 1 };
+
+    /* Domoticz's language, as a plain ISO 639-1 code.  $.i18n is i18next
+       1.8.0, loaded by Domoticz itself; navigator.language covers the
+       window before it has initialised.                              */
+    function dzLang() {
+        try {
+            var lng = window.jQuery && jQuery.i18n &&
+                      typeof jQuery.i18n.lng === 'function' && jQuery.i18n.lng();
+            if (lng && lng !== 'cimode') return String(lng).toLowerCase().slice(0, 2);
+        } catch (e) { /* i18n not ready */ }
+        return String(navigator.language || '').toLowerCase().slice(0, 2);
+    }
+
+    /* Compass abbreviation (any language) → English abbreviation. */
+    function windDirToEnglish(str) {
+        var s = String(str == null ? '' : str).toUpperCase().replace(/[^A-Z]/g, '');
+        if (!s) return null;
+        if (O_IS_WEST_LANGS[dzLang()] && WIND_ALIASES_O_WEST[s]) {
+            return WIND_ALIASES_O_WEST[s];
+        }
+        return WIND_ALIASES[s] || s;
+    }
+
+    /* Rotation in degrees for a compass abbreviation, or null when the
+       letters resolve to nothing we know. */
+    function windRotationFromStr(str) {
+        var eng = windDirToEnglish(str);
+        var rot = eng ? WIND_ROTATION[eng] : undefined;
+        return (rot === undefined) ? null : rot;
+    }
+
+    /* Rotation for an icon.  device.Direction is the true bearing in
+       degrees and carries no language at all, so prefer it and fall back
+       to the letters only for feeds that publish nothing else.        */
+    function windRotationForIcon(el, dirStr) {
+        var d = getDeviceFromIcon(el);
+        if (d) {
+            var deg = parseFloat(d.Direction);
+            if (!isNaN(deg)) return ((deg % 360) + 360) % 360;
+        }
+        return windRotationFromStr(dirStr);
+    }
+
     /* -- Action-button detector ------------------------------------- */
     /* Returns true when the <img> is an action button (not a toggleable
        state icon).  Action buttons live inside popups/dialogs, in
@@ -705,9 +763,10 @@
         /* Wind direction compass icons */
         var windMatch = /images\/Wind([A-Z]{1,3})\.png/.exec(src);
         if (windMatch) {
-            var windDir = windMatch[1];
-            windDir = WIND_ALIASES[windDir] || windDir;
-            return { type: 'wind', dir: windDir, cls: 'fa-solid fa-arrow-up dz-fa-device dz-wind', color: '#29b6f6' };
+            /* Keep the raw letters: they are only meaningful once the UI
+               language is known, and the device's own bearing in degrees
+               beats them anyway — both are handled at rotation time. */
+            return { type: 'wind', dir: windMatch[1], cls: 'fa-solid fa-arrow-up dz-fa-device dz-wind', color: '#29b6f6' };
         }
         /* Wind0 / wind48 (calm / generic wind) */
         if (src.indexOf('Wind0.png') !== -1 || src.indexOf('wind48.png') !== -1) {
@@ -951,14 +1010,19 @@
            before any further processing so both the PNG fallback (which must
            reference a file that actually exists on the Domoticz server) and the
            FA icon resolution work correctly.
-           e.g. Dutch: WindZ.png → WindS.png, WindNO.png → WindNE.png          */
+           e.g. Dutch: WindZ.png → WindS.png, WindNO.png → WindNE.png
+           The translation depends on the UI language: WindO.png is East in
+           Dutch/German but West in French (issue #257).                    */
         var _windSrcMatch = /Wind([A-Z]{1,3})\.png/.exec(src);
-        if (_windSrcMatch && WIND_ALIASES[_windSrcMatch[1]]) {
-            src = src.replace(
-                'Wind' + _windSrcMatch[1] + '.png',
-                'Wind' + WIND_ALIASES[_windSrcMatch[1]] + '.png'
-            );
-            img.setAttribute('src', src);
+        if (_windSrcMatch) {
+            var _windEng = windDirToEnglish(_windSrcMatch[1]);
+            if (_windEng && _windEng !== _windSrcMatch[1]) {
+                src = src.replace(
+                    'Wind' + _windSrcMatch[1] + '.png',
+                    'Wind' + _windEng + '.png'
+                );
+                img.setAttribute('src', src);
+            }
         }
 
         /* Skip unresolved Angular templates */
@@ -1040,7 +1104,7 @@
         } else if (resolved.type === 'wind') {
             icon.className = resolved.cls;
             if (resolved.color) icon.style.color = resolved.color;
-            var rot = WIND_ROTATION[resolved.dir];
+            var rot = windRotationForIcon(img, resolved.dir);
             if (rot !== null) icon.style.transform = 'rotate(' + rot + 'deg)';
             /* Wind icons never went through the override block above, so they
                carry no IDX tag yet — and Drift is the animation they are most
@@ -1236,9 +1300,8 @@
         } else if (resolved.type === 'wind') {
             icon.className = resolved.cls;
             icon.style.color = resolved.color || '';
-            var rot = WIND_ROTATION[resolved.dir];
-            icon.style.transform = (rot !== undefined && rot !== null)
-                ? 'rotate(' + rot + 'deg)' : '';
+            var rot = windRotationForIcon(img, resolved.dir);
+            icon.style.transform = (rot !== null) ? 'rotate(' + rot + 'deg)' : '';
             applyIconAnim(icon, img.getAttribute('data-dz-dev-idx') || '');
         } else if (resolved.type === 'device') {
             icon.className = resolved.cls;
@@ -1340,7 +1403,7 @@
             } else if (newResolved.type === 'wind') {
                 prevIcon.className = newResolved.cls;
                 prevIcon.style.color = newResolved.color || '';
-                var rot = WIND_ROTATION[newResolved.dir];
+                var rot = windRotationForIcon(rImg, newResolved.dir);
                 prevIcon.style.transform = rot !== null ? 'rotate(' + rot + 'deg)' : '';
                 applyIconAnim(prevIcon, rImg.getAttribute('data-dz-dev-idx') || '');
             } else if (newResolved.type === 'device') {
@@ -2024,10 +2087,7 @@
         if (!device) return null;
         var deg = parseFloat(device.Direction);
         if (!isNaN(deg)) return ((deg % 360) + 360) % 360;
-        var str = String(device.DirectionStr || '').toUpperCase();
-        if (!str) return null;
-        var rot = WIND_ROTATION[WIND_ALIASES[str] || str];
-        return (rot === undefined) ? null : rot;
+        return windRotationFromStr(device.DirectionStr);
     }
 
     function applyNativeWind(glyph) {
