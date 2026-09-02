@@ -1545,9 +1545,16 @@ a[back-button].btnstyle3 {
         white-space: nowrap;
     }
 
-    .container.js-view table.table-details input[type="text"],
+    /* The colour picker is mounted inside this table on the device edit
+       page, and it brings its own field styling. Left unexcluded, this
+       rule reached into it and won — it carries an id, (1,3,2), which no
+       sane class selector in modals.css can outrank. Its 12px padding
+       then landed inside the brightness field's 3ch width; border-box
+       collapsed the content box to nothing, so the percentage read blank
+       and could not be clicked into at all. */
+    .container.js-view table.table-details input[type="text"]:not(.ng-rgbw-hex):not(.ng-rgbw-bright-input),
     .container.js-view table.table-details textarea,
-    .container.js-view table#paramstable input[type="text"],
+    .container.js-view table#paramstable input[type="text"]:not(.ng-rgbw-hex):not(.ng-rgbw-bright-input),
     .container.js-view table#paramstable textarea {
         background: var(--dz-input-bg) !important;
         color: var(--dz-input-text) !important;
@@ -1596,9 +1603,11 @@ a[back-button].btnstyle3 {
 
 /* Mobile: make form fields full width */
 @media (max-width: 767px) {
-    .container.js-view table.table-details input[type="text"],
+    /* Same picker exclusion as above: a 100%-wide brightness percentage
+       would push the slider out of its row. */
+    .container.js-view table.table-details input[type="text"]:not(.ng-rgbw-hex):not(.ng-rgbw-bright-input),
     .container.js-view table.table-details textarea,
-    .container.js-view table#paramstable input[type="text"],
+    .container.js-view table#paramstable input[type="text"]:not(.ng-rgbw-hex):not(.ng-rgbw-bright-input),
     .container.js-view table#paramstable textarea {
         width: 100% !important;
         max-width: 100% !important;
