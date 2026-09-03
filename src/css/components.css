@@ -1927,6 +1927,39 @@ body.dz-light .ng-recent-swatch:focus-visible {
 }
 
 
+/* ── Recently used whites ────────────────────────────────────────
+   The same strip on the warmth side of the pickers, fed by its own
+   list (ngKelvins). A colour temperature is unrecognisable as a
+   swatch — every value in the range is a pale off-white — so these
+   carry the kelvin number and wear the tint as a background rather
+   than being nothing but the tint. That makes them pills instead of
+   squares, which is the whole of the difference below.
+   ──────────────────────────────────────────────────────────────── */
+
+.ng-recent--kelvin .ng-recent-swatches {
+    /* Five four-digit pills are wider than a square strip, and these
+       sit under a 240px canvas in the popup. */
+    flex-wrap: wrap;
+    row-gap: 6px;
+}
+
+.ng-recent--kelvin .ng-recent-swatch {
+    width: auto;
+    min-width: 24px;
+    padding: 0 7px !important;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    /* The tints span #E8F4FD…#FFB347 — light in every position, in both
+       themes — so the label is dark whatever the mode. !important for the
+       same reason the base swatch needs it on padding: Domoticz's own
+       stylesheet colours buttons out from under us. */
+    color: #23262f !important;
+    font-variant-numeric: tabular-nums;
+    line-height: 20px;
+}
+
+
 /* ── Quiet the page behind an open dialog ────────────────────────
    backdrop-filter re-samples whatever it covers on every frame, so a
    card animating behind a blurred overlay makes the blur shimmer even

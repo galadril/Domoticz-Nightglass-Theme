@@ -712,6 +712,31 @@
             }));
         }
 
+        /* ── Recently used whites ────────────────────────────────────── */
+        /* The same idea one pane over, kept in its own list: a WW lamp set
+           to 3200 K on one device is a click away on the next, which is the
+           half of #258 that typing a kelvin only solved for people who
+           remember the number. Picking one sends immediately, exactly as
+           dragging the warmth bar to it does. */
+        function mountRecentKelvinRow() {
+            if (!window.ngKelvins) return;
+            var slot = p.querySelector('.ng-rgbw-recent-k-slot');
+            if (!slot) return;
+            slot.appendChild(window.ngKelvins.buildRow({
+                onPick: function (k) {
+                    _warmth = warmthFromKelvin(k);
+                    /* The strip is inside the white pane, which is only on
+                       screen in white mode — but sendRGBW branches on _mode,
+                       and a kelvin swatch must never go out as a hue. */
+                    _mode = 'white';
+                    var wc = document.getElementById('ng-rgbw-warmth-canvas');
+                    if (wc) drawWarmthBar(wc);
+                    updatePreview();
+                    commitNow();      /* a swatch click is already a decision */
+                }
+            }));
+        }
+
         /* ── Warmth bar snippet (reused in both WW-only and RGBW white tab) ── */
         function warmthPaneHTML(canvasId) {
             return '<div class="ng-rgbw-warmth-wrap">' +
@@ -721,7 +746,11 @@
                    '<div class="ng-rgbw-warmth-labels">' +
                    '  <span><i class="fa-solid fa-snowflake"></i> Cool</span>' +
                    '  <span>Warm <i class="fa-solid fa-fire"></i></span>' +
-                   '</div>';
+                   '</div>' +
+                   /* Recent whites belong to this pane for the same reason the
+                      colour strip belongs to the wheel's: a kelvin means
+                      nothing to the wheel, and a hue means nothing here. */
+                   '<div class="ng-rgbw-recent-k-slot"></div>';
         }
 
         /* Brightness reads and writes two ways, matching what Domoticz's own
@@ -784,6 +813,7 @@
 
                 var wt = document.getElementById('ng-rgbw-warmth-canvas');
                 if (wt) { drawWarmthBar(wt); attachWarmthInteraction(wt); }
+                mountRecentKelvinRow();
 
             /* ── RGB / RGBW / RGBWW — colour popup (with optional White tab) ── */
             } else {
@@ -840,6 +870,7 @@
                 if (hasWhite) {
                     var wt2 = document.getElementById('ng-rgbw-warmth-canvas');
                     if (wt2) { drawWarmthBar(wt2); attachWarmthInteraction(wt2); }
+                    mountRecentKelvinRow();
                 }
             }
 
@@ -1070,12 +1101,23 @@
 
         /* Recording happens here, not in sendRGBW: under instant apply a single
            drag sends dozens of times and would fill the recent strip with one
-           gradient. The popup closing is the point the user has settled. */
+           gradient. The popup closing is the point the user has settled.
+
+           Which pane was showing decides which list learns the value — the
+           warmth bar produces a temperature, not a hue, so it feeds the
+           kelvin strip and leaves the colours alone. */
         function rememberCurrent() {
-            if (!window.ngColors) return;
             var isWWOnly = (_subType === 'WW' || _subType === 'CW');
-            if (isWWOnly || _mode !== 'color') return;   /* white is not a hue */
-            window.ngColors.remember(currentHex());
+            if (isWWOnly || _mode !== 'color') {
+                /* Guarded on the bar existing: an RGB-only light that reports
+                   a white colour mode has no temperature to settle on, and
+                   the untouched 0.5 default is not a white anyone picked. */
+                if (window.ngKelvins && document.getElementById('ng-rgbw-warmth-canvas')) {
+                    window.ngKelvins.remember(kelvinFromWarmth(_warmth));
+                }
+                return;
+            }
+            if (window.ngColors) window.ngColors.remember(currentHex());
         }
 
         window.ngRgbwPreset = function (preset, btn) {

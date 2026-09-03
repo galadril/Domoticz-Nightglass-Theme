@@ -176,8 +176,17 @@
             if (window.ngLog) window.ngLog('[ng-picker]', 'commit failed', e);
             return;
         }
-        if (settled && window.ngColors && (_mode === 'color' || _mode === 'custom')) {
+        if (!settled) return;
+        if (window.ngColors && (_mode === 'color' || _mode === 'custom')) {
             window.ngColors.remember(currentHex());
+        }
+        /* Whites keep a list of their own, so the warmth bar records into it
+           rather than into the hues. Mix sends a hue and a white together, so
+           a settled change there feeds both lists — the untouched half is
+           still part of what went to the lamp, and re-recording a value that
+           is already the newest entry does nothing. */
+        if (window.ngKelvins && showsWarmth()) {
+            window.ngKelvins.remember(kelvinFromWarmth(_warmth));
         }
     }
 
@@ -266,6 +275,7 @@
         toggle(_els.whiteBlock,  _mode === 'custom');
         toggle(_els.whiteNote,   _mode === 'white');
         toggle(_els.recentSlot,  showsWheel());
+        toggle(_els.recentKSlot, showsWarmth());
 
         if (showsWheel() && _els.wheel)   drawWheel(_els.wheel);
         if (showsWarmth() && _els.warmth) drawWarmth(_els.warmth);
@@ -476,6 +486,22 @@
             '<span>Warm <i class="fa-solid fa-fire"></i></span>'));
         panel.appendChild(_els.warmthBlock);
         attachDrag(_els.warmth, pickWarmth);
+
+        /* Recently used whites, in their own list beside the bar that sets
+           them. Scenes and groups are exactly where this pays: pinning the
+           same white across several of them meant reading a kelvin off one
+           page and typing it into the next. */
+        _els.recentKSlot = el('div', 'ng-ip-recent-slot ng-ip-recent-slot--k');
+        if (window.ngKelvins) {
+            _els.recentKSlot.appendChild(window.ngKelvins.buildRow({
+                onPick: function (k) {
+                    _warmth = warmthFromKelvin(k);
+                    render();
+                    commitNow(true);   /* a swatch click is one decision */
+                }
+            }));
+        }
+        panel.appendChild(_els.recentKSlot);
 
         /* Colour intensity — Mix balances the RGB channels against the white
            ones, so it needs the value axis the wheel cannot express (the
