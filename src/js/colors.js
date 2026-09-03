@@ -223,12 +223,11 @@
         rowClass: 'ng-recent--kelvin',
         label: 'Recent whites',
         emptyText: 'Whites you pick show up here',
-        /* The number is the whole point — these exist so an exact white
-           can be returned to, not merely recognised — so the swatch
-           carries it and the tint is the background it sits on. */
+        /* Same swatch as a colour, painted with the white it will give —
+           the kelvin rides in the tooltip, exactly as the hex does on the
+           colour strip. */
         paint: function (btn, k) {
             btn.style.background = tint(k);
-            btn.textContent = String(k);
             btn.title = k + ' K';
             btn.setAttribute('data-kelvin', String(k));
         }
