@@ -312,7 +312,26 @@
         var idx = slider.getAttribute('data-idx');
         if (!idx) return;
 
-        var btn = footer.querySelector('.dz-power');
+        /* Where the button goes depends on the card's shape (issue #260).
+           Tab views carry an options row — the favourite star plus the
+           Log/Edit/Timers chips — which the theme pins to the bottom of the
+           card with position:absolute, directly over the left of the footer
+           where this button used to sit. Two things went wrong there: the
+           star landed on top of the button, and the button is taller than
+           the timestamp the card's bottom padding was sized for, so it also
+           hung out past the card's edge. That row is already a flex line, so
+           the button joins it and lands beside the controls it belongs with.
+           Dashboard cards have no options row and keep it in the footer. */
+        var host = card.querySelector('td.options') || footer;
+
+        var btn = card.querySelector('.dz-power');
+        /* A card can change shape under us — the same widget is re-templated
+           between dashboard and tab view — so a button parked in the old
+           place is moved rather than left behind. */
+        if (btn && btn.parentNode !== host) {
+            btn.parentNode.removeChild(btn);
+            btn = null;
+        }
         if (!btn) {
             btn = document.createElement('button');
             btn.type = 'button';
@@ -331,7 +350,7 @@
                 window.SwitchLight(btn.dataset.idx, on === true ? 'Off' : 'On',
                                    btn.dataset.protectedFlag === 'true');
             });
-            footer.insertBefore(btn, footer.firstChild);
+            host.insertBefore(btn, host.firstChild);
         }
 
         btn.dataset.idx = idx;
