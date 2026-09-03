@@ -903,8 +903,13 @@ i.dz-fa-device[data-dz-state="off"] {
    27. 3D CARD TILT
    ══════════════════════════════════════════════════════════════════ */
 
+/* No transform-style: preserve-3d. The tilt carries its own perspective()
+   in the inline transform card-features.js writes, and nothing inside a
+   card is 3D-transformed, so preserve-3d bought nothing — while it put
+   every child into a 3D rendering context, where a coplanar child at
+   z-index 0 (the sparkline watermark) is free to sort behind the card's
+   own painted background. Hovering a sensor card blanked its sparkline. */
 .dz-tilt-enabled {
-    transform-style: preserve-3d;
     will-change: transform;
     transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
 }
@@ -1017,7 +1022,14 @@ div.item.itemBlock.dz-temp-accent.dz-range-gradient:hover,
     position: absolute;
     inset: 0;
     pointer-events: none;
-    z-index: 0;
+    /* 1, not 0: hovering gives the card a transform (the lift, and the
+       tilt's inline one), which makes it a stacking context and hands its
+       background a compositing layer of its own. At z-index 0 the
+       watermark is coplanar with that background and can be composited
+       under it — the card lifts and the chart vanishes. 1 puts it
+       unambiguously in front of the fill, and still below the range caret
+       (2), the zero mark (3) and the stale dot (5). */
+    z-index: 1;
     overflow: hidden;
     border-radius: inherit;
     opacity: 0.05;

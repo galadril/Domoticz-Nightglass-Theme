@@ -133,6 +133,10 @@ Fine-tune every color with live preview:
   RGBWW light popup and Domoticz's own color fields (bar and gauge ranges,
   Dashboard 2.0 widget settings) - so matching two devices no longer means
   copying a hex code around
+- **Recently Used Whites** - Color temperatures keep their own list of the last 5,
+  shown beside the warmth bar in the light popup and on the device, scene, group
+  and timer pages, labelled in kelvin - so setting the same 3200 K white across a
+  row of WW lamps is one click each, and hues never crowd out whites
 
 ### ✨ Per-Device Icon Overrides
 - Assign any Font Awesome 7 icon to individual devices

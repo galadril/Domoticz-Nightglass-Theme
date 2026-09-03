@@ -1927,6 +1927,11 @@ body.dz-light .ng-recent-swatch:focus-visible {
 }
 
 
+/* The warmth side of the pickers gets the same strip from its own list
+   (ngKelvins, .ng-recent--kelvin) — same swatches, painted with the white
+   each entry sets, so it needs no rules of its own. */
+
+
 /* ── Quiet the page behind an open dialog ────────────────────────
    backdrop-filter re-samples whatever it covers on every frame, so a
    card animating behind a blurred overlay makes the blur shimmer even

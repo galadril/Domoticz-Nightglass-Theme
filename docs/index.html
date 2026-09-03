@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nightglass — Dark Theme for Domoticz</title>
-    <meta name="description" content="A modern dark/light theme for Domoticz with Font Awesome icons, command palette, sparkline charts, 16 built-in presets, and cloud-synced settings.">
+    <meta name="description" content="A modern dark/light theme for Domoticz with Font Awesome icons, a command palette, sparkline charts, live toasts, 16 built-in presets, and settings that sync from the server.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -361,80 +361,6 @@
         .ng-preset-name { font-size: 0.82rem; font-weight: 600; color: var(--text); }
         .ng-preset-desc { font-size: 0.72rem; color: var(--muted); line-height: 1.3; }
 
-        /* ── Screenshot gallery ────────────────────────────────── */
-        .gallery {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px; margin: 18px 0 28px;
-        }
-        .gal-item {
-            aspect-ratio: 16/10; overflow: hidden;
-            border-radius: var(--radius); cursor: pointer; position: relative;
-            background: var(--surface-2);
-            border: 1px solid var(--border);
-            transition: border-color 0.18s, box-shadow 0.18s;
-        }
-        .gal-item:hover {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(78,154,241,0.14);
-        }
-        .gal-item img {
-            width: 100%; height: 100%; object-fit: cover;
-            transition: transform 0.28s ease; display: block;
-        }
-        .gal-item:hover img { transform: scale(1.06); }
-        .gal-overlay {
-            position: absolute; bottom: 0; left: 0; right: 0;
-            background: linear-gradient(transparent, rgba(0,0,0,0.8));
-            padding: 28px 10px 9px;
-            font-size: 0.74rem; color: #fff; font-weight: 500;
-            opacity: 0; transition: opacity 0.2s; pointer-events: none;
-        }
-        .gal-item:hover .gal-overlay { opacity: 1; }
-        .gal-placeholder {
-            width: 100%; height: 100%;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            gap: 8px; color: var(--muted);
-            font-size: 0.72rem;
-        }
-        .gal-placeholder i { font-size: 1.6rem; opacity: 0.35; }
-
-        /* ── Lightbox ──────────────────────────────────────────── */
-        #lightbox {
-            display: none; position: fixed; inset: 0; z-index: 1000;
-            background: rgba(5,8,14,0.95); backdrop-filter: blur(8px);
-            align-items: center; justify-content: center;
-            flex-direction: column; gap: 14px;
-        }
-        #lightbox.open { display: flex; }
-        #lb-img {
-            max-width: 90vw; max-height: 80vh;
-            border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);
-            box-shadow: 0 28px 80px rgba(0,0,0,0.75);
-        }
-        #lb-caption { font-size: 0.85rem; color: rgba(255,255,255,0.45); text-align: center; }
-        #lb-counter { position: fixed; top: 22px; left: 50%; transform: translateX(-50%); font-size: 0.73rem; color: rgba(255,255,255,0.3); }
-        .lb-close {
-            position: fixed; top: 18px; right: 22px;
-            background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14);
-            color: rgba(255,255,255,0.65); width: 38px; height: 38px; border-radius: 50%;
-            cursor: pointer; font-size: 1.1rem;
-            display: flex; align-items: center; justify-content: center;
-            transition: background 0.15s;
-        }
-        .lb-close:hover { background: rgba(255,255,255,0.15); color: #fff; }
-        .lb-nav {
-            position: fixed; top: 50%; transform: translateY(-50%);
-            background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14);
-            color: rgba(255,255,255,0.65); width: 42px; height: 42px; border-radius: 50%;
-            cursor: pointer; font-size: 1.1rem;
-            display: flex; align-items: center; justify-content: center;
-            transition: background 0.15s; user-select: none;
-        }
-        .lb-nav:hover { background: rgba(255,255,255,0.15); color: #fff; }
-        #lb-prev { left: 18px; } #lb-next { right: 18px; }
-
         /* ── Buttons ────────────────────────────────────────────── */
         .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 20px 0; }
         .btn {
@@ -463,34 +389,6 @@
         .setting-name { font-size: 0.88rem; font-weight: 600; color: var(--text); margin-bottom: 3px; }
         .setting-desc { font-size: 0.81rem; color: var(--muted); line-height: 1.45; }
         .setting-default { font-size: 0.74rem; color: var(--muted); text-align: right; padding-top: 3px; }
-
-        /* ── Changelog entries ──────────────────────────────────── */
-        .cl-entry { margin-bottom: 24px; }
-        .cl-version {
-            display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
-        }
-        .cl-ver-tag {
-            font-size: 0.82rem; font-weight: 700;
-            background: var(--accent-dim); color: var(--accent);
-            border: 1px solid rgba(78,154,241,0.3);
-            padding: 2px 10px; border-radius: 20px;
-        }
-        .cl-date { font-size: 0.78rem; color: var(--muted); }
-        .cl-items { list-style: none; margin: 0; padding: 0; }
-        .cl-items li {
-            padding: 4px 0 4px 22px; position: relative;
-            font-size: 0.87rem; color: var(--muted-2);
-            border-left: 2px solid var(--border); margin: 0 0 0 8px;
-        }
-        .cl-items li::before {
-            content: ''; position: absolute;
-            left: -5px; top: 50%; transform: translateY(-50%);
-            width: 8px; height: 8px; border-radius: 50%;
-            background: var(--border-2); border: 1.5px solid var(--surface);
-        }
-        .cl-items li.feat::before { background: var(--accent); }
-        .cl-items li.fix::before  { background: var(--green); }
-        .cl-items li.imp::before  { background: var(--amber); }
 
         /* ── Footer ────────────────────────────────────────────── */
         footer {
@@ -529,13 +427,11 @@
             #content { padding: 26px 18px 80px; }
             h1 { font-size: 1.5rem; }
             .hero-layout { flex-direction: column; }
-            .gallery { grid-template-columns: repeat(2, 1fr); }
             .feature-grid { grid-template-columns: 1fr; }
             .preset-grid { grid-template-columns: repeat(2, 1fr); }
             footer { padding: 20px 18px; }
         }
         @media (max-width: 420px) {
-            .gallery { grid-template-columns: 1fr 1fr; gap: 6px; }
             .preset-grid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
@@ -580,6 +476,7 @@
         <a class="nav-link" href="#visual-design"><span class="ni"><i class="fa-solid fa-palette"></i></span> Visual Design</a>
         <a class="nav-link" href="#smart-features"><span class="ni"><i class="fa-solid fa-bolt"></i></span> Smart Features</a>
         <a class="nav-link" href="#icons"><span class="ni"><i class="fa-solid fa-icons"></i></span> Icon System</a>
+        <a class="nav-link" href="#color-control"><span class="ni"><i class="fa-solid fa-lightbulb"></i></span> Light &amp; Colour Control</a>
         <a class="nav-link" href="#keyboard"><span class="ni"><i class="fa-solid fa-keyboard"></i></span> Keyboard Shortcuts</a>
         <a class="nav-link" href="#filter-bar"><span class="ni"><i class="fa-solid fa-filter"></i></span> Filter Bar</a>
     </div>
@@ -588,6 +485,7 @@
         <a class="nav-link" href="#presets"><span class="ni"><i class="fa-solid fa-swatchbook"></i></span> Theme Presets</a>
         <a class="nav-link" href="#color-editor"><span class="ni"><i class="fa-solid fa-droplet"></i></span> Color Editor</a>
         <a class="nav-link" href="#per-device"><span class="ni"><i class="fa-solid fa-pen-to-square"></i></span> Per-Device Overrides</a>
+        <a class="nav-link" href="#icon-libraries"><span class="ni"><i class="fa-solid fa-box-archive"></i></span> Extra Icon Libraries</a>
         <a class="nav-link" href="#sync"><span class="ni"><i class="fa-solid fa-cloud-arrow-up"></i></span> Sync &amp; Export</a>
     </div>
     <div class="nav-group">
@@ -679,8 +577,13 @@
         </div>
         <div class="feature-card">
             <div class="fc-icon" style="color:var(--accent);"><i class="fa-solid fa-cloud-arrow-up"></i></div>
-            <div class="fc-title">Cloud Sync</div>
-            <div class="fc-desc">Settings stored as Domoticz user variables — your theme follows you across every browser and device automatically.</div>
+            <div class="fc-title">Server-Side Sync</div>
+            <div class="fc-desc">Settings live on the Domoticz server, per user — your theme follows you across every browser and device automatically.</div>
+        </div>
+        <div class="feature-card">
+            <div class="fc-icon" style="color:var(--green);"><i class="fa-solid fa-bell"></i></div>
+            <div class="fc-title">Live Toasts</div>
+            <div class="fc-desc">Device changes surface as toasts straight off the WebSocket feed, backed by a navbar bell and a history panel on the <span class="key">N</span> key.</div>
         </div>
     </div>
 </section>
@@ -730,9 +633,14 @@
                     </div>
                     <pre><code>cd nightglass &amp;&amp; git pull</code></pre>
                 </div>
-                <div class="callout note">
-                    <span class="ci"><i class="fa-solid fa-circle-info"></i></span>
-                    <p>The theme ships as <code>custom.css</code>, <code>custom.js</code>, and the full <code>src/</code> directory. All CSS lives in <code>src/css/</code> and all JS modules in <code>src/js/</code> — the root files are thin loaders that import them. You need the entire repository, not just the two root files.</p>
+                <div class="callout warn">
+                    <span class="ci"><i class="fa-solid fa-triangle-exclamation"></i></span>
+                    <p><strong>Copy the whole repository, not just the two root files.</strong>
+                    <code>custom.css</code> and <code>custom.js</code> are thin loaders: the CSS lives in
+                    <code>src/css/</code>, the JS modules in <code>src/js/</code>, the 16 built-in palettes in
+                    <code>themes/</code> (fetched at runtime, one JSON per preset), and the logo in
+                    <code>images/</code>. A partial copy fails quietly — missing preset files are skipped
+                    without an error, so the presets grid simply comes up empty.</p>
                 </div>
             </div>
         </div>
@@ -793,8 +701,8 @@
         </div>
         <div class="feature-card">
             <div class="fc-icon" style="color:var(--amber);"><i class="fa-solid fa-temperature-half"></i></div>
-            <div class="fc-title">Temperature Accents</div>
-            <div class="fc-desc">Cards automatically pick up a color accent from the device's temperature reading — ice-blue at 0°C, warm red at 35°C+.</div>
+            <div class="fc-title">Sensor Value Accents</div>
+            <div class="fc-desc">Cards pick up a colour-coded top border from the reading itself — temperature, humidity, CO&#8322;, UV, rain, wind and visibility.</div>
         </div>
         <div class="feature-card">
             <div class="fc-icon" style="color:var(--purple);"><i class="fa-solid fa-mobile-screen"></i></div>
@@ -862,11 +770,45 @@
         Each card gets a pinned footer bar with the formatted timestamp.
     </p>
 
+    <h3>Live Toasts</h3>
+    <p>
+        Device changes arriving on the WebSocket feed surface as toasts in the corner of the
+        screen. The <strong>Event Filter</strong> defaults to <em>meaningful</em> — switches and
+        event-style sensors only, so a temperature probe reporting every minute does not toast —
+        and can be widened to every device change. Duration (2–10s), corner, and a per-device
+        <strong>suppression list</strong> are all configurable under
+        <strong>Live Notifications</strong> in the settings panel.
+    </p>
+
+    <h3>Notification History</h3>
+    <p>
+        Toasts are ephemeral; the history panel is the record. A bell in the navbar accumulates
+        the last 50 device updates with an unread badge, and clicking an entry jumps to that
+        device's card and highlights it. Open it from the bell or with <span class="key">N</span>;
+        <span class="key">Esc</span> closes it. On desktop it slides in from the right, on mobile
+        up from the bottom. The list is scoped to the devices your Domoticz account can see.
+    </p>
+
+    <h3>Animated Device Icons</h3>
+    <p>
+        Icons can carry a per-device animation chosen in the Icon Studio — spin, glow, flicker
+        and six more. The whole layer is gated on <strong>Animate Device Icons</strong>, so a
+        dashboard on a wall panel can keep the icons still.
+    </p>
+
+    <h3>Dashboard 2.0 Enhancements</h3>
+    <p>
+        Domoticz's Dashboard 2.0 (<code>dd-</code> widgets) gets the same treatment as the
+        classic pages: glass card surfaces, entrance animations, a right-click context menu on
+        widgets, and a fullscreen mode for wall-mounted displays.
+    </p>
+
     <h3>Ace Editor &amp; Highcharts Theming</h3>
     <p>
-        The Events page Ace editor automatically applies and persists your chosen theme.
-        Highcharts panels (device history, reports) get a full dark or light palette applied
-        globally — no chart looks out of place.
+        The Events page Ace editor automatically applies and persists your chosen theme
+        (in <code>localStorage</code>, under <code>dz-ace-theme</code> — it follows whatever you
+        pick in Domoticz's own theme dropdown). Highcharts panels (device history, reports) get a
+        full dark or light palette applied globally — no chart looks out of place.
     </p>
 </section>
 
@@ -919,12 +861,59 @@
     </div>
 </section>
 
+<!-- ── Light & Colour Control ────────────────────────────────── -->
+<section id="color-control">
+    <h2><i class="fa-solid fa-lightbulb" style="color:var(--accent);margin-right:8px;opacity:.7;"></i>Light &amp; Colour Control</h2>
+    <p class="section-intro">
+        Every place Domoticz asks for a colour is rebuilt: the device popup, and the in-page
+        control on the device, scene, group and timer edit pages. Both drive Domoticz's own
+        colour pipeline, so protected devices still prompt for a passcode and staged values
+        (timers) still stage rather than send.
+    </p>
+
+    <h3>The Device Popup</h3>
+    <ul>
+        <li><strong>Colour wheel</strong> — canvas hue/saturation wheel with a live preview swatch</li>
+        <li><strong>Warmth bar</strong> — cool-to-warm gradient for white and tunable-white lights</li>
+        <li><strong>Brightness</strong> — slider plus a typed percentage, whichever is quicker</li>
+        <li><strong>Presets</strong> — On and Off as one-press buttons, plus Full and Night on colour lights</li>
+        <li><strong>Instant apply</strong> — every control acts as you use it; there is no "Set Colour" step, and switching tabs deliberately does <em>not</em> send, so browsing the White tab can't turn an off light on</li>
+    </ul>
+    <p>
+        The popup adapts to the light: an RGB device gets the wheel only, RGBW/RGBWW gain a
+        <strong>White</strong> tab, and WW/CW devices open straight onto the warmth bar.
+    </p>
+
+    <h3>Typing an Exact Colour or White</h3>
+    <p>
+        The preview field is editable. On the colour side it takes a hex value — type or paste
+        <code>#ff8800</code> instead of hunting for it on the wheel. On the warmth side it takes
+        <strong>kelvin</strong> (2700–6500&nbsp;K), which is the unit lamps are actually sold in;
+        Domoticz's underlying warmth axis is a unitless 0–255, so an exact white was previously
+        something you could drag to but never reproduce.
+    </p>
+
+    <h3>Recently Used Colours &amp; Whites</h3>
+    <p>
+        Every picker in the theme feeds one shared strip of the last five colours you committed
+        to — the popup, the in-page picker, the settings panel, per-device icon colours, and
+        Domoticz's own colour fields (bar and gauge ranges, Dashboard 2.0 widget settings). Match
+        two devices without copying a hex code around.
+    </p>
+    <p>
+        Colour temperatures keep a <strong>second, separate strip</strong>, shown beside the
+        warmth bar and labelled in kelvin on hover. A white is not a hue: it drives a different
+        control and can't stand in for a colour, so the two lists never crowd each other out.
+        Setting the same 3200&nbsp;K across a row of WW lamps is one click each.
+    </p>
+</section>
+
 <!-- ── Keyboard Shortcuts ────────────────────────────────────── -->
 <section id="keyboard">
     <h2><i class="fa-solid fa-keyboard" style="color:var(--accent);margin-right:8px;opacity:.7;"></i>Keyboard Shortcuts</h2>
     <p class="section-intro">
         Nightglass turns your keyboard into a dashboard remote.
-        Three distinct shortcut systems cover navigation, search, and device control.
+        Four distinct shortcut systems cover navigation, search, device control and notifications.
     </p>
 
     <h3>Quick Navigation — Number Keys</h3>
@@ -983,6 +972,13 @@
         <li><strong>Dimmer slider</strong> — inline 0–100% brightness control</li>
         <li><strong>Smart routing</strong> — auto-navigates to the correct page for each device type</li>
     </ul>
+
+    <h3>Notification History — <span class="key">N</span></h3>
+    <p>
+        Toggles the notification panel — the last 50 device updates, so a change you missed is
+        still there to read. <span class="key">Esc</span> closes it. Like the number keys and
+        <span class="key">/</span>, it is ignored while an input is focused.
+    </p>
 </section>
 
 <!-- ── Filter Bar ────────────────────────────────────────────── -->
@@ -995,7 +991,7 @@
 
     <p>
         The filter bar appears below the top bar on all category pages (Dashboard, Switches,
-        Temperature, etc.). It offers four filter dimensions that can be combined:
+        Temperature, etc.). It offers five filter dimensions that can be combined:
     </p>
     <div class="tbl-wrap">
         <table>
@@ -1004,6 +1000,7 @@
                 <tr><td><strong>Rooms</strong></td><td>All plans from Domoticz</td><td>Persists across page navigation</td></tr>
                 <tr><td><strong>Type</strong></td><td>Switch types &amp; sensor types on current page</td><td>Pruned when navigating to a new page</td></tr>
                 <tr><td><strong>Hardware</strong></td><td>Hardware names on current page</td><td>Pruned when navigating to a new page</td></tr>
+                <tr><td><strong>Status</strong></td><td>Device state on the current page (on / off / open / closed …)</td><td>Pruned when navigating to a new page</td></tr>
                 <tr><td><strong>Favourites</strong></td><td>On / Off toggle</td><td>Pruned when not relevant on new page</td></tr>
             </tbody>
         </table>
@@ -1452,6 +1449,20 @@
         <span class="ci"><i class="fa-solid fa-lightbulb"></i></span>
         <p>Select any preset in <strong>Setup &rarr; Settings &rarr; Nightglass</strong>. Presets instantly apply with a live preview. You can then further fine-tune individual colors with the color editor.</p>
     </div>
+
+    <h3>Saving Your Own</h3>
+    <p>
+        Once you have the colours where you want them, <strong>Save current colors as preset</strong>
+        adds them to the same grid alongside the sixteen built-ins, so you can jump back after
+        experimenting — or keep one palette for the wall tablet and another for the desktop. Your
+        presets are stored server-side with the rest of your settings and travel with them through
+        export and import.
+    </p>
+    <p>
+        The built-in palettes ship as one JSON file each in the theme's <code>themes/</code>
+        directory and are fetched when the presets grid opens — which is why that directory has to
+        come along with the rest of the repository.
+    </p>
 </section>
 
 <!-- ── Color Editor ──────────────────────────────────────────── -->
@@ -1462,18 +1473,25 @@
         Domoticz interface behind the settings panel.
     </p>
 
-    <p>The color editor exposes these categories independently for <strong>dark</strong> and <strong>light</strong> mode:</p>
-    <ul>
-        <li><strong>Accent colors</strong> — primary accent, danger, warning, success</li>
-        <li><strong>Background &amp; surfaces</strong> — page background, navbar, card fill, elevated surfaces</li>
-        <li><strong>Borders</strong> — card borders, divider lines</li>
-        <li><strong>Text</strong> — primary, secondary, and muted text hierarchy</li>
-    </ul>
-
-    <div class="callout warn">
-        <span class="ci"><i class="fa-solid fa-triangle-exclamation"></i></span>
-        <p>Always update <strong>both</strong> dark and light color slots when changing a color role — each mode has separate storage.</p>
+    <p>
+        Every role is edited as a <strong>pair</strong> — the dark value and the light value sit
+        side by side in the same row, under <i class="fa-solid fa-moon"></i> Dark and
+        <i class="fa-solid fa-sun"></i> Light headers, so a role can never be updated in one mode
+        and forgotten in the other.
+    </p>
+    <div class="tbl-wrap">
+        <table>
+            <thead><tr><th>Panel section</th><th>Roles</th></tr></thead>
+            <tbody>
+                <tr><td><strong>Colors</strong></td><td>Accent, Danger, Warning, Success</td></tr>
+                <tr><td><strong>Background &amp; Surface</strong></td><td>Page Background, Navbar &amp; Cards, Card Surface, Borders, Text</td></tr>
+            </tbody>
+        </table>
     </div>
+    <p>
+        Each picker carries the shared <strong>recently used colours</strong> strip, so a colour
+        used on a device is one click away here too.
+    </p>
 </section>
 
 <!-- ── Per-Device Overrides ──────────────────────────────────── -->
@@ -1484,16 +1502,24 @@
         no code changes required.
     </p>
     <p>
-        Open the Nightglass settings panel, navigate to <strong>Per-Device Icons</strong>, search for
-        your device by name or idx, then pick any Font Awesome 7 icon from the visual picker and
-        choose your colors. The override is stored as a Domoticz user variable and syncs across browsers.
+        Open the Nightglass settings panel, go to <strong>Device Icons &rarr; Per-Device Icons</strong>,
+        search for your device by name or idx, then pick any Font Awesome 7 icon from the Icon
+        Studio and choose its colours and animation. Overrides are stored with the rest of your
+        settings, server-side, so they follow you between browsers.
     </p>
     <ul>
-        <li>Visual icon picker with <strong>live search</strong> across all Font Awesome icons</li>
-        <li>Color pickers for on-state and off-state colors with live preview</li>
-        <li>Overrides take effect immediately without page reload</li>
+        <li>Visual icon picker with <strong>live search</strong> across all Font Awesome icons, plus any extra libraries installed in Domoticz</li>
+        <li>Separate on-state and off-state colours with live preview</li>
+        <li>A per-device <strong>animation</strong> — spin, glow, flicker and six more</li>
+        <li>Overrides take effect immediately without a page reload</li>
         <li>Remove any override to revert to the automatic icon from <code>DEVICE_MAP</code></li>
     </ul>
+    <div class="callout note">
+        <span class="ci"><i class="fa-solid fa-circle-info"></i></span>
+        <p>On Domoticz builds that own the icon themselves, the shape is saved in Domoticz's own
+        Icon column and Nightglass stores only the colours and animation — the same dialog, one
+        less thing duplicated.</p>
+    </div>
 </section>
 
 <section id="icon-libraries">
@@ -1514,32 +1540,44 @@
 <section id="sync">
     <h2><i class="fa-solid fa-cloud-arrow-up" style="color:var(--accent);margin-right:8px;opacity:.7;"></i>Sync &amp; Export</h2>
     <p class="section-intro">
-        Nightglass settings are stored as Domoticz user variables (<code>ngTheme_*</code>)
-        via the JSON API — your theme automatically follows you to any browser or device
-        connected to the same Domoticz server.
+        Nightglass settings live on the Domoticz server rather than in the browser, so your theme
+        automatically follows you to any browser or device signed in to the same server.
     </p>
 
-    <h3>Import / Export</h3>
+    <h3>Where Settings Are Stored</h3>
     <p>
-        The settings panel has one-click <strong>Export</strong> and <strong>Import</strong> buttons.
-        Export saves your full color theme, feature flags, and icon overrides as a single JSON file
-        that can be shared with the community or backed up.
+        On current Domoticz builds the theme uses Domoticz's own <strong>per-user theme settings
+        API</strong> — settings are attached to your Domoticz account, so two people sharing a
+        server can each have their own palette. On older builds without that API, the theme falls
+        back to <strong>user variables</strong> (<code>ngTheme_settings</code>, plus
+        <code>ngTheme_presets</code> for saved palettes, which are kept separate to stay under the
+        user-variable size cap). If the server cannot be reached at all, changes are held in
+        <code>localStorage</code> for the session so the interface still behaves — they just don't
+        sync anywhere.
     </p>
 
     <div class="tbl-wrap">
         <table>
             <thead><tr><th>Storage</th><th>What</th><th>When</th></tr></thead>
             <tbody>
-                <tr><td><strong>Domoticz user variables</strong></td><td>All settings (primary store)</td><td>On every change</td></tr>
-                <tr><td><strong>localStorage</strong></td><td>Dark/light mode preference</td><td>Instant toggle (fast)</td></tr>
+                <tr><td><strong>Domoticz theme settings (per user)</strong></td><td>All settings — primary store</td><td>On every change, debounced</td></tr>
+                <tr><td><strong>User variables</strong> <code>ngTheme_*</code></td><td>All settings — legacy fallback</td><td>Only on builds without the theme settings API</td></tr>
+                <tr><td><strong>localStorage</strong></td><td>Dark/light preference (<code>dz-theme-style</code>), Ace theme, recent colours &amp; whites; whole-settings cache when the server is unreachable</td><td>Instantly — these are per browser by design</td></tr>
                 <tr><td><strong>JSON export file</strong></td><td>Full settings snapshot</td><td>Manual export</td></tr>
             </tbody>
         </table>
     </div>
 
+    <h3>Import / Export</h3>
+    <p>
+        The settings panel footer has one-click <strong>Export</strong> and <strong>Import</strong>
+        buttons. Export saves your full colour theme, feature flags, saved presets and per-device
+        icon overrides as a single JSON file to share or back up.
+    </p>
+
     <div class="callout note">
         <span class="ci"><i class="fa-solid fa-circle-info"></i></span>
-        <p>Settings are accessed via <code>window.dzNightglassSettings.get(key)</code> and <code>.set(key, value)</code>. All feature flags are gated on these settings, making it easy to add new settings-controlled behaviors.</p>
+        <p>Settings are read and written through <code>window.dzNightglassSettings.get(key)</code> and <code>.set(key, value)</code>, whichever store is in use. Every feature flag is gated on these, which is what makes adding a new settings-controlled behaviour cheap.</p>
     </div>
 </section>
 
@@ -1548,112 +1586,181 @@
     <h2><i class="fa-solid fa-sliders" style="color:var(--accent);margin-right:8px;opacity:.7;"></i>Settings Reference</h2>
     <p class="section-intro">
         All settings are accessible at <strong>Setup &rarr; Settings &rarr; Nightglass</strong>.
+        The headings below are the panel's own sections, in the order they appear. Colour roles
+        are covered separately under <a href="#color-editor">Color Editor</a>.
     </p>
-
-    <h3>Display</h3>
-    <div class="setting-row">
-        <div>
-            <div class="setting-name">Default color scheme</div>
-            <div class="setting-desc">Starting mode on first load: dark, light, or follow OS <code>prefers-color-scheme</code>.</div>
-        </div>
-        <div class="setting-default">dark</div>
-    </div>
-    <div class="setting-row">
-        <div>
-            <div class="setting-name">Show last-update timestamps</div>
-            <div class="setting-desc">Show or hide the formatted timestamp footer on each device card.</div>
-        </div>
-        <div class="setting-default">on</div>
-    </div>
-    <div class="setting-row">
-        <div>
-            <div class="setting-name">Uppercase device names</div>
-            <div class="setting-desc">Apply <code>text-transform: uppercase</code> to device name bars.</div>
-        </div>
-        <div class="setting-default">off</div>
-    </div>
-    <div class="setting-row">
-        <div>
-            <div class="setting-name">Icon size</div>
-            <div class="setting-desc">Scale all device icons globally: small, default, large.</div>
-        </div>
-        <div class="setting-default">default</div>
-    </div>
-
-    <h3>Card Features</h3>
-    <div class="setting-row">
-        <div>
-            <div class="setting-name">Sparkline charts</div>
-            <div class="setting-desc">Show inline SVG micro-charts on sensor cards. Fetches from the Domoticz history API.</div>
-        </div>
-        <div class="setting-default">on</div>
-    </div>
-    <div class="setting-row">
-        <div>
-            <div class="setting-name">3D card tilt</div>
-            <div class="setting-desc">Apply a subtle ±3° perspective tilt on device cards as you move your mouse over them.</div>
-        </div>
-        <div class="setting-default">off</div>
-    </div>
-    <div class="setting-row">
-        <div>
-            <div class="setting-name">Temperature-reactive accent</div>
-            <div class="setting-desc">Cards pick up a color accent from the device's temperature value.</div>
-        </div>
-        <div class="setting-default">on</div>
-    </div>
-    <div class="setting-row">
-        <div>
-            <div class="setting-name">Ambient icon glow</div>
-            <div class="setting-desc">On-state device icons emit a soft colored glow matching <code>colorOn</code>.</div>
-        </div>
-        <div class="setting-default">on</div>
-    </div>
-    <div class="setting-row">
-        <div>
-            <div class="setting-name">State-change flash</div>
-            <div class="setting-desc">Brief flash animation when a device icon changes state (on → off or off → on).</div>
-        </div>
-        <div class="setting-default">on</div>
-    </div>
-    <div class="setting-row">
-        <div>
-            <div class="setting-name">Staleness indicator</div>
-            <div class="setting-desc">Show a visual marker on device cards that haven't updated in a configurable time period.</div>
-        </div>
-        <div class="setting-default">on</div>
-    </div>
-    <div class="setting-row">
-        <div>
-            <div class="setting-name">Staleness threshold (hours)</div>
-            <div class="setting-desc">How many hours without an update before a card is considered stale.</div>
-        </div>
-        <div class="setting-default">24</div>
-    </div>
 
     <h3>Icons</h3>
     <div class="setting-row">
         <div>
-            <div class="setting-name">Font Awesome icon replacement</div>
-            <div class="setting-desc">Enable or disable the entire icon replacement system. Disabling restores original Domoticz PNG images.</div>
+            <div class="setting-name">Navbar Menu Icons</div>
+            <div class="setting-desc">Replace the PNG menu icons with Font Awesome in the navigation bar.</div>
+        </div>
+        <div class="setting-default">on</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Device Icons</div>
+            <div class="setting-desc">Let Nightglass colour and size device icons; off leaves Domoticz's own untouched.</div>
+        </div>
+        <div class="setting-default">on</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Animate Device Icons</div>
+            <div class="setting-desc">Play the animation each device was given in the Icon Studio — spin, glow, flicker and six more.</div>
         </div>
         <div class="setting-default">on</div>
     </div>
 
-    <h3>Advanced</h3>
+    <h3>Appearance</h3>
     <div class="setting-row">
         <div>
-            <div class="setting-name">Debug logging</div>
-            <div class="setting-desc">Enable verbose <code>[RF]</code>, <code>[IC]</code>, etc. logging to the browser console.</div>
+            <div class="setting-name">Theme Mode</div>
+            <div class="setting-desc">Manual toggle (shows the navbar sun/moon button), Auto (follows the OS <code>prefers-color-scheme</code>), Always dark, or Always light.</div>
+        </div>
+        <div class="setting-default">manual</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Base Font Size</div>
+            <div class="setting-desc">Scale the entire interface, 80–125% in 5% steps.</div>
+        </div>
+        <div class="setting-default">100%</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Device Icon Size</div>
+            <div class="setting-desc">Scale device icons on cards, 60–150% in 5% steps.</div>
+        </div>
+        <div class="setting-default">100%</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Show Last Update</div>
+            <div class="setting-desc">Show the formatted timestamp footer on device cards.</div>
         </div>
         <div class="setting-default">off</div>
     </div>
     <div class="setting-row">
         <div>
-            <div class="setting-name">Ace Editor theme</div>
-            <div class="setting-desc">Preferred Ace theme for the Events page code editor. Persists in <code>localStorage</code>.</div>
+            <div class="setting-name">Uppercase Device Names</div>
+            <div class="setting-desc">Force device names to UPPERCASE on cards.</div>
         </div>
-        <div class="setting-default">monokai</div>
+        <div class="setting-default">on</div>
+    </div>
+
+    <h3>Effects &amp; Animations</h3>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">3D Card Tilt</div>
+            <div class="setting-desc">Subtle ±3° perspective tilt on device cards as the mouse moves over them.</div>
+        </div>
+        <div class="setting-default">on</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Sparkline Charts</div>
+            <div class="setting-desc">Mini 24h trend charts as card watermarks. Fetches from the Domoticz history API.</div>
+        </div>
+        <div class="setting-default">on</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Staleness Dot</div>
+            <div class="setting-desc">Pulsing red dot on devices that haven't updated in 24 hours. The threshold is fixed, not configurable.</div>
+        </div>
+        <div class="setting-default">on</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">State-Change Flash</div>
+            <div class="setting-desc">Blue/red ring flash when a device changes state.</div>
+        </div>
+        <div class="setting-default">on</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Sensor Value Accent</div>
+            <div class="setting-desc">Colour-coded top border reflecting the sensor value — temperature, humidity, CO&#8322;, UV, rain, wind and visibility.</div>
+        </div>
+        <div class="setting-default">on</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Card Animations</div>
+            <div class="setting-desc">Entrance animations and hover transitions on cards.</div>
+        </div>
+        <div class="setting-default">on</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Navbar Animations</div>
+            <div class="setting-desc">Staggered entrances, the sliding indicator, and dropdown effects.</div>
+        </div>
+        <div class="setting-default">on</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Smooth Scrolling</div>
+            <div class="setting-desc">Enable smooth scroll behaviour page-wide.</div>
+        </div>
+        <div class="setting-default">on</div>
+    </div>
+
+    <h3>Live Notifications</h3>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Device State Toasts</div>
+            <div class="setting-desc">Show a toast when a device changes state on the live WebSocket feed.</div>
+        </div>
+        <div class="setting-default">on</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Event Filter</div>
+            <div class="setting-desc">Meaningful (switches &amp; event sensors) or all device changes. Meaningful skips continuous sensors like temperature and power meters.</div>
+        </div>
+        <div class="setting-default">meaningful</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Visible Duration</div>
+            <div class="setting-desc">How long each toast stays on screen before fading: 2, 4, 6 or 10 seconds.</div>
+        </div>
+        <div class="setting-default">4s</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Position</div>
+            <div class="setting-desc">Where toasts appear: bottom right, bottom center, or top right.</div>
+        </div>
+        <div class="setting-default">bottom right</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Suppressed Devices</div>
+            <div class="setting-desc">Block specific devices from ever raising a toast, managed in its own dialog.</div>
+        </div>
+        <div class="setting-default">none</div>
+    </div>
+
+    <h3>Device Icons</h3>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Per-Device Icons</div>
+            <div class="setting-desc">Opens the Icon Studio: pick an icon for a device, then give it on/off colours and an animation. See <a href="#per-device">Per-Device Overrides</a>.</div>
+        </div>
+        <div class="setting-default">—</div>
+    </div>
+
+    <h3>Developer</h3>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Debug Logging</div>
+            <div class="setting-desc">Print verbose trace logs from every theme module to the browser console — <code>[Settings]</code>, <code>[Cards]</code>, <code>[Spark]</code>, <code>[Toast]</code>, <code>[RT]</code>, <code>[Notif]</code> and friends. Session only; resets on a hard refresh.</div>
+        </div>
+        <div class="setting-default">off</div>
     </div>
 </section>
 
@@ -1704,15 +1811,26 @@
     <h3>Sparklines not appearing</h3>
     <p>
         Sparklines require a successful call to <code>json.htm?type=graph</code>. If the Domoticz
-        API is unreachable from the client, they silently skip. Enable debug logging in the
-        Nightglass settings panel and check the browser console for <code>[SP]</code> log lines.
+        API is unreachable from the client, they silently skip. Enable <strong>Debug Logging</strong>
+        in the Nightglass settings panel and check the browser console for <code>[Spark]</code>
+        log lines.
+    </p>
+
+    <h3>No theme presets in the panel</h3>
+    <p>
+        The presets grid is built from the JSON files in the theme's <code>themes/</code>
+        directory, fetched when you open it. If that directory did not come along with the rest
+        of the install, the fetches fail silently and the grid stays empty — copy the whole
+        repository, or <code>git pull</code> in place, and reload.
     </p>
 
     <h3>Settings not saving</h3>
     <p>
-        Nightglass saves settings as Domoticz user variables. Ensure the Domoticz user account
-        has write access. If the API call fails, settings fall back to <code>localStorage</code>
-        for the current session but won't sync to other browsers.
+        Settings are written to the Domoticz server for your user account. Make sure the account
+        you are signed in with has write access, and that the session hasn't expired. If the
+        server can't be reached, changes are kept in <code>localStorage</code> for the current
+        session so the interface still responds — but they won't sync to other browsers, and a
+        hard refresh may lose them.
     </p>
 
     <h3>Filter bar not showing all rooms</h3>
@@ -1742,7 +1860,7 @@ git pull</code></pre>
     </p>
     <div class="callout tip">
         <span class="ci"><i class="fa-solid fa-lightbulb"></i></span>
-        <p>Your custom settings and per-device icon overrides are stored as Domoticz user variables — they are never touched by <code>git pull</code>.</p>
+        <p>Your custom settings, saved presets and per-device icon overrides live on the Domoticz server, not in the theme folder — <code>git pull</code> never touches them.</p>
     </div>
 </section>
 
@@ -1784,7 +1902,7 @@ git pull</code></pre>
 <!-- ── Footer ─────────────────────────────────────────────────── -->
 <footer>
     <span>
-        &copy; 2025 <a href="https://github.com/galadril">Mark Heinis</a> &nbsp;&middot;&nbsp;
+        &copy; 2025–2026 <a href="https://github.com/galadril">Mark Heinis</a> &nbsp;&middot;&nbsp;
         Nightglass Theme for <a href="https://www.domoticz.com/">Domoticz</a> &nbsp;&middot;&nbsp;
         <a href="https://github.com/galadril/Domoticz-Nightglass-Theme/blob/main/LICENSE">MIT License</a>
     </span>
@@ -1794,16 +1912,6 @@ git pull</code></pre>
         <a href="https://github.com/galadril/Domoticz-Nightglass-Theme/issues">Issues</a>
     </span>
 </footer>
-
-<!-- ── Lightbox ───────────────────────────────────────────────── -->
-<div id="lightbox" onclick="closeLightboxOnBg(event)">
-    <span class="lb-close" onclick="closeLightbox()">&times;</span>
-    <button class="lb-nav" id="lb-prev" onclick="lbNav(-1)">&#8249;</button>
-    <button class="lb-nav" id="lb-next" onclick="lbNav(+1)">&#8250;</button>
-    <span id="lb-counter"></span>
-    <img id="lb-img" src="" alt="">
-    <p id="lb-caption"></p>
-</div>
 
 <script>
 /* ── Sidebar toggle ─────────────────────────────────────────── */
@@ -1826,49 +1934,6 @@ function copyCode(btn) {
         setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('ok'); }, 1800);
     });
 }
-
-/* ── Lightbox ───────────────────────────────────────────────── */
-var lbImages = [
-    { src: '../images/banner.png',   caption: 'Dashboard overview — dark mode' },
-    { src: null, caption: 'Lights & Switches page' },
-    { src: null, caption: 'Temperature sensors with sparkline micro-charts' },
-    { src: null, caption: 'Ctrl+K command palette — global device control' },
-    { src: null, caption: 'Full light mode' },
-    { src: null, caption: 'Nightglass settings panel — theme customization' }
-];
-var lbIdx = 0;
-
-function openLightbox(i) {
-    var item = lbImages[i];
-    if (!item || !item.src) return;
-    lbIdx = i;
-    document.getElementById('lb-img').src = item.src;
-    document.getElementById('lb-caption').textContent = item.caption;
-    document.getElementById('lb-counter').textContent = (i + 1) + ' / ' + lbImages.filter(function(x){return x.src;}).length;
-    document.getElementById('lightbox').classList.add('open');
-    document.body.style.overflow = 'hidden';
-}
-function closeLightbox() {
-    document.getElementById('lightbox').classList.remove('open');
-    document.body.style.overflow = '';
-}
-function closeLightboxOnBg(e) {
-    if (e.target === document.getElementById('lightbox')) closeLightbox();
-}
-function lbNav(dir) {
-    var next = lbIdx + dir;
-    while (next >= 0 && next < lbImages.length) {
-        if (lbImages[next].src) { openLightbox(next); return; }
-        next += dir;
-    }
-}
-document.addEventListener('keydown', function (e) {
-    var lb = document.getElementById('lightbox');
-    if (!lb.classList.contains('open')) return;
-    if (e.key === 'Escape')     closeLightbox();
-    if (e.key === 'ArrowLeft')  lbNav(-1);
-    if (e.key === 'ArrowRight') lbNav(+1);
-});
 
 /* ── Active nav link on scroll ──────────────────────────────── */
 var sections = document.querySelectorAll('section[id]');
