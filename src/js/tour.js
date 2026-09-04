@@ -22,12 +22,16 @@
     'use strict';
 
     /* ── Debug ────────────────────────────────────────────────────────
-       While the tour is being built it opens on every load. Set this to
-       false and the gate at the bottom takes over: once per user, on the
-       first authenticated page load, remembered in the synced settings
-       blob. Either way window.dzTour.start() opens it on demand and
-       window.dzTour.reset() forgets it was ever seen.               */
-    var ALWAYS_SHOW = true;
+       Set true to reopen the tour on every load while working on it,
+       which skips the gate at the bottom entirely. Off means the normal
+       behaviour: once per user, on the first authenticated page load,
+       remembered in the synced settings blob.
+
+       Either way window.dzTour.start() opens it on demand and
+       window.dzTour.reset() forgets it was ever seen — the latter is
+       what you want before testing the once-only path on an account
+       that has already dismissed it.                                */
+    var ALWAYS_SHOW = false;
 
     var SEEN_KEY = 'tourSeen';
 
