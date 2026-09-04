@@ -1737,7 +1737,7 @@ body.dz-light .entity-log-table tbody tr:hover td {
 }
 
 #dz-cmd-input,
-.dzt-cmd-input {
+#dzt-cmd-input {
     flex: 1;
     background: transparent;
     border: none;
@@ -1750,7 +1750,7 @@ body.dz-light .entity-log-table tbody tr:hover td {
 }
 
 #dz-cmd-input::placeholder,
-.dzt-cmd-input::placeholder {
+#dzt-cmd-input::placeholder {
     color: var(--dz-text-muted);
     font-weight: 400;
 }

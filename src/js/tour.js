@@ -309,8 +309,14 @@
             box.innerHTML =
                 '<div class="dzt-cmd-header">' +
                     '<i class="fa-solid fa-magnifying-glass"></i>' +
-                    '<input class="dzt-cmd-input" readonly tabindex="-1" ' +
-                        'placeholder="Search devices…">' +
+                    /* Carries an id, not just a class: Bootstrap styles
+                       input[type="text"] (0,0,1,1) and would out-rank a
+                       class, painting the field white with unreadable
+                       text. The real palette's input escapes that by
+                       being #dz-cmd-input, so this one matches its
+                       weight the same way. */
+                    '<input id="dzt-cmd-input" class="dzt-cmd-input" readonly ' +
+                        'tabindex="-1" placeholder="Search devices…">' +
                     '<span class="dz-cmd-esc">Esc</span>' +
                 '</div>' +
                 '<div class="dzt-cmd-list">' +
