@@ -862,9 +862,35 @@
                 }
                 if (quiet) {
                     // Nobody asked for this save, so nobody can be asked which
-                    // copy wins: the server's stands and the caller is told.
-                    restoreBtn();
-                    return false;
+                    // copy wins — but silently dropping it here would lose the
+                    // change for good: the next load reads the server's stale
+                    // value and overwrites this browser's copy too, so e.g. a
+                    // "tour seen" flag set right after onboarding would never
+                    // reach the server and the tour would keep coming back.
+                    // Re-read the fresh token, layer our changed keys on top of
+                    // whatever the other session wrote, and retry once instead.
+                    return loadFromThemeApi().then(function (res) {
+                        var fresh = res ? res.stored : null;
+                        if (fresh) {
+                            var merged = deserializeSettings(fresh);
+                            Object.keys(_settings || {}).forEach(function (k) {
+                                // Nothing distinguishes "changed by us" here, so
+                                // only the fields serializeSettings would still
+                                // consider non-default are worth carrying over —
+                                // matches the diff this save already intended to
+                                // write.
+                                if (!(k in DEFAULTS) || _settings[k] !== DEFAULTS[k]) {
+                                    merged[k] = _settings[k];
+                                }
+                            });
+                            _settings = merged;
+                            saveToLocalStorage();
+                        }
+                        return _postThemeSettings(btn, retryCount + 1, quiet);
+                    }, function () {
+                        restoreBtn();
+                        return false;
+                    });
                 }
                 // Another session saved after we last read — re-fetch the current
                 // server value AND token (loadFromThemeApi updates _lastupdate),
