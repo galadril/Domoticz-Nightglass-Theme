@@ -1037,7 +1037,10 @@ div.item.itemBlock.dz-temp-accent.dz-range-gradient:hover,
 }
 
 div.item.itemBlock:hover .dz-sparkline-wrap,
-.itemBlock > div.item:hover .dz-sparkline-wrap {
+.itemBlock > div.item:hover .dz-sparkline-wrap,
+/* The tour demonstrates the hover state without a pointer, so it drives
+   the same rule from a class instead of :hover. */
+.dzt-card--hovered .dz-sparkline-wrap {
     opacity: 0.11;
 }
 

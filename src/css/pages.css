@@ -1694,7 +1694,8 @@ body.dz-light .entity-log-table tbody tr:hover td {
     to   { opacity: 0; }
 }
 
-#dz-cmd-box {
+#dz-cmd-box,
+.dzt-cmd-box {
     width: min(640px, calc(100vw - 32px));
     background: var(--dz-surface);
     border: 1px solid var(--dz-border);
@@ -1719,7 +1720,8 @@ body.dz-light .entity-log-table tbody tr:hover td {
 
 /* ── Header / search input ───────────────────────────────────── */
 
-#dz-cmd-header {
+#dz-cmd-header,
+.dzt-cmd-header {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -1727,13 +1729,15 @@ body.dz-light .entity-log-table tbody tr:hover td {
     border-bottom: 1px solid var(--dz-border);
 }
 
-#dz-cmd-header > .fa-magnifying-glass {
+#dz-cmd-header > .fa-magnifying-glass,
+.dzt-cmd-header > .fa-magnifying-glass {
     color: var(--dz-text-muted);
     font-size: 15px;
     flex-shrink: 0;
 }
 
-#dz-cmd-input {
+#dz-cmd-input,
+#dzt-cmd-input {
     flex: 1;
     background: transparent;
     border: none;
@@ -1745,7 +1749,8 @@ body.dz-light .entity-log-table tbody tr:hover td {
     min-width: 0;
 }
 
-#dz-cmd-input::placeholder {
+#dz-cmd-input::placeholder,
+#dzt-cmd-input::placeholder {
     color: var(--dz-text-muted);
     font-weight: 400;
 }
@@ -1767,7 +1772,8 @@ body.dz-light .entity-log-table tbody tr:hover td {
 
 /* ── Results list ────────────────────────────────────────────── */
 
-#dz-cmd-list {
+#dz-cmd-list,
+.dzt-cmd-list {
     max-height: 420px;
     overflow-y: auto;
     padding: 6px 0;

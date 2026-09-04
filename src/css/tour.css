@@ -1,0 +1,864 @@
+/* ══════════════════════════════════════════════════════════════════
+   NIGHTGLASS TOUR
+   ──────────────────────────────────────────────────────────────────
+   A takeover that has to look like the theme it is describing, so it
+   is built entirely from the live tokens: set a purple accent or flip
+   to light mode and the tour follows, because it is reading the same
+   variables the dashboard behind it reads.
+
+   Two things carry the identity:
+
+     · The rail — eleven icon frames borrowed from the device card's
+       icon cell, dark until you reach them. Finishing the tour leaves
+       a row of lights on, which is the subject of the whole theme.
+
+     · The stage — the demo is the hero and the words are the caption,
+       the reverse of the usual onboarding split, because everything
+       Nightglass adds is something you look at.
+
+   --dzt-hue is the current chapter's colour, set on the shell by
+   tour.js as an "R, G, B" triple; --dzt-tint is the same idea one
+   level down, on individual mock components.
+   ══════════════════════════════════════════════════════════════════ */
+
+body.dz-tour-open {
+    overflow: hidden !important;
+}
+
+.dzt-root {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(8, 9, 13, 0.74);
+    backdrop-filter: blur(10px) saturate(0.85);
+    -webkit-backdrop-filter: blur(10px) saturate(0.85);
+    animation: dztPlate 0.18s ease;
+}
+
+body.dz-light .dzt-root {
+    background: rgba(28, 32, 44, 0.42);
+}
+
+.dzt-root--out {
+    animation: dztPlateOut 0.2s ease forwards;
+    pointer-events: none;
+}
+
+@keyframes dztPlate    { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dztPlateOut { from { opacity: 1; } to { opacity: 0; } }
+
+/* Domoticz and Bootstrap both style bare elements; the overlay is not
+   part of their layout and should not inherit their opinions.
+
+   Wrapped in :where() so the whole reset weighs nothing. Written as a
+   plain descendant selector it would score higher than the single-class
+   component rules below and quietly strip the fill off every button in
+   the tour — which is exactly what it did the first time. */
+:where(.dzt-root button) {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    line-height: inherit;
+    text-align: inherit;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+}
+:where(.dzt-root h2, .dzt-root p) {
+    margin: 0;
+    padding: 0;
+    font-weight: inherit;
+}
+
+/* The few properties that do have to outrank a bare `button {}` rule
+   coming out of Domoticz's own stylesheets. Deliberately not background,
+   colour or padding — those belong to the components, and listing them
+   here is what broke it before. None of the tour's buttons draw a real
+   border; every ring below is an inset shadow. */
+.dzt-root button {
+    font-family: inherit;
+    border: 0;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+/* ── The panel ─────────────────────────────────────────────────── */
+
+.dzt-panel-shell {
+    --dzt-hue: 78, 154, 241;
+    position: relative;
+    width: min(880px, 100%);
+    max-height: calc(100vh - 48px);
+    display: flex;
+    flex-direction: column;
+    background: var(--dz-surface);
+    border: 1px solid var(--dz-border);
+    border-radius: 18px;
+    box-shadow: 0 40px 120px rgba(0, 0, 0, 0.6), 0 6px 24px rgba(0, 0, 0, 0.35);
+    /* x hidden so the stage's background still clips to the rounded
+       corners; y scrolls, because the dialog chapter is tall and a short
+       laptop screen would otherwise cut the buttons off. */
+    overflow: hidden auto;
+    animation: dztRise 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body.dz-light .dzt-panel-shell {
+    box-shadow: 0 32px 90px rgba(24, 28, 40, 0.28), 0 4px 16px rgba(24, 28, 40, 0.12);
+}
+
+@keyframes dztRise {
+    from { transform: translateY(14px) scale(0.985); opacity: 0; }
+    to   { transform: none;                          opacity: 1; }
+}
+
+/* The glass catching light. One hairline in the chapter's colour, and
+   the only place the hue touches the shell itself. */
+.dzt-panel-shell::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg,
+        transparent,
+        rgba(var(--dzt-hue), 0.85) 22%,
+        rgba(var(--dzt-hue), 0.85) 78%,
+        transparent);
+    transition: background 0.4s ease;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.dzt-skip {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    z-index: 3;
+    font-size: 12px;
+    color: var(--dz-text-soft);
+    padding: 5px 10px !important;
+    border-radius: 7px;
+    transition: color 0.15s, background 0.15s;
+}
+
+.dzt-skip:hover,
+.dzt-skip:focus-visible {
+    color: var(--dz-text);
+    background: var(--dz-surface-2);
+}
+
+/* ── Stage ─────────────────────────────────────────────────────── */
+
+.dzt-stage {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 264px;
+    padding: 44px 32px 32px;
+    background:
+        radial-gradient(ellipse 62% 78% at 50% 42%,
+            rgba(var(--dzt-hue), 0.13),
+            transparent 70%),
+        var(--dz-surface-2);
+    border-bottom: 1px solid var(--dz-border);
+    overflow: hidden;
+    transition: background 0.4s ease;
+}
+
+/* The glow has to work harder on a white surface than on a dark one to
+   read as the same amount of light. */
+body.dz-light .dzt-stage {
+    background:
+        radial-gradient(ellipse 62% 78% at 50% 42%,
+            rgba(var(--dzt-hue), 0.20),
+            transparent 70%),
+        var(--dz-surface-2);
+}
+
+.dzt-stage--in > * {
+    animation: dztStageIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes dztStageIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+}
+
+/* ── Copy ──────────────────────────────────────────────────────── */
+
+.dzt-copy {
+    padding: 26px 32px 4px;
+}
+
+.dzt-title {
+    font-size: 27px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    color: var(--dz-text);
+}
+
+.dzt-body {
+    margin-top: 10px !important;
+    max-width: 62ch;
+    font-size: 15px;
+    line-height: 1.62;
+    color: var(--dz-text-soft);
+}
+
+/* ── Foot: rail + navigation ───────────────────────────────────── */
+
+.dzt-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 22px 32px 24px;
+}
+
+.dzt-rail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+/* The device card's icon cell, at rail size. Unvisited stops are the
+   plain frame — the same thing an off device shows on the dashboard. */
+.dzt-stop {
+    --dzt-tint: 78, 154, 241;
+    width: 34px;
+    height: 34px;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+    background: rgba(var(--dz-border-rgb), 0.5);
+    color: var(--dz-text-faint);
+    font-size: 13px;
+    transition: background 0.25s, color 0.25s, box-shadow 0.25s, transform 0.15s;
+}
+
+.dzt-stop--lit {
+    background: rgba(var(--dzt-tint), 0.16);
+    box-shadow: inset 0 0 0 1px rgba(var(--dzt-tint), 0.34);
+    color: rgb(var(--dzt-tint));
+}
+
+.dzt-stop--here {
+    background: rgba(var(--dzt-tint), 0.26);
+    box-shadow: inset 0 0 0 1px rgba(var(--dzt-tint), 0.6),
+                0 0 16px rgba(var(--dzt-tint), 0.3);
+}
+
+.dzt-stop:hover        { transform: translateY(-2px); }
+.dzt-stop:focus-visible { outline: 2px solid rgb(var(--dzt-tint)); outline-offset: 2px; }
+
+.dzt-nav {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* Ink, not white. Two of the six chapter hues are pale enough that white
+   label text drops under 2:1 against them; the theme's deepest surface
+   clears 7:1 on all six, in both modes, because the hue is a fixed
+   chapter colour rather than the user's accent. */
+.dzt-btn {
+    padding: 9px 18px !important;
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 600;
+    background: rgb(var(--dzt-hue));
+    color: #14161d;
+    transition: filter 0.15s, opacity 0.15s, background 0.4s ease;
+}
+
+.dzt-btn:hover { filter: brightness(1.1); }
+.dzt-btn:focus-visible { outline: 2px solid var(--dz-text); outline-offset: 2px; }
+
+.dzt-btn--quiet {
+    background: transparent;
+    color: var(--dz-text-soft);
+    box-shadow: inset 0 0 0 1px var(--dz-border);
+}
+.dzt-btn--quiet:hover  { background: var(--dz-surface-2); color: var(--dz-text); filter: none; }
+.dzt-btn--quiet[disabled] { opacity: 0.35; cursor: default; }
+.dzt-btn--quiet[disabled]:hover { background: transparent; color: var(--dz-text-soft); }
+
+/* ══ Stage components ═════════════════════════════════════════════
+   Miniatures of the real thing: same surfaces, same radii, same icon
+   frame. Anything that only exists in the tour is built from the same
+   tokens so it cannot drift from the dashboard's look.
+   ═══════════════════════════════════════════════════════════════ */
+
+.dzt-grid {
+    display: grid;
+    gap: 12px;
+}
+.dzt-grid--2 { grid-template-columns: repeat(2, 150px); }
+.dzt-grid--3 { grid-template-columns: repeat(3, 148px); }
+.dzt-grid--4 { grid-template-columns: repeat(4, 130px); }
+
+.dzt-card {
+    --dzt-tint: 78, 154, 241;
+    position: relative;
+    padding: 12px 14px;
+    background: var(--dz-surface);
+    border: 1px solid var(--dz-border);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+    text-align: left;
+}
+
+body.dz-light .dzt-card { box-shadow: 0 2px 8px rgba(24, 28, 40, 0.08); }
+
+.dzt-card--wide { width: 260px; }
+.dzt-card--mini { padding: 10px; }
+.dzt-card--mini .dzt-card-value { font-size: 13px; }
+
+.dzt-card-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--dz-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dzt-card-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 9px;
+}
+
+.dzt-card-value {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--dz-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dzt-card-foot {
+    margin-top: 9px;
+    padding-top: 7px;
+    border-top: 1px solid var(--dz-border);
+    font-size: 10.5px;
+    color: var(--dz-text-faint);
+}
+
+/* The icon frame, lifted from the card's icon cell so the two read as
+   one component. Off is the plain frame on purpose — it is what makes
+   "switched off" legible across a grid. */
+/* No --dzt-tint declaration here on purpose: the frame takes the card's.
+   Declaring a default on this rule would beat the inherited value and
+   every device in the tour would light up the same blue. The fallback
+   lives in the var() calls instead, where it only applies if nothing up
+   the tree set one. */
+.dzt-frame {
+    position: relative;
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(var(--dz-accent-rgb), 0.08);
+    color: var(--dz-text-muted);
+    font-size: 15px;
+    transition: background 0.25s, box-shadow 0.25s, color 0.25s;
+}
+
+.dzt-frame--lit {
+    background: rgba(var(--dzt-tint, var(--dz-accent-rgb)), 0.16);
+    box-shadow: inset 0 0 0 1px rgba(var(--dzt-tint, var(--dz-accent-rgb)), 0.34);
+    color: rgb(var(--dzt-tint, var(--dz-accent-rgb)));
+}
+
+.dzt-frame--xl {
+    width: 74px;
+    height: 74px;
+    border-radius: 18px;
+    font-size: 32px;
+}
+
+.dzt-frame--swap i { animation: dztSwap 0.34s cubic-bezier(0.22, 1, 0.36, 1); }
+
+@keyframes dztSwap {
+    from { opacity: 0; transform: scale(0.72) rotate(-12deg); }
+    to   { opacity: 1; transform: none; }
+}
+
+/* The hold fill, matching the real gesture in cards.css — same circle,
+   same duration, so the tour is not describing a different thing. */
+.dzt-frame--holding::after,
+.dzt-frame--fired::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 160%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: rgb(var(--dzt-tint, var(--dz-accent-rgb)));
+    pointer-events: none;
+}
+.dzt-frame--holding::after { animation: dztHoldFill 480ms linear forwards; }
+.dzt-frame--fired::after   { animation: dztHoldFired 420ms ease-out forwards; }
+
+@keyframes dztHoldFill  { from { transform: scale(0); opacity: 0.55; }
+                          to   { transform: scale(1); opacity: 0.30; } }
+@keyframes dztHoldFired { from { transform: scale(1);    opacity: 0.65; }
+                          to   { transform: scale(1.35); opacity: 0; } }
+
+/* ── Chapter: hold to switch ───────────────────────────────────── */
+
+/* Fixed width so the hand's travel can be a known distance rather than
+   a guess against whatever the card's text happens to measure. */
+.dzt-hold-stage { position: relative; width: 200px; }
+.dzt-hold-stage .dzt-card { width: 100%; }
+
+.dzt-hand {
+    position: absolute;
+    left: 150px;
+    top: 86px;
+    font-size: 26px;
+    color: var(--dz-text-soft);
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
+    transition: left 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+                top 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+}
+
+/* Onto the frame at the card's left, which is where the gesture happens. */
+.dzt-hand--down {
+    left: 22px;
+    top: 44px;
+    transform: scale(0.92);
+}
+
+/* ── Chapter: cards at a glance ────────────────────────────────── */
+
+.dzt-annotated {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.dzt-annotation {
+    font-size: 11px;
+    color: var(--dz-text-muted);
+    padding-left: 2px;
+}
+
+.dzt-card--accent { border-top: 2px solid var(--dzt-accent-edge, rgb(var(--dzt-tint))); }
+
+.dzt-card--stale::before {
+    content: '';
+    position: absolute;
+    top: 9px;
+    right: 9px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgb(224, 85, 85);
+    animation: dztStale 2s ease-in-out infinite;
+}
+
+@keyframes dztStale {
+    0%, 100% { opacity: 0.35; transform: scale(0.85); }
+    50%      { opacity: 1;    transform: scale(1); }
+}
+
+.dzt-card--flash {
+    animation: dztFlash 0.7s ease-out;
+}
+
+@keyframes dztFlash {
+    0%   { box-shadow: 0 0 0 0 rgba(var(--dzt-tint), 0.55); }
+    100% { box-shadow: 0 0 0 12px rgba(var(--dzt-tint), 0); }
+}
+
+.dzt-card--filtered {
+    opacity: 0.18;
+    filter: saturate(0.2);
+    transition: opacity 0.3s, filter 0.3s;
+}
+
+/* ── Chapter: keys ─────────────────────────────────────────────── */
+
+.dzt-keys {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    max-width: 540px;
+}
+
+/* The numbers are one system and the letters are two others, so the row
+   breaks where the meaning does rather than wherever it runs out of
+   width. */
+.dzt-key--split { margin-left: 14px; }
+
+.dzt-key {
+    width: 38px;
+    height: 40px;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: var(--dz-surface);
+    color: var(--dz-text-soft);
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: inset 0 0 0 1px var(--dz-border), 0 2px 0 var(--dz-border);
+    transition: transform 0.12s, box-shadow 0.12s, color 0.15s, background 0.15s;
+}
+
+.dzt-key--on {
+    background: rgba(var(--dzt-hue), 0.16);
+    color: rgb(var(--dzt-hue));
+    box-shadow: inset 0 0 0 1px rgba(var(--dzt-hue), 0.5);
+    transform: translateY(2px);
+}
+
+.dzt-keys-caption {
+    height: 18px;
+    font-size: 13px;
+    color: var(--dz-text-soft);
+}
+
+/* ── Chapter: live updates ─────────────────────────────────────── */
+
+.dzt-live {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 26px;
+    padding: 8px 0;
+}
+
+.dzt-bell {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: var(--dz-surface);
+    box-shadow: inset 0 0 0 1px var(--dz-border);
+    color: var(--dz-text-soft);
+    font-size: 15px;
+}
+
+.dzt-bell--ring i { animation: dztRing 0.55s ease; transform-origin: 50% 15%; }
+
+@keyframes dztRing {
+    0%, 100% { transform: rotate(0); }
+    20%      { transform: rotate(14deg); }
+    45%      { transform: rotate(-11deg); }
+    70%      { transform: rotate(6deg); }
+}
+
+.dzt-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border-radius: 9px;
+    background: rgb(224, 85, 85);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dzt-toast {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 11px;
+    background: var(--dz-surface);
+    box-shadow: inset 0 0 0 1px var(--dz-border), 0 12px 34px rgba(0, 0, 0, 0.4);
+    color: var(--dz-text-soft);
+    font-size: 12.5px;
+    opacity: 0;
+    transform: translateX(22px);
+    transition: opacity 0.3s, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dzt-toast--in { opacity: 1; transform: none; }
+
+.dzt-toast i { color: rgb(240, 168, 50); }
+.dzt-toast span { display: flex; flex-direction: column; line-height: 1.35; }
+.dzt-toast strong { color: var(--dz-text); font-weight: 600; }
+.dzt-toast em { font-style: normal; color: var(--dz-text-muted); font-size: 11.5px; }
+
+/* ── Chapter: rooms ────────────────────────────────────────────── */
+
+.dzt-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    justify-content: center;
+}
+
+.dzt-pill {
+    padding: 6px 13px !important;
+    border-radius: 20px;
+    font-size: 12px;
+    background: var(--dz-surface);
+    color: var(--dz-text-soft);
+    box-shadow: inset 0 0 0 1px var(--dz-border);
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.dzt-pill--on {
+    background: rgba(var(--dzt-hue), 0.16);
+    color: rgb(var(--dzt-hue));
+    box-shadow: inset 0 0 0 1px rgba(var(--dzt-hue), 0.45);
+}
+
+/* ── Chapter: command palette ──────────────────────────────────────
+   The box, header, input and list wear the palette's own rules — see
+   pages.css, where these class names sit alongside the #dz-cmd-* ids.
+   Only the two things below are the tour's own. */
+
+/* The real palette rebuilds its list on every keystroke, so a row that
+   stops matching is simply gone. */
+.dz-cmd-item--gone { display: none; }
+
+/* The sample's input is never focused (focus belongs to the tour's own
+   controls), so it has to look filled rather than active. */
+.dzt-cmd-input { cursor: default; }
+
+/* ── Chapter: control dialogs ──────────────────────────────────────
+   The samples are the real popups at their real 300px width, scaled to
+   fit three across the stage. Scaling rather than restyling is the
+   point: every proportion inside stays exactly as shipped. */
+
+.dzt-dialogs {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 16px;
+}
+
+.dzt-dialog-slot {
+    position: relative;
+    /* The colour popup carries 20px of side padding on top of its 300px,
+       so the widest sample is 340 × 0.55 ≈ 187. */
+    width: 190px;
+    height: 262px;
+    flex-shrink: 0;
+}
+
+/* Has to outrank .pop.ng-popup--modal.dzt-dialog in modals.css, which
+   clears the transform the centred-modal state sets. */
+.dzt-dialog-slot > .pop.ng-popup--modal.dzt-dialog {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    transform: scale(0.55) !important;
+    transform-origin: top left;
+}
+
+.dzt-dialog-caps {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+}
+
+.dzt-dialog-caps > * {
+    width: 190px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+/* ── Chapter: icons ────────────────────────────────────────────────
+   Three cells side by side, one per thing the Icon Studio changes.
+   Fixed widths and a reserved sub-caption line so nothing shifts as the
+   three demos cycle at their own speeds. */
+
+.dzt-studio-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 34px;
+}
+
+.dzt-studio-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 9px;
+    width: 116px;
+    text-align: center;
+}
+
+.dzt-studio-sub {
+    height: 15px;
+    color: var(--dz-text-soft);
+}
+
+.dzt-studio {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+/* ── Chapter: settings ─────────────────────────────────────────── */
+
+.dzt-panel {
+    --dzt-tint: 78, 154, 241;
+    width: 300px;
+    padding: 6px 16px 16px;
+    background: var(--dz-surface);
+    border: 1px solid var(--dz-border);
+    border-radius: 13px;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.34);
+}
+
+.dzt-panel-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--dz-border);
+    font-size: 13px;
+    color: var(--dz-text-soft);
+}
+
+.dzt-switch {
+    flex-shrink: 0;
+    position: relative;
+    width: 36px;
+    height: 20px;
+    border-radius: 11px;
+    background: var(--dz-surface-3);
+    box-shadow: inset 0 0 0 1px var(--dz-border);
+    cursor: pointer;
+    transition: background 0.25s, box-shadow 0.25s;
+}
+
+.dzt-switch::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--dz-text-muted);
+    transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), background 0.22s;
+}
+
+.dzt-switch--on {
+    background: rgba(var(--dzt-tint), 0.28);
+    box-shadow: inset 0 0 0 1px rgba(var(--dzt-tint), 0.55);
+}
+.dzt-switch--on::after { transform: translateX(16px); background: rgb(var(--dzt-tint)); }
+
+.dzt-presets { display: flex; gap: 8px; padding-top: 16px; }
+
+.dzt-preset {
+    --dzt-tint: 78, 154, 241;
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
+    background: rgb(var(--dzt-tint));
+    opacity: 0.55;
+    transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+
+.dzt-preset:hover { transform: translateY(-2px); }
+
+.dzt-preset--on {
+    opacity: 1;
+    box-shadow: 0 0 0 2px var(--dz-surface), 0 0 0 3.5px rgb(var(--dzt-tint));
+}
+
+/* ── Narrow screens ────────────────────────────────────────────── */
+
+@media (max-width: 720px) {
+    .dzt-root { padding: 12px; }
+
+    .dzt-stage   { min-height: 210px; padding: 40px 18px 24px; }
+    .dzt-copy    { padding: 20px 20px 4px; }
+    .dzt-title   { font-size: 21px; }
+    .dzt-body    { font-size: 14px; }
+
+    .dzt-foot {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+        padding: 18px 20px 20px;
+    }
+    .dzt-rail { justify-content: center; }
+    .dzt-nav  { justify-content: flex-end; }
+
+    .dzt-grid--3 { grid-template-columns: repeat(2, 130px); }
+    .dzt-grid--4 { grid-template-columns: repeat(2, 118px); }
+
+    /* One dialog at a time rather than three shrunk past reading. */
+    .dzt-dialogs,
+    .dzt-dialog-caps { gap: 10px; }
+    .dzt-dialogs > .dzt-dialog-slot:nth-child(n+3),
+    .dzt-dialog-caps > :nth-child(n+3) { display: none; }
+
+    .dzt-panel { width: 100%; max-width: 300px; }
+}
+
+/* ── Reduced motion ────────────────────────────────────────────────
+   The looping demos are the content, so they keep running — but at a
+   pace that does not lunge, and the decorative entrances go. */
+
+@media (prefers-reduced-motion: reduce) {
+    .dzt-root,
+    .dzt-panel-shell,
+    .dzt-stage--in > * {
+        animation: none !important;
+    }
+    .dzt-hand,
+    .dzt-stop,
+    .dzt-key,
+    .dzt-preset {
+        transition: none !important;
+    }
+    .dzt-card--flash,
+    .dzt-card--stale::before,
+    .dzt-bell--ring i {
+        animation: none !important;
+    }
+    .dzt-frame--swap i { animation: none !important; }
+
+    /* Nothing here for the icon chapter's animation sample: it wears the
+       real .dz-anim-* classes, which animations.css already stops under
+       this query. A reader who has asked for less motion should see the
+       same still icon the dashboard would give them. */
+}

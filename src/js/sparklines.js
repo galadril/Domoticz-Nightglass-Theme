@@ -42,6 +42,11 @@
                '</svg>';
     }
 
+    /* The tour draws a real sparkline rather than a lookalike, so it uses
+       this generator rather than its own. Exported here so the two can
+       never disagree about what a sparkline looks like. */
+    window._dzSparklineSVG = svgSparkline;
+
     // Base path: strips the hash and trailing filename, keeps the directory
     // e.g. "http://server:8080/"        → ""
     //      "http://server/domoticz/"    → "domoticz/"

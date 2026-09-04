@@ -588,6 +588,11 @@
         showLastUpdate:     false,
         uppercaseNames:     true,
         longPressToggle:    true,
+
+        /* Set the first time the tour is dismissed. Lives in the synced
+           blob rather than localStorage so signing in on a second browser
+           does not replay it. */
+        tourSeen:           false,
         iconSize:           '100',
         enableIcons:        true,
         enableAppearance:   true,
@@ -2012,6 +2017,8 @@
             '<button type="button" class="ng-import-btn" id="ngImportBtn" title="Import settings from JSON file">' +
             '<i class="fa-solid fa-file-import"></i> Import</button>' +
             '<input type="file" id="ngImportFile" accept=".json" style="display:none">' +
+            '<button type="button" class="ng-tour-btn" id="ngTourBtn" title="Replay the Nightglass feature tour">' +
+            '<i class="fa-solid fa-compass"></i> Take the tour</button>' +
             (_useNewApi
                 ? '<button type="button" class="ng-save-btn" id="ngSaveBtn" title="Save settings to the Domoticz database">' +
                   '<i class="fa-solid fa-floppy-disk"></i> Save to Domoticz</button>' +
@@ -4091,6 +4098,15 @@
         }
 
         // Export button
+        /* The tour shows itself once and then never again, so this is the
+           only way back to it. */
+        var tourBtn = container.querySelector('#ngTourBtn');
+        if (tourBtn) {
+            tourBtn.addEventListener('click', function () {
+                if (window.dzTour) window.dzTour.start();
+            });
+        }
+
         var exportBtn = container.querySelector('#ngExportBtn');
         if (exportBtn) {
             exportBtn.addEventListener('click', function () {
