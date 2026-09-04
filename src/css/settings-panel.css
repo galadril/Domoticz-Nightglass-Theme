@@ -553,7 +553,8 @@
 }
 
 .ng-export-btn,
-.ng-import-btn {
+.ng-import-btn,
+.ng-tour-btn {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -569,14 +570,16 @@
 }
 
 .ng-export-btn:hover,
-.ng-import-btn:hover {
+.ng-import-btn:hover,
+.ng-tour-btn:hover {
     background: var(--dz-surface-3);
     border-color: var(--dz-accent);
     color: var(--dz-text);
 }
 
 .ng-export-btn i,
-.ng-import-btn i {
+.ng-import-btn i,
+.ng-tour-btn i {
     font-size: 0.9em;
     opacity: 0.7;
 }

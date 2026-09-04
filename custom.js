@@ -46,6 +46,7 @@
         'src/js/room-filter.js',    /* Feature 14: room filter pill-bar */
         'src/js/events-editor.js',  /* Events editor: language classes + glyphicon swap */
         'src/js/dd-enhance.js',     /* Dynamic Dashboard: glass cards, animations, context menu, fullscreen */
+        'src/js/tour.js',           /* First-run feature tour — last, so every global it points at exists */
     ];
 
     modules.forEach(function (m) {
