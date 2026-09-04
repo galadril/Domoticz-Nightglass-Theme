@@ -275,89 +275,6 @@
         return d.toLocaleDateString(locale, { month: 'short', day: 'numeric' }) + ', ' + time;
     }
 
-    /* ── Power toggle for colour lights (#237) ────────────────────────
-       A plain switch toggles when you click its card icon. A colour light
-       does not: dzLightWidget sends isDimmer() && isRGB() straight to
-       ShowRGBWPopup, so the only way to switch one off is to open the
-       picker and press a preset. Since most people set a colour once and
-       then just switch the light, that is a lot of clicks for the common
-       case — Hue puts the toggle on the card and keeps the picker for
-       detail. This does the same.
-
-       Domoticz marks these cards for us: the dim slider carries
-       data-isled, plus the idx and protected flag we need.
-       ─────────────────────────────────────────────────────────────── */
-
-    /* Read the state the icon layer already publishes rather than parsing
-       status text, which is localised and varies by switch type. Returns
-       null when the card reports nothing, so the button can stay neutral
-       instead of guessing. */
-    function cardIsOn(card) {
-        var tagged = card.querySelector('[data-dz-state]');
-        if (tagged) return tagged.getAttribute('data-dz-state') === 'on';
-        var native = card.querySelector('.dz-icon--on, .dz-icon--off');
-        if (native) return native.classList.contains('dz-icon--on');
-        return null;
-    }
-
-    function syncPower(card, btn) {
-        var on = cardIsOn(card);
-        btn.classList.toggle('dz-power--on', on === true);
-        btn.title = (on === false) ? 'Switch on' : 'Switch off';
-    }
-
-    function addPowerToggle(card, footer) {
-        var slider = card.querySelector('.dimslider[data-isled="true"]');
-        if (!slider) return;
-        var idx = slider.getAttribute('data-idx');
-        if (!idx) return;
-
-        /* Where the button goes depends on the card's shape (issue #260).
-           Tab views carry an options row — the favourite star plus the
-           Log/Edit/Timers chips — which the theme pins to the bottom of the
-           card with position:absolute, directly over the left of the footer
-           where this button used to sit. Two things went wrong there: the
-           star landed on top of the button, and the button is taller than
-           the timestamp the card's bottom padding was sized for, so it also
-           hung out past the card's edge. That row is already a flex line, so
-           the button joins it and lands beside the controls it belongs with.
-           Dashboard cards have no options row and keep it in the footer. */
-        var host = card.querySelector('td.options') || footer;
-
-        var btn = card.querySelector('.dz-power');
-        /* A card can change shape under us — the same widget is re-templated
-           between dashboard and tab view — so a button parked in the old
-           place is moved rather than left behind. */
-        if (btn && btn.parentNode !== host) {
-            btn.parentNode.removeChild(btn);
-            btn = null;
-        }
-        if (!btn) {
-            btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'dz-power';
-            btn.innerHTML = '<i class="fa-solid fa-power-off"></i>';
-            btn.addEventListener('click', function (e) {
-                /* The card and its icon both carry click handlers of their
-                   own; a press here must not open the colour picker. */
-                e.preventDefault();
-                e.stopPropagation();
-                var host = btn.closest('.item');
-                if (!host || typeof window.SwitchLight !== 'function') return;
-                var on = cardIsOn(host);
-                /* Unknown state falls back to On: a light you cannot read is
-                   more likely off, and On is the recoverable guess. */
-                window.SwitchLight(btn.dataset.idx, on === true ? 'Off' : 'On',
-                                   btn.dataset.protectedFlag === 'true');
-            });
-            host.insertBefore(btn, host.firstChild);
-        }
-
-        btn.dataset.idx = idx;
-        btn.dataset.protectedFlag = slider.getAttribute('data-isprotected') || '';
-        syncPower(card, btn);
-    }
-
     /* Register with the icon-replacement burst so footer injection lands
        in the same batch as icon replacement, reducing layout reflows.  */
     window._dzExtraProcessors = window._dzExtraProcessors || [];
@@ -389,8 +306,6 @@
             }
 
             var luSpan = footer.querySelector('.dz-time');
-
-            addPowerToggle(card, footer);
 
             /* Update timestamp */
             if (lu) {
@@ -479,6 +394,195 @@ document.addEventListener('DOMContentLoaded', function () {
     var bodyObserver = new MutationObserver(function() { observeFavoritesTabContent(); });
     bodyObserver.observe(document.body, { childList: true, subtree: true });
 });
+})();
+
+
+/* ── Hold the icon frame to switch (#237) ─────────────────────────────
+   Clicking a card icon does not always switch the device. dzLightWidget
+   sends isDimmer() && isRGB() straight to ShowRGBWPopup, so a colour
+   light — the one kind of device people own several of and switch most —
+   can only be turned off by opening the picker and finding a preset.
+   The card carried a small power button for that, which solved the
+   colour lights and left every other card's icon meaning something
+   different from its neighbour's.
+
+   Holding the icon frame switches the device instead, on every card that
+   has a plain on/off to give. Nothing is added to the card, the gesture
+   is the same everywhere, and the click keeps doing what Domoticz
+   intends — picker on a colour light, toggle on a plain switch.
+   ──────────────────────────────────────────────────────────────────── */
+
+(function () {
+    'use strict';
+
+    var HOLD_MS  = 480;   /* long enough not to fire on an impatient click */
+    var MOVE_TOL = 10;    /* px of drift before the press reads as a drag  */
+
+    /* Device Types whose widget is a switch at all. Everything else —
+       Temperature, P1, General, Scene, Group — either has no on/off or
+       renders its own pair of action buttons. Mirrors the list icons.js
+       uses to decide the optimistic colour swap. */
+    var SWITCH_TYPES = ['Light/Switch', 'Lighting 1', 'Lighting 2',
+                        'Lighting 5', 'Lighting 6', 'Color Switch',
+                        'Home Confort'];
+
+    /* SwitchTypes where On and Off are both real commands. Deliberately
+       narrow: a Push On Button only has one direction, a Selector's off
+       is a level, a Door Lock inverts, blinds open and close rather than
+       switch, and the sensors are read-only. Those all keep their click
+       and get no hold. */
+    var HOLD_SWITCHTYPES = ['On/Off', 'Dimmer'];
+
+    /* dzLightWidget's own isActive(), not a match on 'On': Status is a
+       localised, per-type string and a dimmer at 40% reads 'Set Level:
+       40 %'. Getting this wrong sends the light the command it is
+       already obeying. */
+    var ACTIVE = ['On', 'Chime', 'Group On', 'All On', 'Panic', 'Mixed'];
+
+    function isActive(d) {
+        var s = d.Status || '';
+        return ACTIVE.indexOf(s) >= 0 ||
+               s.indexOf('Set ')      === 0 ||
+               s.indexOf('NightMode') === 0 ||
+               s.indexOf('Disco ')    === 0;
+    }
+
+    function enabled() {
+        var s = window.dzNightglassSettings;
+        /* Default on: the panel module publishes stored values a moment
+           after load, and a gesture that misses the first cards would
+           read as broken rather than as off. */
+        return !s || s.get('longPressToggle') !== false;
+    }
+
+    function iconCell(node) {
+        if (!node || !node.closest) return null;
+        var td = node.closest('td#img, td#img1, td#img2, td#img3');
+        return (td && td.closest('table[id^="itemtable"]')) ? td : null;
+    }
+
+    /* The command a hold on this cell should send, or null when the cell
+       has no device or the device has no plain on/off. */
+    function holdCommand(td) {
+        var read = window._dzDeviceFromNode;
+        var d = (typeof read === 'function') ? read(td) : null;
+        if (!d || !d.idx) return null;
+        if (SWITCH_TYPES.indexOf(d.Type) < 0) return null;
+        if (HOLD_SWITCHTYPES.indexOf(d.SwitchType) < 0) return null;
+        return { device: d, cmd: isActive(d) ? 'Off' : 'On' };
+    }
+
+    /* Paint the new state before the round trip. Same attribute and
+       colours icons.js writes on a direct-toggle click, so the cell tint
+       and the state flash follow from it exactly as they would have. */
+    function showPending(td, cmd) {
+        var icon = td.querySelector('i[data-dz-color-on]');
+        if (!icon) return;
+        var on = cmd === 'On';
+        icon.setAttribute('data-dz-state', on ? 'on' : 'off');
+        var c = icon.getAttribute(on ? 'data-dz-color-on' : 'data-dz-color-off');
+        if (c) icon.style.color = c;
+    }
+
+    var press   = null;   /* the hold in flight */
+    var swallow = null;   /* { td, at } — the click a fired hold still owes */
+
+    function clearHold(td) {
+        td.classList.remove('dz-hold');
+        td.style.removeProperty('--dz-hold-ms');
+    }
+
+    function fire() {
+        if (!press) return;
+        var p = press;
+        p.fired = true;
+
+        var target = holdCommand(p.td);
+        clearHold(p.td);
+        if (!target || typeof window.SwitchLight !== 'function') return;
+
+        p.td.classList.add('dz-hold-fired');
+        setTimeout(function () { p.td.classList.remove('dz-hold-fired'); }, 450);
+
+        /* On a phone the screen is under the finger, so the confirmation
+           has to be something other than a pixel. Ignored where the API
+           is absent or the device has no motor. */
+        if (navigator.vibrate) { try { navigator.vibrate(18); } catch (e) {} }
+
+        showPending(p.td, target.cmd);
+        window.ngLog('[Cards]', 'hold to switch:', target.device.Name || target.device.idx,
+                     '→', target.cmd);
+        /* SwitchLight, not a direct API call: it is what carries the
+           permission check and the password prompt on a protected
+           device. */
+        window.SwitchLight(target.device.idx, target.cmd, !!target.device.Protected);
+    }
+
+    function cancel() {
+        if (!press) return;
+        clearTimeout(press.timer);
+        clearHold(press.td);
+        press = null;
+    }
+
+    document.addEventListener('pointerdown', function (e) {
+        cancel();
+        /* Any click a previous hold was owed has already been and gone by
+           now — a press always dispatches its click before the next one
+           starts. Dropping it here means a hold whose click never arrived
+           cannot sit around and eat a later, unrelated one. */
+        swallow = null;
+        if (e.button > 0) return;              /* right / middle button */
+        if (!enabled()) return;
+
+        var td = iconCell(e.target);
+        if (!td) return;
+        /* Resolved up front so a device with nothing to switch shows no
+           fill — the cue only appears where the hold will do something. */
+        if (!holdCommand(td)) return;
+
+        press = { td: td, x: e.clientX, y: e.clientY, fired: false, timer: null };
+        td.style.setProperty('--dz-hold-ms', HOLD_MS + 'ms');
+        td.classList.add('dz-hold');
+        press.timer = setTimeout(fire, HOLD_MS);
+    }, true);
+
+    document.addEventListener('pointermove', function (e) {
+        if (!press || press.fired) return;
+        if (Math.abs(e.clientX - press.x) > MOVE_TOL ||
+            Math.abs(e.clientY - press.y) > MOVE_TOL) cancel();
+    }, true);
+
+    document.addEventListener('pointerup', function () {
+        if (press && press.fired) swallow = { td: press.td, at: Date.now() };
+        cancel();
+    }, true);
+
+    /* A cancelled pointer (a scroll took over, the page lost the finger)
+       leaves no click behind, so nothing is owed. */
+    document.addEventListener('pointercancel', cancel, true);
+
+    /* Releasing a hold still produces a click, and Domoticz's handler sits
+       on it — it would open the picker over the light that just switched,
+       or toggle a plain switch straight back. Capture phase, so the event
+       is stopped before it can reach the icon at all. Matched on both the
+       cell and a deadline: a swallow left over from a click that never
+       arrived must not eat an unrelated one later. */
+    document.addEventListener('click', function (e) {
+        if (!swallow) return;
+        if (Date.now() - swallow.at > 1000) { swallow = null; return; }
+        if (!swallow.td.contains(e.target)) return;
+        swallow = null;
+        e.preventDefault();
+        e.stopPropagation();
+    }, true);
+
+    /* Touch platforms answer a long press with the selection callout. The
+       CSS turns it off; this covers the desktop right-click that would
+       otherwise abandon a hold halfway through. */
+    document.addEventListener('contextmenu', function (e) {
+        if (press && press.td.contains(e.target)) e.preventDefault();
+    }, true);
 })();
 
 
@@ -1130,17 +1234,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     el = el.parentElement;
                 }
                 if (!card) return;
-
-                /* This attribute is exactly what the power button reads, so
-                   keep it in step here rather than waiting for the next burst.
-                   Done whether or not a dialog is up: it is a colour change,
-                   not an animation. Inlined because the button's own helper
-                   lives in the footer IIFE, out of scope here. */
-                var powerBtn = card.querySelector('.dz-power');
-                if (powerBtn) {
-                    powerBtn.classList.toggle('dz-power--on', newState === 'on');
-                    powerBtn.title = (newState === 'on') ? 'Switch off' : 'Switch on';
-                }
 
                 /* A dialog is covering the cards. Flashing one behind a blurred
                    backdrop is not just invisible — backdrop-filter re-samples

@@ -871,6 +871,24 @@
         (timers) still stage rather than send.
     </p>
 
+    <h3>Hold to Switch</h3>
+    <p>
+        A click on a card icon does not always switch the device. Domoticz sends colour lights
+        straight to the picker, so turning one off meant opening it and finding a preset.
+        <strong>Press and hold the icon frame</strong> instead — about half a second — and the
+        device switches on or off. A fill grows out of the centre of the frame while you hold,
+        so you can see how much longer to keep pressing, and the frame blooms once the command
+        is away. On a phone it buzzes too.
+    </p>
+    <p>
+        The gesture is offered on on/off switches, dimmers and colour lights — anything with a
+        plain on and off. Devices without one stay as they are: a push button, a selector, a
+        door lock, blinds and read-only sensors show no fill and keep their click. The click
+        itself is untouched everywhere, so a colour light still opens the picker on a tap and
+        protected devices still prompt for their passcode. Turn it off under
+        <em>Settings → Nightglass → Appearance → Hold to Switch</em>.
+    </p>
+
     <h3>The Device Popup</h3>
     <ul>
         <li><strong>Colour wheel</strong> — canvas hue/saturation wheel with a live preview swatch</li>
@@ -1646,6 +1664,13 @@
         <div>
             <div class="setting-name">Uppercase Device Names</div>
             <div class="setting-desc">Force device names to UPPERCASE on cards.</div>
+        </div>
+        <div class="setting-default">on</div>
+    </div>
+    <div class="setting-row">
+        <div>
+            <div class="setting-name">Hold to Switch</div>
+            <div class="setting-desc">Press and hold a card's icon to switch the device on or off. Applies to on/off switches and dimmers, including colour lights — where a click opens the picker instead.</div>
         </div>
         <div class="setting-default">on</div>
     </div>

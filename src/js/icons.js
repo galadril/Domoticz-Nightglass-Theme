@@ -434,6 +434,13 @@
         return null;
     }
 
+    /* The scope walk above is the only place in the theme that reaches a
+       device object from a DOM node, and the hold-to-switch gesture needs
+       the same thing — Status, Protected and SwitchType for the node the
+       finger is on. Exported rather than copied so both stay honest about
+       the isolate-scope quirk. */
+    window._dzDeviceFromNode = getDeviceFromIcon;
+
     /* Resolve a device IDX for an icon without relying on Angular scope.
        Domoticz stamps the idx on the widget DOM: the card is
        <div class="item itemBlock" id="{{idx}}"> and the name cell carries

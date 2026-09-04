@@ -535,64 +535,74 @@ dzweatherwidget .dz-card-footer {
     margin-top: -5px !important;
 }
 
-/* ── Power toggle on colour-light cards (#237) ────────────────────
-   Two homes, chosen in card-features.js: the options row on tab views
-   (beside the star and the Log/Edit chips), or the left of the footer on
-   dashboard cards, which have no options row — there .dz-time is
-   absolutely positioned at the right, so the two never meet. Off is the
-   resting look — muted and quiet — and on lights up in the accent, so a
-   glance across the dashboard reads which colour lights are running.
+/* ── Hold the icon frame to switch (#237) ─────────────────────────
+   A press and hold on the icon cell switches the device on or off; the
+   fill that grows out of the centre is how long you still have to hold.
+   card-features.js drives the classes — .dz-hold while the press is
+   counting down, .dz-hold-fired for the flash once the command goes.
+
+   The cell is position:absolute with overflow:hidden (section 6d), so a
+   circle scaled out of the middle is clipped to the rounded frame for
+   free, and no rule here needs to fight the ID selectors above: nothing
+   else styles these pseudo-elements.
    ──────────────────────────────────────────────────────────────── */
 
-.dz-power {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    padding: 0 !important;
-    border: 1px solid var(--dz-border) !important;
-    border-radius: 50% !important;
-    background: var(--dz-surface-3) !important;
-    color: var(--dz-text-faint) !important;
-    font-size: 0.66rem;
-    line-height: 1;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: color 0.15s, border-color 0.15s, background 0.15s, transform 0.12s;
+body table[id^="itemtable"] tr td.dz-hold::after,
+body table[id^="itemtable"] tr td.dz-hold-fired::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 160%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: rgb(var(--dz-icon-tint, var(--dz-accent-rgb)));
+    pointer-events: none;
 }
 
-.dz-power:hover {
-    color: var(--dz-text) !important;
-    border-color: var(--dz-accent) !important;
-    transform: scale(1.12);
+/* Held: grows from nothing to full frame over the hold time. The
+   duration is published by the JS so the two can never drift apart. */
+body table[id^="itemtable"] tr td.dz-hold::after {
+    animation: dzHoldFill var(--dz-hold-ms, 480ms) linear forwards;
 }
 
-.dz-power--on {
-    color: var(--dz-accent) !important;
-    border-color: rgba(var(--dz-accent-rgb), 0.55) !important;
-    background: rgba(var(--dz-accent-rgb), 0.14) !important;
+@keyframes dzHoldFill {
+    from { transform: scale(0);   opacity: 0.55; }
+    to   { transform: scale(1);   opacity: 0.30; }
 }
 
-.dz-power--on:hover {
-    color: var(--dz-accent-light) !important;
+/* Fired: the command is away — one bloom outward, then out of the way so
+   the icon's own colour change is what remains. */
+body table[id^="itemtable"] tr td.dz-hold-fired::after {
+    animation: dzHoldFired 420ms ease-out forwards;
 }
 
-/* In the options row it is one control among several, so it takes the
-   chips' height and leans on the row's own flex gap for spacing. */
-body table[id^="itemtable"] tr td.options .dz-power {
-    width: 20px;
-    height: 20px;
-    margin-right: 2px;
+@keyframes dzHoldFired {
+    from { transform: scale(1);    opacity: 0.65; }
+    to   { transform: scale(1.35); opacity: 0;    }
 }
 
-/* The card's own hover lift already moves this; don't double it. */
+/* Long-pressing over a glyph is a gesture, not a text selection — and on
+   touch the callout menu would interrupt it halfway through. */
+body table[id^="itemtable"] tr td#img,
+body table[id^="itemtable"] tr td#img1,
+body table[id^="itemtable"] tr td#img2,
+body table[id^="itemtable"] tr td#img3 {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+}
+
+/* The fill is a progress readout, so it still has to say how far along
+   the press is — it steps rather than sweeps instead of vanishing. */
 @media (prefers-reduced-motion: reduce) {
-    .dz-power {
-        transition: none;
+    body table[id^="itemtable"] tr td.dz-hold::after {
+        animation-timing-function: steps(3, end);
     }
-    .dz-power:hover {
-        transform: none;
+    body table[id^="itemtable"] tr td.dz-hold-fired::after {
+        animation: none;
+        opacity: 0;
     }
 }
 

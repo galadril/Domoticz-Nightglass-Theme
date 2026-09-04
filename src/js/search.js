@@ -587,6 +587,7 @@
         smoothScrolling:    true,
         showLastUpdate:     false,
         uppercaseNames:     true,
+        longPressToggle:    true,
         iconSize:           '100',
         enableIcons:        true,
         enableAppearance:   true,
@@ -1916,6 +1917,7 @@
             slider('iconSize', 'Device Icon Size', 60, 150, 5, '%', 'Scale device icons on cards') +
             toggle('showLastUpdate', 'Show Last Update', 'Show the formatted timestamp footer on device cards') +
             toggle('uppercaseNames', 'Uppercase Device Names', 'Force device names to UPPERCASE on cards') +
+            toggle('longPressToggle', 'Hold to Switch', 'Press and hold a card\'s icon to switch the device on or off — works on colour lights, where a click opens the picker') +
 
             '</div>' +
 
