@@ -631,6 +631,26 @@
     animation: ng-overlay-in 0.2s ease;
 }
 
+/* The tour's samples borrow .pop.ng-popup--modal for its chrome but must
+   not be torn out of the flow and pinned to the middle of the screen —
+   they sit in a row on the tour's stage. */
+.pop.ng-popup--modal.dzt-dialog {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    transform: none !important;
+    z-index: auto !important;
+    /* Outranks the narrow-screen rule below, which would otherwise stretch
+       a sample to the viewport; the tour scales these down instead. */
+    width: 300px !important;
+    max-height: none;
+    overflow: visible;
+    animation: none;
+    /* A sample is a picture of a control, not the control: nothing in it
+       may be pressed, and its preset buttons would command a real light. */
+    pointer-events: none;
+}
+
 /* Centered modal state applied by ngOpenPopup() */
 .pop.ng-popup--modal {
     position: fixed !important;
@@ -660,7 +680,10 @@
     }
 }
 
-/* Shared base reset for all redesigned popups */
+/* Shared base reset for all redesigned popups.
+   .dzt-dialog is the tour's static sample of one of these. It joins the
+   selector rather than copying the declarations so the tour cannot show
+   a dialog that no longer looks like the real one. */
 #setpoint_popup,
 #thermostat3_popup,
 #itho_popup,
@@ -668,7 +691,8 @@
 #lucci_dc_popup,
 #falmec_popup,
 #rfy_popup,
-#rgbw_popup {
+#rgbw_popup,
+.dzt-dialog {
     background: var(--dz-surface) !important;
     border: 1px solid var(--dz-border) !important;
     border-radius: 20px !important;
@@ -717,7 +741,8 @@
 
 /* ── 9h-1. Setpoint Arc Dial ──────────────────────────────────── */
 
-#setpoint_popup {
+#setpoint_popup,
+.dzt-dialog--setpoint {
     width: 300px !important;
 }
 
@@ -1055,7 +1080,8 @@ body.dz-light .ng-sp-track {
 /* ── 9h-5. RGBW / Hue Colour Picker Popup ─────────────────────── */
 /*  Nightglass replaces jQWCP with a canvas HSV wheel + sliders.    */
 
-#rgbw_popup {
+#rgbw_popup,
+.dzt-dialog--rgbw {
     width: 300px !important;
     padding: 0 20px 20px !important;
 }

@@ -144,6 +144,82 @@
         '</svg>';
     }
 
+    /* ── Static sample for the tour ────────────────────────────────────
+       The tour shows this dialog as it really is, so it is built from the
+       same template and painted with the same arc maths. Two things
+       differ, both deliberately:
+
+         · every id is stripped afterwards. A second #ng-sp-progress in
+           the document would collect updateArc()'s writes instead of the
+           live popup's.
+         · the range is local rather than the module's _spMin/_spMax,
+           which carry whatever the last real popup set. A sample must
+           not depend on that, and must not overwrite it either.
+       ──────────────────────────────────────────────────────────────── */
+
+    window._dzSetpointSample = function (val, actual, min, max) {
+        min = (min == null) ? 5  : min;
+        max = (max == null) ? 30 : max;
+
+        var host = document.createElement('div');
+        host.className = 'pop ng-popup--modal dzt-dialog dzt-dialog--setpoint';
+        host.innerHTML =
+            '<div class="ng-popup-title"><i class="fa-solid fa-thermometer-half"></i> Setpoint</div>' +
+            '<div class="ng-sp-actual-row">' +
+              '<span class="ng-sp-actual-label">Current</span>' +
+              '<span class="ng-sp-actual-val">' + actual + '</span>' +
+            '</div>' +
+            '<div class="ng-sp-arc-wrap">' + setpointSVG() + '</div>' +
+            '<div class="ng-sp-controls">' +
+              '<button class="ng-sp-btn"><i class="fa-solid fa-minus"></i></button>' +
+              '<div class="ng-sp-readout"></div>' +
+              '<button class="ng-sp-btn"><i class="fa-solid fa-plus"></i></button>' +
+            '</div>' +
+            '<button class="ng-sp-set-btn"><i class="fa-solid fa-check"></i> Set</button>';
+
+        var t        = Math.max(0, Math.min(1, (val - min) / (max - min || 1)));
+        var colour   = tempColor(t);
+        var sweepDeg = t * SWEEP;
+
+        var progress = host.querySelector('#ng-sp-progress');
+        progress.setAttribute('d', sweepDeg >= 2 ? arcPath(START, sweepDeg) : '');
+        progress.setAttribute('stroke', colour);
+        if (sweepDeg > 15) progress.setAttribute('filter', 'url(#ng-sp-glow)');
+
+        var thumbPt = pt(START + sweepDeg);
+        var thumb   = host.querySelector('#ng-sp-thumb');
+        thumb.setAttribute('cx', thumbPt.x);
+        thumb.setAttribute('cy', thumbPt.y);
+        thumb.setAttribute('fill', colour);
+
+        var valText = host.querySelector('#ng-sp-val-text');
+        valText.textContent = (+val).toFixed(1);
+        valText.setAttribute('fill', colour);
+
+        var readout = host.querySelector('.ng-sp-readout');
+        readout.textContent = (+val).toFixed(1);
+        readout.style.color = colour;
+
+        /* The glow and drop-shadow filters are referenced by id from
+           inside this SVG, so those two ids have to survive — made unique
+           instead of dropped. Everything else goes. */
+        var uniq = 'dzt' + Math.round(t * 1e6);
+        host.querySelectorAll('[id]').forEach(function (n) {
+            var id = n.getAttribute('id');
+            if (id === 'ng-sp-glow' || id === 'ng-sp-sh') {
+                n.setAttribute('id', id + '-' + uniq);
+            } else {
+                n.removeAttribute('id');
+            }
+        });
+        host.querySelectorAll('[filter]').forEach(function (n) {
+            n.setAttribute('filter', n.getAttribute('filter')
+                .replace(/url\(#(ng-sp-(?:glow|sh))\)/, 'url(#$1-' + uniq + ')'));
+        });
+
+        return host;
+    };
+
     /* ── Arc rendering ─────────────────────────────────────────────── */
 
     function updateArc(val) {
@@ -481,9 +557,29 @@
         });
     }
 
+    /* Whether the colour popup has been wired against the real element,
+       and whether the stand-in pass below has already run. Both live out
+       here because redesignRGBWPopup() is called again on later inits. */
+    var _rgbwLive = false;
+    var _rgbwStub = false;
+
     function redesignRGBWPopup() {
         var p = document.getElementById('rgbw_popup');
-        if (!p) return;
+
+        /* Domoticz only renders #rgbw_popup on pages that own a colour
+           light, and the tour needs this closure's builders and canvas
+           painters (_dzColourSample, below) wherever it happens to open.
+           So with nothing to redesign, run against a detached stand-in
+           purely to publish those — once, and never after the real popup
+           has been wired, or a later pass would hand the live popup's
+           globals to a node that is not in the document. */
+        if (p) {
+            _rgbwLive = true;
+        } else {
+            if (_rgbwLive || _rgbwStub) return;
+            _rgbwStub = true;
+            p = document.createElement('div');
+        }
 
         /* ── State ──────────────────────────────────────────────────── */
         var _idx     = null;
@@ -965,6 +1061,77 @@
             ctx.fill();
             ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.5; ctx.stroke();
         }
+
+        /* ── Static samples for the tour ───────────────────────────────
+           Same markup and the same canvas painters as the live popup, so
+           what the tour shows is the control itself rather than a drawing
+           of it. Made inert on the way out: the preset buttons carry
+           onclick attributes that would command a real light, and a
+           sample must never send anything. Ids go for the same reason as
+           the setpoint sample — the live popup answers to them.        */
+
+        window._dzColourSample = function (kind) {
+            var white = (kind === 'white');
+
+            var host = document.createElement('div');
+            host.className = 'pop ng-popup--modal dzt-dialog dzt-dialog--rgbw';
+            host.innerHTML = white
+                ? '<div class="ng-popup-title"><i class="fa-solid fa-lightbulb"></i> White Light</div>' +
+                  '<div class="ng-rgbw-pane">' + warmthPaneHTML('dzt-warmth') + '</div>' +
+                  '<div class="ng-rgbw-preview">' +
+                  '  <div class="ng-rgbw-swatch"></div>' +
+                  '  <input type="text" class="ng-rgbw-hex" value="2700" readonly>' +
+                  '  <span class="ng-rgbw-hex-unit">K</span>' +
+                  '</div>' +
+                  brightnessRowHTML() +
+                  presetsHTML(false)
+                : '<div class="ng-popup-title"><i class="fa-solid fa-palette"></i> Colour</div>' +
+                  '<div class="ng-rgbw-tabs">' +
+                  '  <button class="ng-rgbw-tab ng-rgbw-tab--active">' +
+                  '    <i class="fa-solid fa-circle-half-stroke"></i> Colour</button>' +
+                  '  <button class="ng-rgbw-tab"><i class="fa-solid fa-sun"></i> White</button>' +
+                  '</div>' +
+                  '<div class="ng-rgbw-pane">' +
+                  '  <div class="ng-rgbw-wheel-wrap">' +
+                  '    <canvas class="dzt-wheel-canvas" width="' + WSIZE + '" height="' + WSIZE + '"' +
+                  '      style="border-radius:50%;display:block"></canvas>' +
+                  '  </div>' +
+                  '</div>' +
+                  '<div class="ng-rgbw-preview">' +
+                  '  <div class="ng-rgbw-swatch"></div>' +
+                  '  <input type="text" class="ng-rgbw-hex" value="#ff8800" readonly>' +
+                  '</div>' +
+                  brightnessRowHTML() +
+                  presetsHTML(true);
+
+            /* The painters read the module's current position, so the
+               sample borrows it, paints, and puts it back. */
+            var keepH = _h, keepS = _s, keepWarmth = _warmth;
+            if (white) {
+                _warmth = 1;                       /* 2700 K, the warm end */
+                var wt = host.querySelector('#dzt-warmth');
+                if (wt) drawWarmthBar(wt);
+                var sw = host.querySelector('.ng-rgbw-swatch');
+                var rgb = warmthToRgb(_warmth);
+                if (sw) sw.style.background = 'rgb(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ')';
+            } else {
+                _h = 0.086; _s = 1;                /* #ff8800 */
+                var wc = host.querySelector('.dzt-wheel-canvas');
+                if (wc) { drawWheel(wc); drawWheelCursor(wc); }
+                var sw2 = host.querySelector('.ng-rgbw-swatch');
+                if (sw2) sw2.style.background = '#ff8800';
+            }
+            _h = keepH; _s = keepS; _warmth = keepWarmth;
+
+            host.querySelectorAll('[onclick]').forEach(function (n) {
+                n.removeAttribute('onclick');
+            });
+            host.querySelectorAll('[id]').forEach(function (n) {
+                n.removeAttribute('id');
+            });
+
+            return host;
+        };
 
         function attachWarmthInteraction(canvas) {
             var dragging = false;

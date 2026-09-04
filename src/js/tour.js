@@ -248,40 +248,37 @@
         id: 'sparklines',
         icon: 'fa-solid fa-chart-area',
         hue: CYAN,
-        title: 'The last 24 hours, on the card',
+        title: 'The last 24 hours, behind the card',
         body: 'Sensors that keep history — temperature, humidity, rain, wind, counters, UV — ' +
-              'get their day drawn straight into the card, so you can see where a reading ' +
-              'came from without opening its log.',
+              'get their day drawn across the whole card as a watermark, well under the ' +
+              'reading rather than competing with it. Hovering lifts it.',
         stage: function (host, clk) {
             var c = card({ name: 'Outside', icon: 'fa-solid fa-temperature-half',
                            tint: CYAN, value: '11.6 °C', foot: 'today 7:12 pm',
                            cls: 'dzt-card--wide' });
             var series = [7.2, 6.9, 6.4, 6.1, 6.3, 7.8, 9.4, 11.2, 12.9, 14.1, 14.8, 14.2,
                           13.1, 12.4, 11.9, 11.6];
-            var svg = sparkline(series, 220, 46);
-            /* Above the timestamp, not after it — on a real card the chart
-               sits under the reading it belongs to, and the footer is
-               always the last line. */
-            c.insertBefore(svg, c.querySelector('.dzt-card-foot'));
+
+            /* The real wrapper and the real generator, so this is the
+               sparkline the dashboard draws — accent-coloured, stretched
+               across the card, five per cent opacity — rather than a chart
+               that merely resembles one. */
+            var wrap = el('div', 'dz-sparkline-wrap');
+            if (typeof window._dzSparklineSVG === 'function') {
+                wrap.innerHTML = window._dzSparklineSVG(series, 'tour');
+            }
+            c.insertBefore(wrap, c.firstChild);
             host.appendChild(c);
 
-            var line = svg.querySelector('.dzt-spark-line');
-            var len = line.getTotalLength ? line.getTotalLength() : 400;
-            line.style.strokeDasharray = len;
+            var note = el('div', 'dzt-annotation', 'resting');
+            host.appendChild(note);
 
-            function draw() {
-                svg.classList.remove('dzt-spark--in');
-                line.style.strokeDashoffset = len;
-                /* Reading offsetWidth restarts the transition; without it
-                   the class goes back on in the same frame and nothing
-                   animates. */
-                void svg.offsetWidth;
-                svg.classList.add('dzt-spark--in');
-                line.style.strokeDashoffset = 0;
-            }
-
-            clk.after(240, draw);
-            clk.every(4200, draw);
+            /* Both states, because five per cent is easy to miss and the
+               hover lift is how most people notice it at all. */
+            clk.every(2400, function () {
+                var up = c.classList.toggle('dzt-card--hovered');
+                note.textContent = up ? 'on hover' : 'resting';
+            });
         }
     },
     {
@@ -293,41 +290,71 @@
               'Enter switches it, Shift Enter jumps to its page, and a dimmer opens a ' +
               'brightness slider in the row.',
         stage: function (host, clk) {
-            var box = el('div', 'dzt-palette');
+            /* Every class below is the palette's own. The shell selectors
+               are ids in the real thing (#dz-cmd-box and friends), so
+               pages.css names these classes alongside them — one set of
+               declarations, no copy to fall out of date. */
+            var DEVICES = [
+                { name: 'Living room light', meta: 'Dimmer · 4 min ago',
+                  icon: 'fa-solid fa-lightbulb', dim: true },
+                { name: 'Landing light',     meta: 'On/Off · 2 h ago',
+                  icon: 'fa-solid fa-lightbulb' },
+                { name: 'Garage door',       meta: 'Door Contact · 20 min ago',
+                  icon: 'fa-solid fa-warehouse', state: 'Closed' },
+                { name: 'Loft humidity',     meta: 'Humidity · 1 min ago',
+                  icon: 'fa-solid fa-droplet', state: '54%' }
+            ];
+
+            var box = el('div', 'dzt-cmd-box');
             box.innerHTML =
-                '<div class="dzt-palette-head">' +
+                '<div class="dzt-cmd-header">' +
                     '<i class="fa-solid fa-magnifying-glass"></i>' +
-                    '<span class="dzt-palette-query"></span>' +
-                    '<span class="dzt-caret"></span>' +
-                    '<span class="dzt-kbd">Esc</span>' +
+                    '<input class="dzt-cmd-input" readonly tabindex="-1" ' +
+                        'placeholder="Search devices…">' +
+                    '<span class="dz-cmd-esc">Esc</span>' +
                 '</div>' +
-                '<div class="dzt-palette-list">' +
-                    '<div class="dzt-prow" data-match="living room light">' +
-                        '<i class="fa-solid fa-lightbulb" style="color:rgb(' + AMBER + ')"></i>' +
-                        '<span class="dzt-prow-name">Living room light</span>' +
-                        '<span class="dzt-chip dzt-chip--off">Off</span></div>' +
-                    '<div class="dzt-prow" data-match="landing light">' +
-                        '<i class="fa-solid fa-lightbulb" style="color:rgb(' + AMBER + ')"></i>' +
-                        '<span class="dzt-prow-name">Landing light</span>' +
-                        '<span class="dzt-chip dzt-chip--off">Off</span></div>' +
-                    '<div class="dzt-prow" data-match="garage door">' +
-                        '<i class="fa-solid fa-warehouse" style="color:rgb(' + GREEN + ')"></i>' +
-                        '<span class="dzt-prow-name">Garage door</span>' +
-                        '<span class="dzt-chip">Closed</span></div>' +
-                    '<div class="dzt-prow" data-match="loft humidity">' +
-                        '<i class="fa-solid fa-droplet" style="color:rgb(' + CYAN + ')"></i>' +
-                        '<span class="dzt-prow-name">Loft humidity</span>' +
-                        '<span class="dzt-chip">54%</span></div>' +
+                '<div class="dzt-cmd-list">' +
+                    '<div class="dz-cmd-section">Favourites</div>' +
                 '</div>';
+
+            var list = box.querySelector('.dzt-cmd-list');
+            var rows = DEVICES.map(function (d) {
+                var row = el('div', 'dz-cmd-item');
+                row.dataset.match = d.name.toLowerCase();
+                row.innerHTML =
+                    '<div class="dz-cmd-icon"><i class="' + d.icon + '"></i></div>' +
+                    '<div class="dz-cmd-body">' +
+                        '<div class="dz-cmd-name">' + d.name + '</div>' +
+                        '<div class="dz-cmd-meta">' + d.meta + '</div>' +
+                    '</div>' +
+                    '<div class="dz-cmd-controls">' +
+                        (d.state
+                            ? '<span class="dz-cmd-state">' + d.state + '</span>'
+                            : '<span class="dz-cmd-toggle-pill">Off</span>') +
+                    '</div>' +
+                    (d.dim
+                        ? '<div class="dz-cmd-slider-row">' +
+                              '<button class="dz-cmd-slider-off" tabindex="-1">' +
+                                  '<i class="fa-solid fa-power-off"></i></button>' +
+                              '<input type="range" class="dz-cmd-slider" min="0" max="100" ' +
+                                  'step="5" value="60" tabindex="-1">' +
+                              '<span class="dz-cmd-slider-val">60%</span>' +
+                          '</div>'
+                        : '');
+                list.appendChild(row);
+                return row;
+            });
             host.appendChild(box);
 
-            var q     = box.querySelector('.dzt-palette-query');
-            var rows  = Array.prototype.slice.call(box.querySelectorAll('.dzt-prow'));
+            var input = box.querySelector('.dzt-cmd-input');
             var first = rows[0];
-            var chip  = first.querySelector('.dzt-chip');
+            var pill  = first.querySelector('.dz-cmd-toggle-pill');
+            var icon  = first.querySelector('.dz-cmd-icon');
+            var slide = first.querySelector('.dz-cmd-slider-row');
+            var name  = first.querySelector('.dz-cmd-name');
 
-            /* The same subsequence test the palette itself uses: every
-               typed letter has to appear in order, not consecutively. */
+            /* The palette's own subsequence match: the typed letters have
+               to appear in order, not next to each other. */
             function fuzzy(hay, needle) {
                 var i = 0;
                 for (var n = 0; n < needle.length; n++) {
@@ -339,38 +366,67 @@
                 return true;
             }
 
-            function filter(text) {
-                rows.forEach(function (r) {
-                    r.classList.toggle('dzt-prow--gone',
-                        !!text && !fuzzy(r.dataset.match, text.toLowerCase()));
-                });
+            /* And its <mark> highlight, so the matched letters read the
+               same way here as they do in the real list. */
+            function highlight(text, needle) {
+                var out = '', i = 0;
+                for (var c = 0; c < text.length; c++) {
+                    var ch = text[c];
+                    if (i < needle.length && needle[i] !== ' ' &&
+                        ch.toLowerCase() === needle[i]) {
+                        out += '<mark class="dz-cmd-mark">' + ch + '</mark>';
+                        i++;
+                    } else {
+                        if (i < needle.length && needle[i] === ' ') i++;
+                        out += ch;
+                    }
+                }
+                return out;
+            }
+
+            function reset() {
+                input.value = '';
+                name.textContent = DEVICES[0].name;
+                rows.forEach(function (r) { r.classList.remove('dz-cmd-item--gone'); });
+                first.classList.remove('dz-cmd-item--active');
+                slide.classList.remove('dz-cmd-slider-row--visible');
+                pill.classList.remove('dz-cmd-toggle-pill--on');
+                pill.textContent = 'Off';
+                icon.classList.remove('dz-cmd-icon--on');
             }
 
             function run() {
                 var typed = 'lvng lg';
-                q.textContent = '';
-                chip.textContent = 'Off';
-                chip.className = 'dzt-chip dzt-chip--off';
-                first.classList.remove('dzt-prow--active');
-                filter('');
+                reset();
 
                 for (var i = 1; i <= typed.length; i++) {
                     (function (n) {
-                        clk.after(500 + n * 110, function () {
-                            q.textContent = typed.slice(0, n);
-                            filter(q.textContent);
+                        clk.after(450 + n * 110, function () {
+                            var q = typed.slice(0, n);
+                            input.value = q;
+                            name.innerHTML = highlight(DEVICES[0].name, q.toLowerCase());
+                            rows.forEach(function (r) {
+                                r.classList.toggle('dz-cmd-item--gone',
+                                    !fuzzy(r.dataset.match, q.toLowerCase()));
+                            });
                         });
                     }(i));
                 }
-                clk.after(1700, function () { first.classList.add('dzt-prow--active'); });
-                clk.after(2300, function () {
-                    chip.textContent = 'On';
-                    chip.className = 'dzt-chip dzt-chip--on';
+                clk.after(1650, function () { first.classList.add('dz-cmd-item--active'); });
+                clk.after(2150, function () {
+                    pill.classList.add('dz-cmd-toggle-pill--on');
+                    pill.textContent = 'On';
+                    icon.classList.add('dz-cmd-icon--on');
+                });
+                /* A dimmer's row opens a brightness slider — worth showing,
+                   because nothing on screen advertises that it is there. */
+                clk.after(2900, function () {
+                    slide.classList.add('dz-cmd-slider-row--visible');
                 });
             }
 
             run();
-            clk.every(5200, run);
+            clk.every(6000, run);
         }
     },
     {
@@ -543,56 +599,60 @@
         }
     },
     {
-        id: 'colour',
+        id: 'dialogs',
         icon: 'fa-solid fa-palette',
         hue: VIOLET,
-        title: 'Colour in units you can say out loud',
-        body: 'The picker is rebuilt everywhere Domoticz asks for a colour. Type a hex value ' +
-              'rather than hunting for it on the wheel, or type a white in kelvin — which the ' +
-              'stock warmth slider cannot express. Recent colours stay one press away.',
+        title: 'Every control dialog, rebuilt',
+        body: 'Setpoints get an arc you can drag instead of a number box. Colour lights get a ' +
+              'wheel, a brightness row and presets. Tunable whites get a warmth bar that takes ' +
+              'a value in kelvin — which Domoticz\'s own 0–255 axis has no way to express. ' +
+              'Fans, blinds and thermostats get the same treatment.',
         stage: function (host, clk) {
-            var box = el('div', 'dzt-picker');
-            box.innerHTML =
-                '<div class="dzt-wheel"><span class="dzt-wheel-dot"></span></div>' +
-                '<div class="dzt-picker-side">' +
-                    '<div class="dzt-swatch"></div>' +
-                    '<div class="dzt-kelvin"><span class="dzt-kelvin-v">2700</span> K</div>' +
-                    '<div class="dzt-warmth"><span class="dzt-warmth-dot"></span></div>' +
-                    '<div class="dzt-recents"></div>' +
-                '</div>';
-            host.appendChild(box);
+            /* Not drawings of the dialogs — the dialogs. popups.js builds
+               these from the same markup and paints the canvases with the
+               same functions the live popups use, then strips the ids and
+               the onclick handlers so a sample can neither be pressed nor
+               command anything. */
+            var LABELS = ['Setpoint', 'Colour', 'White'];
 
-            var recents = box.querySelector('.dzt-recents');
-            ['#ff8800', '#4e9af1', '#ffd8a8', '#c8a0ff', '#e8f4fd'].forEach(function (hex) {
-                var s = el('span', 'dzt-recent');
-                s.style.background = hex;
-                recents.appendChild(s);
-            });
+            function build() {
+                var made = [];
+                if (typeof window._dzSetpointSample === 'function') {
+                    made.push(window._dzSetpointSample(21.5, '19.8 °C'));
+                }
+                if (typeof window._dzColourSample === 'function') {
+                    made.push(window._dzColourSample('colour'));
+                    made.push(window._dzColourSample('white'));
+                }
+                if (!made.length) return false;
 
-            var swatch = box.querySelector('.dzt-swatch');
-            var kv     = box.querySelector('.dzt-kelvin-v');
-            var dot    = box.querySelector('.dzt-warmth-dot');
-            /* Warm to cool and back, with the swatch and the number kept
-               in step — the point of the chapter is that the three are
-               one control, not three. */
-            var stops = [
-                { k: 2700, hex: '#ffb46b', pos: 100 },
-                { k: 4000, hex: '#ffd9b8', pos: 62  },
-                { k: 5200, hex: '#eef1fb', pos: 33  },
-                { k: 6500, hex: '#e8f4fd', pos: 2   }
-            ];
-            var at = 0;
-
-            function step() {
-                var s = stops[at % stops.length];
-                swatch.style.background = s.hex;
-                kv.textContent = s.k;
-                dot.style.left = s.pos + '%';
-                at++;
+                host.innerHTML = '';
+                var rail = el('div', 'dzt-dialogs');
+                var caps = el('div', 'dzt-dialog-caps');
+                made.forEach(function (d, i) {
+                    var slot = el('div', 'dzt-dialog-slot');
+                    slot.appendChild(d);
+                    rail.appendChild(slot);
+                    caps.appendChild(el('div', 'dzt-annotation', LABELS[i] || ''));
+                });
+                host.appendChild(rail);
+                host.appendChild(caps);
+                return made.length === 3;
             }
 
-            step();
-            clk.every(1500, step);
+            /* popups.js publishes these builders from its DOMContentLoaded
+               init, and the colour one only once its own pass has run. The
+               tour normally opens long after both, but jumping straight to
+               this chapter on a cold load can beat them, so try again for
+               a couple of seconds rather than showing a gap. */
+            if (!build()) {
+                var tries = 0;
+                var again = function () {
+                    if (build() || ++tries > 10) return;
+                    clk.after(200, again);
+                };
+                clk.after(200, again);
+            }
         }
     },
     {
@@ -600,45 +660,60 @@
         icon: 'fa-solid fa-wand-magic-sparkles',
         hue: AMBER,
         title: 'Every icon is yours to change',
-        body: 'Ninety-odd device types arrive already mapped to an icon and a colour. Any one ' +
-              'device can be given a different icon, its own colours, or a small animation — ' +
-              'from the Icon Studio on that device\'s page.',
+        body: 'Ninety-odd device types arrive already mapped to an icon and a colour. In the ' +
+              'Icon Studio, on a device\'s own page, any one can take a different icon, its ' +
+              'own on and off colours, or one of nine animations. Shapes come from Font ' +
+              'Awesome and any icon library installed on your Domoticz, including sets you ' +
+              'upload yourself.',
         stage: function (host, clk) {
             var wrap = el('div', 'dzt-studio');
             var big  = el('div', 'dzt-frame dzt-frame--xl dzt-frame--lit',
                           '<i class="fa-solid fa-lightbulb"></i>');
-            var strip = el('div', 'dzt-strip');
             wrap.appendChild(big);
+
+            var caption = el('div', 'dzt-annotation dzt-studio-caption', '');
+            var strip   = el('div', 'dzt-strip');
+            wrap.appendChild(caption);
             wrap.appendChild(strip);
             host.appendChild(wrap);
 
+            /* Every anim id below is a real .dz-anim-* class from
+               animations.css, applied to the icon exactly as the Studio
+               applies it — so this is the motion the device would get,
+               not an impression of it. */
             var looks = [
-                { icon: 'fa-solid fa-lightbulb',      hue: AMBER  },
-                { icon: 'fa-solid fa-fan',            hue: CYAN   },
-                { icon: 'fa-solid fa-couch',          hue: VIOLET },
-                { icon: 'fa-solid fa-mug-hot',        hue: GREEN  },
-                { icon: 'fa-solid fa-tv',             hue: BLUE   },
-                { icon: 'fa-solid fa-plug-circle-bolt', hue: RED  }
+                { icon: 'fa-solid fa-fan',              hue: CYAN,   anim: 'spin',    label: 'Spin' },
+                { icon: 'fa-solid fa-lightbulb',        hue: AMBER,  anim: 'glow',    label: 'Glow' },
+                { icon: 'fa-solid fa-fire',             hue: RED,    anim: 'flicker', label: 'Flicker' },
+                { icon: 'fa-solid fa-bell',             hue: VIOLET, anim: 'ring',    label: 'Ring' },
+                { icon: 'fa-solid fa-heart-pulse',      hue: GREEN,  anim: 'breathe', label: 'Breathe' },
+                { icon: 'fa-solid fa-door-open',        hue: BLUE,   anim: 'swing',   label: 'Swing' },
+                { icon: 'fa-solid fa-arrow-up',         hue: CYAN,   anim: 'drift',   label: 'Drift' },
+                { icon: 'fa-solid fa-plug-circle-bolt', hue: AMBER,  anim: 'blink',   label: 'Blink' },
+                { icon: 'fa-solid fa-bullhorn',         hue: RED,    anim: 'bounce',  label: 'Bounce' }
             ];
+
             var chips = looks.map(function (look, i) {
                 var chip = el('button', 'dzt-chip-icon', '<i class="' + look.icon + '"></i>');
                 chip.type = 'button';
                 chip.dataset.i = i;
+                chip.title = look.label;
                 chip.style.setProperty('--dzt-tint', look.hue);
                 strip.appendChild(chip);
                 return chip;
             });
 
-            var at = -1;
+            var at = 0;
             var held = false;
 
             function apply(i) {
                 var look = looks[i];
                 big.style.setProperty('--dzt-tint', look.hue);
-                big.innerHTML = '<i class="' + look.icon + '"></i>';
+                big.innerHTML = '<i class="' + look.icon + ' dz-anim-' + look.anim + '"></i>';
                 big.classList.remove('dzt-frame--swap');
                 void big.offsetWidth;
                 big.classList.add('dzt-frame--swap');
+                caption.textContent = look.label;
                 chips.forEach(function (c, n) { c.classList.toggle('dzt-chip-icon--on', n === i); });
             }
 
@@ -650,8 +725,9 @@
             });
 
             apply(0);
-            at = 0;
-            clk.every(1500, function () {
+            /* Slower than the other strips: an animation needs a beat or
+               two of its own cycle before you can tell what it does. */
+            clk.every(2400, function () {
                 if (held) return;
                 at = (at + 1) % looks.length;
                 apply(at);
@@ -729,11 +805,6 @@
     var stageClk = null; /* the running chapter's timers */
     var index = 0;
     var restoreFocus = null;
-
-    function isAdmin() {
-        var c = window.my_config;
-        return !!(c && +c.userrights === 2);
-    }
 
     function build() {
         root = el('div', 'dzt-root');
@@ -824,17 +895,9 @@
 
         var next = root.querySelector('.dzt-next');
         var last = (i === CHAPTERS.length - 1);
-        /* The last stop earns a real action rather than another Next.
-           Non-admins cannot reach Setup at all, so they get the plain
-           close instead of a button that would bounce them. */
-        next.textContent = last ? (isAdmin() ? 'Open settings' : 'Start using it') : 'Next';
+        next.textContent = last ? 'Done' : 'Next';
         next.classList.toggle('dzt-btn--final', last);
-        next.onclick = last
-            ? function () {
-                if (isAdmin()) window.location.hash = '/Setup';
-                close();
-              }
-            : function () { go(index + 1); };
+        next.onclick = last ? close : function () { go(index + 1); };
     }
 
     function onKey(e) {

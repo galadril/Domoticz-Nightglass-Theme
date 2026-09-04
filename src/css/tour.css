@@ -103,7 +103,10 @@ body.dz-light .dzt-root {
     border: 1px solid var(--dz-border);
     border-radius: 18px;
     box-shadow: 0 40px 120px rgba(0, 0, 0, 0.6), 0 6px 24px rgba(0, 0, 0, 0.35);
-    overflow: hidden;
+    /* x hidden so the stage's background still clips to the rounded
+       corners; y scrolls, because the dialog chapter is tall and a short
+       laptop screen would otherwise cut the buttons off. */
+    overflow: hidden auto;
     animation: dztRise 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -499,132 +502,6 @@ body.dz-light .dzt-card { box-shadow: 0 2px 8px rgba(24, 28, 40, 0.08); }
     transition: opacity 0.3s, filter 0.3s;
 }
 
-/* ── Chapter: sparklines ───────────────────────────────────────── */
-
-.dzt-spark {
-    display: block;
-    width: 100%;
-    height: 46px;
-    margin-top: 10px;
-    overflow: visible;
-}
-
-.dzt-spark-line {
-    fill: none;
-    stroke: rgb(var(--dzt-tint));
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.dzt-spark-fill {
-    fill: rgba(var(--dzt-tint), 0.22);
-    stroke: none;
-    opacity: 0;
-    transition: opacity 0.5s ease 0.9s;
-}
-
-.dzt-spark--in .dzt-spark-fill { opacity: 1; }
-
-/* ── Chapter: command palette ──────────────────────────────────── */
-
-.dzt-palette {
-    width: 320px;
-    background: var(--dz-surface);
-    border: 1px solid var(--dz-border);
-    border-radius: 13px;
-    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.4);
-    overflow: hidden;
-}
-
-.dzt-palette-head {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    padding: 12px 13px;
-    border-bottom: 1px solid var(--dz-border);
-    color: var(--dz-text-muted);
-    font-size: 13px;
-}
-
-.dzt-palette-query {
-    color: var(--dz-text);
-    white-space: pre;
-}
-
-.dzt-caret {
-    width: 1.5px;
-    height: 15px;
-    margin-left: -6px;
-    background: rgb(var(--dzt-hue));
-    animation: dztCaret 1s steps(2, end) infinite;
-}
-
-@keyframes dztCaret { 50% { opacity: 0; } }
-
-.dzt-kbd {
-    margin-left: auto;
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 5px;
-    background: var(--dz-surface-2);
-    box-shadow: inset 0 0 0 1px var(--dz-border);
-    color: var(--dz-text-muted);
-}
-
-/* Holds its height as rows filter out, so the box does not jump around
-   the stage every time the demo loops. */
-.dzt-palette-list { padding: 5px 0; min-height: 148px; }
-
-.dzt-prow {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 13px;
-    font-size: 12.5px;
-    color: var(--dz-text-soft);
-    transition: background 0.15s, opacity 0.25s, transform 0.25s;
-}
-
-.dzt-prow--active {
-    background: rgba(var(--dzt-hue), 0.14);
-    color: var(--dz-text);
-    box-shadow: inset 2px 0 0 rgb(var(--dzt-hue));
-}
-
-.dzt-prow--gone {
-    opacity: 0;
-    transform: translateX(-8px);
-    height: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    overflow: hidden;
-}
-
-.dzt-prow-name {
-    flex: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.dzt-chip {
-    font-size: 10.5px;
-    padding: 2px 8px;
-    border-radius: 20px;
-    background: var(--dz-surface-2);
-    color: var(--dz-text-muted);
-    box-shadow: inset 0 0 0 1px var(--dz-border);
-    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
-}
-.dzt-chip--off { color: var(--dz-text-faint); }
-.dzt-chip--on {
-    background: rgba(76, 175, 125, 0.18);
-    color: rgb(96, 200, 145);
-    box-shadow: inset 0 0 0 1px rgba(76, 175, 125, 0.45);
-}
-
 /* ── Chapter: keys ─────────────────────────────────────────────── */
 
 .dzt-keys {
@@ -765,88 +642,68 @@ body.dz-light .dzt-card { box-shadow: 0 2px 8px rgba(24, 28, 40, 0.08); }
     box-shadow: inset 0 0 0 1px rgba(var(--dzt-hue), 0.45);
 }
 
-/* ── Chapter: colour ───────────────────────────────────────────── */
+/* ── Chapter: command palette ──────────────────────────────────────
+   The box, header, input and list wear the palette's own rules — see
+   pages.css, where these class names sit alongside the #dz-cmd-* ids.
+   Only the two things below are the tour's own. */
 
-.dzt-picker {
+/* The real palette rebuilds its list on every keystroke, so a row that
+   stops matching is simply gone. */
+.dz-cmd-item--gone { display: none; }
+
+/* The sample's input is never focused (focus belongs to the tour's own
+   controls), so it has to look filled rather than active. */
+.dzt-cmd-input { cursor: default; }
+
+/* ── Chapter: control dialogs ──────────────────────────────────────
+   The samples are the real popups at their real 300px width, scaled to
+   fit three across the stage. Scaling rather than restyling is the
+   point: every proportion inside stays exactly as shipped. */
+
+.dzt-dialogs {
     display: flex;
-    align-items: center;
-    gap: 24px;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 16px;
 }
 
-.dzt-wheel {
+.dzt-dialog-slot {
     position: relative;
-    width: 116px;
-    height: 116px;
-    border-radius: 50%;
-    box-shadow: inset 0 0 0 1px var(--dz-border), 0 8px 26px rgba(0, 0, 0, 0.32);
-    background:
-        radial-gradient(circle at 50% 50%, #fff 0%, transparent 62%),
-        conic-gradient(#ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+    /* The colour popup carries 20px of side padding on top of its 300px,
+       so the widest sample is 340 × 0.55 ≈ 187. */
+    width: 190px;
+    height: 262px;
+    flex-shrink: 0;
 }
 
-.dzt-wheel-dot {
-    position: absolute;
-    top: 27%;
-    left: 66%;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    border: 2px solid #fff;
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.6);
+/* Has to outrank .pop.ng-popup--modal.dzt-dialog in modals.css, which
+   clears the transform the centred-modal state sets. */
+.dzt-dialog-slot > .pop.ng-popup--modal.dzt-dialog {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    transform: scale(0.55) !important;
+    transform-origin: top left;
 }
 
-.dzt-picker-side {
+.dzt-dialog-caps {
     display: flex;
-    flex-direction: column;
-    gap: 11px;
-    width: 170px;
+    justify-content: center;
+    gap: 16px;
 }
 
-.dzt-swatch {
-    height: 34px;
-    border-radius: 9px;
-    box-shadow: inset 0 0 0 1px var(--dz-border);
-    transition: background 0.5s ease;
-}
-
-.dzt-kelvin {
-    font-size: 13px;
-    color: var(--dz-text-soft);
-    font-variant-numeric: tabular-nums;
-}
-
-.dzt-kelvin-v { color: var(--dz-text); font-weight: 600; }
-
-.dzt-warmth {
-    position: relative;
-    height: 12px;
-    border-radius: 6px;
-    background: linear-gradient(90deg, #e8f4fd, #ffffff 42%, #ffb46b);
-    box-shadow: inset 0 0 0 1px var(--dz-border);
-}
-
-.dzt-warmth-dot {
-    position: absolute;
-    top: 50%;
-    width: 14px;
-    height: 14px;
-    margin: -7px 0 0 -7px;
-    border-radius: 50%;
-    background: var(--dz-surface);
-    box-shadow: 0 0 0 2px rgba(var(--dzt-hue), 0.9);
-    transition: left 0.5s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.dzt-recents { display: flex; gap: 6px; }
-
-.dzt-recent {
-    width: 22px;
-    height: 22px;
-    border-radius: 7px;
-    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.28);
+.dzt-dialog-caps > * {
+    width: 190px;
+    text-align: center;
+    flex-shrink: 0;
 }
 
 /* ── Chapter: icons ────────────────────────────────────────────── */
+
+.dzt-studio-caption {
+    height: 16px;
+    text-align: center;
+}
 
 .dzt-studio {
     display: flex;
@@ -973,11 +830,12 @@ body.dz-light .dzt-card { box-shadow: 0 2px 8px rgba(24, 28, 40, 0.08); }
 
     .dzt-grid--3 { grid-template-columns: repeat(2, 130px); }
     .dzt-grid--4 { grid-template-columns: repeat(2, 118px); }
-    .dzt-palette { width: 100%; max-width: 300px; }
 
-    .dzt-picker { flex-direction: column; gap: 16px; }
-    .dzt-wheel  { width: 88px; height: 88px; }
-    .dzt-picker-side { width: 220px; }
+    /* One dialog at a time rather than three shrunk past reading. */
+    .dzt-dialogs,
+    .dzt-dialog-caps { gap: 10px; }
+    .dzt-dialogs > .dzt-dialog-slot:nth-child(n+3),
+    .dzt-dialog-caps > :nth-child(n+3) { display: none; }
 
     .dzt-panel { width: 100%; max-width: 300px; }
 }
@@ -1001,9 +859,13 @@ body.dz-light .dzt-card { box-shadow: 0 2px 8px rgba(24, 28, 40, 0.08); }
     }
     .dzt-card--flash,
     .dzt-card--stale::before,
-    .dzt-bell--ring i,
-    .dzt-caret {
+    .dzt-bell--ring i {
         animation: none !important;
     }
     .dzt-frame--swap i { animation: none !important; }
+
+    /* Nothing here for the icon chapter's animation sample: it wears the
+       real .dz-anim-* classes, which animations.css already stops under
+       this query. A reader who has asked for less motion should see the
+       same still icon the dashboard would give them. */
 }
