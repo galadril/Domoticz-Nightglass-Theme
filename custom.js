@@ -11,6 +11,16 @@
 (function () {
     'use strict';
 
+    /* Cache-buster for the modules below. Browsers that already have
+       Domoticz open keep the old src/js/*.js in cache indefinitely —
+       there is no server-side versioning on these static files — so a
+       browser that loaded the theme before a fix shipped can silently
+       keep running the stale code (e.g. an old settings/tour bug) until
+       a hard refresh. Bump this on every release so returning browsers
+       fetch fresh copies automatically instead of needing a hard reload.
+       Keep in sync with the version noted in README.md. */
+    var THEME_VERSION = '1.0.0';
+
     /* Resolve base URL from the executing script tag so module paths
        work whether served by Domoticz (styles/default/), the demo, or
        any other static server.                                        */
@@ -51,7 +61,7 @@
 
     modules.forEach(function (m) {
         var s = document.createElement('script');
-        s.src = base + m;
+        s.src = base + m + '?v=' + THEME_VERSION;
         s.async = false; /* preserve execution order */
         document.head.appendChild(s);
     });

@@ -54,15 +54,31 @@ jobs:
           esac
           echo "next=v${MAJOR}.${MINOR}.${PATCH}" >> "$GITHUB_OUTPUT"
 
-      # ── 4. Push the new tag ──────────────────────────────────────────────
-      - name: Push tag
+      # ── 4. Stamp THEME_VERSION in custom.js ──────────────────────────────
+      #   Keeps the cache-busting query string on src/js/*.js in step with
+      #   the release tag, so a browser that cached the theme before this
+      #   release fetches fresh files instead of running stale code.
+      - name: Update THEME_VERSION
+        run: |
+          NEXT="${{ steps.version.outputs.next }}"
+          VERSION="${NEXT#v}"
+          sed -i "s/var THEME_VERSION = '.*';/var THEME_VERSION = '${VERSION}';/" custom.js
+          grep "THEME_VERSION" custom.js
+
+      # ── 5. Commit the version bump, then push the new tag ────────────────
+      - name: Commit & push
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet -- custom.js; then
+            git add custom.js
+            git commit -m "chore: bump THEME_VERSION to ${{ steps.version.outputs.next }}"
+            git push origin HEAD:main
+          fi
           git tag "${{ steps.version.outputs.next }}"
           git push origin "${{ steps.version.outputs.next }}"
 
-      # ── 5. Publish GitHub release with auto-generated notes ──────────────
+      # ── 6. Publish GitHub release with auto-generated notes ──────────────
       #   Bundles the theme into a zip so users can install by extracting
       #   the folder into www/styles/nightglass/. Includes README for
       #   installation instructions.
