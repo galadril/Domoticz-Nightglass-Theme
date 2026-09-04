@@ -19,7 +19,7 @@
        a hard refresh. Bump this on every release so returning browsers
        fetch fresh copies automatically instead of needing a hard reload.
        Keep in sync with the version noted in README.md. */
-    var THEME_VERSION = '1.0.0';
+    var THEME_VERSION = '0.9.2';
 
     /* Resolve base URL from the executing script tag so module paths
        work whether served by Domoticz (styles/default/), the demo, or
