@@ -672,22 +672,70 @@
               'Awesome and any icon library installed on your Domoticz, including sets you ' +
               'upload yourself.',
         stage: function (host, clk) {
-            var wrap = el('div', 'dzt-studio');
-            var big  = el('div', 'dzt-frame dzt-frame--xl dzt-frame--lit',
-                          '<i class="fa-solid fa-lightbulb"></i>');
-            wrap.appendChild(big);
+            /* One cell per thing the Studio changes, rather than a single
+               frame cycling all three at once — that read as one restless
+               icon instead of three separate settings. */
+            var row = el('div', 'dzt-studio-row');
 
-            var caption = el('div', 'dzt-annotation dzt-studio-caption', '');
-            var strip   = el('div', 'dzt-strip');
-            wrap.appendChild(caption);
-            wrap.appendChild(strip);
-            host.appendChild(wrap);
+            function cell(label) {
+                var c = el('div', 'dzt-studio-cell');
+                var frame = el('div', 'dzt-frame dzt-frame--xl dzt-frame--lit');
+                var cap   = el('div', 'dzt-annotation', label);
+                var sub   = el('div', 'dzt-annotation dzt-studio-sub', '');
+                c.appendChild(frame);
+                c.appendChild(cap);
+                c.appendChild(sub);
+                row.appendChild(c);
+                return { frame: frame, sub: sub };
+            }
 
-            /* Every anim id below is a real .dz-anim-* class from
-               animations.css, applied to the icon exactly as the Studio
-               applies it — so this is the motion the device would get,
-               not an impression of it. */
-            var looks = [
+            var shape  = cell('Shape');
+            var colour = cell('On and off colours');
+            var motion = cell('Motion');
+            host.appendChild(row);
+
+            /* ── Shape ── */
+            var SHAPES = ['fa-solid fa-lightbulb', 'fa-solid fa-couch', 'fa-solid fa-tv',
+                          'fa-solid fa-mug-hot', 'fa-solid fa-plug-circle-bolt'];
+            shape.frame.style.setProperty('--dzt-tint', AMBER);
+            var si = 0;
+            function nextShape() {
+                shape.frame.innerHTML = '<i class="' + SHAPES[si] + '"></i>';
+                shape.frame.classList.remove('dzt-frame--swap');
+                void shape.frame.offsetWidth;
+                shape.frame.classList.add('dzt-frame--swap');
+                si = (si + 1) % SHAPES.length;
+            }
+            nextShape();
+            clk.every(1400, nextShape);
+
+            /* ── On and off colours ────────────────────────────────────
+               A pair the theme would never pick on its own, so "custom"
+               is the visible point. The colour goes on the glyph inline
+               and the frame tint follows it, which is how icons.js paints
+               a device that carries an override. */
+            var ON_COLOUR  = VIOLET;
+            var OFF_COLOUR = '224, 85, 85';
+            var lit = true;
+            function nextColour() {
+                var hue = lit ? ON_COLOUR : OFF_COLOUR;
+                colour.frame.style.setProperty('--dzt-tint', hue);
+                colour.frame.classList.toggle('dzt-frame--lit', lit);
+                colour.frame.innerHTML =
+                    '<i class="fa-solid fa-lightbulb" style="color:rgb(' + hue + ')"></i>';
+                colour.sub.textContent = lit ? 'On' : 'Off';
+                lit = !lit;
+            }
+            nextColour();
+            clk.every(1600, nextColour);
+
+            /* ── Motion ────────────────────────────────────────────────
+               Every id here is a real .dz-anim-* class from animations.css
+               applied exactly as the Studio applies it, so this is the
+               motion the device would get rather than an impression of
+               it. Opens on the fan, which is the one you can read at a
+               glance. */
+            var ANIMS = [
                 { icon: 'fa-solid fa-fan',              hue: CYAN,   anim: 'spin',    label: 'Spin' },
                 { icon: 'fa-solid fa-lightbulb',        hue: AMBER,  anim: 'glow',    label: 'Glow' },
                 { icon: 'fa-solid fa-fire',             hue: RED,    anim: 'flicker', label: 'Flicker' },
@@ -698,46 +746,19 @@
                 { icon: 'fa-solid fa-plug-circle-bolt', hue: AMBER,  anim: 'blink',   label: 'Blink' },
                 { icon: 'fa-solid fa-bullhorn',         hue: RED,    anim: 'bounce',  label: 'Bounce' }
             ];
-
-            var chips = looks.map(function (look, i) {
-                var chip = el('button', 'dzt-chip-icon', '<i class="' + look.icon + '"></i>');
-                chip.type = 'button';
-                chip.dataset.i = i;
-                chip.title = look.label;
-                chip.style.setProperty('--dzt-tint', look.hue);
-                strip.appendChild(chip);
-                return chip;
-            });
-
-            var at = 0;
-            var held = false;
-
-            function apply(i) {
-                var look = looks[i];
-                big.style.setProperty('--dzt-tint', look.hue);
-                big.innerHTML = '<i class="' + look.icon + ' dz-anim-' + look.anim + '"></i>';
-                big.classList.remove('dzt-frame--swap');
-                void big.offsetWidth;
-                big.classList.add('dzt-frame--swap');
-                caption.textContent = look.label;
-                chips.forEach(function (c, n) { c.classList.toggle('dzt-chip-icon--on', n === i); });
+            var ai = 0;
+            function nextAnim() {
+                var a = ANIMS[ai];
+                motion.frame.style.setProperty('--dzt-tint', a.hue);
+                motion.frame.innerHTML =
+                    '<i class="' + a.icon + ' dz-anim-' + a.anim + '"></i>';
+                motion.sub.textContent = a.label;
+                ai = (ai + 1) % ANIMS.length;
             }
-
-            strip.addEventListener('click', function (e) {
-                var chip = e.target.closest('.dzt-chip-icon');
-                if (!chip) return;
-                held = true;
-                apply(+chip.dataset.i);
-            });
-
-            apply(0);
-            /* Slower than the other strips: an animation needs a beat or
-               two of its own cycle before you can tell what it does. */
-            clk.every(2400, function () {
-                if (held) return;
-                at = (at + 1) % looks.length;
-                apply(at);
-            });
+            nextAnim();
+            /* Slower than the other two: an animation needs a couple of
+               its own cycles before you can tell what it does. */
+            clk.every(3200, nextAnim);
         }
     },
     {

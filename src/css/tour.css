@@ -698,11 +698,30 @@ body.dz-light .dzt-card { box-shadow: 0 2px 8px rgba(24, 28, 40, 0.08); }
     flex-shrink: 0;
 }
 
-/* ── Chapter: icons ────────────────────────────────────────────── */
+/* ── Chapter: icons ────────────────────────────────────────────────
+   Three cells side by side, one per thing the Icon Studio changes.
+   Fixed widths and a reserved sub-caption line so nothing shifts as the
+   three demos cycle at their own speeds. */
 
-.dzt-studio-caption {
-    height: 16px;
+.dzt-studio-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 34px;
+}
+
+.dzt-studio-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 9px;
+    width: 116px;
     text-align: center;
+}
+
+.dzt-studio-sub {
+    height: 15px;
+    color: var(--dz-text-soft);
 }
 
 .dzt-studio {
@@ -710,31 +729,6 @@ body.dz-light .dzt-card { box-shadow: 0 2px 8px rgba(24, 28, 40, 0.08); }
     flex-direction: column;
     align-items: center;
     gap: 20px;
-}
-
-.dzt-strip { display: flex; gap: 8px; }
-
-.dzt-chip-icon {
-    --dzt-tint: 78, 154, 241;
-    width: 38px;
-    height: 38px;
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    border-radius: 10px;
-    background: var(--dz-surface);
-    color: var(--dz-text-faint);
-    font-size: 14px;
-    box-shadow: inset 0 0 0 1px var(--dz-border);
-    transition: color 0.2s, background 0.2s, box-shadow 0.2s, transform 0.15s;
-}
-
-.dzt-chip-icon:hover { transform: translateY(-2px); }
-
-.dzt-chip-icon--on {
-    background: rgba(var(--dzt-tint), 0.16);
-    color: rgb(var(--dzt-tint));
-    box-shadow: inset 0 0 0 1px rgba(var(--dzt-tint), 0.45);
 }
 
 /* ── Chapter: settings ─────────────────────────────────────────── */
@@ -853,7 +847,6 @@ body.dz-light .dzt-card { box-shadow: 0 2px 8px rgba(24, 28, 40, 0.08); }
     .dzt-hand,
     .dzt-stop,
     .dzt-key,
-    .dzt-chip-icon,
     .dzt-preset {
         transition: none !important;
     }
