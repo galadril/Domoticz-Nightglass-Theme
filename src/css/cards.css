@@ -114,6 +114,14 @@ body table#itemtablesmalltrippleicon tbody tr {
     transition: none !important;
 }
 
+/* Domoticz sets the compact multi-icon rows to a fixed 66px. Percentage blinds
+   append their slider to that same row, so the fixed height leaves the
+   slider outside the card. Let those rows grow with their contents. */
+body table#itemtablesmalldoubleicon tbody tr,
+body table#itemtablesmalltrippleicon tbody tr {
+    height: auto !important;
+}
+
 
 /* ── 6b. Name chip (td:first-child / td#name) ────────────────── */
 
@@ -664,6 +672,17 @@ body table[id^="itemtable"] tr .dimsmall3 {
     box-sizing: border-box !important;
     visibility: visible !important;
     overflow: visible !important;
+}
+
+/* Tab view: Domoticz gives percentage blinds an inline 120/144px left
+   margin in td#type. Use the exact table/cell IDs so the track starts at
+   the card content edge and its right end stays inside the card. */
+body div.item.itemBlock table#itemtabledoubleicon td#type .dimslider.dimsmall,
+body div.item.itemBlock table#itemtabletrippleicon td#type .dimslider.dimsmall3 {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: calc(100% - 4px) !important;
+    max-width: 100% !important;
 }
 
 #itemtabletrippleicon .dimslider {
