@@ -635,6 +635,8 @@ body table[id^="itemtable"] tr td#type {
     color: var(--dz-text-faint) !important;
     font-style: normal !important;
     margin-bottom: 35px;
+    padding-left: 0px !important;
+    margin-top:10px;
 }
 
 /* ── 6h. Dimmer / blinds slider ──────────────────────────────── */
