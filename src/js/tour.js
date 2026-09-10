@@ -962,13 +962,15 @@
         }
     }
 
-    function open() {
+    /* startAt lets a caller open straight onto one chapter — the dashboard
+       tour widget jumps to whichever chapter was clicked. */
+    function open(startAt) {
         if (root) return;
         restoreFocus = document.activeElement;
         build();
         document.body.classList.add('dz-tour-open');
         document.addEventListener('keydown', onKey, true);
-        go(0);
+        go(typeof startAt === 'number' ? startAt : 0);
         /* Focus the primary action, not the panel: a screen reader should
            land on the thing that advances. */
         var next = root.querySelector('.dzt-next');
@@ -1063,6 +1065,13 @@
         start: open,
         close: close,
         go: go,
+        /* The chapter list without the stage builders, so anything outside the
+           tour (the dashboard tour widget) can render its own index of it. */
+        chapters: function () {
+            return CHAPTERS.map(function (ch) {
+                return { id: ch.id, title: ch.title, icon: ch.icon, body: ch.body };
+            });
+        },
         reset: function () {
             var s = window.dzNightglassSettings;
             if (s && typeof s.setAndPersist === 'function') s.setAndPersist(SEEN_KEY, false);
