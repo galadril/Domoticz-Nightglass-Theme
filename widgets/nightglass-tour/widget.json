@@ -1,0 +1,39 @@
+{
+    "name": "Nightglass Tour",
+    "description": "Puts the Nightglass feature tour on the dashboard",
+    "author": "galadril",
+    "version": "1.0.0",
+    "apiVersion": 1,
+    "widgets": [
+        {
+            "type": "ng-tour",
+            "label": "Feature Tour",
+            "description": "Open the Nightglass tour, or jump straight to one of its chapters",
+            "category": "Information",
+            "icon": "fa-solid fa-graduation-cap",
+            "entry": "ngTour.widget.js",
+            "template": "ngTour.html",
+            "css": "ngTour.css",
+            "defaultW": 3,
+            "defaultH": 4,
+            "minW": 2,
+            "minH": 2,
+            "maxW": 6,
+            "maxH": 8,
+            "configSchema": [
+                { "key": "title", "type": "text", "label": "Title", "default": "Feature Tour" },
+                {
+                    "key": "mode",
+                    "type": "picker",
+                    "label": "Layout",
+                    "default": "list",
+                    "options": [
+                        { "value": "list",   "label": "Chapter list" },
+                        { "value": "button", "label": "Single start button" }
+                    ]
+                },
+                { "key": "showReset", "type": "boolean", "label": "Show \"show again on next visit\" action", "default": false }
+            ]
+        }
+    ]
+}

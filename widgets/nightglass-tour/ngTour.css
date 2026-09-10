@@ -1,0 +1,168 @@
+/*
+ * Nightglass tour widget.
+ *
+ * A package's stylesheet is global, so every selector here is prefixed 'ngtw'.
+ * Colours come from the theme tokens rather than literals, so the widget also
+ * looks right in light mode and under a different accent.
+ */
+.ngtw {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    padding: 10px 12px;
+    box-sizing: border-box;
+    gap: 8px;
+}
+
+.ngtw__head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex: 0 0 auto;
+    font-size: 0.78em;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--dz-body-text);
+    opacity: 0.65;
+}
+
+.ngtw__body {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: 8px;
+}
+
+.ngtw__unavailable {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex: 1 1 auto;
+    font-size: 0.82em;
+    line-height: 1.35;
+    color: var(--dz-body-text);
+    opacity: 0.7;
+}
+
+/* ---------------------------------------------------------------- list ---- */
+
+.ngtw__list {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    gap: 2px;
+    margin: 0 -6px;
+    padding: 0 6px;
+}
+
+.ngtw__chapter {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 6px 8px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--dz-body-text);
+    font-size: 0.85em;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.ngtw__chapter:hover,
+.ngtw__chapter:focus-visible {
+    background: color-mix(in srgb, var(--dz-accent-color, #4e9af1) 14%, transparent);
+    outline: none;
+}
+
+.ngtw__chapter-icon {
+    flex: 0 0 auto;
+    width: 1.1em;
+    text-align: center;
+    color: var(--dz-accent-color, #4e9af1);
+}
+
+.ngtw__chapter-title {
+    flex: 1 1 auto;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ngtw__chapter-go {
+    flex: 0 0 auto;
+    font-size: 0.75em;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.ngtw__chapter:hover .ngtw__chapter-go,
+.ngtw__chapter:focus-visible .ngtw__chapter-go {
+    opacity: 0.55;
+}
+
+/* -------------------------------------------------------------- actions ---- */
+
+.ngtw__start {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex: 1 1 auto;
+    min-height: 2.4em;
+    padding: 10px 14px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--dz-accent-color, #4e9af1);
+    color: #fff;
+    font-size: 0.9em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: filter 0.15s ease;
+}
+
+.ngtw__start:hover,
+.ngtw__start:focus-visible {
+    filter: brightness(1.1);
+    outline: none;
+}
+
+.ngtw__reset {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex: 0 0 auto;
+    padding: 4px 0 0;
+    border: 0;
+    border-top: 1px solid var(--dz-border-color, rgba(127, 127, 127, 0.25));
+    margin-top: auto;
+    background: transparent;
+    color: var(--dz-body-text);
+    font-size: 0.76em;
+    text-align: left;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.15s ease;
+}
+
+.ngtw__reset:hover,
+.ngtw__reset:focus-visible {
+    opacity: 1;
+    outline: none;
+}
+
+.ngtw__reset--done {
+    cursor: default;
+    opacity: 0.75;
+}
+
+.ngtw__reset--done:hover {
+    opacity: 0.75;
+}
