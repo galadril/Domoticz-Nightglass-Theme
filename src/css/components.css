@@ -951,7 +951,7 @@ body.ng-mobile-dashboard #tbFiltSearch.ng-hide {
 .dashboardMobile .mobileitem .dimslider,
 .dashboardMobile .mobileitem .dimslidernorm,
 .dashboardMobile .mobileitem .dimslidersmall {
-    width: calc(100% - 24px) !important;
+   /* width: calc(100% - 24px) !important;*/ 
     min-width: 80px;
     box-sizing: border-box;
 }
