@@ -227,24 +227,37 @@
         catch (e) { return []; }
     }
 
-    function saveRecent(label) {
-        var list = getRecent().filter(function (l) { return l !== label; });
-        list.unshift(label);
+    function saveRecent(key) {
+        var list = getRecent().filter(function (l) { return l !== key; });
+        list.unshift(key);
         if (list.length > MAX_RECENT) { list = list.slice(0, MAX_RECENT); }
         try { localStorage.setItem(LS_RECENT, JSON.stringify(list)); } catch (e) {}
     }
 
-    /* Find the REAL (Angular-bound) library row for a label.
+    /* The key we remember a library row by.
+       Prefer the widget type: it is stable, unique, and unlike the label it does
+       not change when Domoticz grows something else inside the label element —
+       custom widgets put a provider badge in there, which used to end up baked
+       into the stored key. Fall back to the label for a Domoticz old enough not
+       to stamp the type. */
+    function itemKey(item) {
+        var type = item.getAttribute && item.getAttribute('data-widget-type');
+        if (type) { return type; }
+        var name = item.querySelector('.dd-library-item-name') ||
+                   item.querySelector('.dd-library-item-label');
+        return name ? name.textContent.trim() : null;
+    }
+
+    /* Find the REAL (Angular-bound) library row for a key.
        Must skip our own injected "Recently Added" rows: they carry the same
-       label and are inserted as the panel's first child, so they matched first
+       key and are inserted as the panel's first child, so they matched first
        and a recent row ended up forwarding its click to itself — recursing
        until the call stack blew, which is why the + button did nothing (#228). */
-    function findLibraryItemByLabel(label) {
+    function findLibraryItem(key) {
         var items = document.querySelectorAll('.dd-library-panel .dd-library-item');
         for (var i = 0; i < items.length; i++) {
             if (items[i].closest('.dd-library-recent')) { continue; }
-            var lbl = items[i].querySelector('.dd-library-item-label');
-            if (lbl && lbl.textContent.trim() === label) { return items[i]; }
+            if (itemKey(items[i]) === key) { return items[i]; }
         }
         return null;
     }
@@ -255,8 +268,10 @@
         var old = panel.querySelector('.dd-library-recent');
         if (old) { old.remove(); }
 
-        var recent = getRecent().filter(function (lbl) {
-            return !!findLibraryItemByLabel(lbl);
+        /* Entries whose widget is no longer in the library are dropped, which
+           also quietly retires keys stored by an older build. */
+        var recent = getRecent().filter(function (key) {
+            return !!findLibraryItem(key);
         });
         if (!recent.length) { return; }
 
@@ -271,21 +286,37 @@
         var list = document.createElement('div');
         list.className = 'dd-library-recent-items dd-library-category';
 
-        recent.forEach(function (widgetLabel) {
-            var original = findLibraryItemByLabel(widgetLabel);
+        recent.forEach(function (key) {
+            var original = findLibraryItem(key);
             if (!original) { return; }
-            var iconEl = original.querySelector('.dd-library-item-icon');
+
+            var iconEl  = original.querySelector('.dd-library-item-icon');
+            /* Copy the label element wholesale rather than rebuilding it from
+               text. Whatever Domoticz puts in there — the name plus, for a
+               widget out of a theme or plugin, its provider badge — comes along,
+               so a recent row looks like the row it stands for. Angular
+               bindings are stripped: this is a static snapshot, redrawn every
+               time the panel opens. */
+            var labelEl = original.querySelector('.dd-library-item-label');
+            var labelCopy = '';
+            if (labelEl) {
+                var clone = labelEl.cloneNode(true);
+                clone.removeAttribute('ng-bind');
+                Array.prototype.forEach.call(clone.querySelectorAll('[ng-bind]'), function (n) {
+                    n.removeAttribute('ng-bind');
+                });
+                labelCopy = clone.outerHTML;
+            }
+
             var row = document.createElement('div');
             row.className = 'dd-library-item';
-            row.setAttribute('title', 'Add ' + widgetLabel);
+            row.setAttribute('title', original.getAttribute('title') || '');
             row.innerHTML =
                 (iconEl ? iconEl.outerHTML : '') +
-                '<div class="dd-library-item-info">' +
-                    '<div class="dd-library-item-label">' + widgetLabel + '</div>' +
-                '</div>' +
+                '<div class="dd-library-item-info">' + labelCopy + '</div>' +
                 '<i class="fa-solid fa-circle-plus" style="color:var(--dz-btn-primary-bg);font-size:18px"></i>';
             row.addEventListener('click', function () {
-                var t = findLibraryItemByLabel(widgetLabel);
+                var t = findLibraryItem(key);
                 if (t) { t.click(); }
             });
             list.appendChild(row);
@@ -304,8 +335,8 @@
         panel.addEventListener('click', function (e) {
             var item = e.target.closest('.dd-library-item');
             if (!item || item.closest('.dd-library-recent')) { return; }
-            var lbl = item.querySelector('.dd-library-item-label');
-            if (lbl) { saveRecent(lbl.textContent.trim()); }
+            var key = itemKey(item);
+            if (key) { saveRecent(key); }
         });
 
         var mo = new MutationObserver(function () {

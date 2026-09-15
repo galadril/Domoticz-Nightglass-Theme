@@ -1,0 +1,29 @@
+<div class="ngdc"
+     ng-class="{ 'ngdc--tappable': ctrl.allowToggle && ctrl.switchable && !ctrl.editMode,
+                 'ngdc--busy': ctrl.busy }"
+     ng-style="ctrl.tint ? { '--ngdc-tint': ctrl.tint } : {}"
+     ng-click="ctrl.toggle()">
+
+    <div class="ngdc__state" ng-if="ctrl.loading">
+        <i class="fa-solid fa-circle-notch fa-spin"></i>
+    </div>
+
+    <div class="ngdc__state ngdc__state--error" ng-if="!ctrl.loading && ctrl.error">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>{{ ctrl.error }}</span>
+    </div>
+
+    <div class="ngdc__inner" ng-if="!ctrl.loading && !ctrl.error">
+        <div class="ngdc__name">{{ ctrl.name }}</div>
+
+        <div class="ngdc__row">
+            <div class="ngdc__frame" ng-class="{ 'ngdc__frame--lit': ctrl.lit }">
+                <i ng-class="ctrl.icon"></i>
+            </div>
+            <div class="ngdc__value">{{ ctrl.value }}</div>
+        </div>
+
+        <div class="ngdc__foot" ng-if="ctrl.showFooter && ctrl.foot">{{ ctrl.foot }}</div>
+    </div>
+
+</div>
