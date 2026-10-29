@@ -63,6 +63,7 @@
     white-space: nowrap;
     transition: background 0.15s ease, color 0.15s ease;
 }
+#ng-status-bar .ng-sb-slot[hidden] { display: none !important; }
 #ng-status-bar .ng-sb-slot i { font-size: 13px; color: var(--dz-text-muted); }
 #ng-status-bar .ng-sb-slot span { font-weight: 600; }
 
