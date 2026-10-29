@@ -53,6 +53,7 @@
         'src/js/realtime.js',       /* Feature 11: WebSocket live card updates */
         'src/js/command-palette.js',/* Feature 12: Ctrl+K command palette */
         'src/js/notifications.js',  /* Feature 13: notification history panel (N key) */
+        'src/js/attention-center.js',/* Feature 15: Attention Center (A key) */
         'src/js/room-filter.js',    /* Feature 14: room filter pill-bar */
         'src/js/events-editor.js',  /* Events editor: language classes + glyphicon swap */
         'src/js/dd-enhance.js',     /* Dynamic Dashboard: glass cards, animations, context menu, fullscreen */
