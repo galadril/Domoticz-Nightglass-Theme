@@ -565,6 +565,20 @@
                el.getAttribute('xlink:href') || '';
     }
 
+    /* Best-effort device IDX for a floorplan <image>.  Floorplan markup has
+       no Angular scope or card id, so read an explicit data-idx or an id such
+       as "device_12" / "Icon_12" off the element and its nearest ancestors. */
+    function svgDeviceIdx(el) {
+        var n = el;
+        for (var depth = 0; n && n.getAttribute && depth < 5; depth++, n = n.parentNode) {
+            var di = n.getAttribute('data-idx') || n.getAttribute('data-dz-dev-idx') || '';
+            if (/^\d+$/.test(di)) return di;
+            var m = /(?:device|dev|icon|idx)[_-]?(\d+)/i.exec(n.getAttribute('id') || '');
+            if (m) return m[1];
+        }
+        return '';
+    }
+
     function processSVGImageEl(el) {
         if (!el || el.nodeName.toLowerCase() !== 'image') return false;
         if (el.getAttribute('data-dz-replaced') ||
@@ -583,6 +597,12 @@
             el.setAttribute('data-dz-skipped', 'true');
             return false;
         }
+
+        /* Per-device overrides (colour, icon shape, animation) apply on the
+           floorplan too, not just on dashboard cards. */
+        var svgIdx = svgDeviceIdx(el);
+        var svgOv  = svgIdx ? applyDeviceOverride(svgIdx, src, resolved) : null;
+        if (svgOv) resolved = svgOv;
 
         var w      = parseFloat(el.getAttribute('width')  || 32);
         var h      = parseFloat(el.getAttribute('height') || w);
@@ -623,6 +643,10 @@
         if (resolved.colorOn)  iEl.setAttribute('data-dz-color-on',  resolved.colorOn);
         if (resolved.colorOff) iEl.setAttribute('data-dz-color-off', resolved.colorOff);
         iEl.setAttribute('data-dz-state', resolved.color === resolved.colorOn ? 'on' : 'off');
+        if (svgIdx) {
+            iEl.setAttribute('data-dz-dev-idx', svgIdx);
+            applyIconAnim(iEl, svgIdx);
+        }
         iEl.style.cssText = [
             'font-size:'    + iconPx + 'px',
             'color:'        + (resolved.color || '#b0b3c6'),

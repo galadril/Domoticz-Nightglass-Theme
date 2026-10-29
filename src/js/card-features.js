@@ -140,8 +140,31 @@
         }
     }
 
+    /* Dynamic Dashboard device widgets: the hero value is a single nowrap
+       line, so a long text sensor is cut off (issue #286). Flag long
+       free-text values so the CSS can shrink them and wrap to two lines. */
+    function processDashboardLongText() {
+        var cells = document.querySelectorAll(
+            '.grid-stack-item-content table[id^="itemtable"] td#bigtext'
+        );
+        for (var i = 0; i < cells.length; i++) {
+            var td = cells[i];
+            var txt = (td.textContent || '').replace(/\s+/g, ' ').trim();
+            var tr = td.closest('tr');
+            var typeTd = tr && tr.querySelector('td#type');
+            var isText = typeTd ? /\bText\b/i.test(typeTd.textContent || '')
+                                : /[A-Za-z]{3,}/.test(txt);
+            var long = isText && txt.length > 18;
+            if (long !== td.classList.contains('dz-bigtext-long')) {
+                td.classList.toggle('dz-bigtext-long', long);
+                if (long) td.setAttribute('title', txt);
+            }
+        }
+    }
+
     window._dzExtraProcessors = window._dzExtraProcessors || [];
     window._dzExtraProcessors.push(processTextDevices);
+    window._dzExtraProcessors.push(processDashboardLongText);
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', processTextDevices);
