@@ -1,6 +1,7 @@
 /* ── Feature 14: At-a-Glance Status Bar ─────────────────────────────
-   A slim sticky bar injected just below the navbar that shows live
-   summary stats: # devices currently on, outdoor temp, power usage.
+   A slim bar fixed to the bottom of the page that shows live summary
+   stats: # devices currently on, outdoor temp, power usage. Collapsed
+   by default (dot + Attention chip only) until the user expands it.
 
    Updates reactively via Angular device_update events.
    Collapse state persists in localStorage.
@@ -23,6 +24,7 @@
         if (onLoginRoute()) {
             var old = document.getElementById('ng-status-bar');
             if (old) old.remove();
+            document.body.classList.remove('ng-sb-bottom');
             _bar = null;
             return;
         }
@@ -31,13 +33,9 @@
             return;
         }
 
-        /* Inject as first child of the main content container so
-           position:sticky keeps it pinned just under the fixed navbar. */
-        var container =
-            document.querySelector('#holder > .container-fluid') ||
-            document.querySelector('#dashcontent')               ||
-            document.querySelector('.container-fluid');
-        if (!container) return;
+        /* Attach to <body> (outside Angular's views, so route changes never
+           discard it); CSS pins it to the bottom of the viewport. */
+        if (!document.body) return;
 
         _bar = document.createElement('div');
         _bar.id = 'ng-status-bar';
@@ -47,23 +45,23 @@
                 '<div class="ng-sb-dot" id="ng-sb-dot" title="Receiving live updates"></div>' +
                 '<button class="ng-sb-toggle" id="ng-sb-toggle" ' +
                         'aria-label="Toggle status bar">' +
-                    '<i class="fa-solid fa-chevron-up"></i>' +
+                    '<i class="fa-solid fa-chevron-down"></i>' +
                 '</button>' +
             '</div>';
 
-        container.insertBefore(_bar, container.firstChild);
+        document.body.appendChild(_bar);
+        document.body.classList.add('ng-sb-bottom');
         document.getElementById('ng-sb-toggle').addEventListener('click', toggleCollapse);
         buildSlots();
         refresh();
 
-        /* Restore collapsed state */
-        try {
-            if (localStorage.getItem('ng-sb-collapsed') === '1') {
-                _bar.classList.add('ng-sb--collapsed');
-                var toggleBtn = document.getElementById('ng-sb-toggle');
-                if (toggleBtn) toggleBtn.querySelector('i').className = 'fa-solid fa-chevron-down';
-            }
-        } catch (e) {}
+        /* Restore collapsed state: collapsed unless the user expanded it */
+        var collapsed = true;
+        try { collapsed = localStorage.getItem('ng-sb-collapsed') !== '0'; } catch (e) {}
+        if (collapsed) {
+            _bar.classList.add('ng-sb--collapsed');
+            document.getElementById('ng-sb-toggle').querySelector('i').className = 'fa-solid fa-chevron-up';
+        }
     }
 
     function buildSlots() {
@@ -171,7 +169,7 @@
         var btn = document.getElementById('ng-sb-toggle');
         if (btn) {
             btn.querySelector('i').className =
-                'fa-solid ' + (collapsed ? 'fa-chevron-down' : 'fa-chevron-up');
+                'fa-solid ' + (collapsed ? 'fa-chevron-up' : 'fa-chevron-down');
         }
         try { localStorage.setItem('ng-sb-collapsed', collapsed ? '1' : '0'); } catch (e) {}
     }

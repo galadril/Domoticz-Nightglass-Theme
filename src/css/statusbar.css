@@ -1,6 +1,7 @@
 /* ── At-a-Glance Status Bar ─────────────────────────────────────────
-   Slim bar injected by src/js/statusbar.js as the first child of
-   #holder > .container-fluid. Gated by the `statusBar` setting, which
+   Slim bar injected by src/js/statusbar.js on <body>, fixed to the bottom
+   of the viewport (left of the back-to-top / bell buttons). Collapsed by
+   default: only the live dot, the Attention chip and the chevron show. Gated by the `statusBar` setting, which
    puts .ng-sb-off on <html>. Tokens: --dz-sb-* in variables.css.
 ──────────────────────────────────────────────────────────────────── */
 
@@ -8,10 +9,16 @@
 #ng-status-bar[hidden] { display: none !important; }
 
 #ng-status-bar {
+    position: fixed;
+    left: 12px;
+    right: 72px;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    z-index: 990;
     display: block;
     box-sizing: border-box;
-    max-width: 100%;
-    margin: 6px 0 10px;
+    width: fit-content;
+    max-width: calc(100% - 84px);
+    margin: 0;
     background: var(--dz-sb-bg);
     border: 1px solid var(--dz-border);
     border-radius: 10px;
@@ -122,16 +129,23 @@
 }
 #ng-status-bar .ng-sb-toggle:hover { background: var(--dz-sb-pill-hover); color: var(--dz-text); }
 
-/* Collapsed: keep the bar as a thin strip with just dot + chevron */
-#ng-status-bar.ng-sb--collapsed .ng-sb-slots { display: none; }
-#ng-status-bar.ng-sb--collapsed .ng-sb-inner { justify-content: flex-end; min-height: 28px; }
+/* Reserve room so the fixed bar never covers the end of the page */
+body.ng-sb-bottom { padding-bottom: 56px; }
+
+/* Collapsed: a small pill with just the live dot, the Attention chip (when
+   it has items) and the chevron */
+#ng-status-bar.ng-sb--collapsed .ng-sb-slot:not(.ng-sb-slot--attn),
+#ng-status-bar.ng-sb--collapsed .ng-sb-sep { display: none; }
+#ng-status-bar.ng-sb--collapsed .ng-sb-slot--attn { margin-left: 0; }
+#ng-status-bar.ng-sb--collapsed .ng-sb-inner { min-height: 28px; }
+.ng-sb-off body.ng-sb-bottom { padding-bottom: 0; }
 
 @media (hover: hover) {
     #ng-status-bar .ng-sb-slot:hover { background: var(--dz-sb-pill-hover); }
 }
 
 @media (max-width: 767px) {
-    #ng-status-bar { margin: 4px 0 8px; border-radius: 8px; }
+    #ng-status-bar { left: 8px; border-radius: 8px; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
     #ng-status-bar .ng-sb-slot { min-height: 44px; padding: 0 12px; }
     #ng-status-bar .ng-sb-toggle { width: 44px; height: 44px; }
     #ng-status-bar .ng-sb-inner { min-height: 44px; }
