@@ -608,6 +608,15 @@
 
         deviceIconOverrides: '{}',
 
+        /* Attention Center (attention-center.js). attentionSnoozed maps device
+           idx -> epoch ms until which it is hidden (0 = forever). */
+        attentionCenter:           true,
+        attentionBatteryThreshold: '20',
+        attentionStaleHours:       '24',
+        attentionSections:         '["battery","stale","timers","events"]',
+        attentionSnoozed:          '{}',
+        attentionToast:            false,
+
         /* Set once the one-shot in icon-migrate.js has cleared any icon
            overrides saved against a scene or group — see issue #265. Keeps
            that cleanup to a single extra request per account. */
@@ -657,7 +666,8 @@
        ThemeSettings blob.  On the new API (16 KB limit) userPresets are
        included in the blob; on the legacy user-variable path they remain in a
        dedicated variable to stay under the 2500-char cap (issue #203). */
-    var COLLECTION_FIELDS = ['deviceIconOverrides', 'userPresets', 'toastBlacklist'];
+    var COLLECTION_FIELDS = ['deviceIconOverrides', 'userPresets', 'toastBlacklist',
+                             'attentionSnoozed', 'attentionSections'];
 
     /* ── Domoticz API helpers ─────────────────────────────────────── */
 
@@ -1986,6 +1996,24 @@
             '</div>' +
 
             '<div class="ng-settings-section">' +
+            '<div class="ng-section-header"><i class="fa-solid fa-triangle-exclamation"></i> Attention Center</div>' +
+            toggle('attentionCenter', 'Attention Center', 'Collect low batteries, offline devices and disabled timers in one panel (A key, status bar chip)') +
+            select('attentionBatteryThreshold', 'Low Battery Threshold', [
+                { value: '10', label: '10%' },
+                { value: '20', label: '20%' },
+                { value: '30', label: '30%' }
+            ], 'Devices at or below this level are listed') +
+            select('attentionStaleHours', 'Offline After', [
+                { value: '6',  label: '6 hours' },
+                { value: '12', label: '12 hours' },
+                { value: '24', label: '24 hours' },
+                { value: '48', label: '48 hours' },
+                { value: '72', label: '72 hours' }
+            ], 'No update for this long marks a device offline (also dims its card)') +
+            toggle('attentionToast', 'Toast on New Low Battery', 'Show a toast when a device newly drops to the battery threshold') +
+            '</div>' +
+
+            '<div class="ng-settings-section">' +
             '<div class="ng-section-header"><i class="fa-solid fa-bell"></i> Live Notifications</div>' +
             toggle('liveToasts', 'Device State Toasts', 'Show a toast when any device changes state via the live WebSocket feed') +
             select('liveToastFilter', 'Event Filter', [
@@ -2252,7 +2280,8 @@
     var PRESET_PROTECTED_KEYS = {
         deviceIconOverrides: true,
         toastBlacklist:      true,
-        userPresets:         true
+        userPresets:         true,
+        attentionSnoozed:    true
     };
 
     function applyPreset(preset) {
