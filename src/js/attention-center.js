@@ -32,14 +32,12 @@
     var CACHE_MS      = 60 * 1000;
     var RENDER_DEBOUNCE = 500;
     var ROW_LIMIT     = 50;
-    var EVENT_LIMIT   = 10;
-    var ALL_SECTIONS  = ['battery', 'stale', 'timers', 'events'];
+    var ALL_SECTIONS  = ['battery', 'stale', 'timers'];
 
     var SECTION_META = {
         battery: { title: 'Low battery',       icon: 'fa-battery-quarter' },
         stale:   { title: 'Offline / stale',   icon: 'fa-plug-circle-xmark' },
-        timers:  { title: 'Timers to check',   icon: 'fa-clock' },
-        events:  { title: 'Recent events',     icon: 'fa-bell' }
+        timers:  { title: 'Timers to check',   icon: 'fa-clock' }
     };
 
     var _devices    = {};      // idx -> device (from getdevices, patched live)
@@ -406,39 +404,6 @@
             '</button>' + body + '</section>';
     }
 
-    function eventsHtml() {
-        var evs = (window.ngNotifGetEvents ? window.ngNotifGetEvents() : []).slice(-EVENT_LIMIT).reverse();
-        var meta = SECTION_META.events;
-        var open = !_collapsed.events;
-        var body = '';
-        if (open) {
-            if (!evs.length) {
-                body += '<div class="ng-attn-none">No recent events</div>';
-            } else {
-                body += '<div class="ng-attn-rows" role="list">';
-                evs.forEach(function (ev, i) {
-                    var nav = !!ev.device;
-                    body += '<div class="ng-attn-row" role="listitem">' +
-                        '<button type="button" class="ng-attn-row-main' + (nav ? '' : ' ng-attn-row-main--static') + '"' +
-                            (nav ? ' data-act="ev-nav" data-ev="' + (evs.length - 1 - i) + '"' : ' tabindex="-1"') + '>' +
-                            '<i class="fa-solid ' + esc(ev.icon || 'fa-circle-dot') + ' ng-attn-row-icon" aria-hidden="true"></i>' +
-                            '<span class="ng-attn-row-name">' + esc(ev.name) + '</span>' +
-                            '<span class="ng-attn-row-meta">' + esc(ev.status) + ' · ' + esc(ev.time) + '</span>' +
-                        '</button></div>';
-                });
-                body += '</div>';
-            }
-            body += '<button type="button" class="ng-attn-more" data-act="events-full">Open full history</button>';
-        }
-        return '<section class="ng-attn-sec" data-section="events">' +
-            '<button type="button" class="ng-attn-sec-hdr" data-act="collapse" data-section="events" aria-expanded="' + open + '">' +
-                '<i class="fa-solid ' + meta.icon + ' ng-attn-sec-icon" aria-hidden="true"></i>' +
-                '<span class="ng-attn-sec-title">' + meta.title + '</span>' +
-                '<span class="ng-attn-sec-count' + (evs.length ? ' ng-attn-sec-count--on' : '') + '">' + evs.length + '</span>' +
-                '<i class="fa-solid fa-chevron-down ng-attn-chev' + (open ? '' : ' ng-attn-chev--closed') + '" aria-hidden="true"></i>' +
-            '</button>' + body + '</section>';
-    }
-
     function render() {
         var c = announce();
         if (!_panel || !_open) return;
@@ -456,7 +421,6 @@
                 'Heuristic: Domoticz does not record failed timer runs, so this lists disabled timers ' +
                 'and timers whose device is unused or gone.');
         }
-        if (on.indexOf('events') >= 0)  html += eventsHtml();
 
         var snoozed = activeSnoozeCount();
         if (snoozed) {
@@ -532,18 +496,6 @@
                 closePanel();
                 window.ngNavigateToDevice(d);
             }
-        }
-        else if (act === 'ev-nav') {
-            var evs = (window.ngNotifGetEvents ? window.ngNotifGetEvents() : []).slice(-EVENT_LIMIT).reverse();
-            var ev = evs[evs.length - 1 - parseInt(el.getAttribute('data-ev'), 10)];
-            if (ev && ev.device && typeof window.ngNavigateToDevice === 'function') {
-                closePanel();
-                window.ngNavigateToDevice(ev.device);
-            }
-        }
-        else if (act === 'events-full') {
-            closePanel();
-            if (window.ngNotifOpen) window.ngNotifOpen();
         }
     }
 

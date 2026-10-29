@@ -614,7 +614,7 @@
         attentionCenter:           true,
         attentionBatteryThreshold: '20',
         attentionStaleHours:       '24',
-        attentionSections:         '["battery","stale","timers","events"]',
+        attentionSections:         '["battery","stale","timers"]',
         attentionSnoozed:          '{}',
         attentionToast:            false,
 
