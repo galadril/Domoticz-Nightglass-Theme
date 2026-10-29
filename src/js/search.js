@@ -600,6 +600,7 @@
         enableColors:       true,
         fontSize:           '100',
 
+        statusBar:          true,
         liveToasts:         true,
         liveToastFilter:    'meaningful',
         liveToastDuration:  '4',
@@ -1735,6 +1736,9 @@
         // Smooth scrolling
         root.style.scrollBehavior = _settings.smoothScrolling ? 'smooth' : 'auto';
 
+        // At-a-Glance Status Bar (hidden via CSS; statusbar.js stays idle)
+        root.classList.toggle('ng-sb-off', !_settings.statusBar);
+
         // Show last update
         var luStyle = document.getElementById('dz-ng-lu-style');
         if (!_settings.showLastUpdate) {
@@ -1961,6 +1965,7 @@
             ], 'Manual shows a navbar button to switch; Auto follows your OS preference') +
             slider('fontSize', 'Base Font Size', 80, 125, 5, '%', 'Scale the entire interface') +
             slider('iconSize', 'Device Icon Size', 60, 150, 5, '%', 'Scale device icons on cards') +
+            toggle('statusBar', 'Status Bar', 'Slim bar under the navbar showing lights on, temperature, power and the Attention Center count') +
             toggle('showLastUpdate', 'Show Last Update', 'Show the formatted timestamp footer on device cards') +
             toggle('uppercaseNames', 'Uppercase Device Names', 'Force device names to UPPERCASE on cards') +
             toggle('longPressToggle', 'Hold to Switch', 'Press and hold a card\'s icon to switch the device on or off — works on colour lights, where a click opens the picker') +

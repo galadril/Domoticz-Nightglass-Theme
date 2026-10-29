@@ -14,7 +14,18 @@
 
     /* ── Build bar ─────────────────────────────────────────────── */
 
+    function onLoginRoute() {
+        var h = (window.location.hash || '').toLowerCase();
+        return h.indexOf('login') >= 0 || h.indexOf('wizard') >= 0;
+    }
+
     function buildBar() {
+        if (onLoginRoute()) {
+            var old = document.getElementById('ng-status-bar');
+            if (old) old.remove();
+            _bar = null;
+            return;
+        }
         if (document.getElementById('ng-status-bar')) {
             _bar = document.getElementById('ng-status-bar');
             return;
@@ -189,7 +200,7 @@
         try {
             var $rs = bodyEl.injector().get('$rootScope');
             $rs.$on('device_update',       function (e, d) { onDeviceUpdate(d); });
-            $rs.$on('$routeChangeSuccess', function ()     { setTimeout(refresh, 600); });
+            $rs.$on('$routeChangeSuccess', function ()     { setTimeout(function () { buildBar(); refresh(); }, 600); });
         } catch (e) {
             setTimeout(attachHooks, 600);
         }
