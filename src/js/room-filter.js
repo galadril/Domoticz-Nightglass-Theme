@@ -451,6 +451,11 @@
         if (type === 'Weight')           return 'Weight';
         if (type === 'Current')          return 'Current';
         if (type === 'Current/Energy')   return 'Energy';
+        /* Counter-style meters (RFXMeter, Managed Counter, Counter Incremental...)
+           would otherwise each fall through to their own raw SubType and show up
+           as several separate single-device pills instead of one 'Counter' group. */
+        if (type === 'RFXMeter' || type === 'Managed Counter' ||
+            subtype.indexOf('Counter') !== -1) return 'Counter';
 
         /* Generic sub-types */
         var subtypeMap = {

@@ -33,7 +33,8 @@
     right: 6px;
     width: 7px;
     height: 7px;
-    background: var(--dz-danger);
+    /* Accent (not red) so it can't be mistaken for a device's red status dot */
+    background: var(--dz-accent);
     border-radius: 50%;
     pointer-events: none;
     box-sizing: border-box;
