@@ -140,8 +140,31 @@
         }
     }
 
+    /* Dynamic Dashboard device widgets: the hero value is a single nowrap
+       line, so a long text sensor is cut off (issue #286). Flag long
+       free-text values so the CSS can shrink them and wrap to two lines. */
+    function processDashboardLongText() {
+        var cells = document.querySelectorAll(
+            '.grid-stack-item-content table[id^="itemtable"] td#bigtext'
+        );
+        for (var i = 0; i < cells.length; i++) {
+            var td = cells[i];
+            var txt = (td.textContent || '').replace(/\s+/g, ' ').trim();
+            var tr = td.closest('tr');
+            var typeTd = tr && tr.querySelector('td#type');
+            var isText = typeTd ? /\bText\b/i.test(typeTd.textContent || '')
+                                : /[A-Za-z]{3,}/.test(txt);
+            var long = isText && txt.length > 18;
+            if (long !== td.classList.contains('dz-bigtext-long')) {
+                td.classList.toggle('dz-bigtext-long', long);
+                if (long) td.setAttribute('title', txt);
+            }
+        }
+    }
+
     window._dzExtraProcessors = window._dzExtraProcessors || [];
     window._dzExtraProcessors.push(processTextDevices);
+    window._dzExtraProcessors.push(processDashboardLongText);
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', processTextDevices);
@@ -1118,7 +1141,27 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /* ── Staleness Indicator (Feature 9) ─────────────────────────── */
-    var STALE_MS = 24 * 60 * 60 * 1000; // 1 day
+    var DEFAULT_STALE_HOURS = 24;
+
+    /* Threshold comes from the attentionStaleHours setting (default 24h) so the
+       card dimming and the Attention Center panel always agree. */
+    function staleMs() {
+        var h = DEFAULT_STALE_HOURS;
+        try {
+            var v = parseFloat(window.dzNightglassSettings &&
+                               window.dzNightglassSettings.get('attentionStaleHours'));
+            if (v > 0) h = v;
+        } catch (e) {}
+        return h * 60 * 60 * 1000;
+    }
+
+    /* Shared predicate: is this Date/epoch older than the stale threshold?
+       A missing/invalid date counts as stale, as on the cards. */
+    window.ngIsStale = function (date) {
+        var t = date instanceof Date ? date.getTime() : +date;
+        if (!t || isNaN(t)) return true;
+        return (Date.now() - t) >= staleMs();
+    };
 
     function parseFooterDate(span) {
         /* Prefer the machine-readable epoch stored by processCards */
@@ -1131,7 +1174,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var span = card.querySelector('.dz-time');
         if (!span) return;
         var date = parseFooterDate(span);
-        if (date && (Date.now() - date) < STALE_MS) {
+        if (date && !window.ngIsStale(date)) {
             card.classList.remove('dz-stale');
         } else {
             var nameEl = card.querySelector('td#name');

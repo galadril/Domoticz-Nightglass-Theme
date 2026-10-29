@@ -1,0 +1,160 @@
+/* ── At-a-Glance Status Bar ─────────────────────────────────────────
+   Slim bar injected by src/js/statusbar.js on <body>, fixed to the bottom
+   of the viewport (left of the back-to-top / bell buttons). Collapsed by
+   default: only the live dot, the Attention chip and the chevron show. Gated by the `statusBar` setting, which
+   puts .ng-sb-off on <html>. Tokens: --dz-sb-* in variables.css.
+──────────────────────────────────────────────────────────────────── */
+
+.ng-sb-off #ng-status-bar,
+#ng-status-bar[hidden] { display: none !important; }
+
+#ng-status-bar {
+    position: fixed;
+    left: 12px;
+    right: 72px;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    z-index: 990;
+    display: block;
+    box-sizing: border-box;
+    width: fit-content;
+    max-width: calc(100% - 84px);
+    margin: 0;
+    background: var(--dz-sb-bg);
+    border: 1px solid var(--dz-border);
+    border-radius: 10px;
+    color: var(--dz-text-soft);
+    font-size: 13px;
+    line-height: 1;
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+}
+
+#ng-status-bar .ng-sb-inner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    padding: 0 6px 0 8px;
+}
+
+#ng-status-bar .ng-sb-slots {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+#ng-status-bar .ng-sb-slots::-webkit-scrollbar { display: none; }
+
+#ng-status-bar .ng-sb-slot {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    color: var(--dz-text);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+#ng-status-bar .ng-sb-slot[hidden] { display: none !important; }
+#ng-status-bar .ng-sb-slot i { font-size: 13px; color: var(--dz-text-muted); }
+#ng-status-bar .ng-sb-slot span { font-weight: 600; }
+
+#ng-status-bar .ng-sb-sep {
+    flex: 0 0 auto;
+    width: 1px;
+    height: 16px;
+    background: var(--dz-border);
+}
+
+/* Attention Center chip */
+#ng-status-bar .ng-sb-slot--attn {
+    cursor: pointer;
+    margin-left: 4px;
+    background: rgba(var(--dz-warning-rgb), 0.14);
+    border: 1px solid rgba(var(--dz-warning-rgb), 0.45);
+    color: var(--dz-warning);
+}
+#ng-status-bar .ng-sb-slot--attn span { color: inherit; }
+#ng-status-bar .ng-sb-slot--attn.ng-sb-slot--danger {
+    background: rgba(var(--dz-danger-rgb), 0.14);
+    border-color: rgba(var(--dz-danger-rgb), 0.5);
+    color: var(--dz-danger);
+}
+#ng-status-bar .ng-sb-slot--attn[hidden] { display: none !important; }
+#ng-status-bar .ng-sb-slot--attn:hover { background: rgba(var(--dz-warning-rgb), 0.26); }
+#ng-status-bar .ng-sb-slot--attn.ng-sb-slot--danger:hover { background: rgba(var(--dz-danger-rgb), 0.26); }
+#ng-status-bar .ng-sb-slot--attn:focus-visible,
+#ng-status-bar .ng-sb-toggle:focus-visible {
+    outline: 2px solid var(--dz-accent);
+    outline-offset: 2px;
+}
+
+/* Live dot */
+#ng-status-bar .ng-sb-dot {
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--dz-success);
+    box-shadow: 0 0 0 0 rgba(var(--dz-success-rgb), 0.5);
+}
+#ng-status-bar .ng-sb-dot--pulse { animation: ngSbPulse 0.9s ease-out; }
+@keyframes ngSbPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(var(--dz-success-rgb), 0.55); }
+    100% { box-shadow: 0 0 0 8px rgba(var(--dz-success-rgb), 0); }
+}
+
+/* Collapse chevron */
+#ng-status-bar .ng-sb-toggle {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--dz-text-muted);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+#ng-status-bar .ng-sb-toggle:hover { background: var(--dz-sb-pill-hover); color: var(--dz-text); }
+
+/* Reserve room so the fixed bar never covers the end of the page */
+body.ng-sb-bottom { padding-bottom: 56px; }
+
+/* Collapsed: a small pill with just the live dot, the Attention chip (when
+   it has items) and the chevron */
+#ng-status-bar.ng-sb--collapsed .ng-sb-slot:not(.ng-sb-slot--attn),
+#ng-status-bar.ng-sb--collapsed .ng-sb-sep { display: none; }
+#ng-status-bar.ng-sb--collapsed .ng-sb-slot--attn { margin-left: 0; }
+#ng-status-bar.ng-sb--collapsed .ng-sb-inner { min-height: 28px; }
+.ng-sb-off body.ng-sb-bottom { padding-bottom: 0; }
+
+@media (hover: hover) {
+    #ng-status-bar .ng-sb-slot:hover { background: var(--dz-sb-pill-hover); }
+}
+
+@media (max-width: 767px) {
+    #ng-status-bar { left: 8px; border-radius: 8px; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+    #ng-status-bar .ng-sb-slot { min-height: 44px; padding: 0 12px; }
+    #ng-status-bar .ng-sb-toggle { width: 44px; height: 44px; }
+    #ng-status-bar .ng-sb-inner { min-height: 44px; }
+    #ng-status-bar.ng-sb--collapsed .ng-sb-inner { min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #ng-status-bar .ng-sb-slot,
+    #ng-status-bar .ng-sb-toggle { transition: none; }
+    #ng-status-bar .ng-sb-dot--pulse { animation: none; }
+}

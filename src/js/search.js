@@ -600,6 +600,7 @@
         enableColors:       true,
         fontSize:           '100',
 
+        statusBar:          true,
         liveToasts:         true,
         liveToastFilter:    'meaningful',
         liveToastDuration:  '4',
@@ -607,6 +608,15 @@
         toastBlacklist:     '[]',
 
         deviceIconOverrides: '{}',
+
+        /* Attention Center (attention-center.js). attentionSnoozed maps device
+           idx -> epoch ms until which it is hidden (0 = forever). */
+        attentionCenter:           true,
+        attentionBatteryThreshold: '20',
+        attentionStaleHours:       '24',
+        attentionSections:         '["battery","stale","timers"]',
+        attentionSnoozed:          '{}',
+        attentionToast:            false,
 
         /* Set once the one-shot in icon-migrate.js has cleared any icon
            overrides saved against a scene or group — see issue #265. Keeps
@@ -657,7 +667,8 @@
        ThemeSettings blob.  On the new API (16 KB limit) userPresets are
        included in the blob; on the legacy user-variable path they remain in a
        dedicated variable to stay under the 2500-char cap (issue #203). */
-    var COLLECTION_FIELDS = ['deviceIconOverrides', 'userPresets', 'toastBlacklist'];
+    var COLLECTION_FIELDS = ['deviceIconOverrides', 'userPresets', 'toastBlacklist',
+                             'attentionSnoozed', 'attentionSections'];
 
     /* ── Domoticz API helpers ─────────────────────────────────────── */
 
@@ -1725,6 +1736,9 @@
         // Smooth scrolling
         root.style.scrollBehavior = _settings.smoothScrolling ? 'smooth' : 'auto';
 
+        // At-a-Glance Status Bar (hidden via CSS; statusbar.js stays idle)
+        root.classList.toggle('ng-sb-off', !_settings.statusBar);
+
         // Show last update
         var luStyle = document.getElementById('dz-ng-lu-style');
         if (!_settings.showLastUpdate) {
@@ -1951,6 +1965,7 @@
             ], 'Manual shows a navbar button to switch; Auto follows your OS preference') +
             slider('fontSize', 'Base Font Size', 80, 125, 5, '%', 'Scale the entire interface') +
             slider('iconSize', 'Device Icon Size', 60, 150, 5, '%', 'Scale device icons on cards') +
+            toggle('statusBar', 'Status Bar', 'Slim bar under the navbar showing lights on, temperature, power and the Attention Center count') +
             toggle('showLastUpdate', 'Show Last Update', 'Show the formatted timestamp footer on device cards') +
             toggle('uppercaseNames', 'Uppercase Device Names', 'Force device names to UPPERCASE on cards') +
             toggle('longPressToggle', 'Hold to Switch', 'Press and hold a card\'s icon to switch the device on or off — works on colour lights, where a click opens the picker') +
@@ -1983,6 +1998,24 @@
             toggle('cardAnimations', 'Card Animations', 'Entrance animations and hover transitions on cards') +
             toggle('navAnimations', 'Navbar Animations', 'Staggered entrances, sliding indicator, dropdown effects') +
             toggle('smoothScrolling', 'Smooth Scrolling', 'Enable smooth scroll behavior page-wide') +
+            '</div>' +
+
+            '<div class="ng-settings-section">' +
+            '<div class="ng-section-header"><i class="fa-solid fa-triangle-exclamation"></i> Attention Center</div>' +
+            toggle('attentionCenter', 'Attention Center', 'Collect low batteries, offline devices and disabled timers in one panel (A key, status bar chip)') +
+            select('attentionBatteryThreshold', 'Low Battery Threshold', [
+                { value: '10', label: '10%' },
+                { value: '20', label: '20%' },
+                { value: '30', label: '30%' }
+            ], 'Devices at or below this level are listed') +
+            select('attentionStaleHours', 'Offline After', [
+                { value: '6',  label: '6 hours' },
+                { value: '12', label: '12 hours' },
+                { value: '24', label: '24 hours' },
+                { value: '48', label: '48 hours' },
+                { value: '72', label: '72 hours' }
+            ], 'No update for this long marks a device offline (also dims its card)') +
+            toggle('attentionToast', 'Toast on New Low Battery', 'Show a toast when a device newly drops to the battery threshold') +
             '</div>' +
 
             '<div class="ng-settings-section">' +
@@ -2252,7 +2285,8 @@
     var PRESET_PROTECTED_KEYS = {
         deviceIconOverrides: true,
         toastBlacklist:      true,
-        userPresets:         true
+        userPresets:         true,
+        attentionSnoozed:    true
     };
 
     function applyPreset(preset) {

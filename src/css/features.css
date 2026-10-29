@@ -33,7 +33,8 @@
     right: 6px;
     width: 7px;
     height: 7px;
-    background: var(--dz-danger);
+    /* Accent (not red) so it can't be mistaken for a device's red status dot */
+    background: var(--dz-accent);
     border-radius: 50%;
     pointer-events: none;
     box-sizing: border-box;
@@ -868,5 +869,324 @@ body.dz-light .ng-rf-pill-count {
 
     #ng-rf-backdrop.ng-rf-backdrop--visible {
         background: rgba(0, 0, 0, 0.55);
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   FEATURE 15 — Attention Center
+   Right-hand drawer (bottom sheet on mobile) listing low batteries,
+   offline devices and timers worth checking.  Mirrors #ng-notif-panel.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Status-bar chip */
+.ng-sb-slot--attn {
+    cursor: pointer;
+    color: var(--dz-warning);
+}
+
+    .ng-sb-slot--attn[hidden] { display: none; }
+
+    .ng-sb-slot--attn.ng-sb-slot--danger { color: var(--dz-danger); }
+
+    .ng-sb-slot--attn:focus-visible {
+        outline: 2px solid var(--dz-accent);
+        outline-offset: 2px;
+    }
+
+#ng-attn-panel {
+    position: fixed;
+    top: 54px;
+    right: 0;
+    width: 340px;
+    height: calc(100dvh - 54px);
+    background: var(--dz-surface);
+    border-left: 1px solid var(--dz-surface-3);
+    box-shadow: -4px 0 28px rgba(0, 0, 0, 0.35);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(calc(100% + 1px));
+    visibility: hidden;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 0.3s;
+    overflow: hidden;
+}
+
+    #ng-attn-panel.ng-attn-panel--open {
+        transform: translateX(0);
+        visibility: visible;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s;
+    }
+
+.ng-attn-hdr {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--dz-surface-3);
+    flex-shrink: 0;
+}
+
+.ng-attn-title {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--dz-text);
+}
+
+    .ng-attn-title > i {
+        color: var(--dz-warning);
+        margin-right: 6px;
+    }
+
+.ng-attn-count {
+    flex: 1;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--dz-text-muted);
+}
+
+    .ng-attn-count--warning { color: var(--dz-warning); }
+    .ng-attn-count--danger  { color: var(--dz-danger); }
+
+.ng-attn-hdr-btn {
+    background: none;
+    border: none;
+    color: var(--dz-text-muted);
+    cursor: pointer;
+    padding: 4px 7px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    line-height: 1;
+    transition: color 0.15s, background 0.15s;
+}
+
+    .ng-attn-hdr-btn:hover {
+        color: var(--dz-text);
+        background: var(--dz-surface-3);
+    }
+
+.ng-attn-body {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 4px 0 12px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--dz-border) transparent;
+}
+
+    .ng-attn-body::-webkit-scrollbar       { width: 4px; }
+    .ng-attn-body::-webkit-scrollbar-track { background: transparent; }
+    .ng-attn-body::-webkit-scrollbar-thumb { background: var(--dz-border); border-radius: 2px; }
+
+.ng-attn-sec { border-bottom: 1px solid var(--dz-border); }
+
+.ng-attn-sec-hdr {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 16px;
+    background: none;
+    border: none;
+    color: var(--dz-text);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+    .ng-attn-sec-hdr:hover { background: rgba(var(--dz-accent-rgb), 0.05); }
+
+    .ng-attn-sec-hdr:focus-visible,
+    .ng-attn-row-main:focus-visible,
+    .ng-attn-snz-btn:focus-visible,
+    .ng-attn-more:focus-visible,
+    .ng-attn-hdr-btn:focus-visible,
+    .ng-attn-snz-choices button:focus-visible,
+    .ng-attn-link:focus-visible {
+        outline: 2px solid var(--dz-accent);
+        outline-offset: -2px;
+    }
+
+.ng-attn-sec-icon { color: var(--dz-text-muted); width: 16px; text-align: center; }
+
+.ng-attn-sec-title { flex: 1; }
+
+.ng-attn-sec-count {
+    min-width: 20px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: var(--dz-surface-3);
+    color: var(--dz-text-muted);
+    font-size: 0.7rem;
+    text-align: center;
+}
+
+    .ng-attn-sec-count--on {
+        background: rgba(var(--dz-warning-rgb), 0.18);
+        color: var(--dz-warning);
+    }
+
+.ng-attn-chev {
+    font-size: 0.65rem;
+    color: var(--dz-text-faint);
+    transition: transform 0.2s;
+}
+
+    .ng-attn-chev--closed { transform: rotate(-90deg); }
+
+.ng-attn-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    min-height: 40px;
+    border-top: 1px solid var(--dz-border);
+}
+
+    .ng-attn-row:hover { background: rgba(var(--dz-accent-rgb), 0.05); }
+
+.ng-attn-row-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 8px 8px 16px;
+    background: none;
+    border: none;
+    color: var(--dz-text);
+    font-size: 0.83rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+
+.ng-attn-row-icon {
+    width: 16px;
+    text-align: center;
+    color: var(--dz-warning);
+    flex-shrink: 0;
+}
+
+.ng-attn-row--danger .ng-attn-row-icon { color: var(--dz-danger); }
+
+.ng-attn-row-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ng-attn-row-meta {
+    flex-shrink: 0;
+    max-width: 45%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.72rem;
+    color: var(--dz-text-muted);
+}
+
+.ng-attn-snz-btn {
+    width: 36px;
+    background: none;
+    border: none;
+    color: var(--dz-text-faint);
+    cursor: pointer;
+    font-size: 0.78rem;
+    transition: color 0.15s;
+}
+
+    .ng-attn-snz-btn:hover,
+    .ng-attn-row--snz .ng-attn-snz-btn { color: var(--dz-accent); }
+
+.ng-attn-snz-choices {
+    flex-basis: 100%;
+    display: flex;
+    gap: 6px;
+    padding: 4px 16px 10px;
+}
+
+    .ng-attn-snz-choices button {
+        flex: 1;
+        padding: 6px 4px;
+        background: var(--dz-surface-3);
+        border: 1px solid var(--dz-border);
+        border-radius: 6px;
+        color: var(--dz-text);
+        font-size: 0.75rem;
+        cursor: pointer;
+    }
+
+        .ng-attn-snz-choices button:hover {
+            border-color: var(--dz-accent);
+            color: var(--dz-accent);
+        }
+
+.ng-attn-more {
+    display: block;
+    width: 100%;
+    padding: 9px 16px;
+    background: none;
+    border: none;
+    border-top: 1px solid var(--dz-border);
+    color: var(--dz-accent);
+    font-size: 0.78rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+    .ng-attn-more:hover { background: rgba(var(--dz-accent-rgb), 0.05); }
+
+.ng-attn-none,
+.ng-attn-note,
+.ng-attn-foot {
+    padding: 8px 16px;
+    font-size: 0.76rem;
+    color: var(--dz-text-faint);
+}
+
+.ng-attn-note--err { color: var(--dz-danger); }
+
+.ng-attn-foot { text-align: center; }
+
+.ng-attn-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--dz-accent);
+    font-size: inherit;
+    cursor: pointer;
+}
+
+@media (max-width: 480px) {
+    #ng-attn-panel {
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 80dvh;
+        max-height: 80vh;
+        border-left: none;
+        border-top: 1px solid var(--dz-surface-3);
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.45);
+        transform: translateY(calc(100% + 1px));
+    }
+
+    #ng-attn-panel.ng-attn-panel--open { transform: translateY(0); }
+
+    .ng-attn-row { min-height: 44px; }
+    .ng-attn-snz-btn { width: 44px; }
+    .ng-attn-sec-hdr { min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #ng-attn-panel,
+    #ng-attn-panel.ng-attn-panel--open,
+    .ng-attn-chev {
+        transition: none;
     }
 }
