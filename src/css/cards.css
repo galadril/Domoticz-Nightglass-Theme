@@ -1097,6 +1097,20 @@ body table#itemtablenostatus tr td.options {
 }
 
 
+/* Dynamic Dashboard: long text values wrap to two smaller lines instead of
+   being cut off with an ellipsis (issue #286). */
+.grid-stack-item-content table[id^="itemtable"] tr td#bigtext.dz-bigtext-long {
+    font-size: 0.8rem !important;
+    line-height: 1.3;
+    white-space: normal !important;
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    word-break: break-word;
+}
+
 /* ── 6n. Alert device cards (.dz-alert-device) ─────────────────── */
 /*    "General, Alert" devices display their message in td#bigtext    */
 /*    which inherits the hero-value style (1.15rem bold, no-wrap).    */
