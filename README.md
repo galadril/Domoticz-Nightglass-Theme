@@ -27,6 +27,7 @@ A clean, modern dark theme for Domoticz dashboards with powerful keyboard shortc
 - **Keyboard Navigation** - Press `1-9` to jump between Dashboard, Switches, Scenes, Temp, Weather, Utility, Cameras, Log, Setup
 - **Live Timestamps** - Auto-formatted "today 3:45pm" / "Jan 15, 2:30pm" timestamps that update in real-time
 - **Enhanced Cards** - Big text mode, moon phase display, tilt/temp indicators, glow/flash effects for state changes
+- **Attention Center** - Press `A` for one panel of low batteries, offline devices and timers to check, with snooze
 - **Modern UI** - Redesigned modals, popups, and toast notifications
 - **Ace Editor Theming** - Themed code editor with persistent theme selection
 - **Highcharts Integration** - Beautiful chart themes that match your color scheme

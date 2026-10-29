@@ -72,8 +72,34 @@
             '<div class="ng-sb-slot" id="ng-sb-power">' +
                 '<i class="fa-solid fa-bolt" style="color:var(--dz-success)"></i>' +
                 '<span>–</span>' +
+            '</div>' +
+            /* Attention Center chip — hidden until attention-center.js reports items */
+            '<div class="ng-sb-slot ng-sb-slot--attn" id="ng-sb-attn" role="button" tabindex="0" hidden>' +
+                '<i class="fa-solid fa-triangle-exclamation"></i>' +
+                '<span>0</span>' +
             '</div>';
+        syncAttention();
     }
+
+    /* Mirror the Attention Center count into the chip. The panel itself opens
+       from a delegated click handler in attention-center.js. */
+    function syncAttention(counts) {
+        var el = document.getElementById('ng-sb-attn');
+        if (!el) return;
+        if (!counts && window.ngAttention) counts = window.ngAttention.getCounts();
+        var n = counts ? counts.total : 0;
+        el.hidden = n <= 0;
+        el.classList.toggle('ng-sb-slot--danger', !!counts && counts.severity === 'danger');
+        el.setAttribute('aria-label', n + (n === 1 ? ' item needs attention' : ' items need attention') + ' (A)');
+        el.title = 'Attention Center  [A]';
+        setSlot('attn', String(n), counts && counts.severity === 'danger' ? 'var(--dz-danger)' : 'var(--dz-warning)');
+    }
+
+    document.addEventListener('ng-attention-change', function (e) { syncAttention(e.detail); });
+    document.addEventListener('keydown', function (e) {
+        var el = e.target && e.target.closest && e.target.closest('#ng-sb-attn');
+        if (el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); el.click(); }
+    });
 
     function setSlot(id, text, iconColor) {
         var el = document.getElementById('ng-sb-' + id);

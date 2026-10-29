@@ -169,6 +169,8 @@
 
     function openPanel() {
         window.ngLog('[Notif]', 'panel open — events:', _events.length, 'unread:', _unread);
+        /* One drawer at a time: the Attention Center shares this screen edge */
+        if (window.ngAttention && window.ngAttention.close) window.ngAttention.close();
         buildPanel();
         /* Mark all as read when opening */
         for (var i = 0; i < _events.length; i++) _events[i].unread = false;
@@ -353,6 +355,7 @@
             name:   device.Name || ('Device ' + (device.idx || '')),
             status: status,
             time:   fmtTime(Date.now()),
+            ts:     Date.now(),
             unread: true,
             device: {
                 Name:       device.Name       || '',
@@ -374,6 +377,13 @@
 
     /* Expose for demo pages and external modules */
     window.ngNotifRecord = recordEvent;
+
+    /* Read-only view of the in-memory event buffer (oldest first), plus
+       panel controls for the Attention Center. */
+    window.ngNotifGetEvents = function () { return _events.slice(); };
+    window.ngNotifClose     = closePanel;
+    window.ngNotifOpen      = openPanel;
+    window.ngEscHtml        = escHtml;
 
     /* ── Navbar button injection ───────────────────────────────── */
 

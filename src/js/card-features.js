@@ -1141,7 +1141,27 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /* ── Staleness Indicator (Feature 9) ─────────────────────────── */
-    var STALE_MS = 24 * 60 * 60 * 1000; // 1 day
+    var DEFAULT_STALE_HOURS = 24;
+
+    /* Threshold comes from the attentionStaleHours setting (default 24h) so the
+       card dimming and the Attention Center panel always agree. */
+    function staleMs() {
+        var h = DEFAULT_STALE_HOURS;
+        try {
+            var v = parseFloat(window.dzNightglassSettings &&
+                               window.dzNightglassSettings.get('attentionStaleHours'));
+            if (v > 0) h = v;
+        } catch (e) {}
+        return h * 60 * 60 * 1000;
+    }
+
+    /* Shared predicate: is this Date/epoch older than the stale threshold?
+       A missing/invalid date counts as stale, as on the cards. */
+    window.ngIsStale = function (date) {
+        var t = date instanceof Date ? date.getTime() : +date;
+        if (!t || isNaN(t)) return true;
+        return (Date.now() - t) >= staleMs();
+    };
 
     function parseFooterDate(span) {
         /* Prefer the machine-readable epoch stored by processCards */
@@ -1154,7 +1174,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var span = card.querySelector('.dz-time');
         if (!span) return;
         var date = parseFooterDate(span);
-        if (date && (Date.now() - date) < STALE_MS) {
+        if (date && !window.ngIsStale(date)) {
             card.classList.remove('dz-stale');
         } else {
             var nameEl = card.querySelector('td#name');

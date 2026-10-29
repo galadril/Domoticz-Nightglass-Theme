@@ -781,7 +781,12 @@
         _list.innerHTML = '';
         _activeIdx = -1;
 
-        if (items.length === 0) {
+        /* Command row: Attention Center (only when the feature is live) */
+        var showAttn = !!(window.ngAttention && window.ngAttention.open &&
+                          matches('Open Attention Center', q));
+        var idxOffset = showAttn ? 1 : 0;
+
+        if (items.length === 0 && !showAttn) {
             _list.innerHTML = '<div class="dz-cmd-empty">No devices found for \u201c' + esc(q) + '\u201d</div>';
             return;
         }
@@ -800,9 +805,25 @@
             _list.appendChild(hdr3);
         }
 
+        if (showAttn) _list.insertBefore(buildAttentionItem(), _list.firstChild.nextSibling);
+
         items.forEach(function (device, i) {
-            _list.appendChild(buildItem(device, i, q));
+            _list.appendChild(buildItem(device, i + idxOffset, q));
         });
+    }
+
+    function buildAttentionItem() {
+        var el = document.createElement('div');
+        el.className = 'dz-cmd-item';
+        el.setAttribute('data-index', 0);
+        el._dzCommand = function () { window.ngAttention.open(); };
+        el.innerHTML =
+            '<div class="dz-cmd-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>' +
+            '<div class="dz-cmd-body"><div class="dz-cmd-name">Open Attention Center</div>' +
+            '<div class="dz-cmd-meta">Low batteries, offline devices, timers \u00b7 A</div></div>';
+        el.addEventListener('mouseenter', function () { setActive(0, false); });
+        el.addEventListener('click', function () { closePalette(); el._dzCommand(); });
+        return el;
     }
 
     function navigateToDevice(device) {
@@ -952,6 +973,7 @@
             } else if (e.key === 'Enter') {
                 e.preventDefault();
                 var target = _activeIdx >= 0 ? items[_activeIdx] : items[0];
+                if (target && target._dzCommand) { closePalette(); target._dzCommand(); return; }
                 if (!target || !target._dzDevice) return;
                 if (e.shiftKey) {
                     navigateToDevice(target._dzDevice);
