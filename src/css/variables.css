@@ -122,6 +122,8 @@
     --dz-bg: #1b1d25;
     --dz-bg-alt: #1e2028;
     --dz-surface: #23252f;
+    --dz-sb-bg: rgba(35, 37, 47, 0.85);
+    --dz-sb-pill-hover: rgba(78, 154, 241, 0.12);
     --dz-surface-2: #2a2b35;
     --dz-surface-3: #2e3040;
     --dz-border: #33354a;
@@ -170,6 +172,8 @@ body.dz-light {
     --dz-bg: #f0f2f5;
     --dz-bg-alt: #e8eaed;
     --dz-surface: #ffffff;
+    --dz-sb-bg: rgba(255, 255, 255, 0.9);
+    --dz-sb-pill-hover: rgba(42, 125, 225, 0.10);
     --dz-surface-2: #f5f6fa;
     --dz-surface-3: #e8eaed;
     --dz-border: #d0d3dc;
