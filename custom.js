@@ -19,7 +19,7 @@
        a hard refresh. Bump this on every release so returning browsers
        fetch fresh copies automatically instead of needing a hard reload.
        Keep in sync with the version noted in README.md. */
-    var THEME_VERSION = '0.10.1';
+    var THEME_VERSION = '0.10.2';
 
     /* Resolve base URL from the executing script tag so module paths
        work whether served by Domoticz (styles/default/), the demo, or
@@ -54,6 +54,7 @@
         'src/js/command-palette.js',/* Feature 12: Ctrl+K command palette */
         'src/js/notifications.js',  /* Feature 13: notification history panel (N key) */
         'src/js/room-filter.js',    /* Feature 14: room filter pill-bar */
+        'src/js/statusbar.js',      /* At-a-Glance status bar (also hosts the Attention Center chip) */
         'src/js/events-editor.js',  /* Events editor: language classes + glyphicon swap */
         'src/js/dd-enhance.js',     /* Dynamic Dashboard: glass cards, animations, context menu, fullscreen */
         'src/js/tour.js',           /* First-run feature tour — last, so every global it points at exists */
