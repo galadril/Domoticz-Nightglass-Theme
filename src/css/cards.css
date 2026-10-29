@@ -351,6 +351,32 @@ body table#itemtablesmalltrippleicon tr td:first-child + td + td img {
     object-fit: contain;
 }
 
+/* Native rendering wraps the icon in a <dz-device-icon> host that Domoticz
+   sizes to 48px (or 40px). The icon cells above are 36px and clip their
+   overflow, so a custom image shrunk to 30px sat inside an oversized host and
+   drifted off-centre, cropped on one side. Make the host fill the cell
+   (never exceed it) and keep the image centred inside it. */
+body table[id^="itemtable"] tr td#img dz-device-icon,
+body table[id^="itemtable"] tr td#img1 dz-device-icon,
+body table[id^="itemtable"] tr td#img2 dz-device-icon,
+body table[id^="itemtable"] tr td#img3 dz-device-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+body table[id^="itemtable"] tr td#img dz-device-icon img,
+body table[id^="itemtable"] tr td#img1 dz-device-icon img,
+body table[id^="itemtable"] tr td#img2 dz-device-icon img,
+body table[id^="itemtable"] tr td#img3 dz-device-icon img {
+    margin: auto;
+    flex: 0 0 auto;
+}
+
 
 /* ── 6e. Second icon (td#img2 — 4th td) ──────────────────────── */
 
