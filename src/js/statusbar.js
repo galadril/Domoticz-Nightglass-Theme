@@ -251,18 +251,22 @@
         /* Solar */
         var sw = d.solar ? toWatts(d.solar.Usage != null ? d.solar.Usage : d.solar.Data) : NaN;
         showSlot('solar', fmtPower(sw), 'var(--dz-warning)', isNaN(sw));
-        /* Battery: state of charge, with charge/discharge arrow from the watt device */
+        /* Battery: state of charge, with charge (down) / discharge (up) arrow from the watt device */
         var soc = d.soc ? numOf(d.soc.Data) : NaN;
         var bw  = d.bat ? toWatts(d.bat.Usage != null ? d.bat.Usage : d.bat.Data) : NaN;
         if (!isNaN(soc) || !isNaN(bw)) {
             var txt = (!isNaN(soc) ? Math.round(soc) + '%' : '') +
-                      (!isNaN(bw) && Math.abs(bw) >= 10 ? ' ' + (bw > 0 ? '↑' : '↓') + fmtPower(Math.abs(bw)) : '');
+                      (!isNaN(bw) && Math.abs(bw) >= 10 ? ' ' + (bw > 0 ? '↓' : '↑') + fmtPower(Math.abs(bw)) : '');
             var icon = isNaN(soc) ? 'fa-battery-half' :
                        soc > 85 ? 'fa-battery-full' : soc > 60 ? 'fa-battery-three-quarters' :
                        soc > 35 ? 'fa-battery-half' : soc > 10 ? 'fa-battery-quarter' : 'fa-battery-empty';
             var be = document.getElementById('ng-sb-battery');
             if (be) { be.hidden = false; be.querySelector('i').className = 'fa-solid ' + icon; }
             setSlot('battery', txt.trim(), !isNaN(soc) && soc <= 15 ? 'var(--dz-danger)' : 'var(--dz-success)');
+            /* Arrow follows the Energy dashboard: panels on the roof, battery below,
+               so charging points down and discharging points up. */
+            if (be) be.title = isNaN(bw) || Math.abs(bw) < 10 ? 'Battery' :
+                               bw > 0 ? 'Battery: charging' : 'Battery: discharging';
         } else {
             showSlot('battery', '', null, true);
         }
