@@ -136,15 +136,71 @@
         if (icon && iconColor) icon.style.color = iconColor;
     }
 
+    /* ── Lights on ─────────────────────────────────────────────────
+       Counted from the whole device list, not the cards on screen.
+       Mode 'lights' (default): light switches, dimmers and RGB.
+       Mode 'selected': exactly the devices chosen in the theme settings. */
+
+    var LIGHTS_TTL_MS = 60 * 1000;
+    var LIGHT_TYPES = ['Light/Switch', 'Lighting 1', 'Lighting 2', 'Lighting 5',
+                       'Lighting 6', 'Color Switch', 'Home Confort'];
+    var LIGHT_SWITCHTYPES = ['On/Off', 'Dimmer'];
+    var _lights = {};        /* idx -> device, from getdevices (+ live updates) */
+    var _lightsAt = 0;
+    var _lightsBusy = false;
+
+    function setting(key, dflt) {
+        var v = window.dzNightglassSettings && window.dzNightglassSettings.get(key);
+        return v == null || v === '' ? dflt : v;
+    }
+
+    function isLightDevice(d) {
+        return LIGHT_TYPES.indexOf(d.Type) !== -1 &&
+               LIGHT_SWITCHTYPES.indexOf(d.SwitchType) !== -1;
+    }
+
+    function stateOn(d) {
+        var f = window._dzDeviceStateLabel;
+        if (f) return f(d) === 'on';
+        return /^\s*on\b|^open$|^set level/i.test(String(d.Status || '').trim());
+    }
+
+    function countLightsOn() {
+        var selected = setting('statusBarLightsMode', 'lights') === 'selected';
+        var ids = {};
+        if (selected) {
+            try { JSON.parse(setting('statusBarLightsDevices', '[]')).forEach(function (i) { ids[String(i)] = true; }); }
+            catch (e) {}
+        }
+        var n = 0;
+        Object.keys(_lights).forEach(function (idx) {
+            var d = _lights[idx];
+            if (selected ? !ids[idx] : !isLightDevice(d)) return;
+            if (stateOn(d)) n++;
+        });
+        return n;
+    }
+
+    function fetchLights(force) {
+        if (_lightsBusy || (!force && Date.now() - _lightsAt < LIGHTS_TTL_MS)) return;
+        _lightsBusy = true;
+        getJson('json.htm?type=command&param=getdevices&filter=all&used=true&order=Name')
+            .then(function (j) {
+                var m = {};
+                ((j && j.result) || []).forEach(function (d) { m[String(d.idx)] = d; });
+                _lights = m;
+                _lightsAt = Date.now();
+            })
+            .catch(function () { _lightsAt = Date.now() - LIGHTS_TTL_MS + 10000; })
+            .then(function () { _lightsBusy = false; refresh(); });
+    }
+
     /* ── Refresh ───────────────────────────────────────────────── */
 
     function refresh() {
-        /* Count "on" devices by reading the DOM status cells */
-        var onCount = 0;
-        document.querySelectorAll('table[id^="itemtable"] td#status').forEach(function (td) {
-            var s = (td.textContent || '').trim().toLowerCase();
-            if (/^\s*on\b|^open$|^motion detected$|^active$|^alarm$/.test(s)) onCount++;
-        });
+        /* Count "on" devices from the full device list (any page) */
+        fetchLights();
+        var onCount = countLightsOn();
         var lightsColor = onCount > 0 ? 'var(--dz-warning)' : 'var(--dz-text-faint)';
         setSlot('lights', onCount + '\u202fon', lightsColor);
 
@@ -287,6 +343,7 @@
 
     function fetchEnergy() {
         if (document.hidden || !_bar) return;
+        fetchLights(true);
         var ready = _es !== null ? Promise.resolve(_es) :
             getJson('json.htm?type=command&param=getenergydashboarddevices').then(function (j) {
                 _es = (j && j.status === 'OK' && j.result && j.result.ESettings) || false;
@@ -329,7 +386,15 @@
 
     function onDeviceUpdate(device) {
         var idx = String(device.idx || device.ID || '');
-        if (idx) _cache[idx] = device;
+        if (idx) {
+            _cache[idx] = device;
+            if (_lights[idx]) {
+                var m = {};
+                Object.keys(_lights[idx]).forEach(function (k) { m[k] = _lights[idx][k]; });
+                Object.keys(device).forEach(function (k) { m[k] = device[k]; });
+                _lights[idx] = m;
+            }
+        }
         if (idx && _energyIds[idx]) scheduleEnergy();
         pulse();
         refresh();
@@ -337,6 +402,8 @@
 
     /* Expose so demo pages can simulate live data */
     window.ngStatusBarUpdate = onDeviceUpdate;
+    /* Called by the settings panel when the lights-count settings change */
+    window.ngStatusBarRefresh = refresh;
 
     /* ── Angular hooks ─────────────────────────────────────────── */
 
