@@ -606,6 +606,8 @@
         liveToastDuration:  '4',
         liveToastPosition:  'bottom-right',
         toastBlacklist:     '[]',
+        statusBarLightsMode:    'lights',
+        statusBarLightsDevices: '[]',
 
         deviceIconOverrides: '{}',
 
@@ -668,7 +670,7 @@
        included in the blob; on the legacy user-variable path they remain in a
        dedicated variable to stay under the 2500-char cap (issue #203). */
     var COLLECTION_FIELDS = ['deviceIconOverrides', 'userPresets', 'toastBlacklist',
-                             'attentionSnoozed', 'attentionSections'];
+                             'statusBarLightsDevices', 'attentionSnoozed', 'attentionSections'];
 
     /* ── Domoticz API helpers ─────────────────────────────────────── */
 
@@ -1338,6 +1340,7 @@
             saveToLocalStorage();
         }
         applySettings();
+        if (key.indexOf('statusBarLights') === 0 && window.ngStatusBarRefresh) window.ngStatusBarRefresh();
     }
 
     /* Set a value and push the blob to the server right away, instead of the
@@ -1966,6 +1969,18 @@
             slider('fontSize', 'Base Font Size', 80, 125, 5, '%', 'Scale the entire interface') +
             slider('iconSize', 'Device Icon Size', 60, 150, 5, '%', 'Scale device icons on cards') +
             toggle('statusBar', 'Status Bar', 'Slim bar under the navbar showing lights on, temperature, power and the Attention Center count') +
+            select('statusBarLightsMode', 'Status Bar Lights Count', [
+                { value: 'lights',   label: 'Lights (switches, dimmers, RGB)' },
+                { value: 'selected', label: 'Selected devices only' }
+            ], 'What the status bar counts as on. Pick \'Selected\' for relays, smart plugs and similar') +
+            '<div class="ng-setting-row ng-setting-row--action">' +
+            '  <div class="ng-setting-info">' +
+            '    <span class="ng-setting-label">Lights Count Devices</span>' +
+            '    <span class="ng-setting-desc">Choose the devices counted when \'Selected devices only\' is on</span>' +
+            '  </div>' +
+            '  <button type="button" class="ng-action-chip" id="ng-sbl-manage-btn">' +
+            '    <i class="fa-solid fa-lightbulb"></i> Choose</button>' +
+            '</div>' +
             toggle('showLastUpdate', 'Show Last Update', 'Show the formatted timestamp footer on device cards') +
             toggle('uppercaseNames', 'Uppercase Device Names', 'Force device names to UPPERCASE on cards') +
             toggle('longPressToggle', 'Hold to Switch', 'Press and hold a card\'s icon to switch the device on or off — works on colour lights, where a click opens the picker') +
@@ -2285,6 +2300,7 @@
     var PRESET_PROTECTED_KEYS = {
         deviceIconOverrides: true,
         toastBlacklist:      true,
+        statusBarLightsDevices: true,
         userPresets:         true,
         attentionSnoozed:    true
     };
@@ -2467,6 +2483,14 @@
     /* ── Notification Blacklist Dialog ─────────────────────────── */
 
     function openBlacklistDialog() {
+        openDeviceChooser({
+            key: 'toastBlacklist', title: 'Suppressed Devices', icon: 'fa-filter-circle-xmark',
+            aria: 'Notification Blacklist', checkLabel: 'Suppress',
+            none: 'None suppressed', suffix: ' suppressed'
+        });
+    }
+
+    function openDeviceChooser(o) {
         // Remove any existing dialog
         var existing = document.getElementById('ng-bl-overlay');
         if (existing) existing.remove();
@@ -2475,7 +2499,7 @@
         var currentBl = [];
         try {
             currentBl = JSON.parse(
-                (window.dzNightglassSettings && window.dzNightglassSettings.get('toastBlacklist')) || '[]'
+                (window.dzNightglassSettings && window.dzNightglassSettings.get(o.key)) || '[]'
             );
         } catch (e) {}
 
@@ -2484,11 +2508,11 @@
         overlay.id = 'ng-bl-overlay';
         overlay.className = 'ng-bl-overlay';
         overlay.innerHTML =
-            '<div class="ng-bl-dialog" role="dialog" aria-label="Notification Blacklist">' +
+            '<div class="ng-bl-dialog" role="dialog" aria-label="' + o.aria + '">' +
             '  <div class="ng-bl-header">' +
             '    <div class="ng-bl-title">' +
-            '      <i class="fa-solid fa-filter-circle-xmark"></i>' +
-            '      <span>Suppressed Devices</span>' +
+            '      <i class="fa-solid ' + o.icon + '"></i>' +
+            '      <span>' + o.title + '</span>' +
             '    </div>' +
             '    <button class="ng-bl-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>' +
             '  </div>' +
@@ -2526,7 +2550,7 @@
         function updateCount() {
             if (countEl) {
                 var n = pending.length;
-                countEl.textContent = n === 0 ? 'None suppressed' : n + ' suppressed';
+                countEl.textContent = n === 0 ? o.none : n + o.suffix;
             }
         }
 
@@ -2555,7 +2579,7 @@
                     '    <span class="ng-bl-row-name">' + (d.Name || 'Device ' + d.idx) + '</span>' +
                     '    <span class="ng-bl-row-type">' + (d.HardwareName || '') + (d.Type ? ' · ' + d.Type : '') + '</span>' +
                     '  </span>' +
-                    '  <input type="checkbox" class="ng-bl-cb" ' + (isBlocked ? 'checked' : '') + ' aria-label="Suppress">' +
+                    '  <input type="checkbox" class="ng-bl-cb" ' + (isBlocked ? 'checked' : '') + ' aria-label="' + o.checkLabel + '">' +
                     '  <span class="ng-bl-toggle-track"><span class="ng-bl-toggle-thumb"></span></span>' +
                     '</label>';
             }
@@ -2595,7 +2619,7 @@
         // Save
         overlay.querySelector('.ng-bl-btn--save').addEventListener('click', function () {
             if (window.dzNightglassSettings) {
-                window.dzNightglassSettings.set('toastBlacklist', JSON.stringify(pending));
+                window.dzNightglassSettings.set(o.key, JSON.stringify(pending));
             }
             close();
         });
@@ -4183,6 +4207,17 @@
         var blBtn = container.querySelector('#ng-bl-manage-btn');
         if (blBtn) {
             blBtn.addEventListener('click', openBlacklistDialog);
+        }
+
+        var sblBtn = container.querySelector('#ng-sbl-manage-btn');
+        if (sblBtn) {
+            sblBtn.addEventListener('click', function () {
+                openDeviceChooser({
+                    key: 'statusBarLightsDevices', title: 'Lights Count Devices', icon: 'fa-lightbulb',
+                    aria: 'Status bar lights count devices', checkLabel: 'Count as light',
+                    none: 'None selected', suffix: ' selected'
+                });
+            });
         }
 
         // Device Icons dialog button
