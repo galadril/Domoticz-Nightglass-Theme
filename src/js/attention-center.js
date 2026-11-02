@@ -55,6 +55,7 @@
     var _collapsed  = {};
     var _expanded   = {};
     var _snoozeOpen = null;    // key of the row whose snooze choices are showing
+    var _bulkOpen   = false;   // "Snooze all" choices showing
 
     /* ── Helpers ───────────────────────────────────────────────── */
 
@@ -136,6 +137,20 @@
         var s = settings();
         if (s) s.set('attentionSnoozed', JSON.stringify(map));
         scheduleRender(0);
+    }
+
+    /* Snooze every given key in one write.  Returns the previous map so the
+       caller can offer Undo.  Same store and save path as snooze(). */
+    function snoozeMany(keys, ms) {
+        var prev = snoozeMap();
+        var map = snoozeMap();
+        var now = Date.now();
+        Object.keys(map).forEach(function (k) {
+            if (+map[k] !== 0 && +map[k] <= now) delete map[k];
+        });
+        keys.forEach(function (k) { map[k] = ms === 0 ? 0 : now + ms; });
+        saveSnoozed(map);
+        return prev;
     }
 
     function activeSnoozeCount() {
@@ -364,6 +379,9 @@
                     '<span class="ng-attn-row-name">' + esc(name) + '</span>' +
                     '<span class="ng-attn-row-meta">' + esc(meta) + '</span>' +
                 '</button>' +
+                (hasLog(d) ?
+                '<button type="button" class="ng-attn-log-btn" data-act="log" data-idx="' + esc(keyOf(d.idx)) + '" aria-label="Open log for ' + esc(name) + '" title="Open log">' +
+                    '<i class="fa-solid fa-chart-line" aria-hidden="true"></i></button>' : '') +
                 '<button type="button" class="ng-attn-snz-btn" data-act="snz-toggle" aria-label="Snooze ' + esc(name) + '" title="Snooze">' +
                     '<i class="fa-solid fa-bell-slash" aria-hidden="true"></i></button>' +
                 (snz ?
@@ -373,6 +391,13 @@
                     '<button type="button" data-act="snz" data-ms="0">Forever</button>' +
                 '</div>' : '') +
             '</div>';
+    }
+
+    /* A log page exists for real devices; scenes and groups have none. */
+    function hasLog(d) {
+        if (!d || d.idx == null || d.idx === '') return false;
+        var t = String(d.Type || '').toLowerCase();
+        return t !== 'scene' && t !== 'group';
     }
 
     function sectionHtml(section, items, note) {
@@ -420,6 +445,20 @@
             html += sectionHtml('timers', res.timers,
                 'Heuristic: Domoticz does not record failed timer runs, so this lists disabled timers ' +
                 'and timers whose device is unused or gone.');
+        }
+
+        var shown = res.battery.length + res.stale.length + res.timers.length;
+        if (shown) {
+            html = '<div class="ng-attn-bulk">' +
+                '<button type="button" class="ng-attn-bulk-btn" data-act="bulk-toggle" aria-expanded="' + _bulkOpen + '">' +
+                    '<i class="fa-solid fa-bell-slash" aria-hidden="true"></i> Snooze all (' + shown + ')</button>' +
+                (_bulkOpen ?
+                '<div class="ng-attn-snz-choices ng-attn-bulk-choices">' +
+                    '<button type="button" data-act="snz-all" data-ms="86400000">24 hours</button>' +
+                    '<button type="button" data-act="snz-all" data-ms="604800000">7 days</button>' +
+                    '<button type="button" data-act="snz-all" data-ms="0">Forever</button>' +
+                '</div>' : '') +
+                '</div>' + html;
         }
 
         var snoozed = activeSnoozeCount();
@@ -489,6 +528,9 @@
             _snoozeOpen = null;
             if (key) snooze(key, parseInt(el.getAttribute('data-ms'), 10));
         }
+        else if (act === 'bulk-toggle') { _bulkOpen = !_bulkOpen; render(); }
+        else if (act === 'snz-all') { snoozeAllVisible(parseInt(el.getAttribute('data-ms'), 10)); }
+        else if (act === 'log') { navigateToLog(el.getAttribute('data-idx')); }
         else if (act === 'unsnooze-all') { saveSnoozed({}); }
         else if (act === 'nav') {
             var d = _devices[el.getAttribute('data-idx')];
@@ -499,12 +541,72 @@
         }
     }
 
+    /* Snooze every currently visible row (all enabled sections, including rows
+       hidden behind "Show all") and offer Undo via the toast. */
+    function snoozeAllVisible(ms) {
+        var res = compute();
+        var seen = {}, keys = [];
+        ['battery', 'stale', 'timers'].forEach(function (sec) {
+            res[sec].forEach(function (it) {
+                if (!seen[it.key]) { seen[it.key] = true; keys.push(it.key); }
+            });
+        });
+        _bulkOpen = false;
+        _snoozeOpen = null;
+        if (!keys.length) { render(); return; }
+        var prev = snoozeMany(keys, ms);
+        var label = ms === 0 ? 'forever' : (ms === 86400000 ? 'for 24 hours' : 'for 7 days');
+        if (typeof window.ngShowToast !== 'function') return;
+        var el = window.ngShowToast({
+            icon:  'fa-bell-slash',
+            color: 'var(--dz-accent)',
+            title: 'Snoozed ' + keys.length + (keys.length === 1 ? ' item' : ' items'),
+            body:  label,
+            duration: 8000
+        });
+        if (!el || !el.querySelector) return;
+        var host = el.querySelector('.ng-toast-content');
+        if (!host) return;
+        var undo = document.createElement('button');
+        undo.type = 'button';
+        undo.className = 'ng-attn-undo';
+        undo.textContent = 'Undo';
+        undo.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            saveSnoozed(prev);
+            if (window.ngRemoveToast) window.ngRemoveToast(el);
+        });
+        host.appendChild(undo);
+    }
+
+    /* Domoticz device log page: #/Devices/<idx>/Log (Angular route; not
+       verifiable here).  Same $location technique as ngNavigateToDevice. */
+    function navigateToLog(idx) {
+        idx = keyOf(idx);
+        if (!idx) return;
+        var route = '/Devices/' + idx + '/Log';
+        closePanel();
+        setTimeout(function () {
+            try {
+                var injector   = window.angular && angular.element(document.body).injector();
+                var $location  = injector && injector.get('$location');
+                var $rootScope = injector && injector.get('$rootScope');
+                if ($location && $rootScope) {
+                    $rootScope.$apply(function () { $location.path(route); });
+                    return;
+                }
+            } catch (e) {}
+            window.location.hash = route;
+        }, 10);
+    }
+
     function openPanel() {
         /* One drawer at a time */
         if (window.ngNotifClose) window.ngNotifClose();
         buildPanel();
         _lastFocus = document.activeElement;
         _snoozeOpen = null;
+        _bulkOpen = false;
         _open = true;
         render();
         _panel.classList.add('ng-attn-panel--open');
