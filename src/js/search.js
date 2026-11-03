@@ -2116,7 +2116,6 @@
             '    <i class="fa-solid fa-eye"></i> Reset</button>' +
             '</div>' +
             '</div>' +
-            '</div>' +
 
             '<div class="ng-settings-section">' +
             '<div class="ng-section-header"><i class="fa-solid fa-bell"></i> Live Notifications</div>' +
