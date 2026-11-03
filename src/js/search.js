@@ -1410,6 +1410,28 @@
         return writeJsonUvar();
     }
 
+    /* Colour derivation shared by applySettings() and Theme Studio's contrast
+       checker (exposed via dzNightglassSettings.colorKit) so both always agree. */
+    function darkenHex(hex, amt) {
+        var r = Math.max(0, parseInt(hex.slice(1, 3), 16) - amt);
+        var g = Math.max(0, parseInt(hex.slice(3, 5), 16) - amt);
+        var b = Math.max(0, parseInt(hex.slice(5, 7), 16) - amt);
+        var toH = function (n) { var h = n.toString(16); return h.length < 2 ? '0' + h : h; };
+        return '#' + toH(r) + toH(g) + toH(b);
+    }
+    function lightenHex(hex, amt) {
+        var r = Math.min(255, parseInt(hex.slice(1, 3), 16) + amt);
+        var g = Math.min(255, parseInt(hex.slice(3, 5), 16) + amt);
+        var b = Math.min(255, parseInt(hex.slice(5, 7), 16) + amt);
+        var toH = function (n) { var h = n.toString(16); return h.length < 2 ? '0' + h : h; };
+        return '#' + toH(r) + toH(g) + toH(b);
+    }
+    /* soft / muted / faint text tiers derived from the base text colour. */
+    function textTiers(hex, isLight) {
+        var f = isLight ? lightenHex : darkenHex;
+        return { soft: f(hex, 30), muted: f(hex, 60), faint: f(hex, 90) };
+    }
+
     /* ── Apply settings to the page ────────────────────────────── */
 
     function applySettings() {
@@ -1520,21 +1542,6 @@
             var b = parseInt(hex.slice(5, 7), 16);
             return r + ', ' + g + ', ' + b;
         };
-        var darkenHex = function (hex, amt) {
-            var r = Math.max(0, parseInt(hex.slice(1, 3), 16) - amt);
-            var g = Math.max(0, parseInt(hex.slice(3, 5), 16) - amt);
-            var b = Math.max(0, parseInt(hex.slice(5, 7), 16) - amt);
-            var toH = function (n) { var h = n.toString(16); return h.length < 2 ? '0' + h : h; };
-            return '#' + toH(r) + toH(g) + toH(b);
-        };
-        var lightenHex = function (hex, amt) {
-            var r = Math.min(255, parseInt(hex.slice(1, 3), 16) + amt);
-            var g = Math.min(255, parseInt(hex.slice(3, 5), 16) + amt);
-            var b = Math.min(255, parseInt(hex.slice(5, 7), 16) + amt);
-            var toH = function (n) { var h = n.toString(16); return h.length < 2 ? '0' + h : h; };
-            return '#' + toH(r) + toH(g) + toH(b);
-        };
-
         var ac = _settings.accentColor;
         var dc = _settings.dangerColor;
         var wc = _settings.warningColor;
@@ -1577,9 +1584,9 @@
             '  --dz-border: ' + bd + ';\n' +
             '  --dz-border-b: ' + lightenHex(bd, 10) + ';\n' +
             '  --dz-text: ' + tx + ';\n' +
-            '  --dz-text-soft: ' + darkenHex(tx, 30) + ';\n' +
-            '  --dz-text-muted: ' + darkenHex(tx, 60) + ';\n' +
-            '  --dz-text-faint: ' + darkenHex(tx, 90) + ';\n' +
+            '  --dz-text-soft: ' + textTiers(tx, false).soft + ';\n' +
+            '  --dz-text-muted: ' + textTiers(tx, false).muted + ';\n' +
+            '  --dz-text-faint: ' + textTiers(tx, false).faint + ';\n' +
             '  --dz-bg: ' + pbg + ';\n' +
             '  --dz-bg-alt: ' + lightenHex(pbg, 5) + ';\n' +
             '  --dz-nav-bg: ' + bg + ';\n' +
@@ -1634,9 +1641,9 @@
             '  --dz-border: ' + bdL + ';\n' +
             '  --dz-border-b: ' + darkenHex(bdL, 10) + ';\n' +
             '  --dz-text: ' + txL + ';\n' +
-            '  --dz-text-soft: ' + lightenHex(txL, 30) + ';\n' +
-            '  --dz-text-muted: ' + lightenHex(txL, 60) + ';\n' +
-            '  --dz-text-faint: ' + lightenHex(txL, 90) + ';\n' +
+            '  --dz-text-soft: ' + textTiers(txL, true).soft + ';\n' +
+            '  --dz-text-muted: ' + textTiers(txL, true).muted + ';\n' +
+            '  --dz-text-faint: ' + textTiers(txL, true).faint + ';\n' +
             '  --dz-bg: ' + pbgL + ';\n' +
             '  --dz-bg-alt: ' + darkenHex(pbgL, 10) + ';\n' +
             '  --dz-nav-bg: ' + bgL + ';\n' +
@@ -2121,6 +2128,8 @@
             '</div>' +
             '</div>' +
 
+            (window.NGStudio ? window.NGStudio.sectionHtml() : '') +
+
             /* Right column: Color panels (together) */
             '<div class="ng-settings-section ng-settings-section--colors">' +
             '<div class="ng-section-header"><i class="fa-solid fa-droplet"></i> Colors</div>' +
@@ -2201,6 +2210,30 @@
 
     function saveUserPresets(arr) {
         saveSetting('userPresets', JSON.stringify(arr));
+    }
+
+    /* Snapshot the current 18 colour keys as a named user preset. */
+    function addUserPreset(name) {
+        var colors = {};
+        COLOR_SNAPSHOT_KEYS.forEach(function (key) {
+            if (_settings[key] !== undefined) colors[key] = _settings[key];
+        });
+        var preset = {
+            name:        name,
+            description: 'Custom preset',
+            icon:        'fa-solid fa-palette',
+            preview: {
+                bg:      _settings.bgColor      || '#1b1d25',
+                surface: _settings.surfaceColor  || '#23252f',
+                accent:  _settings.accentColor   || '#4e9af1',
+                text:    _settings.textColor     || '#e2e4ed'
+            },
+            colors:      colors,
+            userDefined: true
+        };
+        var arr = loadUserPresets();
+        arr.push(preset);
+        saveUserPresets(arr);
     }
 
     function loadPresets(container) {
@@ -4194,6 +4227,7 @@
 
         // Color pickers (custom HSV canvas)
         initColorPickers(container);
+        if (window.NGStudio) window.NGStudio.bind(container);
 
         // Selects
         container.querySelectorAll('select[data-ng-key]').forEach(function (sel) {
@@ -4420,26 +4454,7 @@
                 var name = prompt('Enter a name for this preset:', '');
                 if (name === null || !name.trim()) return;
                 name = name.trim();
-                var colors = {};
-                COLOR_SNAPSHOT_KEYS.forEach(function (key) {
-                    if (_settings[key] !== undefined) colors[key] = _settings[key];
-                });
-                var preset = {
-                    name:        name,
-                    description: 'Custom preset',
-                    icon:        'fa-solid fa-palette',
-                    preview: {
-                        bg:      _settings.bgColor      || '#1b1d25',
-                        surface: _settings.surfaceColor  || '#23252f',
-                        accent:  _settings.accentColor   || '#4e9af1',
-                        text:    _settings.textColor     || '#e2e4ed'
-                    },
-                    colors:      colors,
-                    userDefined: true
-                };
-                var arr = loadUserPresets();
-                arr.push(preset);
-                saveUserPresets(arr);
+                addUserPreset(name);
                 var grid = container.querySelector('#ngPresetsGrid');
                 if (grid) {
                     if (_presetsCache !== null) {
@@ -4813,6 +4828,24 @@
 
     window.dzNightglassSettings = {
         get: function (key) { return _settings ? _settings[key] : DEFAULTS[key]; },
+        /* Colour internals for Theme Studio (src/js/theme-studio.js). */
+        colorKit: {
+            keys: COLOR_SNAPSHOT_KEYS,
+            darkenHex: darkenHex,
+            lightenHex: lightenHex,
+            textTiers: textTiers,
+            savePreset: function (name) { addUserPreset(name); },
+            /* Re-render the settings panel so the pickers show new values. */
+            rerenderPanel: function () {
+                var wrap = document.getElementById('ng-theme-settings-wrap');
+                if (!wrap) return;
+                var body = wrap.querySelector('#ngPresetsBody');
+                var open = body && body.style.display !== 'none';
+                wrap.innerHTML = buildPanel({ presetsOpen: open });
+                bindEvents(wrap);
+                loadPresets(wrap);
+            }
+        },
         set: saveSetting,
         /* Run cb once the stored values are in — immediately if they already
            are.  Anything that reasons about an *absence* (an empty collection,
