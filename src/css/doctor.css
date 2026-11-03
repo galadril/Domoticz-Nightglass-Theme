@@ -1,41 +1,54 @@
-/* ── Doctor: setup health drawer ─────────────────────────────────────
-   Right drawer (bottom sheet on mobile), same look as the Attention Center. */
+/* ── Doctor: setup health dialog ─────────────────────────────────────
+   Centred modal, same visual language as the .ng-bl-* chooser dialogs.
+   z-index 9999 matches .ng-bl-overlay; the Icon Studio (.ng-is-overlay,
+   z-index 100000) therefore opens above it.  Full-screen sheet on mobile. */
 
-#ng-doc-panel {
+.ng-doc-overlay {
     position: fixed;
-    top: 54px;
-    right: 0;
-    width: 360px;
-    height: calc(100dvh - 54px);
-    background: var(--dz-surface);
-    border-left: 1px solid var(--dz-surface-3);
-    box-shadow: -4px 0 28px rgba(0, 0, 0, 0.35);
-    z-index: 2000;
+    inset: 0;
+    z-index: 9999;
     display: flex;
-    flex-direction: column;
-    transform: translateX(calc(100% + 1px));
-    visibility: hidden;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 0.3s;
-    overflow: hidden;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: 0;
+    transition: opacity 0.25s ease;
 }
 
-    #ng-doc-panel.ng-doc-panel--open {
-        transform: translateX(0);
-        visibility: visible;
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s;
-    }
+    .ng-doc-overlay.ng-doc-overlay--open { opacity: 1; }
+
+.ng-doc-dialog {
+    display: flex;
+    flex-direction: column;
+    width: min(720px, calc(100vw - 32px));
+    max-height: 88vh;
+    max-height: 88dvh;
+    background: var(--dz-surface);
+    color: var(--dz-text);
+    border: 1px solid var(--dz-border);
+    border-radius: 20px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    transform: scale(0.95);
+    transition: transform 0.25s cubic-bezier(0.34, 1.12, 0.64, 1);
+    outline: none;
+}
+
+    .ng-doc-overlay--open .ng-doc-dialog { transform: scale(1); }
 
 .ng-doc-hdr {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--dz-surface-3);
+    gap: 10px;
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--dz-border);
     flex-shrink: 0;
 }
 
 .ng-doc-title {
-    font-size: 0.88rem;
+    font-size: 0.95rem;
     font-weight: 600;
     color: var(--dz-text);
 }
@@ -44,7 +57,8 @@
 
 .ng-doc-headline {
     flex: 1;
-    font-size: 0.75rem;
+    min-width: 0;
+    font-size: 0.78rem;
     font-weight: 600;
     color: var(--dz-text-muted);
 }
@@ -54,48 +68,83 @@
     border: none;
     color: var(--dz-text-muted);
     cursor: pointer;
+    min-width: 32px;
+    min-height: 32px;
     padding: 4px 7px;
-    border-radius: 6px;
-    font-size: 0.82rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
     line-height: 1;
     transition: color 0.15s, background 0.15s;
 }
 
     .ng-doc-hdr-btn:hover { color: var(--dz-text); background: var(--dz-surface-3); }
 
+/* Small bordered button used for every in-dialog action */
+.ng-doc-btn {
+    flex-shrink: 0;
+    min-height: 30px;
+    padding: 4px 12px;
+    background: var(--dz-surface-3);
+    border: 1px solid var(--dz-border);
+    border-radius: 8px;
+    color: var(--dz-text);
+    font-size: 0.76rem;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+    .ng-doc-btn:hover:not(:disabled) { border-color: var(--dz-accent); color: var(--dz-accent); }
+    .ng-doc-btn:disabled { opacity: 0.5; cursor: default; }
+
+.ng-doc-btn--danger { color: var(--dz-danger); }
+    .ng-doc-btn--danger:hover:not(:disabled) { border-color: var(--dz-danger); color: var(--dz-danger); }
+
 .ng-doc-body {
     flex: 1;
+    min-height: 120px;
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 4px 0 12px;
+    padding: 6px 0 12px;
     scrollbar-width: thin;
     scrollbar-color: var(--dz-border) transparent;
 }
 
-    .ng-doc-body::-webkit-scrollbar       { width: 4px; }
+    .ng-doc-body::-webkit-scrollbar       { width: 6px; }
     .ng-doc-body::-webkit-scrollbar-track { background: transparent; }
-    .ng-doc-body::-webkit-scrollbar-thumb { background: var(--dz-border); border-radius: 2px; }
+    .ng-doc-body::-webkit-scrollbar-thumb { background: var(--dz-border); border-radius: 3px; }
 
-.ng-doc-sec { border-bottom: 1px solid var(--dz-border); padding-bottom: 6px; }
+.ng-doc-sec { border-bottom: 1px solid var(--dz-border); padding-bottom: 4px; }
 
 .ng-doc-sec-hdr {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 16px 4px;
+    width: 100%;
+    min-height: 40px;
+    padding: 8px 20px;
+    background: none;
+    border: none;
     color: var(--dz-text);
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     font-weight: 600;
+    text-align: left;
+    cursor: pointer;
 }
 
-    .ng-doc-sec-hdr > i { width: 16px; text-align: center; color: var(--dz-text-muted); }
+    .ng-doc-sec-hdr:hover { background: rgba(var(--dz-accent-rgb), 0.05); }
+    .ng-doc-sec-hdr > i:first-child { width: 16px; text-align: center; color: var(--dz-text-muted); }
+
+.ng-doc-sec-name { flex: 1; }
+
+.ng-doc-chev { color: var(--dz-text-faint); font-size: 0.7rem; transition: transform 0.2s ease; }
+    .ng-doc-sec--collapsed .ng-doc-chev { transform: rotate(-90deg); }
 
 .ng-doc-find {
-    margin: 6px 10px;
+    margin: 6px 14px;
     padding: 10px 0 6px;
     border: 1px solid var(--dz-border);
     border-left-width: 3px;
-    border-radius: 8px;
+    border-radius: 10px;
     background: var(--dz-surface-2, var(--dz-surface));
 }
 
@@ -108,7 +157,7 @@
     align-items: center;
     gap: 8px;
     padding: 0 12px;
-    font-size: 0.82rem;
+    font-size: 0.84rem;
     color: var(--dz-text);
 }
 
@@ -116,13 +165,16 @@
 
 .ng-doc-find-count {
     min-width: 20px;
-    padding: 1px 6px;
+    padding: 1px 7px;
     border-radius: 10px;
     background: var(--dz-surface-3);
     color: var(--dz-text-muted);
     font-size: 0.7rem;
+    font-weight: 600;
     text-align: center;
 }
+
+    .ng-doc-find-count--hot { background: rgba(var(--dz-warning-rgb), 0.18); color: var(--dz-warning); }
 
 .ng-doc-sev {
     padding: 1px 7px;
@@ -138,28 +190,23 @@
     .ng-doc-sev--info       { background: var(--dz-surface-3); color: var(--dz-text-muted); }
 
 .ng-doc-why {
-    padding: 4px 12px 6px;
-    font-size: 0.76rem;
+    padding: 4px 12px 8px;
+    font-size: 0.77rem;
     color: var(--dz-text-faint);
 }
+
+.ng-doc-rows { display: block; }
 
 .ng-doc-row {
     display: flex;
     align-items: center;
     gap: 10px;
-    width: 100%;
-    min-height: 32px;
-    padding: 4px 12px;
-    background: none;
-    border: none;
+    min-height: 36px;
+    padding: 3px 12px;
     border-top: 1px solid var(--dz-border);
     color: var(--dz-text);
     font-size: 0.8rem;
-    text-align: left;
 }
-
-.ng-doc-row--nav { cursor: pointer; }
-    .ng-doc-row--nav:hover { background: rgba(var(--dz-accent-rgb), 0.05); }
 
 .ng-doc-row-name {
     flex: 1;
@@ -167,10 +214,19 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    background: none;
+    border: none;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    text-align: left;
 }
 
+.ng-doc-row-name--nav { cursor: pointer; }
+    .ng-doc-row-name--nav:hover { color: var(--dz-accent); text-decoration: underline; }
+
 .ng-doc-row-meta {
-    flex-shrink: 0;
+    flex-shrink: 1;
     max-width: 45%;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -182,6 +238,7 @@
 .ng-doc-more {
     display: block;
     width: 100%;
+    min-height: 34px;
     padding: 7px 12px;
     background: none;
     border: none;
@@ -194,13 +251,30 @@
 
     .ng-doc-more:hover { background: rgba(var(--dz-accent-rgb), 0.05); }
 
+.ng-doc-confirm {
+    margin: 6px 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--dz-danger);
+    border-radius: 8px;
+    background: rgba(var(--dz-danger-rgb), 0.08);
+    font-size: 0.78rem;
+}
+
+    .ng-doc-confirm ul { margin: 6px 0 8px; padding-left: 18px; color: var(--dz-text-muted); }
+
+.ng-doc-confirm-title { color: var(--dz-text); font-weight: 600; }
+.ng-doc-confirm-btns { display: flex; gap: 8px; }
+
 .ng-doc-actions {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
     padding: 6px 12px 2px;
     border-top: 1px solid var(--dz-border);
 }
+
+    .ng-doc-actions .ng-doc-ignore-btn { margin-left: auto; }
 
 .ng-doc-link,
 .ng-doc-linkbtn,
@@ -221,11 +295,12 @@
 .ng-doc-ign-choices {
     display: flex;
     gap: 6px;
-    padding: 6px 12px 6px;
+    padding: 6px 12px;
 }
 
     .ng-doc-ign-choices button {
         flex: 1;
+        min-height: 32px;
         padding: 6px 4px;
         background: var(--dz-surface-3);
         border: 1px solid var(--dz-border);
@@ -241,7 +316,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 4px 16px;
+    padding: 4px 20px;
     font-size: 0.78rem;
     color: var(--dz-text-muted);
 }
@@ -251,16 +326,34 @@
 
 .ng-doc-note,
 .ng-doc-foot {
-    padding: 8px 16px;
-    font-size: 0.76rem;
+    padding: 8px 20px;
+    font-size: 0.77rem;
     color: var(--dz-text-faint);
 }
 
 .ng-doc-note--warn { color: var(--dz-warning); }
 .ng-doc-foot { text-align: center; }
 
+/* Status / Undo line pinned under the scrolling body */
+.ng-doc-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 20px;
+    border-top: 1px solid var(--dz-border);
+    background: var(--dz-surface-2, var(--dz-surface));
+    font-size: 0.78rem;
+    color: var(--dz-text);
+}
+
+    .ng-doc-bar--warn { color: var(--dz-warning); }
+
+.ng-doc-bar-text { flex: 1; min-width: 0; }
+
 .ng-doc-hdr-btn:focus-visible,
-.ng-doc-row--nav:focus-visible,
+.ng-doc-btn:focus-visible,
+.ng-doc-sec-hdr:focus-visible,
+.ng-doc-row-name--nav:focus-visible,
 .ng-doc-more:focus-visible,
 .ng-doc-link:focus-visible,
 .ng-doc-linkbtn:focus-visible,
@@ -270,41 +363,47 @@
     outline-offset: -2px;
 }
 
-@media (max-width: 480px) {
-    #ng-doc-panel {
-        top: auto;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        width: 100%;
-        height: 80dvh;
-        max-height: 80vh;
-        border-left: none;
-        border-top: 1px solid var(--dz-surface-3);
-        border-radius: 16px 16px 0 0;
-        box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.45);
-        transform: translateY(calc(100% + 1px));
+/* Mobile: full-screen sheet, 44px touch targets */
+@media (max-width: 600px) {
+    .ng-doc-dialog {
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh;
+        max-height: none;
+        border: none;
+        border-radius: 0;
     }
 
-    #ng-doc-panel.ng-doc-panel--open { transform: translateY(0); }
+    .ng-doc-hdr { flex-wrap: wrap; padding: 12px 14px; }
+    .ng-doc-headline { order: 5; flex-basis: 100%; }
+    .ng-doc-title { flex: 1; }
+    .ng-doc-rerun { order: 2; }
 
     .ng-doc-hdr-btn,
-    .ng-doc-row,
+    .ng-doc-btn,
+    .ng-doc-sec-hdr,
     .ng-doc-more,
-    .ng-doc-link,
-    .ng-doc-ignore-btn,
-    .ng-doc-linkbtn { min-height: 44px; }
-    .ng-doc-hdr-btn { min-width: 44px; }
-    .ng-doc-link,
-    .ng-doc-ignore-btn { display: inline-flex; align-items: center; }
     .ng-doc-ign-choices button { min-height: 44px; }
+    .ng-doc-hdr-btn { min-width: 44px; }
+
+    .ng-doc-link,
+    .ng-doc-linkbtn,
+    .ng-doc-ignore-btn,
+    .ng-doc-row-name--nav { display: inline-flex; align-items: center; min-height: 44px; }
+
+    .ng-doc-row { min-height: 44px; flex-wrap: wrap; }
+    .ng-doc-sec-hdr { padding-left: 14px; padding-right: 14px; }
+    .ng-doc-find { margin-left: 8px; margin-right: 8px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    #ng-doc-panel,
-    #ng-doc-panel.ng-doc-panel--open,
-    .ng-doc-hdr-btn { transition: none; }
+    .ng-doc-overlay,
+    .ng-doc-dialog,
+    .ng-doc-chev,
+    .ng-doc-hdr-btn,
+    .ng-doc-btn { transition: none; }
 }
 
-.ng-doc-rows { display: block; }
+.ng-doc-bar-slot { flex-shrink: 0; }
+.ng-doc-sec-body { display: block; }
 .ng-doc-x-btn { margin-left: 2px; }

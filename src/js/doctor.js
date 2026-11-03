@@ -1,18 +1,26 @@
-/* ── Doctor: read-only Domoticz setup health check ───────────────────
-   One drawer that audits the Domoticz setup and the theme's own stored
-   settings.  Runs ON DEMAND only (settings button or command palette); never
-   at page load and never on a timer.  It issues GET requests only and changes
-   nothing in Domoticz: findings link to the relevant Domoticz page.
+/* ── Doctor: Domoticz setup health check ─────────────────────────────
+   One centred dialog that audits the Domoticz setup and the theme's own
+   stored settings.  Runs ON DEMAND only (settings button or command palette);
+   never at page load and never on a timer.
+
+   A RUN IS READ-ONLY: it issues GET requests only, writes no theme setting and
+   posts nothing.  The last-run summary lives in memory plus localStorage
+   ('ng-doctor-last', device-local, never synced).  Writes happen only on an
+   explicit click:
+     - Ignore / Clear ignores            -> doctorIgnored
+     - Remove / Remove all (confirmed)   -> deviceIconOverrides, with Undo
+     - Set icon (opens the Icon Studio)  -> the same setused call as the
+                                            device page (window.dzSetDeviceIcon)
+   Everything else is a plain "Open in Domoticz" link.
 
    Entry points: Settings panel "Setup health" Run button, command palette
                  row "Run Doctor".  API: window.ngDoctor.{run,open,close}.
-   Settings:     doctor, doctorIgnored, doctorChecks, doctorStaleDays,
-                 doctorNameMax, doctorLastRun
+   Settings:     doctorIgnored, doctorChecks, doctorStaleDays, doctorNameMax
 
-   Requests per run (4-5 GETs, cached 60 s):
-     getdevices used=true, getdevices used=false, getschedules, getplans,
-     getscenes.  A failed call makes the checks that need it report
-     "could not check"; they are never counted as passing.
+   Requests per run (4 GETs, cached 60 s):
+     getdevices used=true, getdevices used=false, getschedules, getplans.
+   A failed call makes the checks that need it report "could not check";
+   they are never counted as passing.
 
    The check functions below are PURE (plain data in, plain data out) so
    they can be unit-tested outside the browser; see module.exports at the end.
@@ -29,6 +37,7 @@
     var COLLECTION_KEYS = ['deviceIconOverrides', 'userPresets', 'toastBlacklist',
                            'statusBarLightsDevices', 'attentionSnoozed', 'attentionSections',
                            'doctorIgnored', 'doctorChecks'];
+    var LAST_KEY   = 'ng-doctor-last';
 
     var CATEGORIES = ['Organisation', 'Names', 'Icons', 'Automation', 'Hardware', 'Theme'];
     var CAT_ICON = {
@@ -286,19 +295,44 @@
         return found(r, out);
     }
 
-    /* 10: theme icon overrides for devices (or scenes) that no longer exist */
-    function checkOrphanOverrides(overrides, used, unused, scenes) {
+    /* 10: theme icon overrides for devices that no longer exist.  "Exists"
+       means present in the FULL device set (used + unused).  An empty full set
+       is treated as a failed read, never as "everything was deleted". */
+    function overrideIconOf(o) {
+        o = o || {};
+        return String(o.icon || o.iconOn || o.iconOff || '').trim();
+    }
+
+    function checkOrphanOverrides(overrides, used, unused) {
         var r = mk('orphanOverrides', 'Theme', 'suggestion', 'Icon overrides for deleted devices',
-            'The theme stores styling for devices that are gone; it only wastes settings space.', '#/Settings');
-        if (!Array.isArray(used) || !Array.isArray(unused) || !Array.isArray(scenes))
-            return unknown(r, 'Devices or scenes could not be loaded');
+            'The theme stores icons for devices that are gone; it only wastes settings space.', '#/Settings');
+        if (!Array.isArray(used) || !Array.isArray(unused) || used.length + unused.length === 0)
+            return unknown(r, 'Devices could not be loaded');
         var all = {};
-        used.concat(unused, scenes).forEach(function (d) { if (d && d.idx != null) all[String(d.idx)] = true; });
+        used.concat(unused).forEach(function (d) { if (d && d.idx != null) all[String(d.idx)] = true; });
         var out = [];
         Object.keys(overrides || {}).forEach(function (k) {
-            if (!all[k]) out.push({ name: (overrides[k] && overrides[k].name) || ('IDX ' + k), meta: 'idx ' + keyOf(k) });
+            if (all[k]) return;
+            var icon = overrideIconOf(overrides[k]);
+            out.push({ idx: k, name: (overrides[k] && overrides[k].name) || ('Device ' + k),
+                       meta: 'idx ' + keyOf(k) + ' \u00b7 ' + (icon || 'colours only'),
+                       icon: icon, orphan: true });
         });
         return found(r, out);
+    }
+
+    /* Remove the given idx keys from an override map.  Pure: returns the new
+       map and exactly what was taken out (for the confirm step and Undo).
+       Only keys that are really in the map are removed. */
+    function removeOverrides(map, idxs) {
+        var next = {}, removed = [];
+        var want = {};
+        (idxs || []).forEach(function (i) { want[String(i)] = true; });
+        Object.keys(map || {}).forEach(function (k) {
+            if (want[k]) removed.push({ idx: k, icon: overrideIconOf(map[k]), entry: map[k] });
+            else next[k] = map[k];
+        });
+        return { next: next, removed: removed };
     }
 
     /* 12: settings blob size and shape */
@@ -345,7 +379,7 @@
                      'orphanTimers', 'staleFavs', 'orphanOverrides', 'blob', 'disabledHw'];
 
     /* Run one check by id against a plain input bundle.
-       input: { used, unused, schedules, plans, scenes, overrides, blobBytes,
+       input: { used, unused, schedules, plans, overrides, blobBytes,
                 rawCollections, staleDays, nameMax, now } (arrays null = failed call) */
     function runCheck(id, i) {
         switch (id) {
@@ -357,7 +391,7 @@
             case 'staleHw':         return checkStaleHardware(i.used, i.staleDays, i.now);
             case 'orphanTimers':    return checkOrphanTimers(i.used, i.unused, i.schedules);
             case 'staleFavs':       return checkStaleFavs(i.used, i.staleDays, i.now);
-            case 'orphanOverrides': return checkOrphanOverrides(i.overrides, i.used, i.unused, i.scenes);
+            case 'orphanOverrides': return checkOrphanOverrides(i.overrides, i.used, i.unused);
             case 'blob':            return checkBlob(i.blobBytes, i.rawCollections);
             case 'disabledHw':      return checkDisabledHw(i.used);
         }
@@ -385,27 +419,34 @@
 
     /* ── Browser side ──────────────────────────────────────────── */
 
-    if (typeof window === 'undefined') {
+    if (typeof module !== 'undefined' && module.exports) {
         module.exports = {
             checkNoRoom: checkNoRoom, checkDupNames: checkDupNames, normName: normName,
             checkUnused: checkUnused, checkBadNames: checkBadNames, checkDefaultIcon: checkDefaultIcon,
             checkStaleHardware: checkStaleHardware, checkOrphanTimers: checkOrphanTimers,
             checkStaleFavs: checkStaleFavs, checkOrphanOverrides: checkOrphanOverrides,
             checkBlob: checkBlob, checkDisabledHw: checkDisabledHw, runCheck: runCheck,
-            summarize: summarize, isIgnored: isIgnored, CHECK_IDS: CHECK_IDS
+            removeOverrides: removeOverrides, summarize: summarize, isIgnored: isIgnored,
+            CHECK_IDS: CHECK_IDS
         };
-        return;
     }
+    if (typeof window === 'undefined') return;
 
-    var _on = false, _wired = false;
-    var _panel = null, _open = false, _lastFocus = null;
+
+    var _overlay = null, _open = false, _lastFocus = null, _closeTimer = null;
     var _raw = null, _rawTs = 0;           // cached fetch bundle
     var _results = null, _devMap = {}, _limited = false, _running = false, _runSeq = 0;
-    var _expanded = {}, _ignoreOpen = null;
+    var _expanded = {}, _collapsed = {}, _ignoreOpen = null, _confirm = null;
+    var _bar = null;                       // { text, warn, undo } status line
+    var _undo = null;                      // { prev: map } for the last removal
+    var _noAdmin = false;                  // a write answered 401/403
+    var _last = null;                      // { t, clean, total }, in memory
 
     function getSetting(k) { var s = window.dzNightglassSettings; return s ? s.get(k) : undefined; }
-
     function ignoreMap() { return parseJson(getSetting('doctorIgnored'), {}); }
+    function overrideMap() { return parseJson(getSetting('deviceIconOverrides'), {}); }
+
+    /* ── Writes: only ever called from a click handler ─────────── */
 
     function saveIgnore(id, ms) {
         var map = ignoreMap(), now = Date.now();
@@ -416,12 +457,23 @@
         render();
     }
 
+    function writeOverrides(map) {
+        var s = window.dzNightglassSettings;
+        if (!s) return false;
+        s.set('deviceIconOverrides', JSON.stringify(map));
+        if (typeof window._dzSetDeviceIconOverrides === 'function') window._dzSetDeviceIconOverrides(map);
+        return true;
+    }
+
+    /* ── Reads ─────────────────────────────────────────────────── */
+
     function enabledIds() {
         var a = parseJson(getSetting('doctorChecks'), []);
         a = Array.isArray(a) ? a.filter(function (x) { return CHECK_IDS.indexOf(x) >= 0; }) : [];
         return a.length ? a : CHECK_IDS;
     }
 
+    /* GET only.  Never pass a method or body here. */
     function getJson(params) {
         return fetch('json.htm?' + params, { credentials: 'same-origin', cache: 'no-store' })
             .then(function (r) {
@@ -444,10 +496,9 @@
             getJson(base + 'getdevices&filter=all&used=true&order=Name'),
             getJson(base + 'getdevices&filter=all&used=false&order=Name'),
             getJson(base + 'getschedules'),
-            getJson(base + 'getplans&order=name&displayhidden=1'),
-            getJson(base + 'getscenes')
+            getJson(base + 'getplans&order=name&displayhidden=1')
         ]).then(function (a) {
-            _raw = { used: a[0], unused: a[1], schedules: a[2], plans: a[3], scenes: a[4] };
+            _raw = { used: a[0], unused: a[1], schedules: a[2], plans: a[3] };
             _rawTs = Date.now();
             return _raw;
         });
@@ -460,14 +511,17 @@
         var blobBytes = null;
         if (s && typeof s.blobSize === 'function') { try { blobBytes = s.blobSize(); } catch (e) {} }
         return {
-            used: raw.used, unused: raw.unused, schedules: raw.schedules,
-            plans: raw.plans, scenes: raw.scenes,
-            overrides: parseJson(getSetting('deviceIconOverrides'), {}),
+            used: raw.used, unused: raw.unused, schedules: raw.schedules, plans: raw.plans,
+            overrides: overrideMap(),
             blobBytes: blobBytes, rawCollections: raws,
             staleDays: parseInt(getSetting('doctorStaleDays'), 10) || 30,
             nameMax: parseInt(getSetting('doctorNameMax'), 10) || 40,
             now: Date.now()
         };
+    }
+
+    function failedResult(id) {
+        return { id: id, category: 'Theme', severity: 'info', title: id, why: '', status: 'unknown', items: [], count: 0, note: 'Check failed' };
     }
 
     /* Run the checks one per timer slice so 700+ devices never block the UI. */
@@ -476,17 +530,39 @@
         (function step() {
             if (i >= ids.length) { done(out); return; }
             var r = null;
-            try { r = runCheck(ids[i], input); } catch (e) { r = { id: ids[i], category: 'Theme', severity: 'info', title: ids[i], why: '', status: 'unknown', items: [], count: 0, note: 'Check failed' }; }
+            try { r = runCheck(ids[i], input); } catch (e) { r = failedResult(ids[i]); }
             if (r) out.push(r);
             i++;
             setTimeout(step, 0);
         }());
     }
 
+    /* Re-run ONE check against the data already fetched (after a fix). */
+    function recheck(id) {
+        if (!_raw || !_results) return;
+        var r = null;
+        try { r = runCheck(id, buildInput(_raw)); } catch (e) { r = failedResult(id); }
+        if (!r) return;
+        for (var i = 0; i < _results.length; i++) if (_results[i].id === id) { _results[i] = r; break; }
+        render();
+    }
+
+    function loadLast() {
+        if (_last) return _last;
+        try { _last = JSON.parse(localStorage.getItem(LAST_KEY) || 'null'); } catch (e) { _last = null; }
+        return _last;
+    }
+
+    function rememberRun(sum) {
+        _last = { t: Date.now(), clean: sum.clean, total: sum.total };
+        try { localStorage.setItem(LAST_KEY, JSON.stringify(_last)); } catch (e) {}
+    }
+
+    /* Read-only: GETs, in-memory state and the device-local localStorage key. */
     function run(force) {
-        if (!_on) return Promise.resolve(null);
         var seq = ++_runSeq;
         _running = true;
+        _bar = null;
         render();
         return fetchAll(!!force).then(function (raw) {
             _devMap = {};
@@ -496,9 +572,7 @@
                     if (seq !== _runSeq) { resolve(null); return; }
                     _results = res;
                     _running = false;
-                    var sum = summarize(res, ignoreMap());
-                    var s = window.dzNightglassSettings;
-                    if (s) s.set('doctorLastRun', JSON.stringify({ t: Date.now(), clean: sum.clean, total: sum.total }));
+                    rememberRun(summarize(res, ignoreMap()));
                     updateLastRunLabel();
                     render();
                     resolve(res);
@@ -510,7 +584,7 @@
     /* ── Rendering ─────────────────────────────────────────────── */
 
     function lastRunText() {
-        var v = parseJson(getSetting('doctorLastRun'), null);
+        var v = loadLast();
         if (!v || !v.t) return 'Not run yet';
         return 'Last run ' + ago(Date.now() - v.t) + ': ' + (+v.clean || 0) + ' of ' + (+v.total || 0) + ' checks clean';
     }
@@ -521,28 +595,55 @@
         if (el) el.textContent = lastRunText();
     }
 
-    function rowHtml(it) {
+    function canWrite() { return !_noAdmin; }
+
+    function rowHtml(r, it) {
         var nav = it.idx && _devMap[it.idx];
-        var inner = '<span class="ng-doc-row-name">' + esc(it.name) + '</span>' +
-                    '<span class="ng-doc-row-meta">' + esc(it.meta || '') + '</span>';
-        if (nav) {
-            return '<button type="button" class="ng-doc-row ng-doc-row--nav" data-act="nav" data-idx="' + esc(keyOf(it.idx)) + '">' + inner + '</button>';
+        var name = nav
+            ? '<button type="button" class="ng-doc-row-name ng-doc-row-name--nav" data-act="nav" data-idx="' + esc(keyOf(it.idx)) + '">' + esc(it.name) + '</button>'
+            : '<span class="ng-doc-row-name">' + esc(it.name) + '</span>';
+        var act = '';
+        if (r.id === 'defaultIcon' && nav && canWrite() && typeof window.dzSetDeviceIcon === 'function') {
+            act = '<button type="button" class="ng-doc-btn" data-act="seticon" data-idx="' + esc(keyOf(it.idx)) + '">Set icon</button>';
+        } else if (r.id === 'orphanOverrides' && it.orphan && canWrite()) {
+            act = '<button type="button" class="ng-doc-btn ng-doc-btn--danger" data-act="rm-one" data-idx="' + esc(keyOf(it.idx)) + '">Remove</button>';
         }
-        return '<div class="ng-doc-row">' + inner + '</div>';
+        return '<div class="ng-doc-row">' + name +
+               '<span class="ng-doc-row-meta">' + esc(it.meta || '') + '</span>' + act + '</div>';
+    }
+
+    function confirmHtml(r) {
+        if (!_confirm || _confirm.id !== r.id) return '';
+        var lines = '', n = _confirm.items.length;
+        _confirm.items.slice(0, 8).forEach(function (it) {
+            lines += '<li>Device idx ' + esc(keyOf(it.idx)) + ': ' + esc(it.icon || 'colours only') + '</li>';
+        });
+        if (n > 8) lines += '<li>and ' + (n - 8) + ' more</li>';
+        return '<div class="ng-doc-confirm" role="group" aria-label="Confirm removal">' +
+            '<div class="ng-doc-confirm-title">This removes the theme icon override for ' + n + (n === 1 ? ' device' : ' devices') + ' that no longer exist:</div>' +
+            '<ul>' + lines + '</ul>' +
+            '<div class="ng-doc-confirm-btns">' +
+                '<button type="button" class="ng-doc-btn ng-doc-btn--danger" data-act="rm-go">Remove ' + n + '</button>' +
+                '<button type="button" class="ng-doc-btn" data-act="rm-cancel">Cancel</button>' +
+            '</div></div>';
     }
 
     function findingHtml(r) {
-        var shown = _expanded[r.id] ? Math.min(r.items.length, ROW_CAP) : Math.min(r.items.length, ROW_PEEK);
-        var rows = '';
-        for (var i = 0; i < shown; i++) rows += rowHtml(r.items[i]);
-        var more = '';
         var listed = Math.min(r.items.length, ROW_CAP);
-        if (!_expanded[r.id] && r.count > shown && listed > shown) {
+        var shown = _expanded[r.id] ? listed : Math.min(listed, ROW_PEEK);
+        var rows = '';
+        for (var i = 0; i < shown; i++) rows += rowHtml(r, r.items[i]);
+        var more = '';
+        if (!_expanded[r.id] && listed > shown) {
             more = '<button type="button" class="ng-doc-more" data-act="more" data-id="' + esc(r.id) + '">Show ' + (r.count - shown) + ' more</button>';
         } else if (r.count > shown) {
             more = '<div class="ng-doc-note">+' + (r.count - shown) + ' not listed</div>';
         }
         var ign = _ignoreOpen === r.id;
+        var removeAll = '';
+        if (r.id === 'orphanOverrides' && canWrite() && r.items.length > 0) {
+            removeAll = '<button type="button" class="ng-doc-btn ng-doc-btn--danger" data-act="rm-all">Remove all (' + r.items.length + ')</button>';
+        }
         return '<div class="ng-doc-find ng-doc-find--' + esc(r.severity) + '" data-id="' + esc(r.id) + '">' +
             '<div class="ng-doc-find-hdr">' +
                 '<span class="ng-doc-sev ng-doc-sev--' + esc(r.severity) + '">' + esc(SEV_LABEL[r.severity] || '') + '</span>' +
@@ -551,8 +652,10 @@
             '</div>' +
             '<div class="ng-doc-why">' + esc(r.why) + '</div>' +
             (rows ? '<div class="ng-doc-rows">' + rows + '</div>' : '') + more +
+            confirmHtml(r) +
             '<div class="ng-doc-actions">' +
                 '<a class="ng-doc-link" href="' + esc(r.route) + '" data-act="open">Open in Domoticz</a>' +
+                removeAll +
                 '<button type="button" class="ng-doc-ignore-btn" data-act="ign-toggle" data-id="' + esc(r.id) + '">Ignore</button>' +
             '</div>' +
             (ign ?
@@ -564,76 +667,143 @@
         '</div>';
     }
 
-    function render() {
-        if (!_panel || !_open) return;
-        var body = _panel.querySelector('.ng-doc-body');
-        var head = _panel.querySelector('.ng-doc-headline');
-        var html = '';
-        if (_running && !_results) {
-            html = '<div class="ng-doc-note">Checking your setup…</div>';
-            head.textContent = 'Running…';
-        } else if (!_results) {
-            html = '<div class="ng-doc-note">Press Re-run to check your setup.</div>';
-            head.textContent = '';
-        } else {
-            var map = ignoreMap(), now = Date.now();
-            var sum = summarize(_results, map, now);
-            head.textContent = sum.clean + ' of ' + sum.total + ' checks clean' + (_running ? ' (updating…)' : '');
-            if (_limited) html += '<div class="ng-doc-note ng-doc-note--warn">Results limited to your account</div>';
-            var ignored = [];
-            CATEGORIES.forEach(function (cat) {
-                var list = _results.filter(function (r) { return r.category === cat; });
-                var secHtml = '';
-                list.forEach(function (r) {
-                    if (r.status === 'found' && isIgnored(map, r.id, now)) { ignored.push(r); return; }
-                    if (r.status === 'found') secHtml += findingHtml(r);
-                    else if (r.status === 'unknown') secHtml += '<div class="ng-doc-line ng-doc-line--unk"><i class="fa-solid fa-circle-question" aria-hidden="true"></i><span>' + esc(r.title) + ': could not check' + (r.note ? ' (' + esc(r.note) + ')' : '') + '</span></div>';
-                    else secHtml += '<div class="ng-doc-line ng-doc-line--ok"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span>' + esc(r.title) + '</span></div>';
-                });
-                if (!secHtml) return;
-                html += '<section class="ng-doc-sec"><div class="ng-doc-sec-hdr"><i class="fa-solid ' + CAT_ICON[cat] + '" aria-hidden="true"></i><span>' + cat + '</span></div>' + secHtml + '</section>';
+    function barHtml() {
+        if (!_bar) return '';
+        return '<div class="ng-doc-bar' + (_bar.warn ? ' ng-doc-bar--warn' : '') + '" role="status">' +
+            '<span class="ng-doc-bar-text">' + esc(_bar.text) + '</span>' +
+            (_bar.undo ? '<button type="button" class="ng-doc-btn" data-act="undo">Undo</button>' : '') +
+            '<button type="button" class="ng-doc-hdr-btn" data-act="bar-x" aria-label="Dismiss"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>' +
+        '</div>';
+    }
+
+    function bodyHtml(head) {
+        if (_running && !_results) { head.text = 'Running…'; return '<div class="ng-doc-note">Checking your setup…</div>'; }
+        if (!_results) { head.text = ''; return '<div class="ng-doc-note">Press Run again to check your setup.</div>'; }
+        var map = ignoreMap(), now = Date.now(), html = '';
+        var sum = summarize(_results, map, now);
+        head.text = sum.clean + ' of ' + sum.total + ' checks clean' + (_running ? ' (updating…)' : '');
+        if (_limited) html += '<div class="ng-doc-note ng-doc-note--warn">Results limited to your account</div>';
+        if (_noAdmin) html += '<div class="ng-doc-note ng-doc-note--warn">Changing icons needs an admin account</div>';
+        var ignored = [];
+        CATEGORIES.forEach(function (cat) {
+            var list = _results.filter(function (r) { return r.category === cat; });
+            var body = '', nFind = 0;
+            list.forEach(function (r) {
+                if (r.status === 'found' && isIgnored(map, r.id, now)) { ignored.push(r); return; }
+                if (r.status === 'found') { nFind++; body += findingHtml(r); }
+                else if (r.status === 'unknown') body += '<div class="ng-doc-line ng-doc-line--unk"><i class="fa-solid fa-circle-question" aria-hidden="true"></i><span>' + esc(r.title) + ': could not check' + (r.note ? ' (' + esc(r.note) + ')' : '') + '</span></div>';
+                else body += '<div class="ng-doc-line ng-doc-line--ok"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span>' + esc(r.title) + '</span></div>';
             });
-            if (ignored.length) {
-                html += '<div class="ng-doc-foot">' + ignored.length + ' ignored · <button type="button" class="ng-doc-linkbtn" data-act="unignore-all">Clear ignores</button></div>';
-            }
+            if (!body) return;
+            var collapsed = Object.prototype.hasOwnProperty.call(_collapsed, cat) ? _collapsed[cat] : nFind === 0;
+            html += '<section class="ng-doc-sec' + (collapsed ? ' ng-doc-sec--collapsed' : '') + '">' +
+                '<button type="button" class="ng-doc-sec-hdr" data-act="cat" data-cat="' + cat + '" aria-expanded="' + (collapsed ? 'false' : 'true') + '">' +
+                    '<i class="fa-solid ' + CAT_ICON[cat] + '" aria-hidden="true"></i><span class="ng-doc-sec-name">' + cat + '</span>' +
+                    '<span class="ng-doc-find-count' + (nFind ? ' ng-doc-find-count--hot' : '') + '">' + (nFind ? nFind : 'clean') + '</span>' +
+                    '<i class="fa-solid fa-chevron-down ng-doc-chev" aria-hidden="true"></i></button>' +
+                (collapsed ? '' : '<div class="ng-doc-sec-body">' + body + '</div>') +
+            '</section>';
+        });
+        if (ignored.length) {
+            html += '<div class="ng-doc-foot">' + ignored.length + ' ignored · <button type="button" class="ng-doc-linkbtn" data-act="unignore-all">Clear ignores</button></div>';
         }
+        return html;
+    }
+
+    var FOCUS_ATTRS = ['data-act', 'data-id', 'data-idx', 'data-cat', 'data-ms'];
+
+    function render() {
+        if (!_overlay || !_open) return;
+        var body = _overlay.querySelector('.ng-doc-body');
+        var headEl = _overlay.querySelector('.ng-doc-headline');
+        var barEl = _overlay.querySelector('.ng-doc-bar-slot');
+        var runBtn = _overlay.querySelector('[data-act="rerun"]');
+        /* Remember the focused control so a re-render does not drop focus. */
+        var ae = document.activeElement, sel = null;
+        if (ae && _overlay.contains(ae) && ae.getAttribute) {
+            sel = '';
+            FOCUS_ATTRS.forEach(function (a) { var v = ae.getAttribute(a); if (v != null) sel += '[' + a + '="' + v + '"]'; });
+            if (!sel) sel = null;
+        }
+        var head = { text: '' };
+        var html = bodyHtml(head);
+        headEl.textContent = head.text;
+        if (runBtn) runBtn.disabled = _running;
         var top = body.scrollTop;
         body.innerHTML = html;
         body.scrollTop = top;
+        barEl.innerHTML = barHtml();
+        if (sel) {
+            var again = null;
+            try { again = _overlay.querySelector(sel); } catch (e) {}
+            if (!again) again = _overlay.querySelector('.ng-doc-x-btn');
+            if (again) { try { again.focus({ preventScroll: true }); } catch (e) {} }
+        }
     }
 
-    /* ── Panel ─────────────────────────────────────────────────── */
+    /* ── Dialog ────────────────────────────────────────────────── */
 
-    function buildPanel() {
-        if (_panel) return _panel;
-        _panel = document.createElement('div');
-        _panel.id = 'ng-doc-panel';
-        _panel.setAttribute('role', 'dialog');
-        _panel.setAttribute('aria-modal', 'true');
-        _panel.setAttribute('aria-label', 'Setup health');
-        _panel.innerHTML =
-            '<div class="ng-doc-hdr">' +
-                '<span class="ng-doc-title"><i class="fa-solid fa-stethoscope" aria-hidden="true"></i> Setup health</span>' +
-                '<span class="ng-doc-headline" aria-live="polite"></span>' +
-                '<button type="button" class="ng-doc-hdr-btn" data-act="rerun" aria-label="Re-run" title="Re-run">' +
-                    '<i class="fa-solid fa-rotate" aria-hidden="true"></i></button>' +
-                '<button type="button" class="ng-doc-hdr-btn ng-doc-x-btn" data-act="close" aria-label="Close panel">' +
-                    '<i class="fa-solid fa-xmark" aria-hidden="true"></i></button>' +
-            '</div>' +
-            '<div class="ng-doc-body"></div>';
-        _panel.addEventListener('click', onPanelClick);
-        document.body.appendChild(_panel);
-        return _panel;
+    function buildDialog() {
+        var o = document.createElement('div');
+        o.id = 'ng-doc-overlay';
+        o.className = 'ng-doc-overlay';
+        o.innerHTML =
+            '<div class="ng-doc-dialog" role="dialog" aria-modal="true" aria-labelledby="ng-doc-title" tabindex="-1">' +
+                '<div class="ng-doc-hdr">' +
+                    '<span class="ng-doc-title" id="ng-doc-title"><i class="fa-solid fa-stethoscope" aria-hidden="true"></i> Setup health</span>' +
+                    '<span class="ng-doc-headline" aria-live="polite"></span>' +
+                    '<button type="button" class="ng-doc-btn ng-doc-rerun" data-act="rerun"><i class="fa-solid fa-rotate" aria-hidden="true"></i> Run again</button>' +
+                    '<button type="button" class="ng-doc-hdr-btn ng-doc-x-btn" data-act="close" aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>' +
+                '</div>' +
+                '<div class="ng-doc-body"></div>' +
+                '<div class="ng-doc-bar-slot"></div>' +
+            '</div>';
+        o.addEventListener('click', onClick);
+        o.addEventListener('keydown', onTrapKey);
+        return o;
     }
 
-    function onPanelClick(e) {
-        var el = e.target.closest('[data-act]');
-        if (!el || !_panel.contains(el)) return;
+    function focusables() {
+        var dlg = _overlay && _overlay.querySelector('.ng-doc-dialog');
+        if (!dlg) return [];
+        return Array.prototype.filter.call(
+            dlg.querySelectorAll('button:not([disabled]), a[href]'),
+            function (el) { return el.offsetParent !== null || el === document.activeElement; });
+    }
+
+    function onTrapKey(e) {
+        if (e.key !== 'Tab') return;
+        var f = focusables();
+        if (!f.length) { e.preventDefault(); return; }
+        var first = f[0], last = f[f.length - 1], a = document.activeElement;
+        if (e.shiftKey && (a === first || !_overlay.contains(a))) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && (a === last || !_overlay.contains(a))) { e.preventDefault(); first.focus(); }
+    }
+
+    function studioOpen() { return !!document.querySelector('.ng-is-overlay'); }
+
+    function onDocKey(e) {
+        if (e.key !== 'Escape' || !_open) return;
+        if (studioOpen()) return;                // the Icon Studio on top closes first
+        e.preventDefault();
+        e.stopPropagation();
+        closeDialog();
+    }
+
+    function onClick(e) {
+        if (e.target === _overlay) { closeDialog(); return; }
+        var el = e.target.closest ? e.target.closest('[data-act]') : null;
+        if (!el || !_overlay.contains(el)) return;
         var act = el.getAttribute('data-act');
         var id = el.getAttribute('data-id');
-        if (act === 'close') closePanel();
-        else if (act === 'rerun') run(true);
+        var idx = el.getAttribute('data-idx');
+        if (act === 'close') closeDialog();
+        else if (act === 'rerun') { _confirm = null; run(true); }
         else if (act === 'more') { _expanded[id] = true; render(); }
+        else if (act === 'cat') {
+            _collapsed[el.getAttribute('data-cat')] = el.getAttribute('aria-expanded') === 'true';
+            render();
+        }
         else if (act === 'ign-toggle') { _ignoreOpen = (_ignoreOpen === id) ? null : id; render(); }
         else if (act === 'ign') { _ignoreOpen = null; saveIgnore(id, parseInt(el.getAttribute('data-ms'), 10)); }
         else if (act === 'unignore-all') {
@@ -641,88 +811,131 @@
             if (s) s.set('doctorIgnored', '{}');
             render();
         }
-        else if (act === 'open') { closePanel(); }          // anchor navigates by hash
+        else if (act === 'open') { closeDialog(); }          // the anchor navigates by hash
         else if (act === 'nav') {
-            var d = _devMap[el.getAttribute('data-idx')];
-            if (d && typeof window.ngNavigateToDevice === 'function') { closePanel(); window.ngNavigateToDevice(d); }
+            var d = _devMap[idx];
+            if (d && typeof window.ngNavigateToDevice === 'function') { closeDialog(); window.ngNavigateToDevice(d); }
         }
+        else if (act === 'seticon') setIcon(idx);
+        else if (act === 'rm-one' || act === 'rm-all') askRemove(act === 'rm-all' ? null : idx);
+        else if (act === 'rm-cancel') { _confirm = null; render(); }
+        else if (act === 'rm-go') doRemove();
+        else if (act === 'undo') doUndo();
+        else if (act === 'bar-x') { _bar = null; render(); }
     }
 
-    function openPanel() {
-        if (!_on) return;
+    /* ── Mitigations (each behind an explicit click) ───────────── */
+
+    function orphanResult() {
+        for (var i = 0; _results && i < _results.length; i++) if (_results[i].id === 'orphanOverrides') return _results[i];
+        return null;
+    }
+
+    function askRemove(idx) {
+        var r = orphanResult();
+        if (!r || r.status !== 'found') return;
+        var items = r.items.filter(function (it) { return it.orphan && (idx == null || String(it.idx) === String(idx)); });
+        if (!items.length) return;
+        _confirm = { id: 'orphanOverrides', items: items.map(function (it) { return { idx: it.idx, icon: it.icon }; }) };
+        render();
+    }
+
+    function doRemove() {
+        if (!_confirm) return;
+        var idxs = _confirm.items.map(function (it) { return it.idx; });
+        _confirm = null;
+        /* Re-check at click time: never remove an override whose device has
+           appeared since the run. */
+        idxs = idxs.filter(function (i) { return !_devMap[String(i)]; });
+        var prev = overrideMap();
+        var res = removeOverrides(prev, idxs);
+        if (!res.removed.length) { render(); return; }
+        if (!writeOverrides(res.next)) { _bar = { text: 'Could not save theme settings', warn: true }; render(); return; }
+        _undo = { prev: prev };
+        var n = res.removed.length;
+        _bar = { text: 'Removed ' + n + (n === 1 ? ' icon override' : ' icon overrides'), undo: true };
+        recheck('orphanOverrides');
+    }
+
+    function doUndo() {
+        if (!_undo) return;
+        writeOverrides(_undo.prev);
+        _undo = null;
+        _bar = { text: 'Restored the removed icon overrides' };
+        recheck('orphanOverrides');
+    }
+
+    function setIcon(idx) {
+        var d = _devMap[idx];
+        if (!d || typeof window.dzSetDeviceIcon !== 'function') return;
+        window.dzSetDeviceIcon(idx, d, function (ok, reason) {
+            if (!_open) return;
+            if (reason === 'auth') {
+                _noAdmin = true;
+                _bar = { text: 'Changing icons needs an admin account', warn: true };
+                render();
+            } else if (ok) {
+                _bar = { text: 'Icon saved for ' + (d.Name || 'device') };
+                recheck('defaultIcon');
+            } else {
+                _bar = { text: 'Could not save the icon', warn: true };
+                render();
+            }
+        });
+    }
+
+    /* ── Open / close ──────────────────────────────────────────── */
+
+    function openDialog() {
+        if (_open) return;
         if (window.ngNotifClose) window.ngNotifClose();
         if (window.ngAttention && window.ngAttention.close) window.ngAttention.close();
-        buildPanel();
+        clearTimeout(_closeTimer);
+        var stale = document.getElementById('ng-doc-overlay');
+        if (stale && stale.parentNode) stale.parentNode.removeChild(stale);
         _lastFocus = document.activeElement;
-        _ignoreOpen = null;
+        _ignoreOpen = null; _confirm = null; _bar = null; _undo = null;
+        _overlay = buildDialog();
+        document.body.appendChild(_overlay);
         _open = true;
+        if (window.ngSetDialogOpen) window.ngSetDialogOpen('doctor', true);
         render();
-        _panel.classList.add('ng-doc-panel--open');
-        document.addEventListener('keydown', _escHandler);
-        var x = _panel.querySelector('.ng-doc-x-btn');
+        requestAnimationFrame(function () { if (_overlay) _overlay.classList.add('ng-doc-overlay--open'); });
+        document.addEventListener('keydown', onDocKey, true);
+        var x = _overlay.querySelector('.ng-doc-x-btn');
         if (x) { try { x.focus({ preventScroll: true }); } catch (e) {} }
         run(false);
     }
 
-    function closePanel() {
+    function closeDialog() {
         if (!_open) return;
         _open = false;
-        if (_panel) _panel.classList.remove('ng-doc-panel--open');
-        document.removeEventListener('keydown', _escHandler);
+        _runSeq++;
+        _running = false;
+        _undo = null;
+        document.removeEventListener('keydown', onDocKey, true);
+        if (window.ngSetDialogOpen) window.ngSetDialogOpen('doctor', false);
+        var el = _overlay;
+        _overlay = null;
+        if (el) {
+            el.classList.remove('ng-doc-overlay--open');
+            _closeTimer = setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 260);
+        }
         if (_lastFocus && _lastFocus.focus && document.body.contains(_lastFocus)) {
             try { _lastFocus.focus({ preventScroll: true }); } catch (e) {}
         }
         _lastFocus = null;
     }
 
-    function _escHandler(e) { if (e.key === 'Escape') closePanel(); }
-
     /* ── Wiring ────────────────────────────────────────────────── */
 
-    function wire() {
-        if (_wired) return;
-        _wired = true;
-        document.addEventListener('click', function (e) {
-            if (!_on || !e.target.closest) return;
-            if (e.target.closest('#ngDoctorRunBtn')) { openPanel(); return; }
-            if (_open && _panel && !_panel.contains(e.target) && !e.target.closest('.dz-cmd-item')) closePanel();
-        }, true);
+    window.ngDoctor = { run: run, open: openDialog, close: closeDialog };
+
+    document.addEventListener('click', function (e) {
+        if (e.target && e.target.closest && e.target.closest('#ngDoctorRunBtn')) openDialog();
+    }, true);
+
+    if (typeof module !== 'undefined' && module.exports) {
+        module.exports._browser = { run: run, open: openDialog, close: closeDialog, lastRunText: lastRunText };
     }
-
-    function setRunBtn() {
-        var b = document.getElementById('ngDoctorRunBtn');
-        if (b) b.disabled = !_on;
-    }
-
-    function enable() {
-        if (_on) return;
-        _on = true;
-        window.ngDoctor = { run: run, open: openPanel, close: closePanel };
-        wire();
-        setRunBtn();
-    }
-
-    function disable() {
-        if (!_on) return;
-        closePanel();
-        _on = false;
-        _runSeq++;
-        _running = false;
-        if (_panel && _panel.parentNode) _panel.parentNode.removeChild(_panel);
-        _panel = null;
-        delete window.ngDoctor;
-        setRunBtn();
-    }
-
-    function apply() { if (getSetting('doctor')) enable(); else disable(); }
-    window.ngDoctorApply = apply;
-
-    function init() {
-        var s = window.dzNightglassSettings;
-        if (s && s.whenReady) s.whenReady(apply);
-        else setTimeout(init, 300);
-    }
-
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-    else init();
 }());
