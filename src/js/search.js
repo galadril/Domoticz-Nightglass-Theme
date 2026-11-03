@@ -1341,6 +1341,7 @@
         }
         applySettings();
         if (key.indexOf('statusBarLights') === 0 && window.ngStatusBarRefresh) window.ngStatusBarRefresh();
+        if (key === 'attentionCenter' && window.ngAttentionApply) window.ngAttentionApply();
     }
 
     /* Set a value and push the blob to the server right away, instead of the

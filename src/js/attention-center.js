@@ -207,6 +207,7 @@
 
     function refresh() {
         return Promise.all([fetchDevices(true), fetchTimers()]).then(function () {
+            if (!_on) return;
             checkNewLowBattery();
             scheduleRender(0);
         });
@@ -339,6 +340,7 @@
     }
 
     function scheduleRender(ms) {
+        if (!_on) return;             // switched off while a fetch was in flight
         clearTimeout(_renderTimer);
         _renderTimer = setTimeout(function () { _renderTimer = null; render(); }, ms);
     }
@@ -430,6 +432,7 @@
     }
 
     function render() {
+        if (!_on) return;
         var c = announce();
         if (!_panel || !_open) return;
         var res = compute();
@@ -641,20 +644,23 @@
             return;
         }
         try {
-            bodyEl.injector().get('$rootScope').$on('device_update', function (e, d) { onDeviceUpdate(d); });
+            bodyEl.injector().get('$rootScope').$on('device_update', function (e, d) { if (_on) onDeviceUpdate(d); });
         } catch (e) {
             setTimeout(attachAngularHooks, 600);
         }
     }
 
-    function start() {
-        if (!getSetting('attentionCenter')) return;   // disabled: no DOM, no requests
+    var _on        = false;   // feature currently enabled
+    var _wired     = false;   // document listeners attached (once)
+    var _hooked    = false;   // Angular device_update hook attached (once)
 
-        window.ngAttention = { refresh: refresh, open: openPanel, close: closePanel, getCounts: getCounts };
+    function wire() {
+        if (_wired) return;
+        _wired = true;
 
         /* Close on outside click (chip click is handled by the chip itself) */
         document.addEventListener('click', function (e) {
-            if (!_open || !_panel) return;
+            if (!_on || !_open || !_panel) return;
             if (_panel.contains(e.target)) return;
             if (e.target.closest && e.target.closest('#ng-sb-attn')) return;
             closePanel();
@@ -662,6 +668,7 @@
 
         /* Chip in the status bar */
         document.addEventListener('click', function (e) {
+            if (!_on) return;
             var chip = e.target.closest && e.target.closest('#ng-sb-attn');
             if (chip) togglePanel();
         });
@@ -669,6 +676,7 @@
         /* Keyboard shortcut: A — same guard as the N handler in notifications.js,
            plus the dialog gate so it never fires behind a modal. */
         document.addEventListener('keydown', function (e) {
+            if (!_on) return;
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' ||
                 e.target.isContentEditable || e.ctrlKey || e.metaKey || e.altKey) return;
             if (e.key !== 'a' && e.key !== 'A') return;
@@ -678,20 +686,50 @@
         });
 
         /* Poll only while the tab is visible */
+        document.addEventListener('visibilitychange', function () {
+            if (_on && document.visibilityState === 'visible' && (Date.now() - _devTs) > POLL_MS) refresh();
+        });
+    }
+
+    function enable() {
+        if (_on) return;
+        _on = true;
+        window.ngAttention = { refresh: refresh, open: openPanel, close: closePanel, getCounts: getCounts };
+        wire();
         _pollTimer = setInterval(function () {
             if (document.visibilityState === 'visible') refresh();
         }, POLL_MS);
-        document.addEventListener('visibilitychange', function () {
-            if (document.visibilityState === 'visible' && (Date.now() - _devTs) > POLL_MS) refresh();
-        });
-
-        attachAngularHooks();
+        if (!_hooked) { _hooked = true; attachAngularHooks(); }
         refresh();
     }
 
+    /* Switched off: close the drawer, drop its DOM, stop polling and tell the
+       status bar the count is gone so the chip hides. */
+    function disable() {
+        if (!_on) return;
+        closePanel();
+        _on = false;
+        clearInterval(_pollTimer);  _pollTimer = null;
+        clearTimeout(_renderTimer); _renderTimer = null;
+        if (_panel && _panel.parentNode) _panel.parentNode.removeChild(_panel);
+        _panel = null;
+        delete window.ngAttention;
+        try {
+            document.dispatchEvent(new CustomEvent('ng-attention-change',
+                { detail: { total: 0, severity: 'none' } }));
+        } catch (e) {}
+    }
+
+    /* Called at start and by the settings panel whenever a setting changes,
+       so the toggle takes effect without a page reload. */
+    function apply() {
+        if (getSetting('attentionCenter')) enable(); else disable();
+    }
+    window.ngAttentionApply = apply;
+
     function init() {
         var s = settings();
-        if (s && s.whenReady) s.whenReady(start);
+        if (s && s.whenReady) s.whenReady(apply);
         else setTimeout(init, 300);
     }
 
