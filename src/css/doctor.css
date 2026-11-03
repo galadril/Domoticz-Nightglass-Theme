@@ -407,3 +407,161 @@
 .ng-doc-bar-slot { flex-shrink: 0; }
 .ng-doc-sec-body { display: block; }
 .ng-doc-x-btn { margin-left: 2px; }
+
+/* ── Doctor actions: rename, families + groups, rooms ───────────────── */
+
+.ng-doc-row { flex-wrap: wrap; }
+
+.ng-doc-chk {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--dz-accent);
+    cursor: pointer;
+}
+
+.ng-doc-select,
+.ng-doc-input {
+    min-height: 30px;
+    padding: 4px 8px;
+    background: var(--dz-surface-2, var(--dz-surface));
+    border: 1px solid var(--dz-border);
+    border-radius: 8px;
+    color: var(--dz-text);
+    font: inherit;
+    font-size: 0.78rem;
+}
+
+.ng-doc-select { max-width: 160px; flex-shrink: 1; }
+.ng-doc-input { flex: 1; min-width: 0; }
+
+.ng-doc-select:focus-visible,
+.ng-doc-input:focus-visible,
+.ng-doc-chk:focus-visible {
+    outline: 2px solid var(--dz-accent);
+    outline-offset: 1px;
+}
+
+.ng-doc-bulk {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px 2px;
+}
+
+.ng-doc-note-inline { font-size: 0.72rem; color: var(--dz-text-muted); }
+
+.ng-doc-rowstate { font-size: 0.72rem; font-weight: 600; }
+.ng-doc-rowstate--ok { color: var(--dz-success); }
+.ng-doc-rowstate--bad { color: var(--dz-danger); }
+
+.ng-doc-confirm--neutral {
+    border-color: var(--dz-accent);
+    background: rgba(var(--dz-accent-rgb), 0.08);
+}
+
+/* Mini dialog, centred above the Doctor */
+.ng-doc-sub {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 1;
+}
+
+.ng-doc-subdlg {
+    display: flex;
+    flex-direction: column;
+    width: min(460px, calc(100vw - 32px));
+    max-height: 80vh;
+    max-height: 80dvh;
+    background: var(--dz-surface);
+    color: var(--dz-text);
+    border: 1px solid var(--dz-border);
+    border-radius: 16px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    outline: none;
+}
+
+.ng-doc-subhdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 14px 18px 10px;
+    border-bottom: 1px solid var(--dz-border);
+}
+
+.ng-doc-subbody { padding: 12px 18px; overflow-y: auto; font-size: 0.8rem; }
+
+.ng-doc-subfoot {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 18px 14px;
+    border-top: 1px solid var(--dz-border);
+}
+
+.ng-doc-warnbox {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    border: 1px solid var(--dz-warning);
+    border-radius: 8px;
+    background: rgba(var(--dz-warning-rgb), 0.1);
+    color: var(--dz-text);
+    font-size: 0.76rem;
+}
+
+    .ng-doc-warnbox > i { color: var(--dz-warning); margin-top: 2px; }
+
+.ng-doc-warnbox--info {
+    border-color: var(--dz-accent);
+    background: rgba(var(--dz-accent-rgb), 0.08);
+}
+
+    .ng-doc-warnbox--info > i { color: var(--dz-accent); }
+
+.ng-doc-sub-tools { margin-bottom: 8px; }
+.ng-doc-sub-row { margin-bottom: 10px; }
+.ng-doc-sub-lbl { display: block; margin-bottom: 4px; font-size: 0.74rem; color: var(--dz-text-muted); }
+.ng-doc-sub-lbl b { color: var(--dz-text); font-weight: 600; }
+.ng-doc-sub-line { display: flex; align-items: center; gap: 8px; }
+.ng-doc-sub-err { min-height: 1em; margin-top: 3px; font-size: 0.72rem; color: var(--dz-danger); }
+
+.ng-doc-sub-members {
+    margin: 0 0 8px;
+    padding: 6px 10px;
+    border: 1px solid var(--dz-border);
+    border-radius: 8px;
+}
+
+    .ng-doc-sub-members legend { padding: 0 4px; font-size: 0.72rem; color: var(--dz-text-muted); }
+
+.ng-doc-sub-mem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 30px;
+    cursor: pointer;
+}
+
+.ng-doc-sub-log { margin: 6px 0 0; padding-left: 18px; font-size: 0.74rem; color: var(--dz-text-muted); }
+.ng-doc-log-bad { color: var(--dz-danger); }
+
+@media (max-width: 600px) {
+    .ng-doc-select,
+    .ng-doc-input,
+    .ng-doc-sub-mem { min-height: 44px; }
+    .ng-doc-chk { width: 24px; height: 24px; }
+    .ng-doc-select { max-width: 100%; }
+    .ng-doc-subdlg { width: calc(100vw - 16px); max-height: 90dvh; }
+}
