@@ -8,6 +8,84 @@
  *  jQuery ($), Highcharts and all Domoticz globals are available.
  */
 
+/* -- Shared security helpers --------------------------------------
+   Loaded first so every later module can rely on them.  Anything that
+   reaches innerHTML / style / class attributes from stored settings,
+   server data or device values should go through these.              */
+(function () {
+    'use strict';
+    function esc(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/`/g, '&#96;');
+    }
+    /* #rgb / #rrggbb / #rrggbbaa, or the fallback. */
+    function safeColor(c, fallback) {
+        return (typeof c === 'string' && /^#[0-9a-f]{3,8}$/i.test(c.trim()))
+            ? c.trim() : (fallback || '');
+    }
+    /* A space-separated list of CSS class tokens, or the fallback. */
+    function safeClass(c, fallback) {
+        return (typeof c === 'string' && /^[A-Za-z0-9_:\- ]+$/.test(c))
+            ? c : (fallback || '');
+    }
+    /* Strips characters that could break out of an HTML attribute or open a tag
+       from a plain string, and refuses script-ish URL schemes. */
+    function cleanString(v) {
+        var t = String(v).replace(/[<>"'`]/g, '');
+        if (/^\s*(javascript|vbscript|data:text\/html)/i.test(t)) return '';
+        return t;
+    }
+    /* Recursively cleans a parsed settings value.  Strings that are themselves
+       JSON containers (collection settings) are parsed, cleaned and re-encoded. */
+    function cleanValue(v, depth) {
+        depth = depth || 0;
+        if (depth > 8) return null;
+        if (typeof v === 'string') {
+            var t = v.trim();
+            if (t.charAt(0) === '[' || t.charAt(0) === '{') {
+                try { return JSON.stringify(cleanValue(JSON.parse(t), depth + 1)); }
+                catch (e) { /* not JSON: fall through */ }
+            }
+            return cleanString(v);
+        }
+        if (Array.isArray(v)) return v.map(function (x) { return cleanValue(x, depth + 1); });
+        if (v && typeof v === 'object') {
+            var o = {};
+            Object.keys(v).forEach(function (k) {
+                if (k === '__proto__' || k === 'constructor' || k === 'prototype') return;
+                o[cleanString(k)] = cleanValue(v[k], depth + 1);
+            });
+            return o;
+        }
+        return v;
+    }
+    /* Allowlist HTML sanitiser for plugin-supplied text (device values). */
+    var ALLOWED = { SPAN: 1, BR: 1, B: 1, STRONG: 1, I: 1, EM: 1, U: 1, SMALL: 1, DIV: 1, P: 1, SUB: 1, SUP: 1 };
+    function sanitizeHtml(html) {
+        var doc = new DOMParser().parseFromString('<body>' + html, 'text/html');
+        (function walk(node) {
+            Array.prototype.slice.call(node.childNodes).forEach(function (ch) {
+                if (ch.nodeType === 3) return;
+                if (ch.nodeType !== 1 || !ALLOWED[ch.tagName]) { node.removeChild(ch); return; }
+                Array.prototype.slice.call(ch.attributes).forEach(function (a) {
+                    var n = a.name.toLowerCase();
+                    if (n === 'class' || n === 'title') return;
+                    if (n === 'style' && !/url\s*\(|expression|@import|javascript:/i.test(a.value)) return;
+                    ch.removeAttribute(a.name);
+                });
+                walk(ch);
+            });
+        }(doc.body));
+        return doc.body.innerHTML;
+    }
+    window.ngEsc = esc;
+    window.ngSafeColor = safeColor;
+    window.ngSafeClass = safeClass;
+    window.ngCleanValue = cleanValue;
+    window.ngSanitizeHtml = sanitizeHtml;
+}());
+
 /* -- Highcharts palette (callable on mode change) ------------------ */
 (function() {
     'use strict';
@@ -352,7 +430,8 @@ if (document.readyState === 'loading') {
         var stored = localStorage.getItem(STORAGE_KEY) || 'dark';
         var a = document.createElement('a');
         a.id = 'dz-theme-style-btn';
-        a.href = 'javascript:void(0)';
+        a.href = '#';
+        a.addEventListener('click', function (e) { e.preventDefault(); });
         a.setAttribute('role', 'button');
         var icon = document.createElement('i');
         a.appendChild(icon);

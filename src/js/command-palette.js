@@ -282,7 +282,7 @@
         // ── Icon
         var iconWrap = document.createElement('div');
         iconWrap.className = 'dz-cmd-icon' + (on ? ' dz-cmd-icon--on' : '');
-        iconWrap.innerHTML = '<i class="' + iconFor(device) + '"></i>';
+        iconWrap.innerHTML = '<i class="' + window.ngSafeClass(iconFor(device), 'fa-solid fa-circle') + '"></i>';
         el.appendChild(iconWrap);
 
         // ── Body: name + meta
@@ -590,7 +590,7 @@
         var btn = document.createElement('button');
         btn.className = 'dz-cmd-icon-btn';
         btn.title = title;
-        btn.innerHTML = '<i class="' + icon + '"></i>';
+        btn.innerHTML = '<i class="' + window.ngSafeClass(icon, 'fa-solid fa-circle') + '"></i>';
         btn.addEventListener('click', function (e) { e.stopPropagation(); cb(); });
         return btn;
     }
@@ -721,10 +721,7 @@
 
     // ── DOM helpers ────────────────────────────────────────────────
 
-    function esc(s) {
-        return String(s || '')
-            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    }
+    function esc(s) { return window.ngEsc(s); }
 
     function highlight(text, q) {
         if (!q) return esc(text);

@@ -285,13 +285,14 @@
        non-admin session, a refused URL, an unreachable server — is one value:
        "not migrated", which is what keeps the stored entry alive. */
     function installFromUrl(name, url, title) {
-        return fetch('json.htm?type=command&param=uploadwebasset' +
-                     '&name=' + encodeURIComponent(name) +
-                     '&url=' + encodeURIComponent(url) +
-                     '&title=' + encodeURIComponent(title || ''),
-                     { credentials: 'same-origin' })
-            /* A non-admin session is answered with 403 and no JSON body. */
-            .then(function (r) { return r.ok ? r.json() : null; })
+        /* The server fetches this URL itself, so only plain http(s) is allowed. */
+        if (!/^https?:\/\/[^\s]+$/i.test(String(url || ''))) return Promise.resolve(false);
+        var params = { type: 'command', param: 'uploadwebasset',
+                       name: name, url: url, title: title || '' };
+        var call = (typeof window.ngApiMutate === 'function')
+            ? window.ngApiMutate(params) : Promise.resolve(null);
+        /* A non-admin session is answered with 403 and no JSON body. */
+        return call
             .then(function (d) { return !!(d && d.status === 'OK'); })
             .catch(function () { return false; });
     }
@@ -306,8 +307,10 @@
     function dropOwnUpload(prefix) {
         var name = 'iconfont-' + prefix + '.css';
         if (!_nativeAssetNames[name]) return;
-        fetch('json.htm?type=command&param=deletewebasset&name=' + encodeURIComponent(name),
-              { credentials: 'same-origin' }).catch(function () {});
+        if (typeof window.ngApiMutate === 'function') {
+            window.ngApiMutate({ type: 'command', param: 'deletewebasset', name: name })
+                .catch(function () {});
+        }
     }
 
     function migrateLegacyLibraries() {
@@ -751,7 +754,7 @@
             '  <div class="ng-is-foot">' +
             (allowAnim ? '    <div class="ng-is-anim"></div>' : '') +
             '    <div class="ng-is-manual">' +
-            '      <span class="ng-is-manual-preview"><i class="' + (chosen || 'fa-solid fa-question') + '"></i></span>' +
+            '      <span class="ng-is-manual-preview"><i class="' + window.ngSafeClass(chosen, 'fa-solid fa-question') + '"></i></span>' +
             '      <input class="ng-is-manual-input" type="text" placeholder="Or paste any icon class (e.g. mdi mdi-home, fa-brands fa-github)" autocomplete="off">' +
             '      <button class="ng-is-manual-use" type="button">Use</button>' +
             (keepOpen ? '      <button class="ng-is-done" type="button">Done</button>' : '') +
@@ -959,7 +962,7 @@
             }
 
             b.title = labelOf(entry);
-            b.innerHTML = '<i class="' + entry + '"></i><span>' + labelOf(entry) + '</span>';
+            b.innerHTML = '<i class="' + window.ngSafeClass(entry, 'fa-solid fa-question') + '"></i><span>' + window.ngEsc(labelOf(entry)) + '</span>';
             b.addEventListener('click', function () { apply(entry); });
             return b;
         }
@@ -1074,7 +1077,7 @@
                 var b = document.createElement('button');
                 b.type = 'button';
                 b.className = 'ng-is-rail-item' + (it.id === scope ? ' ng-is-rail-item--active' : '');
-                b.innerHTML = '<i class="fa-solid ' + it.icon + '"></i><span>' + it.name + '</span>' +
+                b.innerHTML = '<i class="fa-solid ' + window.ngSafeClass(it.icon, 'fa-icons') + '"></i><span>' + window.ngEsc(it.name) + '</span>' +
                               '<em class="ng-is-rail-count">' + it.count + '</em>';
                 b.addEventListener('click', function () { scope = it.id; renderRail(); renderMain(); });
                 railEl.appendChild(b);
@@ -1192,7 +1195,7 @@
                 var head = document.createElement('button');
                 head.type = 'button';
                 head.className = 'ng-is-section-head';
-                head.innerHTML = '<i class="fa-solid fa-chevron-down"></i> ' + name +
+                head.innerHTML = '<i class="fa-solid fa-chevron-down"></i> ' + window.ngEsc(name) +
                                  ' <em>' + entries.length + '</em>';
                 var body = document.createElement('div');
                 body.className = 'ng-is-section-body';

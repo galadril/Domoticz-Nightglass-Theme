@@ -117,15 +117,18 @@
         var id   = 'ng-toast-' + (++_count);
         var icon  = opts.icon  || 'fa-circle-dot';
         var color = opts.color || 'var(--dz-accent)';
-        var title = opts.title || '';
-        var body  = opts.body  || '';
+        /* Title and body are plain text (device names, notification text, ...)
+           and are escaped.  Only callers that build their own markup pass
+           trustedBody:true — never with server- or user-supplied strings. */
+        var title = window.ngEsc(opts.title || '');
+        var body  = opts.trustedBody ? (opts.body || '') : window.ngEsc(opts.body || '');
 
         var el = document.createElement('div');
         el.id        = id;
-        el.className = 'ng-toast ng-toast--' + (opts.type || 'device');
+        el.className = 'ng-toast ng-toast--' + window.ngSafeClass(opts.type || 'device', 'device');
         el.style.setProperty('--ng-toast-color', color);
         el.innerHTML =
-            '<div class="ng-toast-icon"><i class="fa-solid ' + icon + '"></i></div>' +
+            '<div class="ng-toast-icon"><i class="fa-solid ' + window.ngSafeClass(icon, 'fa-circle-dot') + '"></i></div>' +
             '<div class="ng-toast-content">' +
             '<div class="ng-toast-title">' + title + '</div>' +
             (body ? '<div class="ng-toast-body">' + body + '</div>' : '') +

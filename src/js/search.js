@@ -21,9 +21,7 @@
     var activeI     = -1;
     var _textFilter = null;
 
-    function escHtml(s) {
-        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
+    function escHtml(s) { return window.ngEsc(s); }
 
     function getCards() {
         var out = [];
@@ -58,7 +56,7 @@
         hits.slice(0, 10).forEach(function (d, i) {
             var el = document.createElement('div');
             el.className = 'dz-search-item';
-            el.innerHTML = '<i class="fa-solid ' + d.icon + '"></i>' + escHtml(d.name);
+            el.innerHTML = '<i class="fa-solid ' + window.ngSafeClass(d.icon, 'fa-question') + '"></i>' + escHtml(d.name);
             el.addEventListener('mouseenter', function () { highlight(i); });
             el.addEventListener('click', function () { pick(d); });
             listEl.appendChild(el);
@@ -711,6 +709,18 @@
         });
     }
 
+    /* State-changing commands go out as POST so they cannot be triggered by a
+       cross-site GET (img/link) and do not end up in access logs.  Only if the
+       server answers with a non-JSON error (an older build that rejects POST on
+       json.htm) does it retry once as GET, which is what those builds expect. */
+    function apiMutate(params) {
+        return apiPost(params).then(function (d) {
+            if (d && d.status === 'ERR' && d.error === 'http_error') return apiCall(params);
+            return d;
+        });
+    }
+    window.ngApiMutate = apiMutate;
+
     /* ── New API: per-user ThemeSettings (domoticz/domoticz#6950) ── */
 
     // Resolves true when the core exposes the ThemeSettingsAPI flag in getversion,
@@ -769,6 +779,7 @@
                 icon:     'fa-floppy-disk',
                 color:    'var(--dz-warning, #f0a832)',
                 title:    'Unsaved theme changes',
+                trustedBody: true,
                 body:     'Persist your changes across all browsers.' +
                           '<div class="ng-toast-actions">' +
                           '<button type="button" class="ng-toast-action ng-toast-action--save">' +
@@ -1020,14 +1031,14 @@
     function writeJsonUvar() {
         var json = JSON.stringify(serializeSettings());
         if (_uvarIdx) {
-            return apiCall({
+            return apiMutate({
                 type: 'command', param: 'updateuservariable',
                 idx: _uvarIdx, vname: UVAR_NAME, vtype: UVAR_TYPE, vvalue: json
             }).then(function (d) {
                 return !!(d && d.status === 'OK');
             }, function () { return false; });
         }
-        return apiCall({
+        return apiMutate({
             type: 'command', param: 'adduservariable',
             vname: UVAR_NAME, vtype: UVAR_TYPE, vvalue: json
         }).then(function (d) {
@@ -1070,12 +1081,12 @@
             if (!_apiAvailable) return;
             var json = _settings ? (_settings[PRESETS_KEY] || '[]') : '[]';
             if (_presetsUvarIdx) {
-                apiCall({
+                apiMutate({
                     type: 'command', param: 'updateuservariable',
                     idx: _presetsUvarIdx, vname: PRESETS_UVAR, vtype: UVAR_TYPE, vvalue: json
                 });
             } else {
-                apiCall({
+                apiMutate({
                     type: 'command', param: 'adduservariable',
                     vname: PRESETS_UVAR, vtype: UVAR_TYPE, vvalue: json
                 }).then(function () {
@@ -1167,9 +1178,36 @@
        Accepts both the new compact form (native collections, diff only) and
        the legacy form (collections already strings, every key present), so
        existing installs upgrade transparently. */
+    /* Settings come from a shared server-side store and from imported files, so
+       nothing in them is trusted: colours must be hex, flags must be booleans,
+       and every string is scrubbed of markup-breaking characters before it can
+       reach an innerHTML / style / class sink. */
+    function sanitizeSettings(obj) {
+        var out = {};
+        Object.keys(obj || {}).forEach(function (key) {
+            if (key === '__proto__' || key === 'constructor' || key === 'prototype') return;
+            var v = obj[key];
+            var def = DEFAULTS[key];
+            if (typeof def === 'boolean') {
+                if (typeof v !== 'boolean') return;
+            } else if (/Color(Light)?$/.test(key)) {
+                v = window.ngSafeColor(v, '');
+                if (!v) return;
+            } else if (typeof def === 'string' && COLLECTION_FIELDS.indexOf(key) === -1 &&
+                       (typeof v !== 'string' && typeof v !== 'number')) {
+                return;
+            } else {
+                v = window.ngCleanValue(v);
+            }
+            out[key] = v;
+        });
+        return out;
+    }
+
     function deserializeSettings(stored) {
         var norm = {};
         if (stored && typeof stored === 'object') {
+            stored = sanitizeSettings(stored);
             Object.keys(stored).forEach(function (key) {
                 var v = stored[key];
                 if (COLLECTION_FIELDS.indexOf(key) !== -1 && v != null && typeof v !== 'string') {
@@ -1863,7 +1901,7 @@
         ];
 
         function colorPicker(key, label) {
-            var val = s[key] || '#4e9af1';
+            var val = window.ngSafeColor(s[key], '#4e9af1');
             var presetHtml = COLOR_PRESETS.map(function (c) {
                 var sel = (c.toLowerCase() === val.toLowerCase()) ? ' ng-cp-preset--active' : '';
                 return '<button class="ng-cp-preset' + sel + '" data-color="' + c + '" style="background:' + c + '" title="' + c + '"></button>';
@@ -2213,12 +2251,12 @@
             ? 'data-ng-user-preset-idx="' + idx + '"'
             : 'data-ng-preset-idx="' + idx + '"';
 
-        return '<button class="ng-preset-card" ' + attr + ' title="' + (p.description || p.name) + '">' +
+        return '<button class="ng-preset-card" ' + attr + ' title="' + window.ngEsc(p.description || p.name) + '">' +
             '<div class="ng-preset-preview" style="background:' + bg + ';">' +
             '<div class="ng-preset-preview-bar" style="background:' + sf + ';border-bottom:2px solid ' + ac + ';"></div>' +
             '<div class="ng-preset-preview-body">' +
             '<div class="ng-preset-preview-card" style="background:' + sf + ';border:1px solid ' + ac + '30;">' +
-            '<i class="' + icon + '" style="color:' + ac + ';font-size:14px;"></i>' +
+            '<i class="' + window.ngSafeClass(icon, 'fa-solid fa-question') + '" style="color:' + window.ngSafeColor(ac, '#888') + ';font-size:14px;"></i>' +
             '<div class="ng-preset-preview-lines">' +
             '<div style="background:' + tx + ';width:70%;height:3px;border-radius:2px;opacity:0.7;"></div>' +
             '<div style="background:' + ac + ';width:45%;height:3px;border-radius:2px;opacity:0.6;"></div>' +
@@ -2375,7 +2413,8 @@
         var li = document.createElement('li');
         li.id = 'ng-settings-tab';
         var a = document.createElement('a');
-        a.href = 'javascript:void(0)';
+        a.href = '#';
+        a.addEventListener('click', function (e) { e.preventDefault(); });
         a.textContent = 'Nightglass';
         a.addEventListener('click', function () {
             showNightglassTab(settingsContent, subTabs);
@@ -2581,7 +2620,7 @@
                     '<label class="ng-bl-row' + (isBlocked ? ' ng-bl-row--active' : '') + '" ' +
                     '  data-idx="' + d.idx + '" data-name="' + (d.Name || '').replace(/"/g,'&quot;') + '">' +
                     '  <span class="ng-bl-row-info">' +
-                    '    <span class="ng-bl-row-name">' + (d.Name || 'Device ' + d.idx) + '</span>' +
+                    '    <span class="ng-bl-row-name">' + window.ngEsc(d.Name || 'Device ' + d.idx) + '</span>' +
                     '    <span class="ng-bl-row-type">' + (d.HardwareName || '') + (d.Type ? ' · ' + d.Type : '') + '</span>' +
                     '  </span>' +
                     '  <input type="checkbox" class="ng-bl-cb" ' + (isBlocked ? 'checked' : '') + ' aria-label="' + o.checkLabel + '">' +
@@ -3073,7 +3112,7 @@
                 if (!animChip) return;
                 var label = animLabel(anim.get());
                 animChip.innerHTML = label
-                    ? '<i class="fa-solid fa-wand-magic-sparkles"></i>' + label : '';
+                    ? '<i class="fa-solid fa-wand-magic-sparkles"></i>' + window.ngEsc(label) : '';
             }
             /* Lets the row's Remove button clear the chip this drew. */
             if (anim) anim.repaint = paintAnim;
@@ -3201,15 +3240,15 @@
                 (shape && shape.image)
                 ? '<span class="ng-ov-row-icon">' +
                   '<img class="ng-ov-row-img" alt="" src="' +
-                  ((imgShape && imgShape.src) || '') + '">' +
+                  window.ngEsc((imgShape && imgShape.src) || '') + '">' +
                   '</span>'
                 : isBlinds
                 ? '<span class="ng-ov-row-icon ng-ov-row-icon--multi">' +
-                  '<i class="' + curIconOpen  + ' ng-ov-row-fa ng-ov-row-fa--open"  style="color:' + curOn  + ';' + (hasOv ? '' : 'opacity:.55') + '"></i>' +
-                  '<i class="' + curIconClose + ' ng-ov-row-fa ng-ov-row-fa--close" style="color:' + curOff + ';' + (hasOv ? '' : 'opacity:.55') + '"></i>' +
+                  '<i class=\"' + window.ngSafeClass(curIconOpen, 'fa-solid fa-question') + ' ng-ov-row-fa ng-ov-row-fa--open"  style="color:' + curOn  + ';' + (hasOv ? '' : 'opacity:.55') + '"></i>' +
+                  '<i class=\"' + window.ngSafeClass(curIconClose, 'fa-solid fa-question') + ' ng-ov-row-fa ng-ov-row-fa--close" style=\"color:' + window.ngSafeColor(curOff, '#888') + ';' + (hasOv ? '' : 'opacity:.55') + '"></i>' +
                   '</span>'
                 : '<span class="ng-ov-row-icon">' +
-                  '<i class="' + curIconOn + ' ng-ov-row-fa" style="color:' + curOn + ';' + (hasOv ? '' : 'opacity:.55') + '"></i>' +
+                  '<i class=\"' + window.ngSafeClass(curIconOn, 'fa-solid fa-question') + ' ng-ov-row-fa" style=\"color:' + window.ngSafeColor(curOn, '#888') + ';' + (hasOv ? '' : 'opacity:.55') + '"></i>' +
                   '</span>';
 
             var modelBadge = model === 'blinds-2' ? ' <span class="ng-ov-model-badge">2-icon</span>'
@@ -3224,13 +3263,13 @@
                 groupLabel === 'Utility'     ? ' ng-ov-group-tag--utility' :
                 (groupLabel === 'Scene' || groupLabel === 'Group') ? ' ng-ov-group-tag--scene' : '';
             var groupTag = groupLabel ? ' <span class="ng-ov-group-tag' + groupTagCls + '">' + groupLabel + '</span>' : '';
-            var swLabel = (d.SwitchType && d.SwitchType !== d.Type) ? ' &middot; ' + d.SwitchType : '';
+            var swLabel = (d.SwitchType && d.SwitchType !== d.Type) ? ' &middot; ' + window.ngEsc(d.SwitchType) : '';
             summary.innerHTML =
                 iconHtml +
                 '<span class="ng-bl-row-info">' +
-                '  <span class="ng-bl-row-name">' + (d.Name || 'Device ' + d.idx) + '</span>' +
-                '  <span class="ng-bl-row-type">IDX&nbsp;' + d.idx +
-                    (d.Type ? ' &middot; ' + d.Type : '') + swLabel + modelBadge + groupTag +
+                '  <span class="ng-bl-row-name">' + window.ngEsc(d.Name || 'Device ' + d.idx) + '</span>' +
+                '  <span class="ng-bl-row-type">IDX&nbsp;' + window.ngEsc(d.idx) +
+                    (d.Type ? ' &middot; ' + window.ngEsc(d.Type) : '') + swLabel + modelBadge + groupTag +
                 '  </span>' +
                 '</span>' +
                 /* Filled by paintRowMarks — the theme styling this device carries. */
@@ -3540,10 +3579,10 @@
                 if (isBlinds) {
                     slot.classList.add('ng-ov-row-icon--multi');
                     slot.innerHTML =
-                        '<i class="' + curIconOpen  + ' ng-ov-row-fa ng-ov-row-fa--open"  style="color:' + curOn  + '"></i>' +
-                        '<i class="' + curIconClose + ' ng-ov-row-fa ng-ov-row-fa--close" style="color:' + curOff + '"></i>';
+                        '<i class=\"' + window.ngSafeClass(curIconOpen, 'fa-solid fa-question') + ' ng-ov-row-fa ng-ov-row-fa--open"  style="color:' + curOn  + '"></i>' +
+                        '<i class=\"' + window.ngSafeClass(curIconClose, 'fa-solid fa-question') + ' ng-ov-row-fa ng-ov-row-fa--close" style=\"color:' + window.ngSafeColor(curOff, '#888') + '"></i>';
                 } else {
-                    slot.innerHTML = '<i class="' + curIconOn + ' ng-ov-row-fa" style="color:' + curOn + '"></i>';
+                    slot.innerHTML = '<i class=\"' + window.ngSafeClass(curIconOn, 'fa-solid fa-question') + ' ng-ov-row-fa" style=\"color:' + window.ngSafeColor(curOn, '#888') + '"></i>';
                 }
             }
 
@@ -3844,7 +3883,7 @@
                     var bar = document.createElement('div');
                     bar.className = 'ng-ov-confirm-bar';
                     bar.innerHTML =
-                        '<span class="ng-ov-confirm-text">Apply <i class="' + pp.icon + '" style="color:' + pp.on + ';margin:0 3px"></i><strong>' + pp.label + '</strong>?</span>' +
+                        '<span class="ng-ov-confirm-text">Apply <i class="' + window.ngSafeClass(pp.icon, 'fa-solid fa-question') + '" style="color:' + window.ngSafeColor(pp.on, '#888') + ';margin:0 3px"></i><strong>' + window.ngEsc(pp.label) + '</strong>?</span>' +
                         '<button class="ng-ov-confirm-apply" type="button">Apply</button>' +
                         '<button class="ng-ov-confirm-skip" type="button"><i class="fa-solid fa-xmark"></i> Skip</button>';
                     bar.querySelector('.ng-ov-confirm-apply').addEventListener('click', function (ev) {
@@ -3922,7 +3961,7 @@
             chip.classList.add('ng-ov-chip--active');
 
             banner.innerHTML =
-                '<span class="ng-ov-banner-icon"><i class="' + preset.icon + '" style="color:' + preset.on + '"></i></span>' +
+                '<span class="ng-ov-banner-icon"><i class="' + window.ngSafeClass(preset.icon, 'fa-solid fa-question') + '" style="color:' + window.ngSafeColor(preset.on, '#888') + '"></i></span>' +
                 '<span class="ng-ov-banner-text">Click any device to apply <strong>' + preset.label + '</strong></span>' +
                 '<button class="ng-ov-banner-cancel" type="button"><i class="fa-solid fa-xmark"></i> Cancel</button>';
             banner.style.display = '';
@@ -3983,7 +4022,7 @@
             chip.type = 'button';
             chip.className = 'ng-ov-chip';
             chip.title = p.icon.replace('fa-solid fa-', '').replace(/-/g, ' ');
-            chip.innerHTML = '<i class="' + p.icon + '"></i> ' + p.label;
+            chip.innerHTML = '<i class="' + window.ngSafeClass(p.icon, 'fa-solid fa-question') + '"></i> ' + window.ngEsc(p.label);
 
             chip.addEventListener('click', function () {
                 /* Toggle: clicking the already-active chip exits select mode */
@@ -4289,7 +4328,7 @@
                 var reader = new FileReader();
                 reader.onload = function (e) {
                     try {
-                        var imported = JSON.parse(e.target.result);
+                        var imported = sanitizeSettings(JSON.parse(e.target.result));
                         var count = 0;
                         Object.keys(DEFAULTS).forEach(function (key) {
                             if (imported[key] !== undefined) {

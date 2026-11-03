@@ -368,7 +368,7 @@
     function buildCtxItem(iconClass, text, danger, action) {
         var el = document.createElement('div');
         el.className = 'dd-ctx-item' + (danger ? ' dd-ctx-item--danger' : '');
-        el.innerHTML = '<i class="' + iconClass + '"></i><span>' + text + '</span>';
+        el.innerHTML = '<i class="' + window.ngSafeClass(iconClass, 'fa-solid fa-circle') + '"></i><span>' + window.ngEsc(text) + '</span>';
         el.addEventListener('click', function (e) {
             e.stopPropagation();
             removeCtxMenu();

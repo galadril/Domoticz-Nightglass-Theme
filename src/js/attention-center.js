@@ -317,7 +317,7 @@
             icon:  'fa-battery-quarter',
             color: 'var(--dz-warning)',
             title: 'Low battery',
-            body:  esc(first.dev.Name) + ' · ' + first.level + '%' +
+            body:  String(first.dev.Name == null ? '' : first.dev.Name) + ' · ' + first.level + '%' +
                    (fresh.length > 1 ? ' (+' + (fresh.length - 1) + ' more)' : ''),
             onClick: function () { openPanel(); }
         });
