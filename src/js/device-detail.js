@@ -790,8 +790,13 @@
                   /* Unchanged, and only here because customimage needs it. */
                   '&name=' + encodeURIComponent(device.Name) +
                   '&protected=' + (device.Protected ? 'true' : 'false');
+        var denied = false;
         fetch(url, { credentials: 'same-origin' })
-            .then(function (r) { return r.json(); })
+            .then(function (r) {
+                /* A non-admin session is answered with 401/403 and no JSON. */
+                if (r.status === 401 || r.status === 403) { denied = true; throw new Error('auth'); }
+                return r.json();
+            })
             .then(function (d) {
                 var ok = !!(d && d.status === 'OK');
                 if (ok) {
@@ -802,8 +807,55 @@
                 }
                 done(ok);
             })
-            .catch(function () { done(false); });
+            .catch(function () { done(false, denied ? 'auth' : 'error'); });
     }
+
+    /* Pick an icon for one device from anywhere (the Doctor dialog), with no
+       device page or Utility dialog to stage it on.  Same Studio, same
+       writeIcon() — so the setused call is the one this module already
+       builds, with name/protected sent back unchanged.  Nothing is written
+       until the user picks a tile.  onDone(ok, reason) fires after each
+       write; reason is 'auth' when the account may not edit devices.  Without
+       native icon storage the pick goes to the theme's override blob, as it
+       does on the device page. */
+    window.dzSetDeviceIcon = function (idx, device, onDone) {
+        onDone = onDone || function () {};
+        idx = String(idx);
+        if (!/^\d+$/.test(idx) || typeof window.dzOpenIconStudio !== 'function') { onDone(false, 'error'); return; }
+        probeNativeStorage(function (native) {
+            var go = function (dev) {
+                if (!dev) { onDone(false, 'error'); return; }
+                var icon = native ? parseIcon(dev.Icon) : null;
+                var pair = { on: (icon && icon.on) || '', off: (icon && icon.off) || '' };
+                var ci = parseInt(dev.CustomImage, 10) || 0;
+                var s = settings();
+                window.dzOpenIconStudio({
+                    current: pair.on,
+                    currentImage: ci >= 100 ? ci : 0,
+                    allowImages: native,
+                    slots: [
+                        { key: 'on',  label: 'On / active',    cls: pair.on },
+                        { key: 'off', label: 'Off / inactive', cls: pair.off }
+                    ],
+                    title: 'Set icon for ' + (dev.Name || 'device'),
+                    onPickSlot: function (key, cls) {
+                        pair[key] = String(cls || '').trim();
+                        if (!pair.on) return;
+                        if (native) writeIcon(dev, { on: pair.on, off: pair.off }, onDone);
+                        else if (s && s.setDeviceOverrideIcons) {
+                            s.setDeviceOverrideIcons(idx, pair.on, pair.off, dev.Name);
+                            onDone(true);
+                        } else onDone(false, 'error');
+                    },
+                    onPickImage: native ? function (customImage) {
+                        writeIcon(dev, { image: customImage }, onDone);
+                    } : undefined
+                });
+            };
+            if (device && device.Protected !== undefined && device.Name) go(device);
+            else fetchDevice(idx, go);
+        });
+    };
 
     /* The settings panel's device-icon editor edits the same two stores as
        this module: Domoticz's Icon column for the shape, the theme blob for
