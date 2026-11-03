@@ -67,6 +67,25 @@
         border-color: rgba(var(--dz-accent-rgb), 0.45) !important;
     }
 
+/* Header actions: Assistant + Reset sit together, wrapping under the title on narrow screens */
+.ng-settings-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+@media (max-width: 600px) {
+    .ng-settings-header {
+        flex-wrap: wrap;
+        gap: 14px;
+        padding: 18px;
+    }
+    .ng-settings-header-actions { width: 100%; justify-content: flex-start; }
+    .ng-settings-header-actions .ng-reset-btn { min-height: 44px; flex: 1 1 auto; justify-content: center; }
+}
+
 /* ── Settings grid ───────────────────────────────────────────── */
 
 .ng-settings-grid {
