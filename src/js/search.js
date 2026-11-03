@@ -618,15 +618,14 @@
         attentionSnoozed:          '{}',
         attentionToast:            false,
 
-        /* Doctor (doctor.js): on-demand read-only setup health check.
+        /* Doctor (doctor.js): on-demand setup health check; no on/off switch.
            doctorIgnored maps check id -> expiry epoch ms (0 = forever);
-           doctorChecks lists enabled check ids ([] = all). */
-        doctor:                    true,
+           doctorChecks lists enabled check ids ([] = all).  The last-run
+           summary is device-local (localStorage 'ng-doctor-last'), not here. */
         doctorIgnored:             '{}',
         doctorChecks:              '[]',
         doctorStaleDays:           '30',
         doctorNameMax:             '40',
-        doctorLastRun:             '',
 
         /* Set once the one-shot in icon-migrate.js has cleared any icon
            overrides saved against a scene or group — see issue #265. Keeps
@@ -1391,7 +1390,6 @@
         applySettings();
         if (key.indexOf('statusBarLights') === 0 && window.ngStatusBarRefresh) window.ngStatusBarRefresh();
         if (key === 'attentionCenter' && window.ngAttentionApply) window.ngAttentionApply();
-        if (key === 'doctor' && window.ngDoctorApply) window.ngDoctorApply();
     }
 
     /* Set a value and push the blob to the server right away, instead of the
@@ -2097,14 +2095,23 @@
 
             '<div class="ng-settings-section">' +
             '<div class="ng-section-header"><i class="fa-solid fa-stethoscope"></i> Setup health</div>' +
-            toggle('doctor', 'Doctor', 'Read-only check of your Domoticz setup: rooms, names, icons, timers, hardware and theme settings. Runs only when you ask, changes nothing') +
             '<div class="ng-setting-row ng-setting-row--action">' +
             '  <div class="ng-setting-info">' +
-            '    <span class="ng-setting-label">Run health check</span>' +
+            '    <span class="ng-setting-label">Run Doctor</span>' +
             '    <span class="ng-setting-desc" id="ngDoctorLastRun">' + (window.ngDoctorLastRunText ? window.ngDoctorLastRunText() : '') + '</span>' +
+            '    <span class="ng-setting-desc">Checks rooms, names, icons, timers, hardware and theme settings. Runs only when you press the button and changes nothing by itself</span>' +
             '  </div>' +
             '  <button type="button" class="ng-action-chip" id="ngDoctorRunBtn">' +
-            '    <i class="fa-solid fa-stethoscope"></i> Run</button>' +
+            '    <i class="fa-solid fa-stethoscope"></i> Run Doctor</button>' +
+            '</div>' +
+            '<div class="ng-setting-row ng-setting-row--action">' +
+            '  <div class="ng-setting-info">' +
+            '    <span class="ng-setting-label">Reset ignored checks</span>' +
+            '    <span class="ng-setting-desc">Show every Doctor finding you chose to ignore again</span>' +
+            '  </div>' +
+            '  <button type="button" class="ng-action-chip" id="ngDoctorResetIgnoredBtn">' +
+            '    <i class="fa-solid fa-eye"></i> Reset</button>' +
+            '</div>' +
             '</div>' +
             '</div>' +
 
@@ -4308,6 +4315,18 @@
         }
 
         // Notification blacklist manage button
+        /* Doctor: forget every ignored check (an explicit click, so a write). */
+        var docResetBtn = container.querySelector('#ngDoctorResetIgnoredBtn');
+        if (docResetBtn) {
+            docResetBtn.addEventListener('click', function () {
+                saveSetting('doctorIgnored', '{}');
+                if (window.ngShowToast) {
+                    window.ngShowToast({ icon: 'fa-eye', title: 'Ignored checks reset',
+                                         body: 'Doctor will show every finding again', duration: 3000 });
+                }
+            });
+        }
+
         var blBtn = container.querySelector('#ng-bl-manage-btn');
         if (blBtn) {
             blBtn.addEventListener('click', openBlacklistDialog);
