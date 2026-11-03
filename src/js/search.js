@@ -1977,8 +1977,11 @@
             '<i class="fa-solid fa-palette ng-header-icon"></i>' +
             '<div><h3 class="ng-settings-title">Nightglass Theme</h3>' +
             '<span class="ng-settings-subtitle">Customize your dashboard experience</span></div></div>' +
+            '<div class="ng-settings-header-actions">' +
+            (window.NGStudio ? '<button type="button" class="ng-reset-btn ng-assistant-btn" id="ngAssistantBtn" title="Theme Assistant: pick an accent and set readable colours">' +
+            '<i class="fa-solid fa-wand-magic-sparkles"></i> Assistant</button>' : '') +
             '<button type="button" class="ng-reset-btn" id="ngResetBtn" title="Reset all settings to defaults">' +
-            '<i class="fa-solid fa-rotate-left"></i> Reset</button></div>' +
+            '<i class="fa-solid fa-rotate-left"></i> Reset</button></div></div>' +
 
             '<div class="ng-presets-section" id="ngPresetsSection">' +
             '<button class="ng-presets-toggle' + (opts.presetsOpen ? ' ng-presets-toggle--open' : '') + '" id="ngPresetsToggle" type="button">' +
@@ -2159,8 +2162,6 @@
             '    <i class="fa-solid fa-wand-magic-sparkles"></i> Manage</button>' +
             '</div>' +
             '</div>' +
-
-            (window.NGStudio ? window.NGStudio.sectionHtml() : '') +
 
             /* Right column: Color panels (together) */
             '<div class="ng-settings-section ng-settings-section--colors">' +
@@ -4873,7 +4874,7 @@
 
     window.dzNightglassSettings = {
         get: function (key) { return _settings ? _settings[key] : DEFAULTS[key]; },
-        /* Colour internals for Theme Studio (src/js/theme-studio.js). */
+        /* Colour internals for the Theme Assistant (src/js/theme-studio.js). */
         colorKit: {
             keys: COLOR_SNAPSHOT_KEYS,
             darkenHex: darkenHex,
