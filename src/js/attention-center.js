@@ -15,9 +15,11 @@
             Type, SubType, SwitchType, HardwareName, ... } ] }
        BatteryLevel 255 (or absent) means "no battery". LastUpdate is a local
        time string "YYYY-MM-DD HH:MM:SS".
-   - json.htm?type=schedules&filter=device
-       -> { status:'OK', result:[ { TimerID, DeviceRowID, Name, Active,
-            Type, ... } ] }   Active is "true"/"false" (or boolean).
+   - json.htm?type=command&param=getschedules
+       -> { status:'OK', result:[ { TimerID, DeviceRowID, DevName, Active,
+            Type, TimerType, TimerTypeStr, Time, Days, ... } ] }
+       Active is "true"/"false" (or boolean).  Checked against a live
+       Domoticz 2026.x; the older type=schedules&filter=device form 404s.
        Domoticz has no "last run failed" state, so the Timers section is a
        heuristic: disabled timers, or timers pointing at a device that is no
        longer in the used-device list.  Any failure hides the section.
@@ -191,7 +193,7 @@
     }
 
     function fetchTimers() {
-        return fetch('json.htm?type=schedules&filter=device',
+        return fetch('json.htm?type=command&param=getschedules',
                      { credentials: 'same-origin', cache: 'no-store' })
             .then(function (r) {
                 if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -368,7 +370,7 @@
             meta = ago(Date.now() - it.ts);
             cls  = ' ng-attn-row--danger';
         } else {
-            name = (d && d.Name) || it.timer.Name || ('Timer ' + key.slice(1));
+            name = (d && d.Name) || it.timer.DevName || it.timer.Name || ('Timer ' + key.slice(1));
             icon = 'fa-clock';
             meta = it.reason;
         }
