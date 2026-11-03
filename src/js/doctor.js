@@ -119,6 +119,27 @@
                   .filter(function (x) { return x !== '' && x !== '0'; });
     }
 
+    /* Room suggestion: a plan whose name appears in the device name as whole
+       words (case-insensitive).  Longest plan name wins; a tie is no
+       suggestion.  Returns the plan idx as a string, or ''. */
+    function wordsOf(n) {
+        var s = String(n == null ? '' : n).toLowerCase();
+        try { s = s.replace(/[^\p{L}\p{N}]+/gu, ' '); } catch (e) { s = s.replace(/[^a-z0-9]+/g, ' '); }
+        return s.replace(/\s+/g, ' ').trim();
+    }
+
+    function suggestRoom(name, plans) {
+        var hay = ' ' + wordsOf(name) + ' ', best = '', bestLen = 0, tie = false;
+        (plans || []).forEach(function (p) {
+            if (!p || p.Name === HIDDEN_PLAN) return;
+            var w = wordsOf(p.Name);
+            if (w.length < 3 || hay.indexOf(' ' + w + ' ') < 0) return;
+            if (w.length > bestLen) { best = String(p.idx); bestLen = w.length; tie = false; }
+            else if (w.length === bestLen && String(p.idx) !== best) tie = true;
+        });
+        return tie ? '' : best;
+    }
+
     function checkNoRoom(used, plans) {
         var r = mk('noRoom', 'Organisation', 'suggestion', 'Devices in no room',
             'Devices without a room are harder to find and cannot be filtered by room.', '#/Plans');
@@ -129,7 +150,7 @@
         used.forEach(function (d) {
             if (isSceneOrGroup(d) || truthy(d.IsSubDevice) || isInternalHw(d)) return;
             var ids = planIdsOf(d);
-            if (ids.length === 0) out.push({ idx: devIdx(d), name: d.Name, meta: d.HardwareName || '' });
+            if (ids.length === 0) out.push({ idx: devIdx(d), name: d.Name, meta: d.HardwareName || '', room: suggestRoom(d.Name, plans) });
             /* ids present but all hidden -> hidden on purpose: not a finding */
         });
         return found(r, out);
@@ -160,7 +181,7 @@
             var g = groups[k];
             if (g.length < 2) return;
             nGroups++;
-            g.forEach(function (d) { out.push({ idx: devIdx(d), name: d.Name, meta: 'group "' + k + '" x' + g.length }); });
+            g.forEach(function (d) { out.push({ idx: devIdx(d), name: d.Name, meta: 'group "' + k + '" x' + g.length, dupKey: k }); });
         });
         r.groups = nGroups;
         return found(r, out);
@@ -198,7 +219,7 @@
         used.forEach(function (d) {
             if (isSceneOrGroup(d)) return;
             var why = nameProblem(d.Name, max);
-            if (why) out.push({ idx: devIdx(d), name: d.Name, meta: why });
+            if (why) out.push({ idx: devIdx(d), name: d.Name, meta: why, renamable: true });
         });
         return found(r, out);
     }
@@ -375,8 +396,206 @@
         return found(r, Object.keys(g).map(function (k) { return { name: k, meta: g[k] + (g[k] === 1 ? ' device' : ' devices') }; }));
     }
 
+    /* ── Renaming (pure) ───────────────────────────────────────── */
+
+    var NAME_HARD_MAX = 100;
+
+    /* Domoticz strips markup from names itself; refuse < and > up front so what
+       is stored is what was typed. */
+    function validateName(value, max) {
+        var n = String(value == null ? '' : value).trim();
+        max = max > 0 ? max : NAME_HARD_MAX;
+        if (!n) return { ok: false, name: n, error: 'Name cannot be empty' };
+        if (n.length > max) return { ok: false, name: n, error: 'Name is longer than ' + max + ' characters' };
+        if (/[<>]/.test(n)) return { ok: false, name: n, error: 'Name cannot contain < or >' };
+        return { ok: true, name: n, error: '' };
+    }
+
+    /* rows: [{ idx, from, value }].  One error string per row ('' = fine). */
+    function validateRows(rows) {
+        var seen = {};
+        rows.forEach(function (r) { var k = String(r.value || '').trim().toLowerCase(); if (k) seen[k] = (seen[k] || 0) + 1; });
+        return rows.map(function (r) {
+            var v = validateName(r.value);
+            if (!v.ok) return v.error;
+            if (seen[v.name.toLowerCase()] > 1) return 'Same name as another row';
+            return '';
+        });
+    }
+
+    /* 'Name 1', 'Name 2', ... for a duplicate set.  taken: names (any case) of
+       OTHER devices that the new names must not collide with. */
+    function suggestNumbering(devs, taken) {
+        var used = {};
+        (taken || []).forEach(function (n) { used[String(n).trim().toLowerCase()] = true; });
+        if (!devs.length) return [];
+        var base = parseFamilyName(devs[0].name).base || String(devs[0].name).trim();
+        var n = 0;
+        return devs.map(function (d) {
+            var cand;
+            do { n++; cand = base + ' ' + n; } while (used[cand.toLowerCase()]);
+            return { idx: String(d.idx), from: d.name, to: cand };
+        });
+    }
+
+    /* ── Naming families + groups (pure) ───────────────────────── */
+
+    /* Same light rules as the status bar (statusbar.js isLightDevice), copied
+       because that module does not export them. */
+    var LIGHT_TYPES = ['Light/Switch', 'Lighting 1', 'Lighting 2', 'Lighting 5',
+                       'Lighting 6', 'Color Switch', 'Home Confort'];
+    var LIGHT_SWITCHTYPES = ['On/Off', 'Dimmer'];
+    var SIDE_RE = /^(links|rechts|left|right|boven|onder|top|bottom|voor|achter|front|back)$/i;
+
+    function isLight(d) {
+        return LIGHT_TYPES.indexOf(d.Type) !== -1 && LIGHT_SWITCHTYPES.indexOf(d.SwitchType) !== -1;
+    }
+
+    function letterCount(s) { return String(s).replace(/[^A-Za-zÀ-ɏ]/g, '').length; }
+
+    /* -> { base, kind: 'num' | 'letter' | 'side' | 'bare', num }
+       Only 1-2 digit numbers count ('Kamer 101' is a name, not number 101). */
+    function parseFamilyName(name) {
+        var s = String(name == null ? '' : name).replace(/\s+/g, ' ').trim();
+        var m = s.match(/^(.*?[^\s\d_-])[\s_-]*(\d{1,2})$/);
+        if (m) return { base: m[1], kind: 'num', num: parseInt(m[2], 10) };
+        m = s.match(/^(.*\S) ([A-Za-z])$/);
+        if (m && m[1].indexOf(' ') >= 0) return { base: m[1], kind: 'letter', num: null };
+        m = s.match(/^(.*\S) (\S+)$/);
+        if (m && SIDE_RE.test(m[2])) return { base: m[1], kind: 'side', num: null };
+        return { base: s, kind: 'bare', num: null };
+    }
+
+    /* Detect families among light switches.  A family is >= 2 members that
+       share a base AND the same kind of suffix (numbers, letters, or sides).
+       A bare name joins a numbered family only ('Lamp', 'Lamp 2', 'Lamp3').
+       Returns [{ base, kind, members: [{idx, name, num, kind}] }]. */
+    function detectFamilies(used) {
+        var byKey = {};
+        (used || []).forEach(function (d) {
+            if (isSceneOrGroup(d) || !isLight(d)) return;
+            var p = parseFamilyName(d.Name);
+            if (letterCount(p.base) < 3) return;
+            var k = p.base.toLowerCase();
+            (byKey[k] = byKey[k] || []).push({ idx: devIdx(d), name: String(d.Name).trim(), base: p.base, kind: p.kind, num: p.num });
+        });
+        var out = [];
+        Object.keys(byKey).sort().forEach(function (k) {
+            var all = byKey[k], kind = '';
+            ['num', 'side', 'letter'].some(function (c) {
+                var n = all.filter(function (m) { return m.kind === c; }).length;
+                if (n >= 2) { kind = c; return true; }
+                return false;
+            });
+            if (!kind) return;
+            var members = all.filter(function (m) { return m.kind === kind || (kind === 'num' && m.kind === 'bare'); });
+            members.sort(function (a, b) { return Number(a.idx) - Number(b.idx); });
+            out.push({ base: members[0].base, kind: kind, members: members });
+        });
+        return out;
+    }
+
+    /* Normalise a numbered family to 'Base 1', 'Base 2', ...  Existing numbers
+       are kept when they are unique; bare names take the lowest free number;
+       duplicate numbers fall back to a plain 1..N.  Returns only the changes
+       [{ idx, from, to }].  outside: names of devices NOT in the family; a
+       collision with one of them means no suggestion at all. */
+    function numberingPlan(family, outside) {
+        if (family.kind !== 'num') return [];
+        var ms = family.members, base = family.base, nums = {}, dupes = false;
+        ms.forEach(function (m) { if (m.num != null) { if (nums[m.num]) dupes = true; nums[m.num] = true; } });
+        var target = {};
+        if (dupes) {
+            ms.slice().sort(function (a, b) { return (a.num || 0) - (b.num || 0) || Number(a.idx) - Number(b.idx); })
+              .forEach(function (m, i) { target[m.idx] = i + 1; });
+        } else {
+            var n = 0;
+            ms.forEach(function (m) {
+                if (m.num != null) { target[m.idx] = m.num; return; }
+                do { n++; } while (nums[n]);
+                nums[n] = true; target[m.idx] = n;
+            });
+        }
+        var taken = {};
+        (outside || []).forEach(function (x) { taken[String(x).trim().toLowerCase()] = true; });
+        var out = [];
+        for (var i = 0; i < ms.length; i++) {
+            var to = base + ' ' + target[ms[i].idx];
+            if (taken[to.toLowerCase()]) return [];
+            if (to !== ms[i].name) out.push({ idx: ms[i].idx, from: ms[i].name, to: to });
+        }
+        return out;
+    }
+
+    /* Join getscenes with per-group getscenedevices answers.  null when either
+       is missing: coverage is then unknown, never "not covered".
+       scenes: getscenes result[]; members: { sceneIdx: [deviceIdx...] }. */
+    function buildGroups(scenes, members) {
+        if (!Array.isArray(scenes) || !members) return null;
+        var out = [];
+        for (var i = 0; i < scenes.length; i++) {
+            var sc = scenes[i];
+            if (!sc || String(sc.Type).toLowerCase() !== 'group') continue;
+            var m = members[String(sc.idx)];
+            if (!Array.isArray(m)) return null;
+            out.push({ idx: String(sc.idx), name: sc.Name, members: m.map(String) });
+        }
+        return out;
+    }
+
+    /* How well do existing groups cover these devices?
+       full: one group holds them all.  partial: a group holds >= 2 of them
+       (reports the ones missing from the best group).  none: otherwise. */
+    function groupCoverage(idxs, groups) {
+        idxs = idxs.map(String);
+        var best = null, bestN = 0;
+        (groups || []).forEach(function (g) {
+            var set = {};
+            g.members.forEach(function (x) { set[x] = true; });
+            var n = idxs.filter(function (x) { return set[x]; }).length;
+            if (n > bestN) { best = g; bestN = n; }
+        });
+        if (best && bestN === idxs.length) return { state: 'full', group: best, missing: [] };
+        if (best && bestN >= 2) {
+            var have = {};
+            best.members.forEach(function (x) { have[x] = true; });
+            return { state: 'partial', group: best, missing: idxs.filter(function (x) { return !have[x]; }) };
+        }
+        return { state: 'none', group: null, missing: idxs.slice() };
+    }
+
+    function checkFamilies(used, groups) {
+        var r = mk('families', 'Names', 'suggestion', 'Light families: numbering and groups',
+            'Lights that belong together should be named consistently and sit in a Domoticz group.', '#/Scenes');
+        if (!Array.isArray(used)) return unknown(r, 'Devices could not be loaded');
+        var all = used.filter(function (d) { return !isSceneOrGroup(d); });
+        var out = [];
+        detectFamilies(used).forEach(function (f) {
+            var inFam = {};
+            f.members.forEach(function (m) { inFam[m.idx] = true; });
+            var outside = all.filter(function (d) { return !inFam[devIdx(d)]; }).map(function (d) { return d.Name; });
+            var plan = numberingPlan(f, outside);
+            var cov = groups ? groupCoverage(f.members.map(function (m) { return m.idx; }), groups) : null;
+            var wantGroup = !!cov && cov.state !== 'full';
+            if (!plan.length && !wantGroup) return;
+            var bits = [f.members.length + ' lights'];
+            if (plan.length) bits.push('numbering inconsistent');
+            if (cov && cov.state === 'none') bits.push('not in a group');
+            if (cov && cov.state === 'partial') {
+                var nm = {};
+                f.members.forEach(function (m) { nm[m.idx] = m.name; });
+                bits.push('in "' + cov.group.name + '" but missing ' + cov.missing.map(function (x) { return nm[x]; }).join(', '));
+            }
+            out.push({ name: f.base, meta: bits.join(' · '),
+                       family: { base: f.base, members: f.members, numbering: plan,
+                                 coverage: cov, canGroup: wantGroup } });
+        });
+        if (!groups && !out.length) return unknown(r, 'Groups could not be loaded');
+        return found(r, out);
+    }
+
     var CHECK_IDS = ['noRoom', 'dupNames', 'unused', 'badNames', 'defaultIcon', 'staleHw',
-                     'orphanTimers', 'staleFavs', 'orphanOverrides', 'blob', 'disabledHw'];
+                     'orphanTimers', 'staleFavs', 'orphanOverrides', 'blob', 'disabledHw', 'families'];
 
     /* Run one check by id against a plain input bundle.
        input: { used, unused, schedules, plans, overrides, blobBytes,
@@ -394,6 +613,7 @@
             case 'orphanOverrides': return checkOrphanOverrides(i.overrides, i.used, i.unused);
             case 'blob':            return checkBlob(i.blobBytes, i.rawCollections);
             case 'disabledHw':      return checkDisabledHw(i.used);
+            case 'families':        return checkFamilies(i.used, i.groups);
         }
         return null;
     }
@@ -426,6 +646,10 @@
             checkStaleHardware: checkStaleHardware, checkOrphanTimers: checkOrphanTimers,
             checkStaleFavs: checkStaleFavs, checkOrphanOverrides: checkOrphanOverrides,
             checkBlob: checkBlob, checkDisabledHw: checkDisabledHw, runCheck: runCheck,
+            suggestRoom: suggestRoom, validateName: validateName, validateRows: validateRows,
+            suggestNumbering: suggestNumbering, parseFamilyName: parseFamilyName,
+            detectFamilies: detectFamilies, numberingPlan: numberingPlan, buildGroups: buildGroups,
+            groupCoverage: groupCoverage, checkFamilies: checkFamilies,
             removeOverrides: removeOverrides, summarize: summarize, isIgnored: isIgnored,
             CHECK_IDS: CHECK_IDS
         };
