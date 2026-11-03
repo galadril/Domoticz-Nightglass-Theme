@@ -1968,19 +1968,6 @@
             ], 'Manual shows a navbar button to switch; Auto follows your OS preference') +
             slider('fontSize', 'Base Font Size', 80, 125, 5, '%', 'Scale the entire interface') +
             slider('iconSize', 'Device Icon Size', 60, 150, 5, '%', 'Scale device icons on cards') +
-            toggle('statusBar', 'Status Bar', 'Slim bar under the navbar showing lights on, temperature, power and the Attention Center count') +
-            select('statusBarLightsMode', 'Status Bar Lights Count', [
-                { value: 'lights',   label: 'Lights (switches, dimmers, RGB)' },
-                { value: 'selected', label: 'Selected devices only' }
-            ], 'What the status bar counts as on. Pick \'Selected\' for relays, smart plugs and similar') +
-            '<div class="ng-setting-row ng-setting-row--action">' +
-            '  <div class="ng-setting-info">' +
-            '    <span class="ng-setting-label">Lights Count Devices</span>' +
-            '    <span class="ng-setting-desc">Choose the devices counted when \'Selected devices only\' is on</span>' +
-            '  </div>' +
-            '  <button type="button" class="ng-action-chip" id="ng-sbl-manage-btn">' +
-            '    <i class="fa-solid fa-lightbulb"></i> Choose</button>' +
-            '</div>' +
             toggle('showLastUpdate', 'Show Last Update', 'Show the formatted timestamp footer on device cards') +
             toggle('uppercaseNames', 'Uppercase Device Names', 'Force device names to UPPERCASE on cards') +
             toggle('longPressToggle', 'Hold to Switch', 'Press and hold a card\'s icon to switch the device on or off — works on colour lights, where a click opens the picker') +
@@ -2001,6 +1988,23 @@
             '<i class="fa-solid fa-rotate-left"></i> Reset</button>' +
             '</div></div>' +
 
+            '</div>' +
+
+            '<div class="ng-settings-section">' +
+            '<div class="ng-section-header"><i class="fa-solid fa-chart-simple"></i> Statusbar</div>' +
+            toggle('statusBar', 'Status Bar', 'Slim bar at the bottom of the page showing lights on, temperature, power, battery and the Attention Center count (collapsed until you expand it)') +
+            select('statusBarLightsMode', 'Status Bar Lights Count', [
+                { value: 'lights',   label: 'Lights (switches, dimmers, RGB)' },
+                { value: 'selected', label: 'Selected devices only' }
+            ], 'What the status bar counts as on. Pick \'Selected\' for relays, smart plugs and similar') +
+            '<div class="ng-setting-row ng-setting-row--action">' +
+            '  <div class="ng-setting-info">' +
+            '    <span class="ng-setting-label">Lights Count Devices</span>' +
+            '    <span class="ng-setting-desc">Choose the devices counted when \'Selected devices only\' is on</span>' +
+            '  </div>' +
+            '  <button type="button" class="ng-action-chip" id="ng-sbl-manage-btn">' +
+            '    <i class="fa-solid fa-lightbulb"></i> Choose</button>' +
+            '</div>' +
             '</div>' +
 
             '<div class="ng-settings-section">' +
