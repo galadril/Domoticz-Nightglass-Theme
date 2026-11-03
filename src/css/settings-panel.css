@@ -111,6 +111,9 @@
 
 .ng-settings-section--full {
     column-span: all;
+    /* The last card of each column loses its bottom margin where the columns
+       end, so the full-width card needs its own space above it. */
+    margin-top: 20px;
 }
 
 /* ── Section-level toggle (enable/disable) ───────────────────── */
