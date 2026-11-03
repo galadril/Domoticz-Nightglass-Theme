@@ -21,9 +21,7 @@
     var activeI     = -1;
     var _textFilter = null;
 
-    function escHtml(s) {
-        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
+    function escHtml(s) { return window.ngEsc(s); }
 
     function getCards() {
         var out = [];
@@ -58,7 +56,7 @@
         hits.slice(0, 10).forEach(function (d, i) {
             var el = document.createElement('div');
             el.className = 'dz-search-item';
-            el.innerHTML = '<i class="fa-solid ' + d.icon + '"></i>' + escHtml(d.name);
+            el.innerHTML = '<i class="fa-solid ' + window.ngSafeClass(d.icon, 'fa-question') + '"></i>' + escHtml(d.name);
             el.addEventListener('mouseenter', function () { highlight(i); });
             el.addEventListener('click', function () { pick(d); });
             listEl.appendChild(el);
@@ -620,6 +618,15 @@
         attentionSnoozed:          '{}',
         attentionToast:            false,
 
+        /* Doctor (doctor.js): on-demand setup health check; no on/off switch.
+           doctorIgnored maps check id -> expiry epoch ms (0 = forever);
+           doctorChecks lists enabled check ids ([] = all).  The last-run
+           summary is device-local (localStorage 'ng-doctor-last'), not here. */
+        doctorIgnored:             '{}',
+        doctorChecks:              '[]',
+        doctorStaleDays:           '30',
+        doctorNameMax:             '40',
+
         /* Set once the one-shot in icon-migrate.js has cleared any icon
            overrides saved against a scene or group — see issue #265. Keeps
            that cleanup to a single extra request per account. */
@@ -670,7 +677,8 @@
        included in the blob; on the legacy user-variable path they remain in a
        dedicated variable to stay under the 2500-char cap (issue #203). */
     var COLLECTION_FIELDS = ['deviceIconOverrides', 'userPresets', 'toastBlacklist',
-                             'statusBarLightsDevices', 'attentionSnoozed', 'attentionSections'];
+                             'statusBarLightsDevices', 'attentionSnoozed', 'attentionSections',
+                             'doctorIgnored', 'doctorChecks'];
 
     /* ── Domoticz API helpers ─────────────────────────────────────── */
 
@@ -710,6 +718,18 @@
             });
         });
     }
+
+    /* State-changing commands go out as POST so they cannot be triggered by a
+       cross-site GET (img/link) and do not end up in access logs.  Only if the
+       server answers with a non-JSON error (an older build that rejects POST on
+       json.htm) does it retry once as GET, which is what those builds expect. */
+    function apiMutate(params) {
+        return apiPost(params).then(function (d) {
+            if (d && d.status === 'ERR' && d.error === 'http_error') return apiCall(params);
+            return d;
+        });
+    }
+    window.ngApiMutate = apiMutate;
 
     /* ── New API: per-user ThemeSettings (domoticz/domoticz#6950) ── */
 
@@ -769,6 +789,7 @@
                 icon:     'fa-floppy-disk',
                 color:    'var(--dz-warning, #f0a832)',
                 title:    'Unsaved theme changes',
+                trustedBody: true,
                 body:     'Persist your changes across all browsers.' +
                           '<div class="ng-toast-actions">' +
                           '<button type="button" class="ng-toast-action ng-toast-action--save">' +
@@ -1020,14 +1041,14 @@
     function writeJsonUvar() {
         var json = JSON.stringify(serializeSettings());
         if (_uvarIdx) {
-            return apiCall({
+            return apiMutate({
                 type: 'command', param: 'updateuservariable',
                 idx: _uvarIdx, vname: UVAR_NAME, vtype: UVAR_TYPE, vvalue: json
             }).then(function (d) {
                 return !!(d && d.status === 'OK');
             }, function () { return false; });
         }
-        return apiCall({
+        return apiMutate({
             type: 'command', param: 'adduservariable',
             vname: UVAR_NAME, vtype: UVAR_TYPE, vvalue: json
         }).then(function (d) {
@@ -1070,12 +1091,12 @@
             if (!_apiAvailable) return;
             var json = _settings ? (_settings[PRESETS_KEY] || '[]') : '[]';
             if (_presetsUvarIdx) {
-                apiCall({
+                apiMutate({
                     type: 'command', param: 'updateuservariable',
                     idx: _presetsUvarIdx, vname: PRESETS_UVAR, vtype: UVAR_TYPE, vvalue: json
                 });
             } else {
-                apiCall({
+                apiMutate({
                     type: 'command', param: 'adduservariable',
                     vname: PRESETS_UVAR, vtype: UVAR_TYPE, vvalue: json
                 }).then(function () {
@@ -1167,9 +1188,36 @@
        Accepts both the new compact form (native collections, diff only) and
        the legacy form (collections already strings, every key present), so
        existing installs upgrade transparently. */
+    /* Settings come from a shared server-side store and from imported files, so
+       nothing in them is trusted: colours must be hex, flags must be booleans,
+       and every string is scrubbed of markup-breaking characters before it can
+       reach an innerHTML / style / class sink. */
+    function sanitizeSettings(obj) {
+        var out = {};
+        Object.keys(obj || {}).forEach(function (key) {
+            if (key === '__proto__' || key === 'constructor' || key === 'prototype') return;
+            var v = obj[key];
+            var def = DEFAULTS[key];
+            if (typeof def === 'boolean') {
+                if (typeof v !== 'boolean') return;
+            } else if (/Color(Light)?$/.test(key)) {
+                v = window.ngSafeColor(v, '');
+                if (!v) return;
+            } else if (typeof def === 'string' && COLLECTION_FIELDS.indexOf(key) === -1 &&
+                       (typeof v !== 'string' && typeof v !== 'number')) {
+                return;
+            } else {
+                v = window.ngCleanValue(v);
+            }
+            out[key] = v;
+        });
+        return out;
+    }
+
     function deserializeSettings(stored) {
         var norm = {};
         if (stored && typeof stored === 'object') {
+            stored = sanitizeSettings(stored);
             Object.keys(stored).forEach(function (key) {
                 var v = stored[key];
                 if (COLLECTION_FIELDS.indexOf(key) !== -1 && v != null && typeof v !== 'string') {
@@ -1372,6 +1420,28 @@
         return writeJsonUvar();
     }
 
+    /* Colour derivation shared by applySettings() and Theme Studio's contrast
+       checker (exposed via dzNightglassSettings.colorKit) so both always agree. */
+    function darkenHex(hex, amt) {
+        var r = Math.max(0, parseInt(hex.slice(1, 3), 16) - amt);
+        var g = Math.max(0, parseInt(hex.slice(3, 5), 16) - amt);
+        var b = Math.max(0, parseInt(hex.slice(5, 7), 16) - amt);
+        var toH = function (n) { var h = n.toString(16); return h.length < 2 ? '0' + h : h; };
+        return '#' + toH(r) + toH(g) + toH(b);
+    }
+    function lightenHex(hex, amt) {
+        var r = Math.min(255, parseInt(hex.slice(1, 3), 16) + amt);
+        var g = Math.min(255, parseInt(hex.slice(3, 5), 16) + amt);
+        var b = Math.min(255, parseInt(hex.slice(5, 7), 16) + amt);
+        var toH = function (n) { var h = n.toString(16); return h.length < 2 ? '0' + h : h; };
+        return '#' + toH(r) + toH(g) + toH(b);
+    }
+    /* soft / muted / faint text tiers derived from the base text colour. */
+    function textTiers(hex, isLight) {
+        var f = isLight ? lightenHex : darkenHex;
+        return { soft: f(hex, 30), muted: f(hex, 60), faint: f(hex, 90) };
+    }
+
     /* ── Apply settings to the page ────────────────────────────── */
 
     function applySettings() {
@@ -1482,21 +1552,6 @@
             var b = parseInt(hex.slice(5, 7), 16);
             return r + ', ' + g + ', ' + b;
         };
-        var darkenHex = function (hex, amt) {
-            var r = Math.max(0, parseInt(hex.slice(1, 3), 16) - amt);
-            var g = Math.max(0, parseInt(hex.slice(3, 5), 16) - amt);
-            var b = Math.max(0, parseInt(hex.slice(5, 7), 16) - amt);
-            var toH = function (n) { var h = n.toString(16); return h.length < 2 ? '0' + h : h; };
-            return '#' + toH(r) + toH(g) + toH(b);
-        };
-        var lightenHex = function (hex, amt) {
-            var r = Math.min(255, parseInt(hex.slice(1, 3), 16) + amt);
-            var g = Math.min(255, parseInt(hex.slice(3, 5), 16) + amt);
-            var b = Math.min(255, parseInt(hex.slice(5, 7), 16) + amt);
-            var toH = function (n) { var h = n.toString(16); return h.length < 2 ? '0' + h : h; };
-            return '#' + toH(r) + toH(g) + toH(b);
-        };
-
         var ac = _settings.accentColor;
         var dc = _settings.dangerColor;
         var wc = _settings.warningColor;
@@ -1539,9 +1594,9 @@
             '  --dz-border: ' + bd + ';\n' +
             '  --dz-border-b: ' + lightenHex(bd, 10) + ';\n' +
             '  --dz-text: ' + tx + ';\n' +
-            '  --dz-text-soft: ' + darkenHex(tx, 30) + ';\n' +
-            '  --dz-text-muted: ' + darkenHex(tx, 60) + ';\n' +
-            '  --dz-text-faint: ' + darkenHex(tx, 90) + ';\n' +
+            '  --dz-text-soft: ' + textTiers(tx, false).soft + ';\n' +
+            '  --dz-text-muted: ' + textTiers(tx, false).muted + ';\n' +
+            '  --dz-text-faint: ' + textTiers(tx, false).faint + ';\n' +
             '  --dz-bg: ' + pbg + ';\n' +
             '  --dz-bg-alt: ' + lightenHex(pbg, 5) + ';\n' +
             '  --dz-nav-bg: ' + bg + ';\n' +
@@ -1596,9 +1651,9 @@
             '  --dz-border: ' + bdL + ';\n' +
             '  --dz-border-b: ' + darkenHex(bdL, 10) + ';\n' +
             '  --dz-text: ' + txL + ';\n' +
-            '  --dz-text-soft: ' + lightenHex(txL, 30) + ';\n' +
-            '  --dz-text-muted: ' + lightenHex(txL, 60) + ';\n' +
-            '  --dz-text-faint: ' + lightenHex(txL, 90) + ';\n' +
+            '  --dz-text-soft: ' + textTiers(txL, true).soft + ';\n' +
+            '  --dz-text-muted: ' + textTiers(txL, true).muted + ';\n' +
+            '  --dz-text-faint: ' + textTiers(txL, true).faint + ';\n' +
             '  --dz-bg: ' + pbgL + ';\n' +
             '  --dz-bg-alt: ' + darkenHex(pbgL, 10) + ';\n' +
             '  --dz-nav-bg: ' + bgL + ';\n' +
@@ -1863,7 +1918,7 @@
         ];
 
         function colorPicker(key, label) {
-            var val = s[key] || '#4e9af1';
+            var val = window.ngSafeColor(s[key], '#4e9af1');
             var presetHtml = COLOR_PRESETS.map(function (c) {
                 var sel = (c.toLowerCase() === val.toLowerCase()) ? ' ng-cp-preset--active' : '';
                 return '<button class="ng-cp-preset' + sel + '" data-color="' + c + '" style="background:' + c + '" title="' + c + '"></button>';
@@ -1922,8 +1977,11 @@
             '<i class="fa-solid fa-palette ng-header-icon"></i>' +
             '<div><h3 class="ng-settings-title">Nightglass Theme</h3>' +
             '<span class="ng-settings-subtitle">Customize your dashboard experience</span></div></div>' +
+            '<div class="ng-settings-header-actions">' +
+            (window.NGStudio ? '<button type="button" class="ng-reset-btn ng-assistant-btn" id="ngAssistantBtn" title="Theme Assistant: pick an accent and set readable colours">' +
+            '<i class="fa-solid fa-wand-magic-sparkles"></i> Assistant</button>' : '') +
             '<button type="button" class="ng-reset-btn" id="ngResetBtn" title="Reset all settings to defaults">' +
-            '<i class="fa-solid fa-rotate-left"></i> Reset</button></div>' +
+            '<i class="fa-solid fa-rotate-left"></i> Reset</button></div></div>' +
 
             '<div class="ng-presets-section" id="ngPresetsSection">' +
             '<button class="ng-presets-toggle' + (opts.presetsOpen ? ' ng-presets-toggle--open' : '') + '" id="ngPresetsToggle" type="button">' +
@@ -2036,6 +2094,27 @@
                 { value: '72', label: '72 hours' }
             ], 'No update for this long marks a device offline (also dims its card)') +
             toggle('attentionToast', 'Toast on New Low Battery', 'Show a toast when a device newly drops to the battery threshold') +
+            '</div>' +
+
+            '<div class="ng-settings-section">' +
+            '<div class="ng-section-header"><i class="fa-solid fa-stethoscope"></i> Setup health</div>' +
+            '<div class="ng-setting-row ng-setting-row--action">' +
+            '  <div class="ng-setting-info">' +
+            '    <span class="ng-setting-label">Run Doctor</span>' +
+            '    <span class="ng-setting-desc" id="ngDoctorLastRun">' + (window.ngDoctorLastRunText ? window.ngDoctorLastRunText() : '') + '</span>' +
+            '    <span class="ng-setting-desc">Checks rooms, names, icons, timers, hardware and theme settings. Runs only when you press the button and changes nothing by itself</span>' +
+            '  </div>' +
+            '  <button type="button" class="ng-action-chip" id="ngDoctorRunBtn">' +
+            '    <i class="fa-solid fa-stethoscope"></i> Run Doctor</button>' +
+            '</div>' +
+            '<div class="ng-setting-row ng-setting-row--action">' +
+            '  <div class="ng-setting-info">' +
+            '    <span class="ng-setting-label">Reset ignored checks</span>' +
+            '    <span class="ng-setting-desc">Show every Doctor finding you chose to ignore again</span>' +
+            '  </div>' +
+            '  <button type="button" class="ng-action-chip" id="ngDoctorResetIgnoredBtn">' +
+            '    <i class="fa-solid fa-eye"></i> Reset</button>' +
+            '</div>' +
             '</div>' +
 
             '<div class="ng-settings-section">' +
@@ -2165,6 +2244,30 @@
         saveSetting('userPresets', JSON.stringify(arr));
     }
 
+    /* Snapshot the current 18 colour keys as a named user preset. */
+    function addUserPreset(name) {
+        var colors = {};
+        COLOR_SNAPSHOT_KEYS.forEach(function (key) {
+            if (_settings[key] !== undefined) colors[key] = _settings[key];
+        });
+        var preset = {
+            name:        name,
+            description: 'Custom preset',
+            icon:        'fa-solid fa-palette',
+            preview: {
+                bg:      _settings.bgColor      || '#1b1d25',
+                surface: _settings.surfaceColor  || '#23252f',
+                accent:  _settings.accentColor   || '#4e9af1',
+                text:    _settings.textColor     || '#e2e4ed'
+            },
+            colors:      colors,
+            userDefined: true
+        };
+        var arr = loadUserPresets();
+        arr.push(preset);
+        saveUserPresets(arr);
+    }
+
     function loadPresets(container) {
         var grid = container.querySelector('#ngPresetsGrid');
         if (!grid) return;
@@ -2213,12 +2316,12 @@
             ? 'data-ng-user-preset-idx="' + idx + '"'
             : 'data-ng-preset-idx="' + idx + '"';
 
-        return '<button class="ng-preset-card" ' + attr + ' title="' + (p.description || p.name) + '">' +
+        return '<button class="ng-preset-card" ' + attr + ' title="' + window.ngEsc(p.description || p.name) + '">' +
             '<div class="ng-preset-preview" style="background:' + bg + ';">' +
             '<div class="ng-preset-preview-bar" style="background:' + sf + ';border-bottom:2px solid ' + ac + ';"></div>' +
             '<div class="ng-preset-preview-body">' +
             '<div class="ng-preset-preview-card" style="background:' + sf + ';border:1px solid ' + ac + '30;">' +
-            '<i class="' + icon + '" style="color:' + ac + ';font-size:14px;"></i>' +
+            '<i class="' + window.ngSafeClass(icon, 'fa-solid fa-question') + '" style="color:' + window.ngSafeColor(ac, '#888') + ';font-size:14px;"></i>' +
             '<div class="ng-preset-preview-lines">' +
             '<div style="background:' + tx + ';width:70%;height:3px;border-radius:2px;opacity:0.7;"></div>' +
             '<div style="background:' + ac + ';width:45%;height:3px;border-radius:2px;opacity:0.6;"></div>' +
@@ -2307,7 +2410,8 @@
         toastBlacklist:      true,
         statusBarLightsDevices: true,
         userPresets:         true,
-        attentionSnoozed:    true
+        attentionSnoozed:    true,
+        doctorIgnored:       true
     };
 
     function applyPreset(preset) {
@@ -2375,7 +2479,8 @@
         var li = document.createElement('li');
         li.id = 'ng-settings-tab';
         var a = document.createElement('a');
-        a.href = 'javascript:void(0)';
+        a.href = '#';
+        a.addEventListener('click', function (e) { e.preventDefault(); });
         a.textContent = 'Nightglass';
         a.addEventListener('click', function () {
             showNightglassTab(settingsContent, subTabs);
@@ -2581,7 +2686,7 @@
                     '<label class="ng-bl-row' + (isBlocked ? ' ng-bl-row--active' : '') + '" ' +
                     '  data-idx="' + d.idx + '" data-name="' + (d.Name || '').replace(/"/g,'&quot;') + '">' +
                     '  <span class="ng-bl-row-info">' +
-                    '    <span class="ng-bl-row-name">' + (d.Name || 'Device ' + d.idx) + '</span>' +
+                    '    <span class="ng-bl-row-name">' + window.ngEsc(d.Name || 'Device ' + d.idx) + '</span>' +
                     '    <span class="ng-bl-row-type">' + (d.HardwareName || '') + (d.Type ? ' · ' + d.Type : '') + '</span>' +
                     '  </span>' +
                     '  <input type="checkbox" class="ng-bl-cb" ' + (isBlocked ? 'checked' : '') + ' aria-label="' + o.checkLabel + '">' +
@@ -3073,7 +3178,7 @@
                 if (!animChip) return;
                 var label = animLabel(anim.get());
                 animChip.innerHTML = label
-                    ? '<i class="fa-solid fa-wand-magic-sparkles"></i>' + label : '';
+                    ? '<i class="fa-solid fa-wand-magic-sparkles"></i>' + window.ngEsc(label) : '';
             }
             /* Lets the row's Remove button clear the chip this drew. */
             if (anim) anim.repaint = paintAnim;
@@ -3201,15 +3306,15 @@
                 (shape && shape.image)
                 ? '<span class="ng-ov-row-icon">' +
                   '<img class="ng-ov-row-img" alt="" src="' +
-                  ((imgShape && imgShape.src) || '') + '">' +
+                  window.ngEsc((imgShape && imgShape.src) || '') + '">' +
                   '</span>'
                 : isBlinds
                 ? '<span class="ng-ov-row-icon ng-ov-row-icon--multi">' +
-                  '<i class="' + curIconOpen  + ' ng-ov-row-fa ng-ov-row-fa--open"  style="color:' + curOn  + ';' + (hasOv ? '' : 'opacity:.55') + '"></i>' +
-                  '<i class="' + curIconClose + ' ng-ov-row-fa ng-ov-row-fa--close" style="color:' + curOff + ';' + (hasOv ? '' : 'opacity:.55') + '"></i>' +
+                  '<i class=\"' + window.ngSafeClass(curIconOpen, 'fa-solid fa-question') + ' ng-ov-row-fa ng-ov-row-fa--open"  style="color:' + curOn  + ';' + (hasOv ? '' : 'opacity:.55') + '"></i>' +
+                  '<i class=\"' + window.ngSafeClass(curIconClose, 'fa-solid fa-question') + ' ng-ov-row-fa ng-ov-row-fa--close" style=\"color:' + window.ngSafeColor(curOff, '#888') + ';' + (hasOv ? '' : 'opacity:.55') + '"></i>' +
                   '</span>'
                 : '<span class="ng-ov-row-icon">' +
-                  '<i class="' + curIconOn + ' ng-ov-row-fa" style="color:' + curOn + ';' + (hasOv ? '' : 'opacity:.55') + '"></i>' +
+                  '<i class=\"' + window.ngSafeClass(curIconOn, 'fa-solid fa-question') + ' ng-ov-row-fa" style=\"color:' + window.ngSafeColor(curOn, '#888') + ';' + (hasOv ? '' : 'opacity:.55') + '"></i>' +
                   '</span>';
 
             var modelBadge = model === 'blinds-2' ? ' <span class="ng-ov-model-badge">2-icon</span>'
@@ -3224,13 +3329,13 @@
                 groupLabel === 'Utility'     ? ' ng-ov-group-tag--utility' :
                 (groupLabel === 'Scene' || groupLabel === 'Group') ? ' ng-ov-group-tag--scene' : '';
             var groupTag = groupLabel ? ' <span class="ng-ov-group-tag' + groupTagCls + '">' + groupLabel + '</span>' : '';
-            var swLabel = (d.SwitchType && d.SwitchType !== d.Type) ? ' &middot; ' + d.SwitchType : '';
+            var swLabel = (d.SwitchType && d.SwitchType !== d.Type) ? ' &middot; ' + window.ngEsc(d.SwitchType) : '';
             summary.innerHTML =
                 iconHtml +
                 '<span class="ng-bl-row-info">' +
-                '  <span class="ng-bl-row-name">' + (d.Name || 'Device ' + d.idx) + '</span>' +
-                '  <span class="ng-bl-row-type">IDX&nbsp;' + d.idx +
-                    (d.Type ? ' &middot; ' + d.Type : '') + swLabel + modelBadge + groupTag +
+                '  <span class="ng-bl-row-name">' + window.ngEsc(d.Name || 'Device ' + d.idx) + '</span>' +
+                '  <span class="ng-bl-row-type">IDX&nbsp;' + window.ngEsc(d.idx) +
+                    (d.Type ? ' &middot; ' + window.ngEsc(d.Type) : '') + swLabel + modelBadge + groupTag +
                 '  </span>' +
                 '</span>' +
                 /* Filled by paintRowMarks — the theme styling this device carries. */
@@ -3540,10 +3645,10 @@
                 if (isBlinds) {
                     slot.classList.add('ng-ov-row-icon--multi');
                     slot.innerHTML =
-                        '<i class="' + curIconOpen  + ' ng-ov-row-fa ng-ov-row-fa--open"  style="color:' + curOn  + '"></i>' +
-                        '<i class="' + curIconClose + ' ng-ov-row-fa ng-ov-row-fa--close" style="color:' + curOff + '"></i>';
+                        '<i class=\"' + window.ngSafeClass(curIconOpen, 'fa-solid fa-question') + ' ng-ov-row-fa ng-ov-row-fa--open"  style="color:' + curOn  + '"></i>' +
+                        '<i class=\"' + window.ngSafeClass(curIconClose, 'fa-solid fa-question') + ' ng-ov-row-fa ng-ov-row-fa--close" style=\"color:' + window.ngSafeColor(curOff, '#888') + '"></i>';
                 } else {
-                    slot.innerHTML = '<i class="' + curIconOn + ' ng-ov-row-fa" style="color:' + curOn + '"></i>';
+                    slot.innerHTML = '<i class=\"' + window.ngSafeClass(curIconOn, 'fa-solid fa-question') + ' ng-ov-row-fa" style=\"color:' + window.ngSafeColor(curOn, '#888') + '"></i>';
                 }
             }
 
@@ -3844,7 +3949,7 @@
                     var bar = document.createElement('div');
                     bar.className = 'ng-ov-confirm-bar';
                     bar.innerHTML =
-                        '<span class="ng-ov-confirm-text">Apply <i class="' + pp.icon + '" style="color:' + pp.on + ';margin:0 3px"></i><strong>' + pp.label + '</strong>?</span>' +
+                        '<span class="ng-ov-confirm-text">Apply <i class="' + window.ngSafeClass(pp.icon, 'fa-solid fa-question') + '" style="color:' + window.ngSafeColor(pp.on, '#888') + ';margin:0 3px"></i><strong>' + window.ngEsc(pp.label) + '</strong>?</span>' +
                         '<button class="ng-ov-confirm-apply" type="button">Apply</button>' +
                         '<button class="ng-ov-confirm-skip" type="button"><i class="fa-solid fa-xmark"></i> Skip</button>';
                     bar.querySelector('.ng-ov-confirm-apply').addEventListener('click', function (ev) {
@@ -3922,7 +4027,7 @@
             chip.classList.add('ng-ov-chip--active');
 
             banner.innerHTML =
-                '<span class="ng-ov-banner-icon"><i class="' + preset.icon + '" style="color:' + preset.on + '"></i></span>' +
+                '<span class="ng-ov-banner-icon"><i class="' + window.ngSafeClass(preset.icon, 'fa-solid fa-question') + '" style="color:' + window.ngSafeColor(preset.on, '#888') + '"></i></span>' +
                 '<span class="ng-ov-banner-text">Click any device to apply <strong>' + preset.label + '</strong></span>' +
                 '<button class="ng-ov-banner-cancel" type="button"><i class="fa-solid fa-xmark"></i> Cancel</button>';
             banner.style.display = '';
@@ -3983,7 +4088,7 @@
             chip.type = 'button';
             chip.className = 'ng-ov-chip';
             chip.title = p.icon.replace('fa-solid fa-', '').replace(/-/g, ' ');
-            chip.innerHTML = '<i class="' + p.icon + '"></i> ' + p.label;
+            chip.innerHTML = '<i class="' + window.ngSafeClass(p.icon, 'fa-solid fa-question') + '"></i> ' + window.ngEsc(p.label);
 
             chip.addEventListener('click', function () {
                 /* Toggle: clicking the already-active chip exits select mode */
@@ -4155,6 +4260,7 @@
 
         // Color pickers (custom HSV canvas)
         initColorPickers(container);
+        if (window.NGStudio) window.NGStudio.bind(container);
 
         // Selects
         container.querySelectorAll('select[data-ng-key]').forEach(function (sel) {
@@ -4209,6 +4315,18 @@
         }
 
         // Notification blacklist manage button
+        /* Doctor: forget every ignored check (an explicit click, so a write). */
+        var docResetBtn = container.querySelector('#ngDoctorResetIgnoredBtn');
+        if (docResetBtn) {
+            docResetBtn.addEventListener('click', function () {
+                saveSetting('doctorIgnored', '{}');
+                if (window.ngShowToast) {
+                    window.ngShowToast({ icon: 'fa-eye', title: 'Ignored checks reset',
+                                         body: 'Doctor will show every finding again', duration: 3000 });
+                }
+            });
+        }
+
         var blBtn = container.querySelector('#ng-bl-manage-btn');
         if (blBtn) {
             blBtn.addEventListener('click', openBlacklistDialog);
@@ -4289,7 +4407,7 @@
                 var reader = new FileReader();
                 reader.onload = function (e) {
                     try {
-                        var imported = JSON.parse(e.target.result);
+                        var imported = sanitizeSettings(JSON.parse(e.target.result));
                         var count = 0;
                         Object.keys(DEFAULTS).forEach(function (key) {
                             if (imported[key] !== undefined) {
@@ -4381,26 +4499,7 @@
                 var name = prompt('Enter a name for this preset:', '');
                 if (name === null || !name.trim()) return;
                 name = name.trim();
-                var colors = {};
-                COLOR_SNAPSHOT_KEYS.forEach(function (key) {
-                    if (_settings[key] !== undefined) colors[key] = _settings[key];
-                });
-                var preset = {
-                    name:        name,
-                    description: 'Custom preset',
-                    icon:        'fa-solid fa-palette',
-                    preview: {
-                        bg:      _settings.bgColor      || '#1b1d25',
-                        surface: _settings.surfaceColor  || '#23252f',
-                        accent:  _settings.accentColor   || '#4e9af1',
-                        text:    _settings.textColor     || '#e2e4ed'
-                    },
-                    colors:      colors,
-                    userDefined: true
-                };
-                var arr = loadUserPresets();
-                arr.push(preset);
-                saveUserPresets(arr);
+                addUserPreset(name);
                 var grid = container.querySelector('#ngPresetsGrid');
                 if (grid) {
                     if (_presetsCache !== null) {
@@ -4774,6 +4873,29 @@
 
     window.dzNightglassSettings = {
         get: function (key) { return _settings ? _settings[key] : DEFAULTS[key]; },
+        /* Colour internals for the Theme Assistant (src/js/theme-studio.js). */
+        colorKit: {
+            keys: COLOR_SNAPSHOT_KEYS,
+            darkenHex: darkenHex,
+            lightenHex: lightenHex,
+            textTiers: textTiers,
+            savePreset: function (name) { addUserPreset(name); },
+            /* Re-render the settings panel so the pickers show new values. */
+            rerenderPanel: function () {
+                var wrap = document.getElementById('ng-theme-settings-wrap');
+                if (!wrap) return;
+                var body = wrap.querySelector('#ngPresetsBody');
+                var open = body && body.style.display !== 'none';
+                wrap.innerHTML = buildPanel({ presetsOpen: open });
+                bindEvents(wrap);
+                loadPresets(wrap);
+            }
+        },
+        /* Serialised size in bytes of the blob that would be saved (Doctor). */
+        blobSize: function () {
+            var str = JSON.stringify(serializeSettings());
+            return (typeof Blob !== 'undefined') ? new Blob([str]).size : str.length;
+        },
         set: saveSetting,
         /* Run cb once the stored values are in — immediately if they already
            are.  Anything that reasons about an *absence* (an empty collection,

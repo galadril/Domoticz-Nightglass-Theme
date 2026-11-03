@@ -80,9 +80,7 @@
         return MON[d.getMonth()] + '\u202f' + d.getDate() + ', ' + t;
     }
 
-    function escHtml(s) {
-        return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    }
+    function escHtml(s) { return window.ngEsc(s); }
 
     /* ── Panel DOM ─────────────────────────────────────────────── */
 
@@ -134,12 +132,12 @@
             html +=
                 '<div class="ng-notif-item' + (ev.unread ? ' ng-notif-item--unread' : '') + navigable + '"' +
                     (ev.device ? ' data-ev-idx="' + (_events.length - 1 - i) + '"' : '') + '>' +
-                    '<i class="fa-solid ' + ev.icon + ' ng-notif-icon" style="color:' + ev.color + '"></i>' +
+                    '<i class="fa-solid ' + window.ngSafeClass(ev.icon, 'fa-circle-info') + ' ng-notif-icon" style="color:' + window.ngEsc(ev.color) + '"></i>' +
                     '<div class="ng-notif-body">' +
                         '<div class="ng-notif-name">' + escHtml(ev.name) + '</div>' +
                         '<div class="ng-notif-status">' + escHtml(ev.status) + '</div>' +
                     '</div>' +
-                    '<time class="ng-notif-time">' + ev.time + '</time>' +
+                    '<time class="ng-notif-time">' + escHtml(ev.time) + '</time>' +
                     (ev.device ? '<i class="fa-solid fa-arrow-right ng-notif-nav-arrow"></i>' : '') +
                 '</div>';
         }
@@ -395,7 +393,8 @@
 
         var btn = document.createElement('a');
         btn.id   = 'ng-notif-btn';
-        btn.href = 'javascript:void(0)';
+        btn.href = '#';
+        btn.addEventListener('click', function (e) { e.preventDefault(); });
         btn.setAttribute('role', 'button');
         btn.setAttribute('aria-label', 'Notification history (N)');
         btn.title = 'Notification history  [N]';

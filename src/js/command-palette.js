@@ -282,7 +282,7 @@
         // ── Icon
         var iconWrap = document.createElement('div');
         iconWrap.className = 'dz-cmd-icon' + (on ? ' dz-cmd-icon--on' : '');
-        iconWrap.innerHTML = '<i class="' + iconFor(device) + '"></i>';
+        iconWrap.innerHTML = '<i class="' + window.ngSafeClass(iconFor(device), 'fa-solid fa-circle') + '"></i>';
         el.appendChild(iconWrap);
 
         // ── Body: name + meta
@@ -590,7 +590,7 @@
         var btn = document.createElement('button');
         btn.className = 'dz-cmd-icon-btn';
         btn.title = title;
-        btn.innerHTML = '<i class="' + icon + '"></i>';
+        btn.innerHTML = '<i class="' + window.ngSafeClass(icon, 'fa-solid fa-circle') + '"></i>';
         btn.addEventListener('click', function (e) { e.stopPropagation(); cb(); });
         return btn;
     }
@@ -721,10 +721,7 @@
 
     // ── DOM helpers ────────────────────────────────────────────────
 
-    function esc(s) {
-        return String(s || '')
-            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    }
+    function esc(s) { return window.ngEsc(s); }
 
     function highlight(text, q) {
         if (!q) return esc(text);
@@ -784,9 +781,13 @@
         /* Command row: Attention Center (only when the feature is live) */
         var showAttn = !!(window.ngAttention && window.ngAttention.open &&
                           matches('Open Attention Center', q));
-        var idxOffset = showAttn ? 1 : 0;
+        var showDoc = !!(window.ngDoctor && window.ngDoctor.open &&
+                         matches('Run Doctor setup health check', q));
+        var showAsst = !!(window.NGStudio && window.NGStudio.open &&
+                          matches('Open Theme Assistant colours accent', q));
+        var idxOffset = (showAttn ? 1 : 0) + (showDoc ? 1 : 0) + (showAsst ? 1 : 0);
 
-        if (items.length === 0 && !showAttn) {
+        if (items.length === 0 && !showAttn && !showDoc && !showAsst) {
             _list.innerHTML = '<div class="dz-cmd-empty">No devices found for \u201c' + esc(q) + '\u201d</div>';
             return;
         }
@@ -805,6 +806,8 @@
             _list.appendChild(hdr3);
         }
 
+        if (showAsst) _list.insertBefore(buildAssistantItem((showAttn ? 1 : 0) + (showDoc ? 1 : 0)), _list.firstChild.nextSibling);
+        if (showDoc) _list.insertBefore(buildDoctorItem(showAttn ? 1 : 0), _list.firstChild.nextSibling);
         if (showAttn) _list.insertBefore(buildAttentionItem(), _list.firstChild.nextSibling);
 
         items.forEach(function (device, i) {
@@ -822,6 +825,34 @@
             '<div class="dz-cmd-body"><div class="dz-cmd-name">Open Attention Center</div>' +
             '<div class="dz-cmd-meta">Low batteries, offline devices, timers \u00b7 A</div></div>';
         el.addEventListener('mouseenter', function () { setActive(0, false); });
+        el.addEventListener('click', function () { closePalette(); el._dzCommand(); });
+        return el;
+    }
+
+    function buildAssistantItem(index) {
+        var el = document.createElement('div');
+        el.className = 'dz-cmd-item';
+        el.setAttribute('data-index', index);
+        el._dzCommand = function () { window.NGStudio.open(); };
+        el.innerHTML =
+            '<div class="dz-cmd-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>' +
+            '<div class="dz-cmd-body"><div class="dz-cmd-name">Open Theme Assistant</div>' +
+            '<div class="dz-cmd-meta">Pick an accent and set readable colours</div></div>';
+        el.addEventListener('mouseenter', function () { setActive(index, false); });
+        el.addEventListener('click', function () { closePalette(); el._dzCommand(); });
+        return el;
+    }
+
+    function buildDoctorItem(index) {
+        var el = document.createElement('div');
+        el.className = 'dz-cmd-item';
+        el.setAttribute('data-index', index);
+        el._dzCommand = function () { window.ngDoctor.open(); };
+        el.innerHTML =
+            '<div class="dz-cmd-icon"><i class="fa-solid fa-stethoscope"></i></div>' +
+            '<div class="dz-cmd-body"><div class="dz-cmd-name">Run Doctor</div>' +
+            '<div class="dz-cmd-meta">Check rooms, names, icons, timers and hardware</div></div>';
+        el.addEventListener('mouseenter', function () { setActive(index, false); });
         el.addEventListener('click', function () { closePalette(); el._dzCommand(); });
         return el;
     }

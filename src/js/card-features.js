@@ -116,7 +116,9 @@
                assignment and limits the innerHTML surface to one call on
                content already in the page's own trusted DOM. */
             var tmpDiv = document.createElement('div');
-            tmpDiv.innerHTML = decoded; /* lgtm[js/xss-through-dom] */
+            /* Plugin/device text is untrusted: keep only simple formatting tags and
+               class/title/safe-style attributes (see ngSanitizeHtml in core.js). */
+            tmpDiv.innerHTML = window.ngSanitizeHtml(decoded);
             var plainText = (tmpDiv.textContent || tmpDiv.innerText || '').replace(/\s+/g, ' ').trim();
             if (!plainText) continue;
 
@@ -1429,7 +1431,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 /* Replace the plain h4 with themed one */
                 var h4 = showDiv.querySelector('h4');
                 if (h4 && !h4.querySelector('i')) {
-                    h4.innerHTML = '<i class="fa-solid fa-terminal"></i> ' + h4.textContent;
+                    var h4Text = h4.textContent;
+                    h4.textContent = '';
+                    var h4Icon = document.createElement('i');
+                    h4Icon.className = 'fa-solid fa-terminal';
+                    h4.appendChild(h4Icon);
+                    h4.appendChild(document.createTextNode(' ' + h4Text));
                 }
                 /* Strip inline styles from pre so CSS takes over */
                 consoleEl.removeAttribute('style');
