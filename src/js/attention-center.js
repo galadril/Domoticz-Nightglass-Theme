@@ -55,6 +55,7 @@
     var _collapsed  = {};
     var _expanded   = {};
     var _snoozeOpen = null;    // key of the row whose snooze choices are showing
+    var _bulkOpen   = false;   // "Snooze all" choices showing
 
     /* ── Helpers ───────────────────────────────────────────────── */
 
@@ -138,6 +139,20 @@
         scheduleRender(0);
     }
 
+    /* Snooze every given key in one write.  Returns the previous map so the
+       caller can offer Undo.  Same store and save path as snooze(). */
+    function snoozeMany(keys, ms) {
+        var prev = snoozeMap();
+        var map = snoozeMap();
+        var now = Date.now();
+        Object.keys(map).forEach(function (k) {
+            if (+map[k] !== 0 && +map[k] <= now) delete map[k];
+        });
+        keys.forEach(function (k) { map[k] = ms === 0 ? 0 : now + ms; });
+        saveSnoozed(map);
+        return prev;
+    }
+
     function activeSnoozeCount() {
         var map = snoozeMap();
         return Object.keys(map).filter(function (k) { return isSnoozed(k, map); }).length;
@@ -192,6 +207,7 @@
 
     function refresh() {
         return Promise.all([fetchDevices(true), fetchTimers()]).then(function () {
+            if (!_on) return;
             checkNewLowBattery();
             scheduleRender(0);
         });
@@ -324,6 +340,7 @@
     }
 
     function scheduleRender(ms) {
+        if (!_on) return;             // switched off while a fetch was in flight
         clearTimeout(_renderTimer);
         _renderTimer = setTimeout(function () { _renderTimer = null; render(); }, ms);
     }
@@ -364,6 +381,9 @@
                     '<span class="ng-attn-row-name">' + esc(name) + '</span>' +
                     '<span class="ng-attn-row-meta">' + esc(meta) + '</span>' +
                 '</button>' +
+                (hasLog(d) ?
+                '<button type="button" class="ng-attn-log-btn" data-act="log" data-idx="' + esc(keyOf(d.idx)) + '" aria-label="Open log for ' + esc(name) + '" title="Open log">' +
+                    '<i class="fa-solid fa-chart-line" aria-hidden="true"></i></button>' : '') +
                 '<button type="button" class="ng-attn-snz-btn" data-act="snz-toggle" aria-label="Snooze ' + esc(name) + '" title="Snooze">' +
                     '<i class="fa-solid fa-bell-slash" aria-hidden="true"></i></button>' +
                 (snz ?
@@ -373,6 +393,13 @@
                     '<button type="button" data-act="snz" data-ms="0">Forever</button>' +
                 '</div>' : '') +
             '</div>';
+    }
+
+    /* A log page exists for real devices; scenes and groups have none. */
+    function hasLog(d) {
+        if (!d || d.idx == null || d.idx === '') return false;
+        var t = String(d.Type || '').toLowerCase();
+        return t !== 'scene' && t !== 'group';
     }
 
     function sectionHtml(section, items, note) {
@@ -405,6 +432,7 @@
     }
 
     function render() {
+        if (!_on) return;
         var c = announce();
         if (!_panel || !_open) return;
         var res = compute();
@@ -420,6 +448,20 @@
             html += sectionHtml('timers', res.timers,
                 'Heuristic: Domoticz does not record failed timer runs, so this lists disabled timers ' +
                 'and timers whose device is unused or gone.');
+        }
+
+        var shown = res.battery.length + res.stale.length + res.timers.length;
+        if (shown) {
+            html = '<div class="ng-attn-bulk">' +
+                '<button type="button" class="ng-attn-bulk-btn" data-act="bulk-toggle" aria-expanded="' + _bulkOpen + '">' +
+                    '<i class="fa-solid fa-bell-slash" aria-hidden="true"></i> Snooze all (' + shown + ')</button>' +
+                (_bulkOpen ?
+                '<div class="ng-attn-snz-choices ng-attn-bulk-choices">' +
+                    '<button type="button" data-act="snz-all" data-ms="86400000">24 hours</button>' +
+                    '<button type="button" data-act="snz-all" data-ms="604800000">7 days</button>' +
+                    '<button type="button" data-act="snz-all" data-ms="0">Forever</button>' +
+                '</div>' : '') +
+                '</div>' + html;
         }
 
         var snoozed = activeSnoozeCount();
@@ -489,6 +531,9 @@
             _snoozeOpen = null;
             if (key) snooze(key, parseInt(el.getAttribute('data-ms'), 10));
         }
+        else if (act === 'bulk-toggle') { _bulkOpen = !_bulkOpen; render(); }
+        else if (act === 'snz-all') { snoozeAllVisible(parseInt(el.getAttribute('data-ms'), 10)); }
+        else if (act === 'log') { navigateToLog(el.getAttribute('data-idx')); }
         else if (act === 'unsnooze-all') { saveSnoozed({}); }
         else if (act === 'nav') {
             var d = _devices[el.getAttribute('data-idx')];
@@ -499,12 +544,72 @@
         }
     }
 
+    /* Snooze every currently visible row (all enabled sections, including rows
+       hidden behind "Show all") and offer Undo via the toast. */
+    function snoozeAllVisible(ms) {
+        var res = compute();
+        var seen = {}, keys = [];
+        ['battery', 'stale', 'timers'].forEach(function (sec) {
+            res[sec].forEach(function (it) {
+                if (!seen[it.key]) { seen[it.key] = true; keys.push(it.key); }
+            });
+        });
+        _bulkOpen = false;
+        _snoozeOpen = null;
+        if (!keys.length) { render(); return; }
+        var prev = snoozeMany(keys, ms);
+        var label = ms === 0 ? 'forever' : (ms === 86400000 ? 'for 24 hours' : 'for 7 days');
+        if (typeof window.ngShowToast !== 'function') return;
+        var el = window.ngShowToast({
+            icon:  'fa-bell-slash',
+            color: 'var(--dz-accent)',
+            title: 'Snoozed ' + keys.length + (keys.length === 1 ? ' item' : ' items'),
+            body:  label,
+            duration: 8000
+        });
+        if (!el || !el.querySelector) return;
+        var host = el.querySelector('.ng-toast-content');
+        if (!host) return;
+        var undo = document.createElement('button');
+        undo.type = 'button';
+        undo.className = 'ng-attn-undo';
+        undo.textContent = 'Undo';
+        undo.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            saveSnoozed(prev);
+            if (window.ngRemoveToast) window.ngRemoveToast(el);
+        });
+        host.appendChild(undo);
+    }
+
+    /* Domoticz device log page: #/Devices/<idx>/Log (Angular route; not
+       verifiable here).  Same $location technique as ngNavigateToDevice. */
+    function navigateToLog(idx) {
+        idx = keyOf(idx);
+        if (!idx) return;
+        var route = '/Devices/' + idx + '/Log';
+        closePanel();
+        setTimeout(function () {
+            try {
+                var injector   = window.angular && angular.element(document.body).injector();
+                var $location  = injector && injector.get('$location');
+                var $rootScope = injector && injector.get('$rootScope');
+                if ($location && $rootScope) {
+                    $rootScope.$apply(function () { $location.path(route); });
+                    return;
+                }
+            } catch (e) {}
+            window.location.hash = route;
+        }, 10);
+    }
+
     function openPanel() {
         /* One drawer at a time */
         if (window.ngNotifClose) window.ngNotifClose();
         buildPanel();
         _lastFocus = document.activeElement;
         _snoozeOpen = null;
+        _bulkOpen = false;
         _open = true;
         render();
         _panel.classList.add('ng-attn-panel--open');
@@ -539,20 +644,23 @@
             return;
         }
         try {
-            bodyEl.injector().get('$rootScope').$on('device_update', function (e, d) { onDeviceUpdate(d); });
+            bodyEl.injector().get('$rootScope').$on('device_update', function (e, d) { if (_on) onDeviceUpdate(d); });
         } catch (e) {
             setTimeout(attachAngularHooks, 600);
         }
     }
 
-    function start() {
-        if (!getSetting('attentionCenter')) return;   // disabled: no DOM, no requests
+    var _on        = false;   // feature currently enabled
+    var _wired     = false;   // document listeners attached (once)
+    var _hooked    = false;   // Angular device_update hook attached (once)
 
-        window.ngAttention = { refresh: refresh, open: openPanel, close: closePanel, getCounts: getCounts };
+    function wire() {
+        if (_wired) return;
+        _wired = true;
 
         /* Close on outside click (chip click is handled by the chip itself) */
         document.addEventListener('click', function (e) {
-            if (!_open || !_panel) return;
+            if (!_on || !_open || !_panel) return;
             if (_panel.contains(e.target)) return;
             if (e.target.closest && e.target.closest('#ng-sb-attn')) return;
             closePanel();
@@ -560,6 +668,7 @@
 
         /* Chip in the status bar */
         document.addEventListener('click', function (e) {
+            if (!_on) return;
             var chip = e.target.closest && e.target.closest('#ng-sb-attn');
             if (chip) togglePanel();
         });
@@ -567,6 +676,7 @@
         /* Keyboard shortcut: A — same guard as the N handler in notifications.js,
            plus the dialog gate so it never fires behind a modal. */
         document.addEventListener('keydown', function (e) {
+            if (!_on) return;
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' ||
                 e.target.isContentEditable || e.ctrlKey || e.metaKey || e.altKey) return;
             if (e.key !== 'a' && e.key !== 'A') return;
@@ -576,20 +686,50 @@
         });
 
         /* Poll only while the tab is visible */
+        document.addEventListener('visibilitychange', function () {
+            if (_on && document.visibilityState === 'visible' && (Date.now() - _devTs) > POLL_MS) refresh();
+        });
+    }
+
+    function enable() {
+        if (_on) return;
+        _on = true;
+        window.ngAttention = { refresh: refresh, open: openPanel, close: closePanel, getCounts: getCounts };
+        wire();
         _pollTimer = setInterval(function () {
             if (document.visibilityState === 'visible') refresh();
         }, POLL_MS);
-        document.addEventListener('visibilitychange', function () {
-            if (document.visibilityState === 'visible' && (Date.now() - _devTs) > POLL_MS) refresh();
-        });
-
-        attachAngularHooks();
+        if (!_hooked) { _hooked = true; attachAngularHooks(); }
         refresh();
     }
 
+    /* Switched off: close the drawer, drop its DOM, stop polling and tell the
+       status bar the count is gone so the chip hides. */
+    function disable() {
+        if (!_on) return;
+        closePanel();
+        _on = false;
+        clearInterval(_pollTimer);  _pollTimer = null;
+        clearTimeout(_renderTimer); _renderTimer = null;
+        if (_panel && _panel.parentNode) _panel.parentNode.removeChild(_panel);
+        _panel = null;
+        delete window.ngAttention;
+        try {
+            document.dispatchEvent(new CustomEvent('ng-attention-change',
+                { detail: { total: 0, severity: 'none' } }));
+        } catch (e) {}
+    }
+
+    /* Called at start and by the settings panel whenever a setting changes,
+       so the toggle takes effect without a page reload. */
+    function apply() {
+        if (getSetting('attentionCenter')) enable(); else disable();
+    }
+    window.ngAttentionApply = apply;
+
     function init() {
         var s = settings();
-        if (s && s.whenReady) s.whenReady(start);
+        if (s && s.whenReady) s.whenReady(apply);
         else setTimeout(init, 300);
     }
 

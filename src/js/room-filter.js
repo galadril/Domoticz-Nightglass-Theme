@@ -99,6 +99,9 @@
         return null;
     }
 
+    /* Shared with the status bar's lights count. */
+    window._dzDeviceStateLabel = getDeviceStateLabel;
+
     /* ══ Topbar reveal ══════════════════════════════════════════════ */
 
     function revealTopBar() {

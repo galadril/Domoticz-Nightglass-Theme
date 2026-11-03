@@ -998,6 +998,9 @@ body.dz-light .ng-rf-pill-count {
     .ng-attn-sec-hdr:hover { background: rgba(var(--dz-accent-rgb), 0.05); }
 
     .ng-attn-sec-hdr:focus-visible,
+    .ng-attn-bulk-btn:focus-visible,
+    .ng-attn-log-btn:focus-visible,
+    .ng-attn-undo:focus-visible,
     .ng-attn-row-main:focus-visible,
     .ng-attn-snz-btn:focus-visible,
     .ng-attn-more:focus-visible,
@@ -1101,6 +1104,60 @@ body.dz-light .ng-rf-pill-count {
     .ng-attn-snz-btn:hover,
     .ng-attn-row--snz .ng-attn-snz-btn { color: var(--dz-accent); }
 
+.ng-attn-log-btn {
+    width: 36px;
+    background: none;
+    border: none;
+    color: var(--dz-text-faint);
+    cursor: pointer;
+    font-size: 0.78rem;
+    transition: color 0.15s;
+}
+
+    .ng-attn-log-btn:hover { color: var(--dz-accent); }
+
+.ng-attn-bulk {
+    border-bottom: 1px solid var(--dz-border);
+    padding: 4px 8px;
+}
+
+.ng-attn-bulk-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 40px;
+    padding: 0 8px;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    color: var(--dz-accent);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+    .ng-attn-bulk-btn:hover { background: rgba(var(--dz-accent-rgb), 0.08); }
+
+.ng-attn-bulk-choices { padding: 4px 8px 8px; }
+
+.ng-attn-undo {
+    margin-top: 6px;
+    min-height: 32px;
+    padding: 0 12px;
+    background: var(--dz-surface-3);
+    border: 1px solid var(--dz-border);
+    border-radius: 6px;
+    color: var(--dz-accent);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+    .ng-attn-undo:hover { border-color: var(--dz-accent); }
+
 .ng-attn-snz-choices {
     flex-basis: 100%;
     display: flex;
@@ -1179,13 +1236,19 @@ body.dz-light .ng-rf-pill-count {
     #ng-attn-panel.ng-attn-panel--open { transform: translateY(0); }
 
     .ng-attn-row { min-height: 44px; }
-    .ng-attn-snz-btn { width: 44px; }
-    .ng-attn-sec-hdr { min-height: 44px; }
+    .ng-attn-snz-btn,
+    .ng-attn-log-btn { width: 44px; }
+    .ng-attn-sec-hdr,
+    .ng-attn-bulk-btn { min-height: 44px; }
+    .ng-attn-snz-choices button { min-height: 44px; }
+    .ng-attn-undo { min-height: 44px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
     #ng-attn-panel,
     #ng-attn-panel.ng-attn-panel--open,
+    .ng-attn-log-btn,
+    .ng-attn-bulk-btn,
     .ng-attn-chev {
         transition: none;
     }
