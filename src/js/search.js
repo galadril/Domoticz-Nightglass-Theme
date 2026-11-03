@@ -618,6 +618,16 @@
         attentionSnoozed:          '{}',
         attentionToast:            false,
 
+        /* Doctor (doctor.js): on-demand read-only setup health check.
+           doctorIgnored maps check id -> expiry epoch ms (0 = forever);
+           doctorChecks lists enabled check ids ([] = all). */
+        doctor:                    true,
+        doctorIgnored:             '{}',
+        doctorChecks:              '[]',
+        doctorStaleDays:           '30',
+        doctorNameMax:             '40',
+        doctorLastRun:             '',
+
         /* Set once the one-shot in icon-migrate.js has cleared any icon
            overrides saved against a scene or group — see issue #265. Keeps
            that cleanup to a single extra request per account. */
@@ -668,7 +678,8 @@
        included in the blob; on the legacy user-variable path they remain in a
        dedicated variable to stay under the 2500-char cap (issue #203). */
     var COLLECTION_FIELDS = ['deviceIconOverrides', 'userPresets', 'toastBlacklist',
-                             'statusBarLightsDevices', 'attentionSnoozed', 'attentionSections'];
+                             'statusBarLightsDevices', 'attentionSnoozed', 'attentionSections',
+                             'doctorIgnored', 'doctorChecks'];
 
     /* ── Domoticz API helpers ─────────────────────────────────────── */
 
@@ -1380,6 +1391,7 @@
         applySettings();
         if (key.indexOf('statusBarLights') === 0 && window.ngStatusBarRefresh) window.ngStatusBarRefresh();
         if (key === 'attentionCenter' && window.ngAttentionApply) window.ngAttentionApply();
+        if (key === 'doctor' && window.ngDoctorApply) window.ngDoctorApply();
     }
 
     /* Set a value and push the blob to the server right away, instead of the
@@ -2084,6 +2096,19 @@
             '</div>' +
 
             '<div class="ng-settings-section">' +
+            '<div class="ng-section-header"><i class="fa-solid fa-stethoscope"></i> Setup health</div>' +
+            toggle('doctor', 'Doctor', 'Read-only check of your Domoticz setup: rooms, names, icons, timers, hardware and theme settings. Runs only when you ask, changes nothing') +
+            '<div class="ng-setting-row ng-setting-row--action">' +
+            '  <div class="ng-setting-info">' +
+            '    <span class="ng-setting-label">Run health check</span>' +
+            '    <span class="ng-setting-desc" id="ngDoctorLastRun">' + (window.ngDoctorLastRunText ? window.ngDoctorLastRunText() : '') + '</span>' +
+            '  </div>' +
+            '  <button type="button" class="ng-action-chip" id="ngDoctorRunBtn">' +
+            '    <i class="fa-solid fa-stethoscope"></i> Run</button>' +
+            '</div>' +
+            '</div>' +
+
+            '<div class="ng-settings-section">' +
             '<div class="ng-section-header"><i class="fa-solid fa-bell"></i> Live Notifications</div>' +
             toggle('liveToasts', 'Device State Toasts', 'Show a toast when any device changes state via the live WebSocket feed') +
             select('liveToastFilter', 'Event Filter', [
@@ -2378,7 +2403,8 @@
         toastBlacklist:      true,
         statusBarLightsDevices: true,
         userPresets:         true,
-        attentionSnoozed:    true
+        attentionSnoozed:    true,
+        doctorIgnored:       true
     };
 
     function applyPreset(preset) {
@@ -4845,6 +4871,11 @@
                 bindEvents(wrap);
                 loadPresets(wrap);
             }
+        },
+        /* Serialised size in bytes of the blob that would be saved (Doctor). */
+        blobSize: function () {
+            var str = JSON.stringify(serializeSettings());
+            return (typeof Blob !== 'undefined') ? new Blob([str]).size : str.length;
         },
         set: saveSetting,
         /* Run cb once the stored values are in — immediately if they already

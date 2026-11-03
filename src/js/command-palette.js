@@ -781,9 +781,11 @@
         /* Command row: Attention Center (only when the feature is live) */
         var showAttn = !!(window.ngAttention && window.ngAttention.open &&
                           matches('Open Attention Center', q));
-        var idxOffset = showAttn ? 1 : 0;
+        var showDoc = !!(window.ngDoctor && window.ngDoctor.open &&
+                         matches('Run Doctor setup health check', q));
+        var idxOffset = (showAttn ? 1 : 0) + (showDoc ? 1 : 0);
 
-        if (items.length === 0 && !showAttn) {
+        if (items.length === 0 && !showAttn && !showDoc) {
             _list.innerHTML = '<div class="dz-cmd-empty">No devices found for \u201c' + esc(q) + '\u201d</div>';
             return;
         }
@@ -802,6 +804,7 @@
             _list.appendChild(hdr3);
         }
 
+        if (showDoc) _list.insertBefore(buildDoctorItem(showAttn ? 1 : 0), _list.firstChild.nextSibling);
         if (showAttn) _list.insertBefore(buildAttentionItem(), _list.firstChild.nextSibling);
 
         items.forEach(function (device, i) {
@@ -819,6 +822,20 @@
             '<div class="dz-cmd-body"><div class="dz-cmd-name">Open Attention Center</div>' +
             '<div class="dz-cmd-meta">Low batteries, offline devices, timers \u00b7 A</div></div>';
         el.addEventListener('mouseenter', function () { setActive(0, false); });
+        el.addEventListener('click', function () { closePalette(); el._dzCommand(); });
+        return el;
+    }
+
+    function buildDoctorItem(index) {
+        var el = document.createElement('div');
+        el.className = 'dz-cmd-item';
+        el.setAttribute('data-index', index);
+        el._dzCommand = function () { window.ngDoctor.open(); };
+        el.innerHTML =
+            '<div class="dz-cmd-icon"><i class="fa-solid fa-stethoscope"></i></div>' +
+            '<div class="dz-cmd-body"><div class="dz-cmd-name">Run Doctor</div>' +
+            '<div class="dz-cmd-meta">Check rooms, names, icons, timers and hardware</div></div>';
+        el.addEventListener('mouseenter', function () { setActive(index, false); });
         el.addEventListener('click', function () { closePalette(); el._dzCommand(); });
         return el;
     }

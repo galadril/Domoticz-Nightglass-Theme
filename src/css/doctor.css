@@ -1,0 +1,310 @@
+/* ── Doctor: setup health drawer ─────────────────────────────────────
+   Right drawer (bottom sheet on mobile), same look as the Attention Center. */
+
+#ng-doc-panel {
+    position: fixed;
+    top: 54px;
+    right: 0;
+    width: 360px;
+    height: calc(100dvh - 54px);
+    background: var(--dz-surface);
+    border-left: 1px solid var(--dz-surface-3);
+    box-shadow: -4px 0 28px rgba(0, 0, 0, 0.35);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(calc(100% + 1px));
+    visibility: hidden;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 0.3s;
+    overflow: hidden;
+}
+
+    #ng-doc-panel.ng-doc-panel--open {
+        transform: translateX(0);
+        visibility: visible;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s;
+    }
+
+.ng-doc-hdr {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--dz-surface-3);
+    flex-shrink: 0;
+}
+
+.ng-doc-title {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--dz-text);
+}
+
+    .ng-doc-title > i { color: var(--dz-accent); margin-right: 6px; }
+
+.ng-doc-headline {
+    flex: 1;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--dz-text-muted);
+}
+
+.ng-doc-hdr-btn {
+    background: none;
+    border: none;
+    color: var(--dz-text-muted);
+    cursor: pointer;
+    padding: 4px 7px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    line-height: 1;
+    transition: color 0.15s, background 0.15s;
+}
+
+    .ng-doc-hdr-btn:hover { color: var(--dz-text); background: var(--dz-surface-3); }
+
+.ng-doc-body {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 4px 0 12px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--dz-border) transparent;
+}
+
+    .ng-doc-body::-webkit-scrollbar       { width: 4px; }
+    .ng-doc-body::-webkit-scrollbar-track { background: transparent; }
+    .ng-doc-body::-webkit-scrollbar-thumb { background: var(--dz-border); border-radius: 2px; }
+
+.ng-doc-sec { border-bottom: 1px solid var(--dz-border); padding-bottom: 6px; }
+
+.ng-doc-sec-hdr {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px 4px;
+    color: var(--dz-text);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+    .ng-doc-sec-hdr > i { width: 16px; text-align: center; color: var(--dz-text-muted); }
+
+.ng-doc-find {
+    margin: 6px 10px;
+    padding: 10px 0 6px;
+    border: 1px solid var(--dz-border);
+    border-left-width: 3px;
+    border-radius: 8px;
+    background: var(--dz-surface-2, var(--dz-surface));
+}
+
+    .ng-doc-find--problem    { border-left-color: var(--dz-danger); }
+    .ng-doc-find--suggestion { border-left-color: var(--dz-warning); }
+    .ng-doc-find--info       { border-left-color: var(--dz-text-muted); }
+
+.ng-doc-find-hdr {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    font-size: 0.82rem;
+    color: var(--dz-text);
+}
+
+.ng-doc-find-title { flex: 1; font-weight: 600; min-width: 0; }
+
+.ng-doc-find-count {
+    min-width: 20px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: var(--dz-surface-3);
+    color: var(--dz-text-muted);
+    font-size: 0.7rem;
+    text-align: center;
+}
+
+.ng-doc-sev {
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+    .ng-doc-sev--problem    { background: rgba(var(--dz-danger-rgb), 0.18);  color: var(--dz-danger); }
+    .ng-doc-sev--suggestion { background: rgba(var(--dz-warning-rgb), 0.18); color: var(--dz-warning); }
+    .ng-doc-sev--info       { background: var(--dz-surface-3); color: var(--dz-text-muted); }
+
+.ng-doc-why {
+    padding: 4px 12px 6px;
+    font-size: 0.76rem;
+    color: var(--dz-text-faint);
+}
+
+.ng-doc-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 32px;
+    padding: 4px 12px;
+    background: none;
+    border: none;
+    border-top: 1px solid var(--dz-border);
+    color: var(--dz-text);
+    font-size: 0.8rem;
+    text-align: left;
+}
+
+.ng-doc-row--nav { cursor: pointer; }
+    .ng-doc-row--nav:hover { background: rgba(var(--dz-accent-rgb), 0.05); }
+
+.ng-doc-row-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ng-doc-row-meta {
+    flex-shrink: 0;
+    max-width: 45%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.72rem;
+    color: var(--dz-text-muted);
+}
+
+.ng-doc-more {
+    display: block;
+    width: 100%;
+    padding: 7px 12px;
+    background: none;
+    border: none;
+    border-top: 1px solid var(--dz-border);
+    color: var(--dz-accent);
+    font-size: 0.78rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+    .ng-doc-more:hover { background: rgba(var(--dz-accent-rgb), 0.05); }
+
+.ng-doc-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px 2px;
+    border-top: 1px solid var(--dz-border);
+}
+
+.ng-doc-link,
+.ng-doc-linkbtn,
+.ng-doc-ignore-btn {
+    background: none;
+    border: none;
+    padding: 2px 0;
+    color: var(--dz-accent);
+    font-size: 0.76rem;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.ng-doc-ignore-btn { color: var(--dz-text-muted); }
+    .ng-doc-ignore-btn:hover { color: var(--dz-text); }
+    .ng-doc-link:hover { text-decoration: underline; }
+
+.ng-doc-ign-choices {
+    display: flex;
+    gap: 6px;
+    padding: 6px 12px 6px;
+}
+
+    .ng-doc-ign-choices button {
+        flex: 1;
+        padding: 6px 4px;
+        background: var(--dz-surface-3);
+        border: 1px solid var(--dz-border);
+        border-radius: 6px;
+        color: var(--dz-text);
+        font-size: 0.75rem;
+        cursor: pointer;
+    }
+
+        .ng-doc-ign-choices button:hover { border-color: var(--dz-accent); color: var(--dz-accent); }
+
+.ng-doc-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 16px;
+    font-size: 0.78rem;
+    color: var(--dz-text-muted);
+}
+
+    .ng-doc-line--ok > i  { color: var(--dz-success); }
+    .ng-doc-line--unk > i { color: var(--dz-text-faint); }
+
+.ng-doc-note,
+.ng-doc-foot {
+    padding: 8px 16px;
+    font-size: 0.76rem;
+    color: var(--dz-text-faint);
+}
+
+.ng-doc-note--warn { color: var(--dz-warning); }
+.ng-doc-foot { text-align: center; }
+
+.ng-doc-hdr-btn:focus-visible,
+.ng-doc-row--nav:focus-visible,
+.ng-doc-more:focus-visible,
+.ng-doc-link:focus-visible,
+.ng-doc-linkbtn:focus-visible,
+.ng-doc-ignore-btn:focus-visible,
+.ng-doc-ign-choices button:focus-visible {
+    outline: 2px solid var(--dz-accent);
+    outline-offset: -2px;
+}
+
+@media (max-width: 480px) {
+    #ng-doc-panel {
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 80dvh;
+        max-height: 80vh;
+        border-left: none;
+        border-top: 1px solid var(--dz-surface-3);
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.45);
+        transform: translateY(calc(100% + 1px));
+    }
+
+    #ng-doc-panel.ng-doc-panel--open { transform: translateY(0); }
+
+    .ng-doc-hdr-btn,
+    .ng-doc-row,
+    .ng-doc-more,
+    .ng-doc-link,
+    .ng-doc-ignore-btn,
+    .ng-doc-linkbtn { min-height: 44px; }
+    .ng-doc-hdr-btn { min-width: 44px; }
+    .ng-doc-link,
+    .ng-doc-ignore-btn { display: inline-flex; align-items: center; }
+    .ng-doc-ign-choices button { min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #ng-doc-panel,
+    #ng-doc-panel.ng-doc-panel--open,
+    .ng-doc-hdr-btn { transition: none; }
+}
+
+.ng-doc-rows { display: block; }
+.ng-doc-x-btn { margin-left: 2px; }
