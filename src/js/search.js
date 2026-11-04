@@ -2093,27 +2093,6 @@
             '</div>' +
 
             '<div class="ng-settings-section">' +
-            '<div class="ng-section-header"><i class="fa-solid fa-stethoscope"></i> Setup health</div>' +
-            '<div class="ng-setting-row ng-setting-row--action">' +
-            '  <div class="ng-setting-info">' +
-            '    <span class="ng-setting-label">Run Doctor</span>' +
-            '    <span class="ng-setting-desc" id="ngDoctorLastRun">' + (window.ngDoctorLastRunText ? window.ngDoctorLastRunText() : '') + '</span>' +
-            '    <span class="ng-setting-desc">Checks rooms, names, icons, timers, hardware and theme settings. Runs only when you press the button and changes nothing by itself</span>' +
-            '  </div>' +
-            '  <button type="button" class="ng-action-chip" id="ngDoctorRunBtn">' +
-            '    <i class="fa-solid fa-stethoscope"></i> Run Doctor</button>' +
-            '</div>' +
-            '<div class="ng-setting-row ng-setting-row--action">' +
-            '  <div class="ng-setting-info">' +
-            '    <span class="ng-setting-label">Reset ignored checks</span>' +
-            '    <span class="ng-setting-desc">Show every Doctor finding you chose to ignore again</span>' +
-            '  </div>' +
-            '  <button type="button" class="ng-action-chip" id="ngDoctorResetIgnoredBtn">' +
-            '    <i class="fa-solid fa-eye"></i> Reset</button>' +
-            '</div>' +
-            '</div>' +
-
-            '<div class="ng-settings-section">' +
             '<div class="ng-section-header"><i class="fa-solid fa-bell"></i> Live Notifications</div>' +
             toggle('liveToasts', 'Device State Toasts', 'Show a toast when any device changes state via the live WebSocket feed') +
             select('liveToastFilter', 'Event Filter', [
@@ -2176,6 +2155,27 @@
             dualColorPicker('surfaceColor', 'surfaceColorLight', 'Card Surface') +
             dualColorPicker('borderColor', 'borderColorLight', 'Borders') +
             dualColorPicker('textColor', 'textColorLight', 'Text') +
+            '</div>' +
+
+            '<div class="ng-settings-section">' +
+            '<div class="ng-section-header"><i class="fa-solid fa-stethoscope"></i> Setup health</div>' +
+            '<div class="ng-setting-row ng-setting-row--action">' +
+            '  <div class="ng-setting-info">' +
+            '    <span class="ng-setting-label">Run Doctor</span>' +
+            '    <span class="ng-setting-desc" id="ngDoctorLastRun">' + (window.ngDoctorLastRunText ? window.ngDoctorLastRunText() : '') + '</span>' +
+            '    <span class="ng-setting-desc">Checks rooms, names, icons, timers, hardware and theme settings. Runs only when you press the button and changes nothing by itself</span>' +
+            '  </div>' +
+            '  <button type="button" class="ng-action-chip" id="ngDoctorRunBtn">' +
+            '    <i class="fa-solid fa-stethoscope"></i> Run Doctor</button>' +
+            '</div>' +
+            '<div class="ng-setting-row ng-setting-row--action">' +
+            '  <div class="ng-setting-info">' +
+            '    <span class="ng-setting-label">Reset ignored checks</span>' +
+            '    <span class="ng-setting-desc">Show every Doctor finding you chose to ignore again</span>' +
+            '  </div>' +
+            '  <button type="button" class="ng-action-chip" id="ngDoctorResetIgnoredBtn">' +
+            '    <i class="fa-solid fa-eye"></i> Reset</button>' +
+            '</div>' +
             '</div>' +
 
             '<div class="ng-settings-section ng-settings-section--full">' +
