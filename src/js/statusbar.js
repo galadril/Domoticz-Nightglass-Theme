@@ -105,7 +105,76 @@
                 '<span>0</span>' +
             '</div>';
         syncAttention();
+        syncLinks();
     }
+
+    /* ── Clickable pills ───────────────────────────────────────────
+       A pill that maps to exactly one device opens that device's log page
+       (same target as the Energy dashboard tiles). A pill only becomes
+       interactive once its idx is known; the lights pill never does. */
+
+    /* Verified against Domoticz www/app/app.routes.js ('/Devices/:id/Log') and
+       www/app/EnergyDashboardController.js ($scope.openLog). One route for all device types. */
+    var DEVICE_LOG_ROUTE = '/Devices/%IDX%/Log';
+    var LINK_NAMES = { temp: 'Outside temperature', power: 'Grid power', solar: 'Solar production',
+                       battery: 'Battery', gas: 'Gas today', water: 'Water today' };
+    var _links = {};   /* pill id -> device idx (string) */
+
+    function syncLinks() {
+        Object.keys(LINK_NAMES).forEach(function (id) {
+            var el = document.getElementById('ng-sb-' + id);
+            if (!el) return;
+            var idx = _links[id];
+            if (idx) {
+                var label = 'Open log: ' + LINK_NAMES[id];
+                el.classList.add('ng-sb-slot--link');
+                el.setAttribute('role', 'button');
+                el.setAttribute('tabindex', '0');
+                el.setAttribute('data-idx', idx);
+                el.setAttribute('aria-label', label);
+                /* keep the pill's own descriptive title (e.g. "Battery: charging") as a suffix */
+                if (el.title.indexOf('Open log:') !== 0) el.setAttribute('data-ng-title', el.title);
+                var base = el.getAttribute('data-ng-title') || '';
+                el.title = base && base !== LINK_NAMES[id] ? label + ' (' + base + ')' : label;
+            } else if (el.classList.contains('ng-sb-slot--link')) {
+                el.classList.remove('ng-sb-slot--link');
+                el.removeAttribute('role');
+                el.removeAttribute('tabindex');
+                el.removeAttribute('data-idx');
+                el.removeAttribute('aria-label');
+                el.title = el.getAttribute('data-ng-title') || '';
+            }
+        });
+    }
+
+    function openDeviceLog(idx) {
+        var route = DEVICE_LOG_ROUTE.replace('%IDX%', idx);
+        try {
+            var injector   = window.angular && angular.element(document.body).injector();
+            var $location  = injector && injector.get('$location');
+            var $rootScope = injector && injector.get('$rootScope');
+            if ($location && $rootScope) {
+                $rootScope.$apply(function () { $location.path(route); });
+                return;
+            }
+        } catch (e) {}
+        window.location.hash = route;
+    }
+
+    function linkFromEvent(e) {
+        var t = e.target;
+        var el = t && t.closest && t.closest('.ng-sb-slot--link');
+        return el && el.getAttribute('data-idx') ? el : null;
+    }
+
+    document.addEventListener('click', function (e) {
+        var el = linkFromEvent(e);
+        if (el) openDeviceLog(el.getAttribute('data-idx'));
+    });
+    document.addEventListener('keydown', function (e) {
+        var el = linkFromEvent(e);
+        if (el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openDeviceLog(el.getAttribute('data-idx')); }
+    });
 
     /* Mirror the Attention Center count into the chip. The panel itself opens
        from a delegated click handler in attention-center.js. */
@@ -292,6 +361,7 @@
     }
 
     function applyEnergy(es, d) {
+        var links = {};
         /* Grid: P1 net draw (import minus export), else the meter's Usage */
         if (d.p1) {
             var imp = toWatts(d.p1.Usage);
@@ -299,6 +369,7 @@
             var net = isNaN(imp) ? NaN : imp - (isNaN(exp) ? 0 : exp);
             if (!isNaN(net)) {
                 _energyOn = true;
+                links.power = es.idP1;
                 setSlot('power', fmtPower(net), net < 0 ? 'var(--dz-success)' : 'var(--dz-warning)');
                 var pe = document.getElementById('ng-sb-power');
                 if (pe) pe.title = net < 0 ? 'Exporting to the grid' : 'Drawing from the grid';
@@ -307,6 +378,7 @@
         /* Solar */
         var sw = d.solar ? toWatts(d.solar.Usage != null ? d.solar.Usage : d.solar.Data) : NaN;
         showSlot('solar', fmtPower(sw), 'var(--dz-warning)', isNaN(sw));
+        if (!isNaN(sw)) links.solar = es.idSolar;
         /* Battery: state of charge, with charge (down) / discharge (up) arrow from the watt device */
         var soc = d.soc ? numOf(d.soc.Data) : NaN;
         var bw  = d.bat ? toWatts(d.bat.Usage != null ? d.bat.Usage : d.bat.Data) : NaN;
@@ -316,6 +388,7 @@
             var icon = isNaN(soc) ? 'fa-battery-half' :
                        soc > 85 ? 'fa-battery-full' : soc > 60 ? 'fa-battery-three-quarters' :
                        soc > 35 ? 'fa-battery-half' : soc > 10 ? 'fa-battery-quarter' : 'fa-battery-empty';
+            links.battery = d.soc && !isNaN(soc) ? es.idBatterySoc : es.idBatteryWatt;
             var be = document.getElementById('ng-sb-battery');
             if (be) { be.hidden = false; be.querySelector('i').className = 'fa-solid ' + icon; }
             setSlot('battery', txt.trim(), !isNaN(soc) && soc <= 15 ? 'var(--dz-danger)' : 'var(--dz-success)');
@@ -329,16 +402,27 @@
         /* Gas / water: today's consumption */
         var gas = d.gas ? String(d.gas.CounterToday || '').trim() : '';
         showSlot('gas', gas, 'var(--dz-warning)', !gas);
+        if (gas) links.gas = es.idGas;
         var water = d.water ? String(d.water.CounterToday || '').trim() : '';
         if (water && es.ConvertWaterM3ToLiter && /m3|m³/i.test(water) && !isNaN(numOf(water))) {
             water = Math.round(numOf(water) * 1000) + '\u202fL';
         }
         showSlot('water', water, 'var(--dz-accent)', !water);
+        if (water) links.water = es.idWater;
         /* Outside temperature */
         if (d.out) {
             var tv = d.out.Temp !== undefined ? d.out.Temp : numOf(d.out.Data);
-            if (!isNaN(tv)) { _energyTemp = true; setSlot('temp', Number(tv).toFixed(1) + '°', null); }
+            if (!isNaN(tv)) {
+                _energyTemp = true;
+                links.temp = es.idOutsideTempSensor;
+                setSlot('temp', Number(tv).toFixed(1) + '°', null);
+            }
         }
+        /* Only pills driven by a known device are interactive; others are cleared */
+        Object.keys(LINK_NAMES).forEach(function (id) {
+            if (links[id] > 0) _links[id] = String(links[id]); else delete _links[id];
+        });
+        syncLinks();
     }
 
     function fetchEnergy() {

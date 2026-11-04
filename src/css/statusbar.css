@@ -97,6 +97,16 @@
     outline-offset: 2px;
 }
 
+/* Clickable pills (open the device's log page). Only set once the idx is known. */
+#ng-status-bar .ng-sb-slot--link { cursor: pointer; }
+#ng-status-bar .ng-sb-slot--link:hover { background: var(--dz-sb-pill-hover); }
+#ng-status-bar .ng-sb-slot--link:hover span { text-decoration: underline; text-underline-offset: 3px; }
+#ng-status-bar .ng-sb-slot--link:focus-visible {
+    outline: 2px solid var(--dz-accent);
+    outline-offset: 2px;
+    background: var(--dz-sb-pill-hover);
+}
+
 /* Live dot */
 #ng-status-bar .ng-sb-dot {
     flex: 0 0 auto;

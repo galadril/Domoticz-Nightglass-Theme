@@ -1420,8 +1420,7 @@
         return writeJsonUvar();
     }
 
-    /* Colour derivation shared by applySettings() and Theme Studio's contrast
-       checker (exposed via dzNightglassSettings.colorKit) so both always agree. */
+    /* Colour derivation helpers used by applySettings(). */
     function darkenHex(hex, amt) {
         var r = Math.max(0, parseInt(hex.slice(1, 3), 16) - amt);
         var g = Math.max(0, parseInt(hex.slice(3, 5), 16) - amt);
@@ -1977,11 +1976,8 @@
             '<i class="fa-solid fa-palette ng-header-icon"></i>' +
             '<div><h3 class="ng-settings-title">Nightglass Theme</h3>' +
             '<span class="ng-settings-subtitle">Customize your dashboard experience</span></div></div>' +
-            '<div class="ng-settings-header-actions">' +
-            (window.NGStudio ? '<button type="button" class="ng-reset-btn ng-assistant-btn" id="ngAssistantBtn" title="Theme Assistant: pick an accent and set readable colours">' +
-            '<i class="fa-solid fa-wand-magic-sparkles"></i> Assistant</button>' : '') +
             '<button type="button" class="ng-reset-btn" id="ngResetBtn" title="Reset all settings to defaults">' +
-            '<i class="fa-solid fa-rotate-left"></i> Reset</button></div></div>' +
+            '<i class="fa-solid fa-rotate-left"></i> Reset</button></div>' +
 
             '<div class="ng-presets-section" id="ngPresetsSection">' +
             '<button class="ng-presets-toggle' + (opts.presetsOpen ? ' ng-presets-toggle--open' : '') + '" id="ngPresetsToggle" type="button">' +
@@ -2097,27 +2093,6 @@
             '</div>' +
 
             '<div class="ng-settings-section">' +
-            '<div class="ng-section-header"><i class="fa-solid fa-stethoscope"></i> Setup health</div>' +
-            '<div class="ng-setting-row ng-setting-row--action">' +
-            '  <div class="ng-setting-info">' +
-            '    <span class="ng-setting-label">Run Doctor</span>' +
-            '    <span class="ng-setting-desc" id="ngDoctorLastRun">' + (window.ngDoctorLastRunText ? window.ngDoctorLastRunText() : '') + '</span>' +
-            '    <span class="ng-setting-desc">Checks rooms, names, icons, timers, hardware and theme settings. Runs only when you press the button and changes nothing by itself</span>' +
-            '  </div>' +
-            '  <button type="button" class="ng-action-chip" id="ngDoctorRunBtn">' +
-            '    <i class="fa-solid fa-stethoscope"></i> Run Doctor</button>' +
-            '</div>' +
-            '<div class="ng-setting-row ng-setting-row--action">' +
-            '  <div class="ng-setting-info">' +
-            '    <span class="ng-setting-label">Reset ignored checks</span>' +
-            '    <span class="ng-setting-desc">Show every Doctor finding you chose to ignore again</span>' +
-            '  </div>' +
-            '  <button type="button" class="ng-action-chip" id="ngDoctorResetIgnoredBtn">' +
-            '    <i class="fa-solid fa-eye"></i> Reset</button>' +
-            '</div>' +
-            '</div>' +
-
-            '<div class="ng-settings-section">' +
             '<div class="ng-section-header"><i class="fa-solid fa-bell"></i> Live Notifications</div>' +
             toggle('liveToasts', 'Device State Toasts', 'Show a toast when any device changes state via the live WebSocket feed') +
             select('liveToastFilter', 'Event Filter', [
@@ -2180,6 +2155,27 @@
             dualColorPicker('surfaceColor', 'surfaceColorLight', 'Card Surface') +
             dualColorPicker('borderColor', 'borderColorLight', 'Borders') +
             dualColorPicker('textColor', 'textColorLight', 'Text') +
+            '</div>' +
+
+            '<div class="ng-settings-section">' +
+            '<div class="ng-section-header"><i class="fa-solid fa-stethoscope"></i> Setup health</div>' +
+            '<div class="ng-setting-row ng-setting-row--action">' +
+            '  <div class="ng-setting-info">' +
+            '    <span class="ng-setting-label">Run Doctor</span>' +
+            '    <span class="ng-setting-desc" id="ngDoctorLastRun">' + (window.ngDoctorLastRunText ? window.ngDoctorLastRunText() : '') + '</span>' +
+            '    <span class="ng-setting-desc">Checks rooms, names, icons, timers, hardware and theme settings. Runs only when you press the button and changes nothing by itself</span>' +
+            '  </div>' +
+            '  <button type="button" class="ng-action-chip" id="ngDoctorRunBtn">' +
+            '    <i class="fa-solid fa-stethoscope"></i> Run Doctor</button>' +
+            '</div>' +
+            '<div class="ng-setting-row ng-setting-row--action">' +
+            '  <div class="ng-setting-info">' +
+            '    <span class="ng-setting-label">Reset ignored checks</span>' +
+            '    <span class="ng-setting-desc">Show every Doctor finding you chose to ignore again</span>' +
+            '  </div>' +
+            '  <button type="button" class="ng-action-chip" id="ngDoctorResetIgnoredBtn">' +
+            '    <i class="fa-solid fa-eye"></i> Reset</button>' +
+            '</div>' +
             '</div>' +
 
             '<div class="ng-settings-section ng-settings-section--full">' +
@@ -4260,7 +4256,6 @@
 
         // Color pickers (custom HSV canvas)
         initColorPickers(container);
-        if (window.NGStudio) window.NGStudio.bind(container);
 
         // Selects
         container.querySelectorAll('select[data-ng-key]').forEach(function (sel) {
@@ -4873,24 +4868,6 @@
 
     window.dzNightglassSettings = {
         get: function (key) { return _settings ? _settings[key] : DEFAULTS[key]; },
-        /* Colour internals for the Theme Assistant (src/js/theme-studio.js). */
-        colorKit: {
-            keys: COLOR_SNAPSHOT_KEYS,
-            darkenHex: darkenHex,
-            lightenHex: lightenHex,
-            textTiers: textTiers,
-            savePreset: function (name) { addUserPreset(name); },
-            /* Re-render the settings panel so the pickers show new values. */
-            rerenderPanel: function () {
-                var wrap = document.getElementById('ng-theme-settings-wrap');
-                if (!wrap) return;
-                var body = wrap.querySelector('#ngPresetsBody');
-                var open = body && body.style.display !== 'none';
-                wrap.innerHTML = buildPanel({ presetsOpen: open });
-                bindEvents(wrap);
-                loadPresets(wrap);
-            }
-        },
         /* Serialised size in bytes of the blob that would be saved (Doctor). */
         blobSize: function () {
             var str = JSON.stringify(serializeSettings());
