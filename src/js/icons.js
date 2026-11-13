@@ -1598,7 +1598,22 @@
         for (var i = 0; i < mutations.length; i++) {
             var m = mutations[i];
 
-            if (m.type === 'attributes' && m.attributeName === 'src' &&
+            if (m.type === 'attributes' && m.attributeName === 'class') {
+                /* Domoticz renders the native glyph with class="{{ glyphClass }}",
+                   so a state change rewrites the whole attribute: our
+                   dz-fa-device and dz-anim-* classes vanish and the new
+                   dz-icon--on/off arrives with them.  Nothing else announces
+                   that (no src change, and device_update is not broadcast for
+                   every path), so re-decorate right here instead of waiting
+                   for a burst that may not come — issue #300. */
+                var g = m.target;
+                if (g.tagName === 'I' && g.classList.contains('dz-icon-glyph') &&
+                        g.parentNode && nativeDecorEnabled() &&
+                        (g.parentNode.classList.contains('dz-icon-48') ||
+                         g.parentNode.classList.contains('dz-icon-40'))) {
+                    decorateNativeGlyph(g);
+                }
+            } else if (m.type === 'attributes' && m.attributeName === 'src' &&
                     m.target.tagName === 'IMG') {
                 if (m.target.classList.contains('dz-icon-replaced')) {
                     /* Already-replaced image: update the icon directly and
@@ -1633,7 +1648,7 @@
             childList: true,
             subtree: true,
             attributes: true,
-            attributeFilter: ['src']
+            attributeFilter: ['src', 'class']
         });
 
         var navbar = document.getElementById('appnavbar');

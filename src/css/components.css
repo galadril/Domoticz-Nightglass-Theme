@@ -369,6 +369,29 @@
         overflow: auto;
     }
 
+/* Compact Device widget (Domoticz .dd-dz-compact): the dashboard tile already
+   provides the card surface, so the embedded device card must not paint a second
+   one (grey fill, border, temperature accent/gradient, hover lift). */
+.dd-dz-compact .dd-dz-inner div.item,
+.dd-dz-compact .dd-dz-inner div.item.itemBlock,
+.dd-dz-compact .dd-dz-inner .itemBlock > div.item,
+.dd-dz-compact .dd-dz-inner div.item.itemBlock.dz-temp-accent.dz-range-gradient,
+.dd-dz-compact .dd-dz-inner .itemBlock > div.item.dz-temp-accent.dz-range-gradient,
+.dd-dz-compact .dd-dz-inner .itemBlock:hover > div.item,
+.dd-dz-compact .dd-dz-inner div.item.itemBlock:hover {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+}
+
+.dd-dz-compact .dd-dz-inner .dz-temp-accent::after,
+.dd-dz-compact .dd-dz-inner .dz-zero-indicator {
+    display: none !important;
+}
+
 /* Edit mode: glow ring instead of dashed outline */
 .dd-page.edit-mode .dd-grid .grid-stack-item-content {
     outline: none !important;
