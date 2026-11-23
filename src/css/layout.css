@@ -326,11 +326,11 @@ i.dz-fa-trend {
 }
 
     i.dz-fa-trend.fa-arrow-trend-up {
-        color: var(--dz-success);
+        color: var(--dz-danger);
     }
 
     i.dz-fa-trend.fa-arrow-trend-down {
-        color: var(--dz-danger);
+        color: var(--dz-success);
     }
 
     i.dz-fa-trend.fa-right-long {
@@ -363,12 +363,12 @@ i.dz-fa-trend {
 
 .dz-chrome-icon.fa-arrow-trend-up,
 .dz-icon-glyph.fa-arrow-trend-up {
-    color: var(--dz-success);
+    color: var(--dz-danger);
 }
 
 .dz-chrome-icon.fa-arrow-trend-down,
 .dz-icon-glyph.fa-arrow-trend-down {
-    color: var(--dz-danger);
+    color: var(--dz-success);
 }
 
 #bigtext .dz-chrome-icon.fa-right-long,
